@@ -13,12 +13,19 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_iam as iam,
     RemovalPolicy,
+    NestedStack
 )
 from constructs import Construct
 
-class SignUpStack(Stack):
+class SignUpStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, userpool:cognito.UserPool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        hosted_zone = route53.HostedZone.from_lookup(
+            self, 
+            "HostedZone",
+            domain_name="dctech.events"
+        )   
 
         marker_storage = s3.Bucket(
             self,
@@ -47,6 +54,20 @@ class SignUpStack(Stack):
                 "SENDER_EMAIL": "outgoing@dctech.events"
             },
         )
+
+        confirmation_function = lambda_.Function(
+            self,
+            "ConfirmationFunction",
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler="lambda_function.lambda_handler",
+            code=lambda_.Code.from_asset("functions/confirm"),
+            memory_size=256,
+            timeout=Duration.seconds(30),
+            environment={
+                "BUCKET": marker_storage.bucket_name,
+                "USER_POOL_ID": userpool.user_pool_id,
+            },
+        )
         
         signup_function.add_to_role_policy(
             iam.PolicyStatement(
@@ -54,7 +75,35 @@ class SignUpStack(Stack):
                 resources=["*"]  # You can restrict this to specific SES ARNs if desired
             )
         )
-        marker_storage.grant_write(signup_function)
+
+
+        confirmation_function.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "cognito-idp:AdminCreateUser",
+                    "cognito-idp:AdminUpdateUserAttributes"
+                ],
+                resources=[userpool.user_pool_arn]
+            )
+        )
+
+        marker_storage.grant_read_write(signup_function)
+        marker_storage.grant_read_write(confirmation_function)
+        
+
+        cert = acm.Certificate(
+            self,
+            "Certificate",
+            domain_name="signup.dctech.events",
+            validation=acm.CertificateValidation.from_dns(hosted_zone),
+        )
+
+        domain_name = apigwv2.DomainName(
+            self,
+             "ApiDomain",
+            domain_name="signup.dctech.events",  # Your custom domain
+            certificate=cert
+        )
 
         # Create HTTP API
         http_api = apigwv2.HttpApi(
@@ -68,15 +117,64 @@ class SignUpStack(Stack):
             }
         )
 
+        domain_mapping = apigwv2.ApiMapping(
+            self,
+            "ApiMapping",
+            api=http_api,
+            domain_name=domain_name,
+            stage=http_api.default_stage
+        )
+
+        # Create A Record for the API
+        route53.ARecord(
+            self,
+            "ApiARecord",
+            zone=hosted_zone,
+            target=route53.RecordTarget.from_alias(
+                targets.ApiGatewayv2DomainProperties(
+                    domain_name.regional_domain_name,
+                    domain_name.regional_hosted_zone_id
+                )
+            ),
+            record_name="signup"  # This will create api.dctech.events
+        )
+
+        # Optionally, add an AAAA record for IPv6 support
+        route53.AaaaRecord(
+            self,
+            "ApiAAAARecord",
+            zone=hosted_zone,
+            target=route53.RecordTarget.from_alias(
+                targets.ApiGatewayv2DomainProperties(
+                    domain_name.regional_domain_name,
+                    domain_name.regional_hosted_zone_id
+                )
+            ),
+            record_name="signup"
+        )
+
+
         # Create Lambda integration
-        lambda_integration = apigwv2_integrations.HttpLambdaIntegration(
+        signup_integration = apigwv2_integrations.HttpLambdaIntegration(
             "SignupIntegration",
             handler=signup_function
         )
 
+        confirmation_integration = apigwv2_integrations.HttpLambdaIntegration(
+            "ConfirmationIntegration",
+            handler=confirmation_function
+        )
         # Add route
         http_api.add_routes(
             path="/signup",
             methods=[apigwv2.HttpMethod.POST],
-            integration=lambda_integration
+            integration=signup_integration
         )
+
+        # Add route for confirmation endpoint
+        http_api.add_routes(
+            path="/confirm/{token}",
+            methods=[apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST],
+            integration=confirmation_integration
+        )
+        

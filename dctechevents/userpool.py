@@ -1,3 +1,5 @@
+import os
+
 from aws_cdk import (
     Stack,
     aws_route53 as route53,
@@ -11,9 +13,11 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_cognito as cognito,
     RemovalPolicy,
+    Environment,
 )
 from constructs import Construct
 
+from dctechevents.signup import SignUpStack
 
 class UserPoolStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -27,7 +31,12 @@ class UserPoolStack(Stack):
             account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
             standard_attributes=cognito.StandardAttributes(
                 email=cognito.StandardAttribute(required=True, mutable=True),
-            )
+            ),
+            custom_attributes={
+            "newsletter": cognito.BooleanAttribute(
+                mutable=True,  # Allow the attribute to be changed
+            ),
+        }
         )
 
         self.domain = cognito.UserPoolDomain(
@@ -37,4 +46,10 @@ class UserPoolStack(Stack):
                 domain_prefix=f"{self.stack_name.lower()}-userpool"
             ),
             user_pool=self.user_pool,
+        )
+
+        SignUpStack(
+            self,
+            "SignUpStack",
+            userpool=self.user_pool,
         )

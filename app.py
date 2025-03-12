@@ -4,7 +4,7 @@ import os
 import aws_cdk as cdk
 
 from dctechevents.placeholder import PlaceholderSite
-from dctechevents.signup import SignUpStack
+
 from dctechevents.userpool import UserPoolStack
 
 
@@ -20,12 +20,11 @@ PlaceholderSite(
 userpoolstack = UserPoolStack(
     app,
     "UserPoolStack",
+    env=cdk.Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
+    ),
 )
 
-SignUpStack(
-    app,
-    "SignUpStack",
-    userpool=userpoolstack.user_pool
-)
+
 
 app.synth()

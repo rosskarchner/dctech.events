@@ -3,8 +3,12 @@ import base64
 import urllib.parse
 import re
 import os
+import secrets
+import hashlib
+
 import boto3
 from botocore.exceptions import ClientError
+
 
 
 def is_valid_email(email):
@@ -51,11 +55,41 @@ def send_email(recipient, subject, body_text, body_html=None):
         return False
 
 
+def save_to_s3(bucket, key, data):
+    s3 = boto3.client('s3')
+    try:
+        s3.put_object(Bucket=bucket, Key=key, Body=data)
+        return True
+    except ClientError as e:
+        print(f"Error saving to S3: {str(e)}")
+        return False
 
+def check_s3_key_exists(bucket_name, key):
+    """
+    Check if a key exists in an S3 bucket
+    
+    Args:
+        bucket_name (str): Name of the S3 bucket
+        key (str): The key to check
+    
+    Returns:
+        bool: True if key exists, False if it doesn't
+    """
+    s3 = boto3.client('s3')
+    try:
+        s3.head_object(Bucket=bucket_name, Key=key)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            return False
+        # If there's a different error (like permissions), raise it
+        raise
 
 def lambda_handler(event, context):
     userpool_id = os.environ.get('USERPOOL_ID')
     cognito = boto3.client('cognito-idp')
+
+    bucket_name=os.environ.get('BUCKET')
     # Handle POST request (form data)
     if event.get('body'):
         # Check content type to determine how to parse the body
@@ -88,13 +122,8 @@ def lambda_handler(event, context):
                         })
                     }
                 
-                return {
-                    'statusCode': 200,
-                    'body': json.dumps({
-                        'message': 'Form data received',
-                        'data': form_data
-                    })
-                }
+
+
             
             elif 'application/json' in content_type:
                 # Parse JSON data
@@ -119,15 +148,6 @@ def lambda_handler(event, context):
                     }
                 
                 
-
-                return {
-                    'statusCode': 200,
-                    'body': json.dumps({
-                        'message': 'JSON data received',
-                        'data': body
-                    })
-                }
-                
         except Exception as e:
             return {
                 'statusCode': 400,
@@ -135,10 +155,24 @@ def lambda_handler(event, context):
                     'message': f'Error processing request: {str(e)}'
                 })
             }
+
+
+    email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
+
+    if not check_s3_key_exists(bucket_name, "seen/" + email_hash):
+        confirmation_token = "confirm/" + secrets.token_urlsafe(16)
+        save_to_s3(bucket_name,confirmation_token,email)
+        save_to_s3(bucket_name, "seen/" + email_hash, email)
+        confirm_url = f"https://signup.dctech.events/{confirmation_token}"
+        send_email(email, "Confirm your DC Tech Events subscription", f"Please confirm your email address by clicking on the following link:\n\n{confirm_url}")
+
     
     return {
-        'statusCode': 400,
-        'body': json.dumps({
-            'message': 'No data received'
-        })
-    }
+          "isBase64Encoded": False,
+          "statusCode": 302,
+          "headers": {
+               "Location": "https://dctech.events/thanks.html"
+          },
+          "multiValueHeaders": {},
+          "body": ""
+     }
