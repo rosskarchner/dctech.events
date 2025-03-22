@@ -1,0 +1,3 @@
+icalendar==5.0.7
+requests==2.31.0
+pytz

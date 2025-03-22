@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Event Source</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #unauthorizedMessage {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #loadingMessage {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="/js/auth.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Create Event Source</h1>
+        
+        <div id="unauthorizedMessage" class="hidden">
+            You do not have permission to create event sources. Please contact your administrator.
+        </div>
+
+        <div id="loadingMessage">
+            <div class="loading-spinner"></div>
+            Checking permissions...
+        </div>
+
+        <form id="sourceForm" class="hidden">
+            <div class="form-group">
+                <label for="organizationName">Organization Name:</label>
+                <input type="text" id="organizationName" name="organizationName" required>
+                <div class="error hidden" id="organizationNameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="url">Website URL:</label>
+                <input type="url" id="url" name="url" required 
+                       placeholder="https://example.com">
+                <div class="error hidden" id="urlError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="icalUrl">iCal URL:</label>
+                <input type="url" id="icalUrl" name="icalUrl" required
+                       placeholder="https://example.com/events.ics">
+                <div class="error hidden" id="icalUrlError"></div>
+            </div>
+
+            <button type="submit">Create Source</button>
+        </form>
+
+        <div id="successMessage" class="success hidden">
+            Source created successfully!
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://api.dctech.events';
+
+        // Check user permissions when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // First check if we're authenticated
+                if (!await checkAuth()) {
+                    return;
+                }
+
+                const token = await getAuthToken();
+                console.log('Token found:', !!token);
+
+                const response = await fetch(`${API_BASE_URL}/check-permissions`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials:"include"
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Permissions received:', data);
+                
+                if (data.canCreateSources) {
+                    document.getElementById('sourceForm').classList.remove('hidden');
+                } else {
+                    document.getElementById('unauthorizedMessage').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking permissions:', error);
+                document.getElementById('unauthorizedMessage').classList.remove('hidden');
+            } finally {
+                document.getElementById('loadingMessage').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('sourceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            
+            // Reset error messages
+            document.querySelectorAll('.error').forEach(el => el.classList.add('hidden'));
+            document.getElementById('successMessage').classList.add('hidden');
+            
+            // Get form values
+            const organizationName = document.getElementById('organizationName').value.trim();
+            const url = document.getElementById('url').value.trim();
+            const icalUrl = document.getElementById('icalUrl').value.trim();
+            
+            // Validate inputs
+            let isValid = true;
+            
+            if (!organizationName) {
+                showError('organizationNameError', 'Organization name is required');
+                isValid = false;
+            }
+            
+            if (!isValidUrl(url)) {
+                showError('urlError', 'Please enter a valid URL');
+                isValid = false;
+            }
+            
+            if (!isValidUrl(icalUrl)) {
+                showError('icalUrlError', 'Please enter a valid iCal URL');
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                submitButton.disabled = false;
+                return;
+            }
+            
+            try {
+                const token = await getAuthToken();
+                if (!token) {
+                    throw new Error('No valid auth token found');
+                }
+
+                const response = await fetch(`${API_BASE_URL}/sources`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        organization_name: organizationName,
+                        url: url,
+                        ical_url: icalUrl
+                    })
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        throw new Error('Permission denied');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Show success message
+                document.getElementById('successMessage').classList.remove('hidden');
+                
+                // Reset form
+                document.getElementById('sourceForm').reset();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                if (error.message === 'Permission denied') {
+                    showError('urlError', 'You do not have permission to create sources.');
+                } else {
+                    showError('urlError', 'Failed to create source. Please try again.');
+                }
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+    </script>
+</body>
+</html>

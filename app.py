@@ -3,15 +3,19 @@ import os
 
 import aws_cdk as cdk
 
-from dctechevents.placeholder import PlaceholderSite
+from dctechevents.website import WebsiteSite
 
 from dctechevents.userpool import UserPoolStack
 
+from dctechevents.api import ApiStack
+
+from dctechevents.aggregator import AggregatorStack
+
 
 app = cdk.App()
-PlaceholderSite(
+WebsiteSite(
     app,
-    "PlaceholderStack",
+    "WebsiteSite",
     env=cdk.Environment(
         account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
     ),
@@ -25,6 +29,26 @@ userpoolstack = UserPoolStack(
     ),
 )
 
+apistack = ApiStack(
+    app,
+    "ApiStack",
+    env=cdk.Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
+    ),
+    user_pool=userpoolstack.user_pool,
+    user_pool_client=userpoolstack.client,
+    admin_group=userpoolstack.admin_group,
+    editor_group=userpoolstack.editor_group
+)
 
+aggregator =AggregatorStack(
+    app,
+    "AggregatorStack",
+    env=cdk.Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
+    ),
+    sources_table=apistack.sources_table,
+    events_table=apistack.events_table
+)
 
 app.synth()

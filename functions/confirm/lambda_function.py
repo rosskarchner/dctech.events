@@ -45,7 +45,7 @@ def lambda_handler(event, context):
                 </head>
                 <body>
                     <h2>Confirm Your Newsletter Subscription</h2>
-                    <p>Please confirm that you want to receive the weekly newsletter at: {email}</p>
+                    <p>Please confirm that you want to receive DC Tech Events Weekly newsletter at: {email}</p>
                     <form method="POST" action="/confirm/{token}">
                         <input type="hidden" name="email" value="{email}">
                         <button type="submit" class="button">Confirm Subscription</button>

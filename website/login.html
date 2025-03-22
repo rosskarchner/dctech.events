@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Passwordless Login</title>
+    <style>
+        .container {
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .error {
+            color: red;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        #codeForm {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Sign In</h2>
+        <div id="errorMessage" class="error"></div>
+
+        <form id="emailForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" required>
+            </div>
+            <button type="submit" id="sendCodeButton">Send Code</button>
+        </form>
+
+        <form id="codeForm">
+            <div class="form-group">
+                <label for="code">Enter verification code:</label>
+                <input type="text" id="code" required>
+            </div>
+            <button type="submit" id="verifyButton">Verify Code</button>
+        </form>
+    </div>
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1001.0.min.js"></script>
+    <script>
+        // Configuration
+        const CLIENT_ID = '4afrbnid8cep4vhcar198j4ic7';
+        const REGION = 'us-east-1';
+
+        // Initialize AWS SDK
+        AWS.config.region = REGION;
+        const cognito = new AWS.CognitoIdentityServiceProvider();
+
+        let sessionToken = null;
+        let userEmail = null;
+
+        // Get DOM elements
+        const emailForm = document.getElementById('emailForm');
+        const codeForm = document.getElementById('codeForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const sendCodeButton = document.getElementById('sendCodeButton');
+        const verifyButton = document.getElementById('verifyButton');
+
+        // Handle email form submission
+        emailForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            errorMessage.textContent = '';
+            sendCodeButton.disabled = true;
+            userEmail = document.getElementById('email').value;
+
+            try {
+                const params = {
+                    AuthFlow: 'CUSTOM_AUTH',
+                    ClientId: CLIENT_ID,
+                    AuthParameters: {
+                        'USERNAME': userEmail
+                    }
+                };
+
+                const response = await cognito.initiateAuth(params).promise();
+                sessionToken = response.Session;
+                
+                // Show code input form
+                emailForm.style.display = 'none';
+                codeForm.style.display = 'block';
+            } catch (err) {
+                errorMessage.textContent = err.message;
+                console.error('Error:', err);
+            } finally {
+                sendCodeButton.disabled = false;
+            }
+        });
+
+        // Handle verification code form submission
+        codeForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    errorMessage.textContent = '';
+    verifyButton.disabled = true;
+
+    try {
+        const code = document.getElementById('code').value;
+        const params = {
+            ChallengeName: 'CUSTOM_CHALLENGE',
+            ClientId: CLIENT_ID,
+            ChallengeResponses: {
+                'USERNAME': userEmail,
+                'ANSWER': code
+            },
+            Session: sessionToken
+        };
+
+        const response = await cognito.respondToAuthChallenge(params).promise();
+        
+        if (response.AuthenticationResult) {
+            // Store tokens directly (they're already in JWT format)
+            localStorage.setItem('authToken', response.AuthenticationResult.AccessToken);
+            localStorage.setItem('idToken', response.AuthenticationResult.IdToken);
+            
+            if (response.AuthenticationResult.RefreshToken) {
+                localStorage.setItem('refreshToken', response.AuthenticationResult.RefreshToken);
+            }
+
+            console.log('Login successful, tokens stored');
+            window.location.href = '/';
+        }
+    } catch (err) {
+        errorMessage.textContent = err.message;
+        console.error('Error:', err);
+    } finally {
+        verifyButton.disabled = false;
+    }
+});
+
+        // Function to handle token refresh
+        async function refreshToken() {
+            const refresh_token = localStorage.getItem('refreshToken');
+            if (!refresh_token) {
+                throw new Error('No refresh token available');
+            }
+
+            try {
+                const params = {
+                    AuthFlow: 'REFRESH_TOKEN_AUTH',
+                    ClientId: CLIENT_ID,
+                    AuthParameters: {
+                        'REFRESH_TOKEN': refresh_token
+                    }
+                };
+
+                const response = await cognito.initiateAuth(params).promise();
+                
+                if (response.AuthenticationResult) {
+                    // Update stored tokens
+                    localStorage.setItem('authToken', response.AuthenticationResult.AccessToken.jwtToken);
+                    if (response.AuthenticationResult.IdToken) {
+                        localStorage.setItem('idToken', response.AuthenticationResult.IdToken.jwtToken);
+                    }
+                    
+                    return response.AuthenticationResult.AccessToken.jwtToken;
+                } else {
+                    throw new Error('Failed to refresh token');
+                }
+            } catch (error) {
+                console.error('Token refresh failed:', error);
+                // Clear all tokens and redirect to login
+                logout();
+                throw error;
+            }
+        }
+
+        // Function to handle logout
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('idToken');
+            localStorage.removeItem('refreshToken');
+            window.location.href = '/login.html';
+        }
+
+        // Check if we're already logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                // Optionally verify the token here
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
