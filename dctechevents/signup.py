@@ -13,7 +13,8 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_iam as iam,
     RemovalPolicy,
-    NestedStack
+    NestedStack,
+    CfnOutput
 )
 from constructs import Construct
 
@@ -21,11 +22,6 @@ class SignUpStack(NestedStack):
     def __init__(self, scope: Construct, construct_id: str, userpool:cognito.UserPool, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        hosted_zone = route53.HostedZone.from_lookup(
-            self, 
-            "HostedZone",
-            domain_name="dctech.events"
-        )   
 
         marker_storage = s3.Bucket(
             self,
@@ -91,22 +87,8 @@ class SignUpStack(NestedStack):
         marker_storage.grant_read_write(confirmation_function)
         
 
-        cert = acm.Certificate(
-            self,
-            "Certificate",
-            domain_name="signup.dctech.events",
-            validation=acm.CertificateValidation.from_dns(hosted_zone),
-        )
-
-        domain_name = apigwv2.DomainName(
-            self,
-             "ApiDomain",
-            domain_name="signup.dctech.events",  # Your custom domain
-            certificate=cert
-        )
-
         # Create HTTP API
-        http_api = apigwv2.HttpApi(
+        self.http_api = apigwv2.HttpApi(
             self,
             "HttpApi",
             api_name="Newsletter API",
@@ -116,43 +98,13 @@ class SignUpStack(NestedStack):
                 "allow_headers": ['Content-Type'],
             }
         )
-
-        domain_mapping = apigwv2.ApiMapping(
+        
+        # Add outputs for the API domain
+        self.api_endpoint = CfnOutput(
             self,
-            "ApiMapping",
-            api=http_api,
-            domain_name=domain_name,
-            stage=http_api.default_stage
+            "ApiEndpoint",
+            value=self.http_api.api_endpoint
         )
-
-        # Create A Record for the API
-        route53.ARecord(
-            self,
-            "ApiARecord",
-            zone=hosted_zone,
-            target=route53.RecordTarget.from_alias(
-                targets.ApiGatewayv2DomainProperties(
-                    domain_name.regional_domain_name,
-                    domain_name.regional_hosted_zone_id
-                )
-            ),
-            record_name="signup"  # This will create api.dctech.events
-        )
-
-        # Optionally, add an AAAA record for IPv6 support
-        route53.AaaaRecord(
-            self,
-            "ApiAAAARecord",
-            zone=hosted_zone,
-            target=route53.RecordTarget.from_alias(
-                targets.ApiGatewayv2DomainProperties(
-                    domain_name.regional_domain_name,
-                    domain_name.regional_hosted_zone_id
-                )
-            ),
-            record_name="signup"
-        )
-
 
         # Create Lambda integration
         signup_integration = apigwv2_integrations.HttpLambdaIntegration(
@@ -165,14 +117,14 @@ class SignUpStack(NestedStack):
             handler=confirmation_function
         )
         # Add route
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/signup",
             methods=[apigwv2.HttpMethod.POST],
             integration=signup_integration
         )
 
         # Add route for confirmation endpoint
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/confirm/{token}",
             methods=[apigwv2.HttpMethod.GET, apigwv2.HttpMethod.POST],
             integration=confirmation_integration

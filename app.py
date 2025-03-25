@@ -13,14 +13,6 @@ from dctechevents.aggregator import AggregatorStack
 
 
 app = cdk.App()
-WebsiteSite(
-    app,
-    "WebsiteSite",
-    env=cdk.Environment(
-        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
-    ),
-)
-
 userpoolstack = UserPoolStack(
     app,
     "UserPoolStack",
@@ -41,7 +33,17 @@ apistack = ApiStack(
     editor_group=userpoolstack.editor_group
 )
 
-aggregator =AggregatorStack(
+WebsiteSite(
+    app,
+    "WebsiteStack",
+    env=cdk.Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region=os.getenv("CDK_DEFAULT_REGION")
+    ),
+    userpoolstack = userpoolstack,
+    api_stack=apistack
+)
+
+aggregator = AggregatorStack(
     app,
     "AggregatorStack",
     env=cdk.Environment(

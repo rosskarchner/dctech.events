@@ -24,17 +24,6 @@ class ApiStack(Stack):
         admin_group_scope = "aws.cognito.signin.user.admin"
         editor_group_scope = "aws.cognito.signin.user.editor"
         # Find the hosted zone for dctech.events
-        hosted_zone = route53.HostedZone.from_lookup(
-            self, "HostedZone",
-            domain_name="dctech.events"
-        )
-
-        # Create ACM certificate for the API domain
-        certificate = acm.Certificate(
-            self, "ApiCertificate",
-            domain_name="api.dctech.events",
-            validation=acm.CertificateValidation.from_dns(hosted_zone)
-        )
 
         # Create DynamoDB tables
         self.events_table = dynamodb.Table(
@@ -237,7 +226,7 @@ class ApiStack(Stack):
             self.sources_table.grant_full_access(func)
 
         # Create API Gateway
-        http_api = apigwv2.HttpApi(
+        self.http_api = apigwv2.HttpApi(
             self, "HttpApi",
             api_name="Events API",
             cors_preflight={
@@ -261,21 +250,41 @@ class ApiStack(Stack):
                 "allow_credentials": True,
                 "max_age": Duration.days(1)
             },
-        )
-        # Add domain name to HTTP API
-        domain_name = apigwv2.DomainName(
-            self, "ApiDomainName",
-            domain_name="api.dctech.events",
-            certificate=certificate
+            create_default_stage=True,
         )
         
-        apigwv2.ApiMapping(
-            self, "ApiMapping",
-            api=http_api,
-            domain_name=domain_name,
-            stage=http_api.default_stage  # Use the default stage
+        # Create the hypertext Lambda function
+        hypertext_function = lambda_.Function(
+            self, "HypertextFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/hypertext"),
         )
+        
+        # Add hypertext route with a catch-all proxy parameter
+        self.http_api.add_routes(
+            path="/hypertext/{proxy+}",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "HypertextIntegration",
+                handler=hypertext_function
+            )
+        )
+        
+        # Add a root route for the homepage
+        self.http_api.add_routes(
+            path="/hypertext",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "HypertextRootIntegration",
+                handler=hypertext_function
+            )
+        )
+        
+        # Store the API endpoint for reference in other stacks
+        self.api_endpoint = self.http_api.api_endpoint
 
+        
        # Create Cognito authorizer
         authorizer = authorizers.HttpJwtAuthorizer(
             "ApiAuthorizer",
@@ -286,7 +295,7 @@ class ApiStack(Stack):
 
         # Add routes with integrations
         # Public endpoints
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
@@ -295,7 +304,7 @@ class ApiStack(Stack):
             )
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events/{id}",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
@@ -304,7 +313,7 @@ class ApiStack(Stack):
             )
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/sources",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
@@ -313,7 +322,7 @@ class ApiStack(Stack):
             )
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/sources/{id}",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
@@ -323,7 +332,7 @@ class ApiStack(Stack):
         )
 
         # Authenticated endpoints
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/check-permissions",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
@@ -333,7 +342,7 @@ class ApiStack(Stack):
             authorizer=authorizer
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events",
             methods=[apigwv2.HttpMethod.POST],
             integration=integrations.HttpLambdaIntegration(
@@ -343,7 +352,7 @@ class ApiStack(Stack):
             authorizer=authorizer
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events/{id}",
             methods=[apigwv2.HttpMethod.PATCH],
             integration=integrations.HttpLambdaIntegration(
@@ -354,7 +363,7 @@ class ApiStack(Stack):
         )
 
         # Editor/Admin endpoints
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events/{id}/approve",
             methods=[apigwv2.HttpMethod.POST],
             integration=integrations.HttpLambdaIntegration(
@@ -365,7 +374,7 @@ class ApiStack(Stack):
             authorization_scopes=[editor_group_scope, admin_group_scope]
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events/{id}",
             methods=[apigwv2.HttpMethod.PUT],
             integration=integrations.HttpLambdaIntegration(
@@ -376,7 +385,7 @@ class ApiStack(Stack):
             authorization_scopes=[editor_group_scope, admin_group_scope]
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/events/{id}",
             methods=[apigwv2.HttpMethod.DELETE],
             integration=integrations.HttpLambdaIntegration(
@@ -388,7 +397,7 @@ class ApiStack(Stack):
         )
 
         # Admin only endpoints
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/sources",
             methods=[apigwv2.HttpMethod.POST],
             integration=integrations.HttpLambdaIntegration(
@@ -399,7 +408,7 @@ class ApiStack(Stack):
             authorization_scopes=[admin_group_scope]
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/sources/{id}",
             methods=[apigwv2.HttpMethod.PUT],
             integration=integrations.HttpLambdaIntegration(
@@ -410,7 +419,7 @@ class ApiStack(Stack):
             authorization_scopes=[admin_group_scope]
         )
 
-        http_api.add_routes(
+        self.http_api.add_routes(
             path="/sources/{id}",
             methods=[apigwv2.HttpMethod.DELETE],
             integration=integrations.HttpLambdaIntegration(
@@ -420,30 +429,3 @@ class ApiStack(Stack):
             authorizer=authorizer,
             authorization_scopes=[admin_group_scope]
         )
-
-        # Create Route53 records
-        route53.ARecord(
-            self, "ApiARecord",
-            zone=hosted_zone,
-            target=route53.RecordTarget.from_alias(
-                targets.ApiGatewayv2DomainProperties(
-                    domain_name.regional_domain_name,
-                    domain_name.regional_hosted_zone_id
-                )
-            ),
-            record_name="api"
-        )
-
-        route53.AaaaRecord(
-            self, "ApiAAAARecord",
-            zone=hosted_zone,
-            target=route53.RecordTarget.from_alias(
-                targets.ApiGatewayv2DomainProperties(
-                    domain_name.regional_domain_name,
-                    domain_name.regional_hosted_zone_id
-                )
-            ),
-            record_name="api"
-        )
-
-

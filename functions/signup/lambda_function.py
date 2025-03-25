@@ -163,7 +163,7 @@ def lambda_handler(event, context):
         confirmation_token = "confirm/" + secrets.token_urlsafe(16)
         save_to_s3(bucket_name,confirmation_token,email)
         save_to_s3(bucket_name, "seen/" + email_hash, email)
-        confirm_url = f"https://signup.dctech.events/{confirmation_token}"
+        confirm_url = f"https://dctech.events/{confirmation_token}"
         send_email(email, "Confirm your DC Tech Events subscription", f"Please confirm your email address by clicking on the following link:\n\n{confirm_url}")
 
     

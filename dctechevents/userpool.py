@@ -74,7 +74,7 @@ class UserPoolStack(Stack):
             },
             sign_in_aliases=cognito.SignInAliases(
                 email=True,
-                username=True,
+                username=False,
                 phone=False,
             ),
             sign_in_case_sensitive=False,
@@ -144,14 +144,6 @@ class UserPoolStack(Stack):
                 logout_urls=["http://localhost:3000"],
             ),
             generate_secret=False,
-        )
-
-        # Create the domain
-        self.domain = self.user_pool.add_domain(
-            "cognito-domain",
-            cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"{self.stack_name.lower()}-userpool"
-            ),
         )
 
         # In the UserPoolStack class, update the permissions for pre_signup_fn:

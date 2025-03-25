@@ -4,6 +4,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 def lambda_handler(event, context):
+    print(os.environ)
     # Initialize AWS clients
     s3 = boto3.client('s3')
     cognito = boto3.client('cognito-idp')
