@@ -26,6 +26,9 @@ ENV/
 
 # CDK
 cdk.out/
+.chalice/deployments/
+.chalice/venv/
+chalice.out/
 cdk.context.json
 .cdk.staging/
 

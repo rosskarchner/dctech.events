@@ -13,6 +13,8 @@ from aws_cdk import (
     aws_cognito as cognito,
     CfnOutput,
 )
+
+from chalice.cdk import Chalice
 from constructs import Construct
 from .signup import SignUpStack
 
@@ -62,6 +64,15 @@ class WebsiteSite(Stack):
             validation=acm.CertificateValidation.from_dns(hosted_zone),
         )
 
+
+        hypertext_api = Chalice(
+            self, 'HypertextApp', source_dir='hypertext',
+            stage_config={
+                'environment_variables': {
+                    'MY_ENV_VAR': 'FOO'
+                }
+            }
+        )
 
         function_code = """
             function handler(event) {
@@ -170,12 +181,11 @@ class WebsiteSite(Stack):
                     origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
                 ),
                 
-                # Route /login/ path to the login form endpoint
-                "/login/": cloudfront.BehaviorOptions(
+                # Route /login path to the login form endpoint
+                "/login": cloudfront.BehaviorOptions(
                     origin=origins.HttpOrigin(
                         domain_name=f"{self.api_stack.http_api.api_id}.execute-api.{self.region}.amazonaws.com",
-                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-                        origin_path="/login-form"
+                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY
                     ),
                     viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                     allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,

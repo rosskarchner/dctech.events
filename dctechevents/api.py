@@ -253,13 +253,6 @@ class ApiStack(Stack):
             create_default_stage=True,
         )
         
-        # Create the hypertext Lambda function
-        hypertext_function = lambda_.Function(
-            self, "HypertextFunction",
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            handler="index.handler",
-            code=lambda_.Code.from_asset("functions/hypertext"),
-        )
         
         # Create the login form Lambda function
         login_form_function = lambda_.Function(
@@ -272,29 +265,11 @@ class ApiStack(Stack):
             }
         )
         
-        # Add hypertext route with a catch-all proxy parameter
-        self.http_api.add_routes(
-            path="/hypertext/{proxy+}",
-            methods=[apigwv2.HttpMethod.GET],
-            integration=integrations.HttpLambdaIntegration(
-                "HypertextIntegration",
-                handler=hypertext_function
-            )
-        )
-        
-        # Add a root route for the homepage
-        self.http_api.add_routes(
-            path="/hypertext",
-            methods=[apigwv2.HttpMethod.GET],
-            integration=integrations.HttpLambdaIntegration(
-                "HypertextRootIntegration",
-                handler=hypertext_function
-            )
-        )
+
         
         # Add login form endpoint
         self.http_api.add_routes(
-            path="/login-form",
+            path="/login",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
                 "LoginFormIntegration",
@@ -317,7 +292,7 @@ class ApiStack(Stack):
         # Add routes with integrations
         # Public endpoints
         self.http_api.add_routes(
-            path="/events",
+            path="/api/events",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
                 "ListEventsIntegration",
@@ -326,7 +301,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/events/{id}",
+            path="/api/events/{id}",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
                 "GetEventIntegration",
@@ -335,7 +310,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/sources",
+            path="/api/sources",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
                 "ListSourcesIntegration",
@@ -344,7 +319,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/sources/{id}",
+            path="/api/sources/{id}",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
                 "GetSourceIntegration",
@@ -354,7 +329,7 @@ class ApiStack(Stack):
 
         # Authenticated endpoints
         self.http_api.add_routes(
-            path="/check-permissions",
+            path="/api/check-permissions",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
                 "CheckPermissionsIntegration",
@@ -364,7 +339,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/events",
+            path="/api/events",
             methods=[apigwv2.HttpMethod.POST],
             integration=integrations.HttpLambdaIntegration(
                 "SubmitEventIntegration",
@@ -374,7 +349,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/events/{id}",
+            path="/api/events/{id}",
             methods=[apigwv2.HttpMethod.PATCH],
             integration=integrations.HttpLambdaIntegration(
                 "UpdateOwnEventIntegration",
@@ -385,7 +360,7 @@ class ApiStack(Stack):
 
         # Editor/Admin endpoints
         self.http_api.add_routes(
-            path="/events/{id}/approve",
+            path="/api/events/{id}/approve",
             methods=[apigwv2.HttpMethod.POST],
             integration=integrations.HttpLambdaIntegration(
                 "ApproveEventIntegration",
@@ -396,7 +371,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/events/{id}",
+            path="/api/events/{id}",
             methods=[apigwv2.HttpMethod.PUT],
             integration=integrations.HttpLambdaIntegration(
                 "UpdateEventIntegration",
@@ -407,7 +382,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/events/{id}",
+            path="/api/events/{id}",
             methods=[apigwv2.HttpMethod.DELETE],
             integration=integrations.HttpLambdaIntegration(
                 "DeleteEventIntegration",
@@ -419,7 +394,7 @@ class ApiStack(Stack):
 
         # Admin only endpoints
         self.http_api.add_routes(
-            path="/sources",
+            path="/api/sources",
             methods=[apigwv2.HttpMethod.POST],
             integration=integrations.HttpLambdaIntegration(
                 "CreateSourceIntegration",
@@ -430,7 +405,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/sources/{id}",
+            path="/api/sources/{id}",
             methods=[apigwv2.HttpMethod.PUT],
             integration=integrations.HttpLambdaIntegration(
                 "UpdateSourceIntegration",
@@ -441,7 +416,7 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
-            path="/sources/{id}",
+            path="/api/sources/{id}",
             methods=[apigwv2.HttpMethod.DELETE],
             integration=integrations.HttpLambdaIntegration(
                 "DeleteSourceIntegration",
