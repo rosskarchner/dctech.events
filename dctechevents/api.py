@@ -261,6 +261,17 @@ class ApiStack(Stack):
             code=lambda_.Code.from_asset("functions/hypertext"),
         )
         
+        # Create the login form Lambda function
+        login_form_function = lambda_.Function(
+            self, "LoginFormFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/login_form"),
+            environment={
+                "CLIENT_ID": user_pool_client.user_pool_client_id
+            }
+        )
+        
         # Add hypertext route with a catch-all proxy parameter
         self.http_api.add_routes(
             path="/hypertext/{proxy+}",
@@ -278,6 +289,16 @@ class ApiStack(Stack):
             integration=integrations.HttpLambdaIntegration(
                 "HypertextRootIntegration",
                 handler=hypertext_function
+            )
+        )
+        
+        # Add login form endpoint
+        self.http_api.add_routes(
+            path="/login-form",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "LoginFormIntegration",
+                handler=login_form_function
             )
         )
         

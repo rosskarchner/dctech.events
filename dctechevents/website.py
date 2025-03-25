@@ -169,6 +169,19 @@ class WebsiteSite(Stack):
                     cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
                     origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
                 ),
+                
+                # Route /login/ path to the login form endpoint
+                "/login/": cloudfront.BehaviorOptions(
+                    origin=origins.HttpOrigin(
+                        domain_name=f"{self.api_stack.http_api.api_id}.execute-api.{self.region}.amazonaws.com",
+                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+                        origin_path="/login-form"
+                    ),
+                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
+                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
+                    origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                ),
 
                 
                 "/api/*": cloudfront.BehaviorOptions(
