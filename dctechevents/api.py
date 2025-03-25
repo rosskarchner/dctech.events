@@ -144,8 +144,23 @@ class ApiStack(Stack):
                 handler="index.handler",
                 code=lambda_.Code.from_asset("functions/submit_event"),
                 environment={
-                    "TABLE_NAME": self.events_table.table_name
-                }
+                    "TABLE_NAME": self.events_table.table_name,
+                    "USER_POOL_ID": user_pool.user_pool_id
+                },
+                initial_policy=[
+                    iam.PolicyStatement(
+                        actions=[
+                            "cognito-idp:ListUsers"
+                        ],
+                        resources=[user_pool.user_pool_arn]
+                    ),
+                    iam.PolicyStatement(
+                        actions=[
+                            "dynamodb:PutItem"
+                        ],
+                        resources=[self.events_table.table_arn]
+                    )
+                ]
             ),
             "update_own": lambda_.Function(
                 self, "UpdateOwnEventFunction",
@@ -155,6 +170,43 @@ class ApiStack(Stack):
                 environment={
                     "TABLE_NAME": self.events_table.table_name
                 }
+            ),
+            "get_profile": lambda_.Function(
+                self, "GetProfileFunction",
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_asset("functions/get_profile"),
+                environment={
+                    "USER_POOL_ID": user_pool.user_pool_id
+                },
+                initial_policy=[
+                    iam.PolicyStatement(
+                        actions=[
+                            "cognito-idp:ListUsers",
+                            "cognito-idp:AdminGetUser"
+                        ],
+                        resources=[user_pool.user_pool_arn]
+                    )
+                ]
+            ),
+            "update_profile": lambda_.Function(
+                self, "UpdateProfileFunction",
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_asset("functions/update_profile"),
+                environment={
+                    "USER_POOL_ID": user_pool.user_pool_id
+                },
+                initial_policy=[
+                    iam.PolicyStatement(
+                        actions=[
+                            "cognito-idp:ListUsers",
+                            "cognito-idp:AdminUpdateUserAttributes",
+                            "cognito-idp:AdminGetUser"
+                        ],
+                        resources=[user_pool.user_pool_arn]
+                    )
+                ]
             )
         }
 
@@ -412,6 +464,56 @@ class ApiStack(Stack):
                 handler=authenticated_functions["update_own"]
             ),
             authorizer=authorizer
+        )
+        
+        # Profile endpoints
+        self.http_api.add_routes(
+            path="/api/profile",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "GetProfileIntegration",
+                handler=authenticated_functions["get_profile"]
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/profile",
+            methods=[apigwv2.HttpMethod.PUT],
+            integration=integrations.HttpLambdaIntegration(
+                "UpdateProfileIntegration",
+                handler=authenticated_functions["update_profile"]
+            ),
+            authorizer=authorizer
+        )
+        
+        # Login endpoint - public, no authorization required
+        login_function = lambda_.Function(
+            self, "LoginFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/login"),
+            environment={
+                "USER_POOL_ID": user_pool.user_pool_id,
+                "CLIENT_ID": user_pool_client.user_pool_client_id
+            },
+            initial_policy=[
+                iam.PolicyStatement(
+                    actions=[
+                        "cognito-idp:AdminInitiateAuth"
+                    ],
+                    resources=[user_pool.user_pool_arn]
+                )
+            ]
+        )
+        
+        self.http_api.add_routes(
+            path="/api/login",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration(
+                "LoginIntegration",
+                handler=login_function
+            )
         )
 
         # Editor/Admin endpoints

@@ -53,6 +53,10 @@ def handler(event, context):
                         {
                             'Name': 'email_verified',
                             'Value': 'false'
+                        },
+                        {
+                            'Name': 'custom:profile_complete',
+                            'Value': 'false'
                         }
                     ],
                     MessageAction='SUPPRESS',  # Don't send welcome email

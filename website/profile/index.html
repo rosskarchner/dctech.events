@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Profile - DC Tech Events</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        #loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: #0069d9;
+        }
+        
+        .unauthorized-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        
+        input[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+    </style>
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+    <script src="/static/js/auth.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Your Profile</h1>
+        
+        <div id="profile-container" hx-get="/api/profile" hx-trigger="load" hx-indicator="#loading">
+            <div id="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading your profile...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add event listener to inject auth token before HTMX requests
+        document.body.addEventListener('htmx:beforeRequest', function(event) {
+            console.log('HTMX beforeRequest event triggered');
+            const token = localStorage.getItem('authToken');
+            
+            if (token) {
+                event.detail.xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                console.log('Added Authorization header to HTMX request');
+            } else {
+                console.log('No token available for request');
+                // Redirect to login if no token
+                const currentPath = window.location.pathname;
+                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                event.preventDefault(); // Prevent the HTMX request
+            }
+        });
+        
+        // Handle HTMX response errors
+        document.body.addEventListener('htmx:responseError', function(event) {
+            console.error('HTMX response error:', event.detail.xhr.status);
+            
+            // Handle 401 (Unauthorized) or 403 (Forbidden) errors
+            if (event.detail.xhr.status === 401 || event.detail.xhr.status === 403) {
+                console.log('Authentication error detected');
+                
+                const errorHtml = `
+                    <div class="error-message">
+                        <h3>Authentication Error</h3>
+                        <p>Your session has expired or you are not logged in. You will be redirected to the login page.</p>
+                    </div>
+                `;
+                document.getElementById('profile-container').innerHTML = errorHtml;
+                
+                // Wait a moment before redirecting
+                setTimeout(function() {
+                    const currentPath = window.location.pathname;
+                    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

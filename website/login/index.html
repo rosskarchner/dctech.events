@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - DC Tech Events</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+    <script src="/static/js/auth.js"></script>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mt-3 {
+            margin-top: 15px;
+        }
+        
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .debug-info {
+            margin-top: 30px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Login</h1>
+        
+        <div id="login-container">
+            <form id="login-form" hx-post="/api/login" hx-target="#login-container" hx-swap="outerHTML">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit">
+                    <span class="htmx-indicator">
+                        <div class="loading-spinner"></div> Logging in...
+                    </span>
+                    <span class="submit-text">Login</span>
+                </button>
+                
+                <!-- No need for hidden redirect field -->
+            </form>
+            
+            <p class="text-center mt-3">
+                Don't have an account? <a href="/signup">Sign up</a>
+            </p>
+            
+            <div id="debug-info" class="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        // Debug logging function
+        function logDebug(message) {
+            console.log(message);
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                const timestamp = new Date().toISOString();
+                debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            }
+        }
+        
+        // Show debug info in development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            document.getElementById('debug-info').style.display = 'block';
+        }
+        
+        logDebug('Login page loaded');
+        
+        // Get the redirect URL from query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect') || '/';
+        logDebug(`Redirect URL from query params: ${redirectUrl}`);
+        
+        // Handle successful login
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            logDebug(`HTMX afterRequest event triggered, status: ${event.detail.xhr.status}`);
+            
+            if (event.detail.successful && event.detail.xhr.status === 200) {
+                try {
+                    const responseText = event.detail.xhr.responseText;
+                    logDebug(`Response: ${responseText}`);
+                    
+                    const response = JSON.parse(responseText);
+                    logDebug(`Parsed response: ${JSON.stringify(response)}`);
+                    
+                    if (response.token) {
+                        logDebug('Token found in response');
+                        
+                        // Store the token
+                        localStorage.setItem('authToken', response.token);
+                        logDebug('Token stored in localStorage');
+                        
+                        if (response.refreshToken) {
+                            localStorage.setItem('refreshToken', response.refreshToken);
+                            logDebug('Refresh token stored in localStorage');
+                        }
+                        
+                        // Get the redirect URL directly from the URL params again
+                        const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+                        logDebug(`Redirecting to: ${redirectUrl}`);
+                        
+                        // Use a small delay to ensure the debug logs are visible
+                        setTimeout(function() {
+                            window.location.href = redirectUrl;
+                        }, 500);
+                    } else {
+                        logDebug('No token in response');
+                    }
+                } catch (e) {
+                    logDebug(`Error parsing login response: ${e.message}`);
+                }
+            } else {
+                logDebug(`Login request failed or returned non-200 status: ${event.detail.xhr.status}`);
+                logDebug(`Response text: ${event.detail.xhr.responseText}`);
+            }
+        });
+        
+        // Check if already logged in
+        if (isAuthenticated()) {
+            logDebug(`User already authenticated, redirecting to: ${redirectUrl}`);
+            window.location.href = redirectUrl;
+        }
+    </script>
+</body>
+</html>

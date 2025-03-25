@@ -1,111 +1,83 @@
-// auth.js
-const isTokenExpired = (token) => {
-    if (!token) return true;
-    
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const expiry = payload.exp * 1000; // Convert to milliseconds
-        return Date.now() >= expiry;
-    } catch (e) {
-        console.error('Error checking token expiry:', e);
-        return true;
-    }
-};
+/**
+ * Authentication helper functions
+ */
 
-const getAuthToken = async () => {
-    let token = localStorage.getItem('authToken');
-    
+// Check if the user is authenticated
+function isAuthenticated() {
+    const token = localStorage.getItem('authToken');
     if (!token) {
-        console.error('No auth token found');
-        return null;
-    }
-
-    // Add debug logging
-    console.log('Token format check:', {
-        hasToken: !!token,
-        includes_dots: token.includes('.'),
-        length: token.length
-    });
-
-    if (!token.includes('.')) {
-        console.error('Invalid token format - token does not contain required "." separators');
-        return null;
-    }
-
-    if (isTokenExpired(token)) {
-        console.log('Token expired, attempting refresh');
-        try {
-            token = await refreshToken();
-        } catch (e) {
-            console.error('Token refresh failed:', e);
-            return null;
-        }
-    }
-
-    return token;
-};
-
-// Function to handle token refresh
-const refreshToken = async () => {
-    const refresh_token = localStorage.getItem('refreshToken');
-    if (!refresh_token) {
-        throw new Error('No refresh token available');
-    }
-
-    try {
-        // Using AWS SDK directly since it's already loaded on the page
-        const cognito = new AWS.CognitoIdentityServiceProvider({ region: 'us-east-1' });
-        
-        const params = {
-            AuthFlow: 'REFRESH_TOKEN_AUTH',
-            ClientId: localStorage.getItem('clientId') || '4afrbnid8cep4vhcar198j4ic7', // Fallback to hardcoded client ID if not stored
-            AuthParameters: {
-                'REFRESH_TOKEN': refresh_token
-            }
-        };
-
-        const response = await cognito.initiateAuth(params).promise();
-        
-        if (response.AuthenticationResult) {
-            // Update stored tokens
-            localStorage.setItem('authToken', response.AuthenticationResult.AccessToken);
-            if (response.AuthenticationResult.IdToken) {
-                localStorage.setItem('idToken', response.AuthenticationResult.IdToken);
-            }
-            
-            console.log('Token refreshed successfully');
-            return response.AuthenticationResult.AccessToken;
-        } else {
-            throw new Error('Failed to refresh token');
-        }
-    } catch (error) {
-        console.error('Token refresh failed:', error);
-        // Clear all tokens and redirect to login
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('idToken');
-        localStorage.removeItem('refreshToken');
-        throw error;
-    }
-};
-
-const checkAuth = async () => {
-    const token = await getAuthToken();
-    if (!token) {
-        console.log('No valid token found, redirecting to login');
-        window.location.href = '/login';
+        console.log('No auth token found');
         return false;
     }
-    return true;
-};
+    
+    // Check if token is expired
+    try {
+        const payload = parseJwt(token);
+        const expiry = payload.exp * 1000; // Convert to milliseconds
+        const now = Date.now();
+        
+        if (now >= expiry) {
+            console.log('Token expired');
+            localStorage.removeItem('authToken');
+            return false;
+        }
+        
+        return true;
+    } catch (e) {
+        console.error('Error parsing token:', e);
+        localStorage.removeItem('authToken');
+        return false;
+    }
+}
 
-// Add this if you need to decode the token payload
-const decodeToken = (token) => {
+// Parse JWT token
+function parseJwt(token) {
     try {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        return JSON.parse(atob(base64));
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(jsonPayload);
     } catch (e) {
-        console.error('Error decoding token:', e);
-        return null;
+        console.error('Error parsing JWT:', e);
+        throw e;
     }
-};
+}
+
+// Handle login success
+function handleLoginSuccess(token, refreshToken) {
+    // Store the tokens
+    localStorage.setItem('authToken', token);
+    if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+    }
+    
+    // Get the redirect URL directly from the URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectUrl = urlParams.get('redirect') || '/';
+    console.log('Redirect URL from query params:', redirectUrl);
+    
+    // Redirect to the URL
+    window.location.href = redirectUrl;
+}
+
+// Logout function
+function logout() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('loginRedirect');
+    window.location.href = '/';
+}
+
+// Add event listener for logout buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const logoutButtons = document.querySelectorAll('.logout-button');
+    logoutButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+    });
+});

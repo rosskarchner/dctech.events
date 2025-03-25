@@ -71,6 +71,19 @@ class UserPoolStack(Stack):
                 "newsletter": cognito.BooleanAttribute(
                     mutable=True,
                 ),
+                "nickname": cognito.StringAttribute(
+                    min_len=1,
+                    max_len=100,
+                    mutable=True
+                ),
+                "website": cognito.StringAttribute(
+                    min_len=0,
+                    max_len=2048,
+                    mutable=True
+                ),
+                "profile_complete": cognito.BooleanAttribute(
+                    mutable=True
+                )
             },
             sign_in_aliases=cognito.SignInAliases(
                 email=True,

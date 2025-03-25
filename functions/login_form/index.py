@@ -170,7 +170,11 @@ def handler(event, context):
                     }}
 
                     console.log('Login successful, tokens stored');
-                    window.location.href = '/';
+                    // Get redirect URL from query parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const redirectUrl = urlParams.get('redirect') || '/';
+                    console.log('Redirecting to:', redirectUrl);
+                    window.location.href = redirectUrl;
                 }}
             }} catch (err) {{
                 errorMessage.textContent = err.message;
@@ -239,7 +243,9 @@ def handler(event, context):
                     errorMessage.textContent = 'Your session has expired. Please log in again.';
                 }} else {{
                     // Token is valid, redirect to home page
-                    window.location.href = '/';
+                    const urlParams = new URLSearchParams(window.location.search);
+                    window.location.href = urlParams.get('redirect') || '/';
+
                 }}
             }}
         }});

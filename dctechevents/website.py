@@ -65,15 +65,6 @@ class WebsiteSite(Stack):
         )
 
 
-        hypertext_api = Chalice(
-            self, 'HypertextApp', source_dir='hypertext',
-            stage_config={
-                'environment_variables': {
-                    'MY_ENV_VAR': 'FOO'
-                }
-            }
-        )
-
         function_code = """
             function handler(event) {
                 var request = event.request;
