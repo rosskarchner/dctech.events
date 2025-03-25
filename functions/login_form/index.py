@@ -91,6 +91,25 @@ def handler(event, context):
         const sendCodeButton = document.getElementById('sendCodeButton');
         const verifyButton = document.getElementById('verifyButton');
 
+        // Function to check if token is expired
+        function isTokenExpired(token) {{
+            if (!token) return true;
+            
+            try {{
+                // JWT tokens consist of three parts: header.payload.signature
+                const payload = token.split('.')[1];
+                // Decode the base64 payload
+                const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+                
+                // Check if the token has expired
+                const currentTime = Math.floor(Date.now() / 1000);
+                return decodedPayload.exp < currentTime;
+            }} catch (error) {{
+                console.error('Error parsing token:', error);
+                return true; // If we can't parse the token, consider it expired
+            }}
+        }}
+
         // Handle email form submission
         emailForm.addEventListener('submit', async function(e) {{
             e.preventDefault();
@@ -181,12 +200,12 @@ def handler(event, context):
                 
                 if (response.AuthenticationResult) {{
                     // Update stored tokens
-                    localStorage.setItem('authToken', response.AuthenticationResult.AccessToken.jwtToken);
+                    localStorage.setItem('authToken', response.AuthenticationResult.AccessToken);
                     if (response.AuthenticationResult.IdToken) {{
-                        localStorage.setItem('idToken', response.AuthenticationResult.IdToken.jwtToken);
+                        localStorage.setItem('idToken', response.AuthenticationResult.IdToken);
                     }}
                     
-                    return response.AuthenticationResult.AccessToken.jwtToken;
+                    return response.AuthenticationResult.AccessToken;
                 }} else {{
                     throw new Error('Failed to refresh token');
                 }}
@@ -203,15 +222,25 @@ def handler(event, context):
             localStorage.removeItem('authToken');
             localStorage.removeItem('idToken');
             localStorage.removeItem('refreshToken');
-            window.location.href = '/login.html';
+            window.location.href = '/login';
         }}
 
         // Check if we're already logged in
         document.addEventListener('DOMContentLoaded', function() {{
             const token = localStorage.getItem('authToken');
+            
             if (token) {{
-                // Optionally verify the token here
-                window.location.href = '/';
+                if (isTokenExpired(token)) {{
+                    console.log('Token is expired, removing from storage');
+                    // Token is expired, remove it and stay on login page
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('idToken');
+                    localStorage.removeItem('refreshToken');
+                    errorMessage.textContent = 'Your session has expired. Please log in again.';
+                }} else {{
+                    // Token is valid, redirect to home page
+                    window.location.href = '/';
+                }}
             }}
         }});
     </script>

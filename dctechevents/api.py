@@ -107,10 +107,19 @@ class ApiStack(Stack):
                     "TABLE_NAME": self.sources_table.table_name
                 }
             ),
+            "source_form": lambda_.Function(
+                self, "SourceFormFunction",
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_asset("functions/source_form"),
+                environment={
+                    "TABLE_NAME": self.sources_table.table_name
+                }
+            ),
             "get_source": lambda_.Function(
                 self, "GetSourceFunction",
                 runtime=lambda_.Runtime.PYTHON_3_12,
-                handler="get_source.handler",
+                handler="index.handler",
                 code=lambda_.Code.from_asset("functions/get_source"),
                 environment={
                     "TABLE_NAME": self.sources_table.table_name
@@ -206,15 +215,38 @@ class ApiStack(Stack):
                 environment={
                     "TABLE_NAME": self.sources_table.table_name
                 }
+            ),
+            "edit_source_form": lambda_.Function(
+                self, "EditSourceFormFunction",
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_asset("functions/source_edit"),
+                environment={
+                    "TABLE_NAME": self.sources_table.table_name
+                }
             )
         }
 
         # Grant permissions
-        for func in public_functions.values():
-            if 'source' in func.function_name.lower():
-                self.sources_table.grant_read_data(func)
-            else:
-                self.events_table.grant_read_data(func)
+        # First handle the list_sources function specifically with read and scan permissions
+        list_sources_function = public_functions.get("list_sources")
+        if list_sources_function:
+            self.sources_table.grant_read_data(list_sources_function)
+            # Add explicit Scan permission
+            list_sources_function.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["dynamodb:Scan"],
+                    resources=[self.sources_table.table_arn]
+                )
+            )
+        
+        # Then handle the rest of the public functions
+        for func_name, func in public_functions.items():
+            if func_name != "list_sources":  # Skip list_sources as we already handled it
+                if 'source' in func.function_name.lower():
+                    self.sources_table.grant_read_data(func)
+                else:
+                    self.events_table.grant_read_data(func)
         
         for func in authenticated_functions.values():
             self.events_table.grant_write_data(func)
@@ -259,6 +291,7 @@ class ApiStack(Stack):
             self, "LoginFormFunction",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
+            timeout=Duration.seconds(10),
             code=lambda_.Code.from_asset("functions/login_form"),
             environment={
                 "CLIENT_ID": user_pool_client.user_pool_client_id
@@ -319,6 +352,17 @@ class ApiStack(Stack):
         )
 
         self.http_api.add_routes(
+            path="/api/sources/form",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "SourceFormIntegration",
+                handler=public_functions["source_form"]
+            ),
+            authorizer=authorizer,
+            authorization_scopes=[admin_group_scope]
+        )
+
+        self.http_api.add_routes(
             path="/api/sources/{id}",
             methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
@@ -326,6 +370,18 @@ class ApiStack(Stack):
                 handler=public_functions["get_source"]
             )
         )
+        
+        self.http_api.add_routes(
+            path="/api/sources",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration(
+                "CreateSourceIntegration",
+                handler=admin_functions["create_source"]
+            ),
+            authorizer=authorizer,
+            authorization_scopes=[admin_group_scope]
+        )
+    
 
         # Authenticated endpoints
         self.http_api.add_routes(
@@ -392,16 +448,14 @@ class ApiStack(Stack):
             authorization_scopes=[editor_group_scope, admin_group_scope]
         )
 
-        # Admin only endpoints
         self.http_api.add_routes(
-            path="/api/sources",
-            methods=[apigwv2.HttpMethod.POST],
+            path="/api/sources/{id}/edit",
+            methods=[apigwv2.HttpMethod.GET],
             integration=integrations.HttpLambdaIntegration(
-                "CreateSourceIntegration",
-                handler=admin_functions["create_source"]
+                "EditSourceFormIntegration",
+                handler=admin_functions["edit_source_form"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
+            authorizer=authorizer
         )
 
         self.http_api.add_routes(
@@ -411,8 +465,7 @@ class ApiStack(Stack):
                 "UpdateSourceIntegration",
                 handler=admin_functions["update_source"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
+            authorizer=authorizer
         )
 
         self.http_api.add_routes(
@@ -422,6 +475,5 @@ class ApiStack(Stack):
                 "DeleteSourceIntegration",
                 handler=admin_functions["delete_source"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
+            authorizer=authorizer
         )

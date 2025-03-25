@@ -30,8 +30,9 @@ def handler(event, context):
 
         # Check group membership
         scope = claims.get('scope', '')
-        is_admin = scope.endswith("admin")
-        is_editor = scope.endswith("editor")
+        print("Scope:", scope)
+        is_admin = 'admin' in scope.lower()
+        is_editor = 'editor' in scope.lower() or is_admin  # Admins have editor privileges too
 
         permissions = {
             "canCreateSources": is_admin,

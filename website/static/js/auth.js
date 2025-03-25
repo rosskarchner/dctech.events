@@ -45,11 +45,54 @@ const getAuthToken = async () => {
     return token;
 };
 
+// Function to handle token refresh
+const refreshToken = async () => {
+    const refresh_token = localStorage.getItem('refreshToken');
+    if (!refresh_token) {
+        throw new Error('No refresh token available');
+    }
+
+    try {
+        // Using AWS SDK directly since it's already loaded on the page
+        const cognito = new AWS.CognitoIdentityServiceProvider({ region: 'us-east-1' });
+        
+        const params = {
+            AuthFlow: 'REFRESH_TOKEN_AUTH',
+            ClientId: localStorage.getItem('clientId') || '4afrbnid8cep4vhcar198j4ic7', // Fallback to hardcoded client ID if not stored
+            AuthParameters: {
+                'REFRESH_TOKEN': refresh_token
+            }
+        };
+
+        const response = await cognito.initiateAuth(params).promise();
+        
+        if (response.AuthenticationResult) {
+            // Update stored tokens
+            localStorage.setItem('authToken', response.AuthenticationResult.AccessToken);
+            if (response.AuthenticationResult.IdToken) {
+                localStorage.setItem('idToken', response.AuthenticationResult.IdToken);
+            }
+            
+            console.log('Token refreshed successfully');
+            return response.AuthenticationResult.AccessToken;
+        } else {
+            throw new Error('Failed to refresh token');
+        }
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+        // Clear all tokens and redirect to login
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('idToken');
+        localStorage.removeItem('refreshToken');
+        throw error;
+    }
+};
+
 const checkAuth = async () => {
     const token = await getAuthToken();
     if (!token) {
         console.log('No valid token found, redirecting to login');
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return false;
     }
     return true;
