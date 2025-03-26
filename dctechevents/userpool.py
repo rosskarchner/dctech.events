@@ -1,6 +1,7 @@
 import os
 from aws_cdk import (
     Stack,
+    Duration,
     aws_cognito as cognito,
     aws_lambda as lambda_,
     aws_iam as iam,
@@ -107,7 +108,7 @@ class UserPoolStack(Stack):
                 create_auth_challenge=create_auth_challenge_fn,
                 verify_auth_challenge_response=verify_auth_challenge_fn,
             ),
-            auto_verify={"email": True}  # Use this instead of VerificationAttributeType
+            auto_verify={"email": True},
         )
 
 

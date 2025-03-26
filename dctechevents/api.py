@@ -50,6 +50,21 @@ class ApiStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
+        
+        # Add GSI for approval status
+        self.sources_table.add_global_secondary_index(
+            index_name="approval-status-index",
+            partition_key=dynamodb.Attribute(
+                name="approval_status",
+                type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="organization_name",
+                type=dynamodb.AttributeType.STRING
+            ),
+            projection_type=dynamodb.ProjectionType.ALL
+        )
+        billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
 
         # Add GSI for source-based queries
         self.events_table.add_global_secondary_index(
@@ -107,20 +122,20 @@ class ApiStack(Stack):
                     "TABLE_NAME": self.sources_table.table_name
                 }
             ),
-            "source_form": lambda_.Function(
-                self, "SourceFormFunction",
-                runtime=lambda_.Runtime.PYTHON_3_12,
-                handler="index.handler",
-                code=lambda_.Code.from_asset("functions/source_form"),
-                environment={
-                    "TABLE_NAME": self.sources_table.table_name
-                }
-            ),
             "get_source": lambda_.Function(
                 self, "GetSourceFunction",
                 runtime=lambda_.Runtime.PYTHON_3_12,
                 handler="index.handler",
                 code=lambda_.Code.from_asset("functions/get_source"),
+                environment={
+                    "TABLE_NAME": self.sources_table.table_name
+                }
+            ),
+            "manage_sources": lambda_.Function(
+                self, "ManageSourcesFunction",
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_asset("functions/manage_sources"),
                 environment={
                     "TABLE_NAME": self.sources_table.table_name
                 }
@@ -170,6 +185,31 @@ class ApiStack(Stack):
                 environment={
                     "TABLE_NAME": self.events_table.table_name
                 }
+            ),
+            "submit_source": lambda_.Function(
+                self, "SubmitSourceFunction",
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_asset("functions/submit_source"),
+                environment={
+                    "TABLE_NAME": self.sources_table.table_name,
+                    "USER_POOL_ID": user_pool.user_pool_id
+                },
+                initial_policy=[
+                    iam.PolicyStatement(
+                        actions=[
+                            "cognito-idp:ListUsers",
+                            "cognito-idp:AdminGetUser"
+                        ],
+                        resources=[user_pool.user_pool_arn]
+                    ),
+                    iam.PolicyStatement(
+                        actions=[
+                            "dynamodb:PutItem"
+                        ],
+                        resources=[self.sources_table.table_arn]
+                    )
+                ]
             ),
             "get_profile": lambda_.Function(
                 self, "GetProfileFunction",
@@ -403,16 +443,6 @@ class ApiStack(Stack):
             )
         )
 
-        self.http_api.add_routes(
-            path="/api/sources/form",
-            methods=[apigwv2.HttpMethod.GET],
-            integration=integrations.HttpLambdaIntegration(
-                "SourceFormIntegration",
-                handler=public_functions["source_form"]
-            ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
-        )
 
         self.http_api.add_routes(
             path="/api/sources/{id}",
@@ -485,6 +515,68 @@ class ApiStack(Stack):
                 handler=authenticated_functions["update_profile"]
             ),
             authorizer=authorizer
+        )
+        
+        # Source submission and management endpoints
+        self.http_api.add_routes(
+            path="/api/submit-source",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration(
+                "SubmitSourceIntegration",
+                handler=authenticated_functions["submit_source"]
+            ),
+            authorizer=authorizer
+        )
+        
+        # Source submission form endpoint
+        source_submit_form_function = lambda_.Function(
+            self, "SourceSubmitFormFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/source_submit_form"),
+            environment={
+                "USER_POOL_ID": user_pool.user_pool_id
+            },
+            initial_policy=[
+                iam.PolicyStatement(
+                    actions=[
+                        "cognito-idp:AdminGetUser"
+                    ],
+                    resources=[user_pool.user_pool_arn]
+                )
+            ]
+        )
+        
+        self.http_api.add_routes(
+            path="/api/submit-source-form",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "SourceSubmitFormIntegration",
+                handler=source_submit_form_function
+            ),
+            authorizer=authorizer
+        )
+
+        self.http_api.add_routes(
+            path="/api/manage-sources",
+            methods=[apigwv2.HttpMethod.GET, apigwv2.HttpMethod.PUT],
+            integration=integrations.HttpLambdaIntegration(
+                "ManageSourcesIntegration",
+                handler=public_functions["manage_sources"]
+            ),
+            authorizer=authorizer,
+            authorization_scopes=[admin_group_scope]
+        )
+
+        self.http_api.add_routes(
+            path="/api/manage-sources/{id}",
+            methods=[apigwv2.HttpMethod.DELETE],
+            integration=integrations.HttpLambdaIntegration(
+                "ManageSourcesDeleteIntegration",
+                handler=public_functions["manage_sources"]
+            ),
+            authorizer=authorizer,
+            authorization_scopes=[admin_group_scope]
         )
         
         # Login endpoint - public, no authorization required

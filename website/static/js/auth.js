@@ -46,6 +46,11 @@ function parseJwt(token) {
     }
 }
 
+// Get the auth token
+function getAuthToken() {
+    return localStorage.getItem('authToken');
+}
+
 // Handle login success
 function handleLoginSuccess(token, refreshToken) {
     // Store the tokens
@@ -71,8 +76,44 @@ function logout() {
     window.location.href = '/';
 }
 
-// Add event listener for logout buttons
+/**
+ * Require authentication for the current page
+ * If user is not authenticated, redirect to login page
+ */
+function requireAuth() {
+    if (!isAuthenticated()) {
+        // Redirect to login page with return URL
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Configure HTMX with global authentication headers
+ */
+function configureHtmxAuth() {
+    if (typeof htmx !== 'undefined') {
+        console.log('Configuring HTMX with global auth headers');
+        
+        // Set global headers for all HTMX requests
+        htmx.config.headers = htmx.config.headers || {};
+        
+        if (isAuthenticated()) {
+            const token = getAuthToken();
+            htmx.config.headers['Authorization'] = 'Bearer ' + token;
+            console.log('Added Authorization header to HTMX config');
+        }
+        
+        // Set withCredentials to true for all requests
+        htmx.config.withCredentials = true;
+        console.log('Set withCredentials to true for all HTMX requests');
+    }
+}
+
+// Initialize when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Set up logout buttons
     const logoutButtons = document.querySelectorAll('.logout-button');
     logoutButtons.forEach(button => {
         button.addEventListener('click', function(e) {
@@ -80,4 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
             logout();
         });
     });
+    
+    // Configure HTMX with authentication headers
+    configureHtmxAuth();
 });
