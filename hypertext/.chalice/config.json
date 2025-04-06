@@ -3,7 +3,21 @@
   "app_name": "hypertext",
   "stages": {
     "dev": {
-      "api_gateway_stage": "api"
+      "api_gateway_stage": "api",
+      "lambda_functions": {
+        "api_handler": {
+          "environment_variables": {
+            "LOG_LEVEL": "DEBUG"
+          },
+          "include_files": {
+            "chalicelib/**": "chalicelib"
+          }
+        }
+      },
+      "environment_variables": {
+        "LOG_LEVEL": "DEBUG"
+      },
+      "log_level": "DEBUG"
     }
   }
 }

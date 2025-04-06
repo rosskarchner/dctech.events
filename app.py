@@ -29,9 +29,13 @@ apistack = ApiStack(
     ),
     user_pool=userpoolstack.user_pool,
     user_pool_client=userpoolstack.client,
+    user_pool_stack=userpoolstack,
     admin_group=userpoolstack.admin_group,
     editor_group=userpoolstack.editor_group
 )
+
+
+
 
 
 WebsiteSite(

@@ -1,267 +1,151 @@
-import json
 import os
 
+CLIENT_ID = os.environ.get('CLIENT_ID')
+
 def handler(event, context):
-    # Get the client ID from environment variable
-    client_id = os.environ.get('CLIENT_ID')
+    # Get query parameters
+    query_params = event.get('queryStringParameters', {}) or {}
+    error = query_params.get('error', '')
+    redirect = query_params.get('redirect', '/')
     
-    # Create the complete login form HTML with the correct client ID
-    login_form_html = f'''
+    # Error messages
+    error_messages = {
+        'invalid_token': 'Invalid or expired login link. Please try again.',
+        'expired_token': 'Your login link has expired. Please request a new one.',
+        'server_error': 'An error occurred. Please try again later.'
+    }
+    
+    error_message = error_messages.get(error, '')
+    
+    # HTML for the login form
+    html = f"""
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Passwordless Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - DC Tech Events</title>
     <style>
-        .container {{
-            max-width: 400px;
-            margin: 40px auto;
-            padding: 20px;
+        body {{
             font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        h1 {{
+            color: #2c3e50;
         }}
         .form-group {{
             margin-bottom: 15px;
         }}
-        .form-group label {{
+        label {{
             display: block;
             margin-bottom: 5px;
+            font-weight: bold;
         }}
-        .form-group input {{
+        input[type="email"] {{
             width: 100%;
             padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             box-sizing: border-box;
         }}
-        .error {{
-            color: red;
-            margin-bottom: 10px;
-        }}
         button {{
-            padding: 10px 15px;
-            background-color: #007bff;
+            background-color: #3498db;
             color: white;
             border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
             cursor: pointer;
         }}
-        button:disabled {{
-            background-color: #cccccc;
+        button:hover {{
+            background-color: #2980b9;
         }}
-        #codeForm {{
-            display: none;
+        .error {{
+            color: #e74c3c;
+            margin-bottom: 15px;
+        }}
+        .info {{
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 10px 15px;
+            margin-top: 20px;
         }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Sign In</h2>
-        <div id="errorMessage" class="error"></div>
-
-        <form id="emailForm">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" required>
-            </div>
-            <button type="submit" id="sendCodeButton">Send Code</button>
-        </form>
-
-        <form id="codeForm">
-            <div class="form-group">
-                <label for="code">Enter verification code:</label>
-                <input type="text" id="code" required>
-            </div>
-            <button type="submit" id="verifyButton">Verify Code</button>
-        </form>
+    <h1>Sign In to DC Tech Events</h1>
+    
+    {f'<div class="error">{error_message}</div>' if error_message else ''}
+    
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <button type="submit">Send Magic Link</button>
+    </form>
+    
+    <div class="info">
+        <p>We'll send you a secure link to sign in. No password needed!</p>
     </div>
-
-    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1001.0.min.js"></script>
+    
+    <div id="message" style="margin-top: 20px; display: none;"></div>
+    
     <script>
-        // Configuration
-        const CLIENT_ID = '{client_id}';
-        const REGION = 'us-east-1';
-
-        // Initialize AWS SDK
-        AWS.config.region = REGION;
-        const cognito = new AWS.CognitoIdentityServiceProvider();
-
-        let sessionToken = null;
-        let userEmail = null;
-
-        // Get DOM elements
-        const emailForm = document.getElementById('emailForm');
-        const codeForm = document.getElementById('codeForm');
-        const errorMessage = document.getElementById('errorMessage');
-        const sendCodeButton = document.getElementById('sendCodeButton');
-        const verifyButton = document.getElementById('verifyButton');
-
-        // Function to check if token is expired
-        function isTokenExpired(token) {{
-            if (!token) return true;
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {{
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const messageDiv = document.getElementById('message');
+            const submitButton = document.querySelector('button[type="submit"]');
+            
+            // Disable button and show loading state
+            submitButton.disabled = true;
+            submitButton.textContent = 'Sending...';
             
             try {{
-                // JWT tokens consist of three parts: header.payload.signature
-                const payload = token.split('.')[1];
-                // Decode the base64 payload
-                const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-                
-                // Check if the token has expired
-                const currentTime = Math.floor(Date.now() / 1000);
-                return decodedPayload.exp < currentTime;
-            }} catch (error) {{
-                console.error('Error parsing token:', error);
-                return true; // If we can't parse the token, consider it expired
-            }}
-        }}
-
-        // Handle email form submission
-        emailForm.addEventListener('submit', async function(e) {{
-            e.preventDefault();
-            errorMessage.textContent = '';
-            sendCodeButton.disabled = true;
-            userEmail = document.getElementById('email').value;
-
-            try {{
-                const params = {{
-                    AuthFlow: 'CUSTOM_AUTH',
-                    ClientId: CLIENT_ID,
-                    AuthParameters: {{
-                        'USERNAME': userEmail
-                    }}
-                }};
-
-                const response = await cognito.initiateAuth(params).promise();
-                sessionToken = response.Session;
-                
-                // Show code input form
-                emailForm.style.display = 'none';
-                codeForm.style.display = 'block';
-            }} catch (err) {{
-                errorMessage.textContent = err.message;
-                console.error('Error:', err);
-            }} finally {{
-                sendCodeButton.disabled = false;
-            }}
-        }});
-
-        // Handle verification code form submission
-        codeForm.addEventListener('submit', async function(e) {{
-            e.preventDefault();
-            errorMessage.textContent = '';
-            verifyButton.disabled = true;
-
-            try {{
-                const code = document.getElementById('code').value;
-                const params = {{
-                    ChallengeName: 'CUSTOM_CHALLENGE',
-                    ClientId: CLIENT_ID,
-                    ChallengeResponses: {{
-                        'USERNAME': userEmail,
-                        'ANSWER': code
+                const response = await fetch('/api/auth/magic-link', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json'
                     }},
-                    Session: sessionToken
-                }};
-
-                const response = await cognito.respondToAuthChallenge(params).promise();
+                    body: JSON.stringify({{ email }})
+                }});
                 
-                if (response.AuthenticationResult) {{
-                    // Store tokens directly (they're already in JWT format)
-                    localStorage.setItem('authToken', response.AuthenticationResult.AccessToken);
-                    localStorage.setItem('idToken', response.AuthenticationResult.IdToken);
-                    
-                    if (response.AuthenticationResult.RefreshToken) {{
-                        localStorage.setItem('refreshToken', response.AuthenticationResult.RefreshToken);
-                    }}
-
-                    console.log('Login successful, tokens stored');
-                    // Get redirect URL from query parameters
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const redirectUrl = urlParams.get('redirect') || '/';
-                    console.log('Redirecting to:', redirectUrl);
-                    window.location.href = redirectUrl;
-                }}
-            }} catch (err) {{
-                errorMessage.textContent = err.message;
-                console.error('Error:', err);
-            }} finally {{
-                verifyButton.disabled = false;
-            }}
-        }});
-
-        // Function to handle token refresh
-        async function refreshToken() {{
-            const refresh_token = localStorage.getItem('refreshToken');
-            if (!refresh_token) {{
-                throw new Error('No refresh token available');
-            }}
-
-            try {{
-                const params = {{
-                    AuthFlow: 'REFRESH_TOKEN_AUTH',
-                    ClientId: CLIENT_ID,
-                    AuthParameters: {{
-                        'REFRESH_TOKEN': refresh_token
-                    }}
-                }};
-
-                const response = await cognito.initiateAuth(params).promise();
+                const data = await response.json();
                 
-                if (response.AuthenticationResult) {{
-                    // Update stored tokens
-                    localStorage.setItem('authToken', response.AuthenticationResult.AccessToken);
-                    if (response.AuthenticationResult.IdToken) {{
-                        localStorage.setItem('idToken', response.AuthenticationResult.IdToken);
-                    }}
-                    
-                    return response.AuthenticationResult.AccessToken;
+                if (response.ok) {{
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = 'green';
+                    messageDiv.innerHTML = '<p>✅ Check your email for a magic link to sign in!</p>';
+                    document.getElementById('loginForm').style.display = 'none';
                 }} else {{
-                    throw new Error('Failed to refresh token');
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.color = 'red';
+                    messageDiv.textContent = data.message || 'An error occurred. Please try again.';
                 }}
             }} catch (error) {{
-                console.error('Token refresh failed:', error);
-                // Clear all tokens and redirect to login
-                logout();
-                throw error;
-            }}
-        }}
-
-        // Function to handle logout
-        function logout() {{
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('idToken');
-            localStorage.removeItem('refreshToken');
-            window.location.href = '/login';
-        }}
-
-        // Check if we're already logged in
-        document.addEventListener('DOMContentLoaded', function() {{
-            const token = localStorage.getItem('authToken');
-            
-            if (token) {{
-                if (isTokenExpired(token)) {{
-                    console.log('Token is expired, removing from storage');
-                    // Token is expired, remove it and stay on login page
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('idToken');
-                    localStorage.removeItem('refreshToken');
-                    errorMessage.textContent = 'Your session has expired. Please log in again.';
-                }} else {{
-                    // Token is valid, redirect to home page
-                    const urlParams = new URLSearchParams(window.location.search);
-                    window.location.href = urlParams.get('redirect') || '/';
-
-                }}
+                messageDiv.style.display = 'block';
+                messageDiv.style.color = 'red';
+                messageDiv.textContent = 'Network error. Please try again.';
+            }} finally {{
+                // Reset button state
+                submitButton.disabled = false;
+                submitButton.textContent = 'Send Magic Link';
             }}
         }});
     </script>
 </body>
 </html>
-'''
+    """
     
-    # Return the HTML with appropriate headers
     return {
         'statusCode': 200,
         'headers': {
-            'Content-Type': 'text/html',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Methods': 'GET'
+            'Content-Type': 'text/html'
         },
-        'body': login_form_html
+        'body': html
     }

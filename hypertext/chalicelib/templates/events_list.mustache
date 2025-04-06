@@ -1,0 +1,32 @@
+<div class="events-container">
+    <div class="week-navigation">
+        <a href="/week-of/{{prev_week}}" class="nav-button">&laquo; Previous Week</a>
+        <span class="current-week">Week of {{formatted_date}}</span>
+        <a href="/week-of/{{next_week}}" class="nav-button">Next Week &raquo;</a>
+    </div>
+
+    {{#has_events}}
+    <div class="events-list">
+        {{#events}}
+        <div class="event-card">
+            <div class="event-date">{{formatted_date}}</div>
+            <h3 class="event-title">{{title}}</h3>
+            <div class="event-details">
+                <p class="event-time">{{start_time}} - {{end_time}}</p>
+                <p class="event-location">{{location}}</p>
+                {{#url}}
+                <p class="event-link"><a href="{{url}}" target="_blank">More Information</a></p>
+                {{/url}}
+                <p class="event-source">Source: {{source_name}}</p>
+            </div>
+        </div>
+        {{/events}}
+    </div>
+    {{/has_events}}
+    
+    {{^has_events}}
+    <div class="no-events">
+        <p>No events found for this week.</p>
+    </div>
+    {{/has_events}}
+</div>

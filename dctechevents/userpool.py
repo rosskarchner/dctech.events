@@ -5,6 +5,7 @@ from aws_cdk import (
     aws_cognito as cognito,
     aws_lambda as lambda_,
     aws_iam as iam,
+    aws_s3 as s3,
     RemovalPolicy,
     CfnOutput,
 )
@@ -14,49 +15,53 @@ class UserPoolStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # First, create all Lambda functions
-        pre_signup_fn = lambda_.Function(
-            self,
-            "PreSignUpFn",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="index.handler",
-            code=lambda_.Code.from_asset("functions/pre-signup"),
+        # Create an S3 bucket for verification codes with lifecycle policy
+        self.verification_bucket = s3.Bucket(
+            self, "VerificationCodesBucket",
+            removal_policy=RemovalPolicy.DESTROY,  # For development; use RETAIN for production
+            auto_delete_objects=True,  # For development; remove for production
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    id="ExpireVerificationCodes",
+                    expiration=Duration.days(1),  # Delete objects after 1 day
+                    enabled=True
+                )
+            ],
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL
         )
 
+        # Create Lambda functions for Cognito triggers
         define_auth_challenge_fn = lambda_.Function(
-            self,
-            "DefineAuthChallengeFn",
+            self, "DefineAuthChallenge",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
-            code=lambda_.Code.from_asset("functions/define-auth-challenge"),
+            code=lambda_.Code.from_asset("functions/define_auth_challenge")
         )
 
         create_auth_challenge_fn = lambda_.Function(
-            self,
-            "CreateAuthChallengeFn",
+            self, "CreateAuthChallenge",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
-            code=lambda_.Code.from_asset("functions/create-auth-challenge"),
+            code=lambda_.Code.from_asset("functions/create_auth_challenge"),
             environment={
-                "SENDER_EMAIL": "outgoing@dctech.events"
+                "BASE_URL": "https://dctech.events",
+                "VERIFICATION_BUCKET_NAME": self.verification_bucket.bucket_name
             }
         )
 
         verify_auth_challenge_fn = lambda_.Function(
-            self,
-            "VerifyAuthChallengeFn",
+            self, "VerifyAuthChallenge",
             runtime=lambda_.Runtime.PYTHON_3_9,
             handler="index.handler",
-            code=lambda_.Code.from_asset("functions/verify-auth-challenge"),
+            code=lambda_.Code.from_asset("functions/verify_auth_challenge"),
+            environment={
+                "VERIFICATION_BUCKET_NAME": self.verification_bucket.bucket_name
+            }
         )
 
-        # Add SES permissions to create_auth_challenge_fn
-        create_auth_challenge_fn.add_to_role_policy(
-            iam.PolicyStatement(
-                actions=["ses:SendEmail", "ses:SendRawEmail"],
-                resources=["*"],
-            )
-        )
+        # Grant S3 permissions to the Lambda functions
+        self.verification_bucket.grant_read(verify_auth_challenge_fn)
+        self.verification_bucket.grant_read_write(create_auth_challenge_fn)
 
         # Create the User Pool with Lambda triggers
         self.user_pool = cognito.UserPool(
@@ -103,26 +108,12 @@ class UserPoolStack(Stack):
                 require_symbols=True,
             ),
             lambda_triggers=cognito.UserPoolTriggers(
-                pre_sign_up=pre_signup_fn,
                 define_auth_challenge=define_auth_challenge_fn,
                 create_auth_challenge=create_auth_challenge_fn,
-                verify_auth_challenge_response=verify_auth_challenge_fn,
+                verify_auth_challenge_response=verify_auth_challenge_fn
             ),
             auto_verify={"email": True},
         )
-
-
-        # Add Cognito admin permissions to functions that need them
-        for fn in [create_auth_challenge_fn, verify_auth_challenge_fn]:
-            fn.add_to_role_policy(
-                iam.PolicyStatement(
-                    actions=[
-                        "cognito-idp:AdminGetUser",
-                        "cognito-idp:AdminUpdateUserAttributes"
-                    ],
-                    resources=[self.user_pool.user_pool_arn]
-                )
-            )
 
         # Create groups
         self.admin_group = cognito.CfnUserPoolGroup(
@@ -141,33 +132,26 @@ class UserPoolStack(Stack):
             precedence=1
         )
 
-        # Create the client
+        # Create the client with custom auth enabled
         self.client = self.user_pool.add_client(
             "app-client",
-            auth_flows=cognito.AuthFlow(
-                custom=True,
-                user_password=False,
-                user_srp=False,
-                admin_user_password=False,
-            ),
             prevent_user_existence_errors=True,
+            auth_flows=cognito.AuthFlow(
+                admin_user_password=True,
+                custom=True,
+                user_password=True,
+                user_srp=True
+            ),
             o_auth=cognito.OAuthSettings(
-                flows=cognito.OAuthFlows(authorization_code_grant=True),
+                flows=cognito.OAuthFlows(implicit_code_grant=True),
                 scopes=[cognito.OAuthScope.EMAIL],
-                callback_urls=["http://localhost:3000"],
-                logout_urls=["http://localhost:3000"],
+                callback_urls=["http://localhost:3000", "https://dctech.events/callback"],
+                logout_urls=["http://localhost:3000", "https://dctech.events"],
             ),
             generate_secret=False,
         )
-
-        # In the UserPoolStack class, update the permissions for pre_signup_fn:
-        define_auth_challenge_fn.add_to_role_policy(
-            iam.PolicyStatement(
-                actions=[
-                    "cognito-idp:AdminGetUser",
-                    "cognito-idp:AdminCreateUser",
-                    "cognito-idp:AdminSetUserPassword"
-                ],
-                resources=[self.user_pool.user_pool_arn]
-            )
-        )
+        
+        # Outputs
+        CfnOutput(self, "UserPoolId", value=self.user_pool.user_pool_id)
+        CfnOutput(self, "UserPoolClientId", value=self.client.user_pool_client_id)
+        CfnOutput(self, "VerificationBucketName", value=self.verification_bucket.bucket_name)

@@ -17,7 +17,7 @@ from constructs import Construct
 
 
 class ApiStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, user_pool: cognito.UserPool,user_pool_client:cognito.UserPoolClient, admin_group: cognito.CfnUserPoolGroup, editor_group: cognito.CfnUserPoolGroup, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, user_pool: cognito.UserPool,user_pool_client:cognito.UserPoolClient,user_pool_stack:Stack, admin_group: cognito.CfnUserPoolGroup, editor_group: cognito.CfnUserPoolGroup, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Define the scopes based on your Cognito groups
@@ -39,7 +39,6 @@ class ApiStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
-
 
         self.sources_table = dynamodb.Table(
             self, "SourcesTable",
@@ -349,35 +348,6 @@ class ApiStack(Stack):
         for func in admin_functions.values():
             self.sources_table.grant_full_access(func)
 
-        # Create API Gateway
-        self.http_api = apigwv2.HttpApi(
-            self, "HttpApi",
-            api_name="Events API",
-            cors_preflight={
-                "allow_origins": [
-                    "https://dctech.events",
-                    "https://www.dctech.events"
-                ],
-                "allow_methods": [
-                    apigwv2.CorsHttpMethod.GET,
-                    apigwv2.CorsHttpMethod.POST,
-                    apigwv2.CorsHttpMethod.PUT,
-                    apigwv2.CorsHttpMethod.DELETE,
-                    apigwv2.CorsHttpMethod.PATCH,
-                    apigwv2.CorsHttpMethod.OPTIONS,
-                ],
-                "allow_headers": [
-                    "Content-Type",
-                    "Authorization",
-                    "X-Api-Key",
-                ],
-                "allow_credentials": True,
-                "max_age": Duration.days(1)
-            },
-            create_default_stage=True,
-        )
-        
-        
         # Create the login form Lambda function
         login_form_function = lambda_.Function(
             self, "LoginFormFunction",
@@ -390,8 +360,120 @@ class ApiStack(Stack):
             }
         )
         
-
+        # Create the magic link handler Lambda
+        magic_link_handler = lambda_.Function(
+            self, "MagicLinkHandler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            timeout=Duration.seconds(10),
+            code=lambda_.Code.from_asset("functions/magic_link_handler"),
+            environment={
+                "USER_POOL_ID": user_pool.user_pool_id,
+                "CLIENT_ID": user_pool_client.user_pool_client_id,
+                "EMAIL_FROM": "outgoing@dctech.events",
+                "VERIFICATION_BUCKET_NAME": user_pool_stack.verification_bucket.bucket_name
+            }
+        )
         
+        # Grant permissions to the magic link handler
+        magic_link_handler.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["ses:SendEmail", "ses:SendRawEmail"],
+                resources=["*"]
+            )
+        )
+        
+        # Grant S3 permissions to the magic link handler
+        user_pool_stack.verification_bucket.grant_write(magic_link_handler)
+        
+        # Grant Cognito permissions to the magic link handler
+        magic_link_handler.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "cognito-idp:AdminGetUser",
+                    "cognito-idp:AdminCreateUser",
+                    "cognito-idp:AdminInitiateAuth",
+                    "cognito-idp:AdminRespondToAuthChallenge"
+                ],
+                resources=[user_pool.user_pool_arn]
+            )
+        )
+        
+        # Create the verify handler Lambda
+        verify_handler = lambda_.Function(
+            self, "VerifyHandler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/verify_handler"),
+            environment={
+                "USER_POOL_ID": user_pool.user_pool_id,
+                "CLIENT_ID": user_pool_client.user_pool_client_id,
+                "VERIFICATION_BUCKET_NAME": user_pool_stack.verification_bucket.bucket_name
+            }
+        )
+        
+        # Grant permissions to the verify handler
+        verify_handler.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "cognito-idp:AdminGetUser",
+                    "cognito-idp:AdminCreateUser",
+                    "cognito-idp:AdminSetUserPassword",
+                    "cognito-idp:AdminInitiateAuth",
+                    "cognito-idp:AdminRespondToAuthChallenge",
+                    "cognito-idp:ListUsers",
+                    "cognito-idp:AdminListUserAuthEvents"
+                ],
+                resources=[user_pool.user_pool_arn]
+            )
+        )
+        
+        # Grant S3 permissions to the verify handler
+        user_pool_stack.verification_bucket.grant_read_write(verify_handler)
+        
+        # Create the cookie authorizer Lambda
+        cookie_authorizer_function = lambda_.Function(
+            self, "CookieAuthorizerFunction",
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/cookie_authorizer", 
+                bundling={
+                    "image": lambda_.Runtime.PYTHON_3_9.bundling_image,
+                    "command": [
+                        "bash", "-c",
+                        "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output"
+                    ]
+                }
+            ),
+            environment={
+                "USER_POOL_ID": user_pool.user_pool_id,
+                "CLIENT_ID": user_pool_client.user_pool_client_id
+            }
+        )
+        
+        # Create the logout handler Lambda
+        logout_handler = lambda_.Function(
+            self, "LogoutHandler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/logout_handler")
+        )
+
+        # Create API Gateway with payload format version 2.0
+        self.http_api = apigwv2.HttpApi(
+            self, "HttpApi",
+            api_name="Events API",
+            create_default_stage=True,
+        )
+        
+        # Create the Lambda authorizer
+        lambda_authorizer = authorizers.HttpLambdaAuthorizer(
+            "CookieAuthorizer",
+            handler=cookie_authorizer_function,
+            response_types=[authorizers.HttpLambdaResponseType.IAM],
+            identity_source=["$request.header.Cookie"]
+        )
+
         # Add login form endpoint
         self.http_api.add_routes(
             path="/login",
@@ -400,6 +482,29 @@ class ApiStack(Stack):
                 "LoginFormIntegration",
                 handler=login_form_function
             )
+        )
+        
+        # Add the magic link and verify endpoints to the API
+        self.http_api.add_routes(
+            path="/api/auth/magic-link",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration("MagicLinkIntegration", magic_link_handler)
+        )
+
+        self.http_api.add_routes(
+            path="/api/auth/verify",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "VerifyIntegration", 
+                verify_handler,
+                payload_format_version=apigwv2.PayloadFormatVersion.VERSION_2_0
+            )
+        )
+
+        self.http_api.add_routes(
+            path="/api/auth/logout",
+            methods=[apigwv2.HttpMethod.POST, apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration("LogoutIntegration", logout_handler)
         )
         
         # Store the API endpoint for reference in other stacks
@@ -460,8 +565,7 @@ class ApiStack(Stack):
                 "CreateSourceIntegration",
                 handler=admin_functions["create_source"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
+            authorizer=lambda_authorizer
         )
     
 
@@ -473,7 +577,7 @@ class ApiStack(Stack):
                 "CheckPermissionsIntegration",
                 handler=authenticated_functions["check_permissions"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -483,7 +587,7 @@ class ApiStack(Stack):
                 "SubmitEventIntegration",
                 handler=authenticated_functions["submit"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -493,7 +597,7 @@ class ApiStack(Stack):
                 "UpdateOwnEventIntegration",
                 handler=authenticated_functions["update_own"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
         
         # Profile endpoints
@@ -504,7 +608,7 @@ class ApiStack(Stack):
                 "GetProfileIntegration",
                 handler=authenticated_functions["get_profile"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
         
         self.http_api.add_routes(
@@ -514,7 +618,7 @@ class ApiStack(Stack):
                 "UpdateProfileIntegration",
                 handler=authenticated_functions["update_profile"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
         
         # Source submission and management endpoints
@@ -525,7 +629,7 @@ class ApiStack(Stack):
                 "SubmitSourceIntegration",
                 handler=authenticated_functions["submit_source"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
         
         # Source submission form endpoint
@@ -554,7 +658,7 @@ class ApiStack(Stack):
                 "SourceSubmitFormIntegration",
                 handler=source_submit_form_function
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -564,8 +668,7 @@ class ApiStack(Stack):
                 "ManageSourcesIntegration",
                 handler=public_functions["manage_sources"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -575,8 +678,7 @@ class ApiStack(Stack):
                 "ManageSourcesDeleteIntegration",
                 handler=public_functions["manage_sources"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[admin_group_scope]
+            authorizer=lambda_authorizer
         )
         
         # Login endpoint - public, no authorization required
@@ -616,8 +718,7 @@ class ApiStack(Stack):
                 "ApproveEventIntegration",
                 handler=editor_functions["approve"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[editor_group_scope, admin_group_scope]
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -627,8 +728,7 @@ class ApiStack(Stack):
                 "UpdateEventIntegration",
                 handler=editor_functions["update"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[editor_group_scope, admin_group_scope]
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -638,8 +738,7 @@ class ApiStack(Stack):
                 "DeleteEventIntegration",
                 handler=editor_functions["delete"]
             ),
-            authorizer=authorizer,
-            authorization_scopes=[editor_group_scope, admin_group_scope]
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -649,7 +748,7 @@ class ApiStack(Stack):
                 "EditSourceFormIntegration",
                 handler=admin_functions["edit_source_form"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -659,7 +758,7 @@ class ApiStack(Stack):
                 "UpdateSourceIntegration",
                 handler=admin_functions["update_source"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )
 
         self.http_api.add_routes(
@@ -669,5 +768,5 @@ class ApiStack(Stack):
                 "DeleteSourceIntegration",
                 handler=admin_functions["delete_source"]
             ),
-            authorizer=authorizer
+            authorizer=lambda_authorizer
         )

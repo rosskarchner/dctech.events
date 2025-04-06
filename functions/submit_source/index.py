@@ -1,139 +1,118 @@
-import json
 import os
+import json
 import boto3
 import uuid
-from datetime import datetime
-import urllib.parse
 import base64
+import urllib.parse
+from datetime import datetime, timedelta
 
-dynamodb = boto3.resource('dynamodb')
-sources_table = dynamodb.Table(os.environ['TABLE_NAME'])
 cognito = boto3.client('cognito-idp')
-
-def parse_form_data(body, is_base64_encoded=False):
-    """Parse form data from request body"""
-    if is_base64_encoded:
-        body = base64.b64decode(body).decode('utf-8')
-    
-    # Parse form data
-    form_data = {}
-    for field in body.split('&'):
-        if '=' in field:
-            key, value = field.split('=', 1)
-            form_data[urllib.parse.unquote(key)] = urllib.parse.unquote(value)
-    
-    return form_data
 
 def handler(event, context):
     try:
         print("Submit source request received")
         print(f"Event: {json.dumps(event, default=str)}")
-        
-        # Get user ID from the request context
-        user_id = event['requestContext']['authorizer']['jwt']['claims']['sub']
-        print(f"User ID: {user_id}")
-        
-        # Parse request body - handle both JSON and form-encoded data
+
+        # Parse the request body
+        body = event.get('body', '{}')
         if event.get('isBase64Encoded', False):
-            # Handle base64 encoded form data
-            form_data = parse_form_data(event['body'], is_base64_encoded=True)
-        elif event.get('headers', {}).get('content-type', '').startswith('application/x-www-form-urlencoded'):
-            # Handle regular form data
-            form_data = parse_form_data(event['body'])
-        else:
-            # Try to parse as JSON
-            try:
-                form_data = json.loads(event['body'])
-            except:
-                print("Failed to parse body as JSON, trying as form data")
-                form_data = parse_form_data(event['body'])
-        
-        print(f"Parsed form data: {form_data}")
-        
-        # Extract fields (support both naming conventions)
-        name = form_data.get('name', form_data.get('organizationName', '')).strip()
-        website = form_data.get('website', form_data.get('url', '')).strip()
-        ical_url = form_data.get('ical_url', form_data.get('icalUrl', '')).strip()
-        
-        # Validate inputs
-        if not name or not ical_url:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Organization name and iCal URL are required'})
-            }
-        
-        # Get user profile information
-        user_pool_id = os.environ['USER_POOL_ID']
+            body = base64.b64decode(body).decode('utf-8')
         
         try:
-            user_response = cognito.admin_get_user(
-                UserPoolId=user_pool_id,
-                Username=user_id
-            )
-            
-            # Extract user attributes
-            user_attrs = {}
-            for attr in user_response.get('UserAttributes', []):
-                user_attrs[attr['Name']] = attr['Value']
-            
-            # Try different attribute names for name
-            submitter_name = user_attrs.get('name', 
-                            user_attrs.get('custom:name', 
-                            user_attrs.get('custom:nickname', '')))
-            
-            submitter_website = user_attrs.get('website', 
-                               user_attrs.get('custom:website', ''))
-            
-            # Check if profile is complete (has a name)
-            if not submitter_name:
+            source_data = json.loads(body)
+        except json.JSONDecodeError:
+            # Handle form-encoded data
+            source_data = {}
+            for field in body.split('&'):
+                if '=' in field:
+                    key, value = field.split('=', 1)
+                    source_data[urllib.parse.unquote(key)] = urllib.parse.unquote(value)
+        
+        # Validate required fields
+        required_fields = ['name', 'ical_url']
+        for field in required_fields:
+            if field not in source_data or not source_data[field]:
                 return {
                     'statusCode': 400,
-                    'headers': {'Content-Type': 'application/json'},
-                    'body': json.dumps({'error': 'Complete profile required to submit sources'})
+                    'headers': {'Content-Type': 'text/html'},
+                    'body': generate_error_html(f'Missing required field: {field}')
                 }
-                
-        except Exception as e:
-            print(f"Error getting user profile: {str(e)}")
-            return {
-                'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Error retrieving user profile'})
-            }
         
-        # Create source item
-        source_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow().isoformat()
-        
+        auth_context = event["requestContext"]["authorizer"]["lambda"]
+
+        # Create the source item
         source_item = {
-            'id': source_id,
-            'name': name,
-            'website': website,
-            'ical_url': ical_url,
-            'approval_status': 'submitted',
-            'submitted_by': user_id,
-            'submitter_name': submitter_name,
-            'submitter_website': submitter_website,
-            'created_at': timestamp,
-            'updated_at': timestamp
+            'id': str(uuid.uuid4()),
+            'name': source_data['name'],
+            'website': source_data.get('website', ''),
+            'ical_url': source_data['ical_url'],
+            'submitter_id': auth_context["sub"],
+            'submitter_name': auth_context.get("custom_nickname", ""),
+            'submitter_url': auth_context.get("custom_website", ""),
+            'submitter_email': auth_context['email'],
+            'status': 'pending',
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
         }
         
         # Save to DynamoDB
-        sources_table.put_item(Item=source_item)
+        table_name = os.environ['TABLE_NAME']
+        dynamodb = boto3.resource('dynamodb')
+        table = dynamodb.Table(table_name)
         
+        table.put_item(Item=source_item)
+        
+        # Return HTML response suitable for HTMX
         return {
-            'statusCode': 201,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'message': 'Source submitted successfully',
-                'id': source_id
-            })
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'text/html',
+                'HX-Trigger': json.dumps({"showMessage": "Source submitted successfully"})
+            },
+            'body': generate_success_html(source_item['name'])
         }
-        
+            
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error processing source submission: {str(e)}")
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': f'Internal server error: {str(e)}'})
+            'headers': {
+                'Content-Type': 'text/html',
+                'HX-Trigger': json.dumps({"showError": str(e)})
+            },
+            'body': generate_error_html(f'Error processing source submission: {str(e)}')
         }
+
+def generate_success_html(source_name):
+    """Generate a partial HTML response for successful submission"""
+    return f"""
+<div class="success-message" id="submission-result">
+    <div class="success-icon">✓</div>
+    <h2>Thank You!</h2>
+    <p>Your event source <strong>{source_name}</strong> has been submitted successfully.</p>
+    <p>Our team will review your submission and add it to our event calendar if approved.</p>
+    <p>You will receive an email notification when your submission has been reviewed.</p>
+    
+    <div class="actions">
+        <a href="#" class="btn" hx-get="/api/submit-source-form" hx-target="#form-container" hx-swap="innerHTML">Add Another Source</a>
+        <a href="/sources" class="btn">View All Sources</a>
+        <a href="/" class="btn">Return to Home</a>
+    </div>
+</div>
+"""
+
+def generate_error_html(error_message):
+    """Generate a partial HTML response for error"""
+    return f"""
+<div class="error-message" id="submission-result">
+    <div class="error-icon">✗</div>
+    <h2>Submission Error</h2>
+    <p>We encountered an error while processing your submission:</p>
+    <p><strong>{error_message}</strong></p>
+    <p>Please try again or contact support if the issue persists.</p>
+    
+    <div class="actions">
+        <button class="btn" hx-get="/api/submit-source-form" hx-target="#form-container" hx-swap="innerHTML">Try Again</button>
+    </div>
+</div>
+"""

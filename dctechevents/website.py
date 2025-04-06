@@ -17,6 +17,7 @@ from aws_cdk import (
 from chalice.cdk import Chalice
 from constructs import Construct
 from .signup import SignUpStack
+from aws_cdk import aws_iam as iam
 
 
 class WebsiteSite(Stack):
@@ -56,6 +57,23 @@ class WebsiteSite(Stack):
         # Get the API Gateway from the nested stack
         # http_api = signup_stack.http_api
 
+        hypertext_api = Chalice(
+            self,
+            "HypertextAPI",
+            source_dir="./hypertext",
+            stage_config={
+                'environment_variables': {
+                    'EVENTS_TABLE_NAME': api_stack.events_table.table_name,
+                    'SOURCES_TABLE_NAME': api_stack.sources_table.table_name
+                }
+            }
+        )
+
+        # Store references to the API Gateway
+        self.hypertext_api = hypertext_api.sam_template.get_resource('RestAPI')
+        self.hypertext_api_id = self.hypertext_api.ref
+
+        api_stack.events_table.grant_read_data(hypertext_api.get_role('DefaultRole'))
         cert = acm.Certificate(
             self,
             "Certificate",
@@ -84,22 +102,10 @@ class WebsiteSite(Stack):
                         }
                     };
                 }
-                
-                // Handle directory indexes
-                if (uri.endsWith('/')) {
-                    request.uri += 'index.html';
-                    return request;
-                }
-                
-                // If uri doesn't have an extension, redirect to add trailing slash
-                if (!uri.includes('.')) {
-                    return {
-                        statusCode: 301,
-                        statusDescription: 'Moved Permanently',
-                        headers: {
-                            'location': { value: uri + '/' }
-                        }
-                    };
+                // Handle root path specifically
+                if (uri === '/') {
+                 // Keep the URI as is - the origin_path will add /api
+                return request;
                 }
                 
                 return request;
@@ -111,6 +117,7 @@ class WebsiteSite(Stack):
             code=cloudfront.FunctionCode.from_inline(function_code),
             runtime=cloudfront.FunctionRuntime.JS_2_0
         )
+
 
         # Create response headers policy for HSTS
         hsts_policy = cloudfront.ResponseHeadersPolicy(
@@ -135,10 +142,16 @@ class WebsiteSite(Stack):
             certificate=cert,
             minimum_protocol_version=cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
             default_behavior=cloudfront.BehaviorOptions(
-                # Default behavior routes to S3 bucket instead of API
-                origin=origins.S3BucketOrigin.with_origin_access_control(bucket),
+                # Set Hypertext API as the default origin with path rewriting
+                origin=origins.HttpOrigin(
+                    domain_name=f"{self.hypertext_api_id}.execute-api.{self.region}.amazonaws.com",
+                    protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+                    origin_path="/api"  # This adds /api to the beginning of all requests
+                ),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
+                allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
+                cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
+                origin_request_policy = cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
                 function_associations=[
                     cloudfront.FunctionAssociation(
                         function=combined_function,
@@ -196,8 +209,22 @@ class WebsiteSite(Stack):
                     cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
                     origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
                 ),
+                "/static/*": cloudfront.BehaviorOptions(
+                    origin=origins.S3BucketOrigin.with_origin_access_control(bucket),
+                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
+                    function_associations=[
+                        cloudfront.FunctionAssociation(
+                            function=combined_function,
+                            event_type=cloudfront.FunctionEventType.VIEWER_REQUEST
+                        ),
+                    ],
+                    response_headers_policy=hsts_policy
+                ),
+
+                
             },
-            default_root_object="index.html",
+            #default_root_object="index.html",
         )
         s3deploy.BucketDeployment(
             self,
@@ -255,3 +282,6 @@ class WebsiteSite(Stack):
             value=distribution.distribution_domain_name,
             description="The domain name of the CloudFront distribution"
         )
+
+
+

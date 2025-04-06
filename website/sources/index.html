@@ -62,38 +62,9 @@
             <a href="/sources/submit" class="button">Submit a Source</a>
         </div>
         
-        <div id="sources-list" hx-get="/api/sources" hx-trigger="load" hx-swap="innerHTML">
+        <div id="sources-list" hx-get="/api/sources" hx-trigger="load" hx-swap="innerHTML" hx-headers='{"accept": "text/html"}'>
             <div class="loading">Loading sources...</div>
         </div>
     </div>
-    
-    <script>
-        document.addEventListener('htmx:afterSwap', function(event) {
-            if (event.detail.target.id === 'sources-list') {
-                try {
-                    const data = JSON.parse(event.detail.xhr.responseText);
-                    
-                    if (data.sources && data.sources.length > 0) {
-                        let html = '<div class="sources-grid">';
-                        data.sources.forEach(source => {
-                            html += `
-                                <div class="source-card">
-                                    <h3>${source.name}</h3>
-                                    <p><a href="${source.website}" target="_blank">Visit Website</a></p>
-                                </div>
-                            `;
-                        });
-                        html += '</div>';
-                        event.detail.target.innerHTML = html;
-                    } else {
-                        event.detail.target.innerHTML = '<p>No sources found.</p>';
-                    }
-                } catch (e) {
-                    console.error('Error parsing response:', e);
-                    event.detail.target.innerHTML = '<p>Error loading sources. Please try again.</p>';
-                }
-            }
-        });
-    </script>
 </body>
 </html>
