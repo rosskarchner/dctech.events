@@ -18,7 +18,7 @@ class AggregatorStack(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        sources_table: dynamodb.Table,
+        groups_table: dynamodb.Table,
         events_table: dynamodb.Table,
         **kwargs
     ) -> None:
@@ -41,7 +41,7 @@ class AggregatorStack(Stack):
             timeout=Duration.minutes(5),
             memory_size=512,
             environment={
-                "SOURCES_TABLE": sources_table.table_name,
+                "GROUPS_TABLE": groups_table.table_name,
                 "EVENTS_TABLE": events_table.table_name,
                 "TIMEZONE": "America/New_York",
                 "CACHE_BUCKET": cache.bucket_name
@@ -52,14 +52,14 @@ class AggregatorStack(Stack):
         cache.grant_read_write(aggregator_function)
 
         # Grant DynamoDB permissions
-        sources_table = dynamodb.Table.from_table_name(
-            self, "SourcesTable", sources_table.table_name
+        GROUPS_TABLE = dynamodb.Table.from_table_name(
+            self, "SourcesTable", groups_table.table_name
         )
         events_table = dynamodb.Table.from_table_name(
             self, "EventsTable", events_table.table_name
         )
 
-        sources_table.grant_read_data(aggregator_function)
+        GROUPS_TABLE.grant_read_data(aggregator_function)
         events_table.grant_read_write_data(aggregator_function)
         aggregator_function.add_to_role_policy(iam.PolicyStatement(
             actions=['dynamodb:Query'],

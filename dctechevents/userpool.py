@@ -3,67 +3,24 @@ from aws_cdk import (
     Stack,
     Duration,
     aws_cognito as cognito,
-    aws_lambda as lambda_,
     aws_iam as iam,
     aws_s3 as s3,
+    aws_route53 as route53,
+    aws_route53_targets as targets,
+    aws_certificatemanager as acm,
     RemovalPolicy,
     CfnOutput,
+    CustomResource,
+    custom_resources as cr,
+    aws_lambda as lambda_,
 )
 from constructs import Construct
 
 class UserPoolStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, *, certificate, hosted_zone, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Create an S3 bucket for verification codes with lifecycle policy
-        self.verification_bucket = s3.Bucket(
-            self, "VerificationCodesBucket",
-            removal_policy=RemovalPolicy.DESTROY,  # For development; use RETAIN for production
-            auto_delete_objects=True,  # For development; remove for production
-            lifecycle_rules=[
-                s3.LifecycleRule(
-                    id="ExpireVerificationCodes",
-                    expiration=Duration.days(1),  # Delete objects after 1 day
-                    enabled=True
-                )
-            ],
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL
-        )
-
-        # Create Lambda functions for Cognito triggers
-        define_auth_challenge_fn = lambda_.Function(
-            self, "DefineAuthChallenge",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="index.handler",
-            code=lambda_.Code.from_asset("functions/define_auth_challenge")
-        )
-
-        create_auth_challenge_fn = lambda_.Function(
-            self, "CreateAuthChallenge",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="index.handler",
-            code=lambda_.Code.from_asset("functions/create_auth_challenge"),
-            environment={
-                "BASE_URL": "https://dctech.events",
-                "VERIFICATION_BUCKET_NAME": self.verification_bucket.bucket_name
-            }
-        )
-
-        verify_auth_challenge_fn = lambda_.Function(
-            self, "VerifyAuthChallenge",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="index.handler",
-            code=lambda_.Code.from_asset("functions/verify_auth_challenge"),
-            environment={
-                "VERIFICATION_BUCKET_NAME": self.verification_bucket.bucket_name
-            }
-        )
-
-        # Grant S3 permissions to the Lambda functions
-        self.verification_bucket.grant_read(verify_auth_challenge_fn)
-        self.verification_bucket.grant_read_write(create_auth_challenge_fn)
-
-        # Create the User Pool with Lambda triggers
+        # Create the User Pool with simplified configuration
         self.user_pool = cognito.UserPool(
             self,
             "UserPool",
@@ -72,6 +29,8 @@ class UserPoolStack(Stack):
             account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
             standard_attributes=cognito.StandardAttributes(
                 email=cognito.StandardAttribute(required=True, mutable=True),
+                given_name=cognito.StandardAttribute(required=True, mutable=True),
+                family_name=cognito.StandardAttribute(required=True, mutable=True),
             ),
             custom_attributes={
                 "newsletter": cognito.BooleanAttribute(
@@ -98,7 +57,7 @@ class UserPoolStack(Stack):
             ),
             sign_in_case_sensitive=False,
             user_verification=cognito.UserVerificationConfig(
-                email_style=cognito.VerificationEmailStyle.CODE
+                email_style=cognito.VerificationEmailStyle.LINK
             ),
             password_policy=cognito.PasswordPolicy(
                 min_length=12,
@@ -106,11 +65,6 @@ class UserPoolStack(Stack):
                 require_uppercase=True,
                 require_digits=True,
                 require_symbols=True,
-            ),
-            lambda_triggers=cognito.UserPoolTriggers(
-                define_auth_challenge=define_auth_challenge_fn,
-                create_auth_challenge=create_auth_challenge_fn,
-                verify_auth_challenge_response=verify_auth_challenge_fn
             ),
             auto_verify={"email": True},
         )
@@ -132,26 +86,63 @@ class UserPoolStack(Stack):
             precedence=1
         )
 
-        # Create the client with custom auth enabled
+        # Create the custom domain for the hosted UI
+        domain = self.user_pool.add_domain(
+            "CognitoCustomDomain",
+            custom_domain=cognito.CustomDomainOptions(
+                domain_name="auth.dctech.events",
+                certificate=certificate
+            ),
+        )
+
+        # Create DNS records for the Cognito domain
+        route53.ARecord(
+            self, "AuthARecord",
+            zone=hosted_zone,
+            record_name="auth",
+            target=route53.RecordTarget.from_alias(
+                targets.UserPoolDomainTarget(domain)
+            )
+        )
+
+        route53.AaaaRecord(
+            self, "AuthAAAARecord",
+            zone=hosted_zone,
+            record_name="auth",
+            target=route53.RecordTarget.from_alias(
+                targets.UserPoolDomainTarget(domain)
+            )
+        )
+
+        # Create the client with OAuth settings for hosted UI with modern UI
         self.client = self.user_pool.add_client(
             "app-client",
             prevent_user_existence_errors=True,
             auth_flows=cognito.AuthFlow(
-                admin_user_password=True,
-                custom=True,
                 user_password=True,
                 user_srp=True
             ),
             o_auth=cognito.OAuthSettings(
-                flows=cognito.OAuthFlows(implicit_code_grant=True),
-                scopes=[cognito.OAuthScope.EMAIL],
-                callback_urls=["http://localhost:3000", "https://dctech.events/callback"],
-                logout_urls=["http://localhost:3000", "https://dctech.events"],
+                flows=cognito.OAuthFlows(
+                    authorization_code_grant=True,
+                    implicit_code_grant=True
+                ),
+                scopes=[
+                    cognito.OAuthScope.EMAIL,
+                    cognito.OAuthScope.OPENID,
+                    cognito.OAuthScope.PROFILE
+                ],
+                callback_urls=[
+                    "https://dctech.events/static/callback.html",
+                    "https://www.dctech.events/static/callback.html",
+                    "http://localhost:3000/static/callback.html"  # For local development
+                ],
+                logout_urls=[
+                    "https://dctech.events/static/logout.html",
+                    "https://www.dctech.events/static/logout.html",
+                    "http://localhost:3000/static/logout.html"  # For local development
+                ],
             ),
             generate_secret=False,
+            user_pool_client_name="DC Tech Events App",
         )
-        
-        # Outputs
-        CfnOutput(self, "UserPoolId", value=self.user_pool.user_pool_id)
-        CfnOutput(self, "UserPoolClientId", value=self.client.user_pool_client_id)
-        CfnOutput(self, "VerificationBucketName", value=self.verification_bucket.bucket_name)
