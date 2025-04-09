@@ -1,3 +1,4 @@
+import os
 from aws_cdk import (
     Stack,
     Duration,
@@ -12,74 +13,36 @@ from aws_cdk import (
     aws_apigatewayv2 as apigwv2,
     aws_cognito as cognito,
     CfnOutput,
+    aws_iam as iam,
+    aws_lambda as lambda_,
+    aws_events as aws_events,
+    aws_events_targets as aws_events_targets,
+    CustomResource,
+    custom_resources as cr,
 )
-
-from chalice.cdk import Chalice
+from datetime import datetime
 from constructs import Construct
-from .signup import SignUpStack
-from aws_cdk import aws_iam as iam
 
 
-class WebsiteSite(Stack):
+class WebsiteStack(Stack):
     """The Website"""
 
-    def __init__(self, scope: Construct, construct_id: str, *, api_stack=None,userpoolstack=None, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, *, certificate=None, hosted_zone=None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
         # Get the region from the environment
         region = Stack.of(self).region
         
-        # Store the API stack reference
-        self.api_stack = api_stack
+        # Use the provided hosted zone
+        self.hosted_zone = hosted_zone
         
-        hosted_zone = route53.HostedZone.from_lookup(
-            self, "Zone", domain_name="dctech.events"
-        )
         # Create an S3 bucket to store the website content
-        bucket = s3.Bucket(
+        self.rendered_site_bucket = s3.Bucket(
             self,
-            "WebsiteBucket",
+            "RenderedBucket",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
-        
-
-        user_pool = userpoolstack.user_pool
-        
-        # Create the SignUp API as a nested stack
-        signup_stack = SignUpStack(
-            self, 
-            "SignUpStack",
-            userpool=user_pool
-        )
-        
-        # Get the API Gateway from the nested stack
-        # http_api = signup_stack.http_api
-
-        hypertext_api = Chalice(
-            self,
-            "HypertextAPI",
-            source_dir="./hypertext",
-            stage_config={
-                'environment_variables': {
-                    'EVENTS_TABLE_NAME': api_stack.events_table.table_name,
-                    'SOURCES_TABLE_NAME': api_stack.sources_table.table_name
-                }
-            }
-        )
-
-        # Store references to the API Gateway
-        self.hypertext_api = hypertext_api.sam_template.get_resource('RestAPI')
-        self.hypertext_api_id = self.hypertext_api.ref
-
-        api_stack.events_table.grant_read_data(hypertext_api.get_role('DefaultRole'))
-        cert = acm.Certificate(
-            self,
-            "Certificate",
-            domain_name="dctech.events",
-            subject_alternative_names=["*.dctech.events"],
-            validation=acm.CertificateValidation.from_dns(hosted_zone),
         )
 
 
@@ -102,10 +65,31 @@ class WebsiteSite(Stack):
                         }
                     };
                 }
+                
                 // Handle root path specifically
                 if (uri === '/') {
-                 // Keep the URI as is - the origin_path will add /api
-                return request;
+                    // Keep the URI as is for root
+                    return request;
+                }
+                
+                // Handle paths without trailing slash - redirect to add trailing slash
+                // Only redirect if the URI doesn't have an extension (like .html, .css, .js, etc.)
+                if (!uri.endsWith('/') && uri.indexOf('.') === -1) {
+                    return {
+                        statusCode: 301,
+                        statusDescription: 'Moved Permanently',
+                        headers: {
+                            'location': {
+                                value: `https://${host}${uri}/`
+                            }
+                        }
+                    };
+                }
+                
+                // Handle directory paths with trailing slash - serve index.html
+                if (uri.endsWith('/') && uri !== '/') {
+                    // Modify the URI to point to the index.html file in that directory
+                    request.uri = uri + 'index.html';
                 }
                 
                 return request;
@@ -134,24 +118,33 @@ class WebsiteSite(Stack):
             )
         )
         
+        
+        # Grant CloudFront access to the render bucket
+        self.rendered_site_bucket.add_to_resource_policy(
+            iam.PolicyStatement(
+                actions=["s3:GetObject"],
+                resources=[self.rendered_site_bucket.arn_for_objects("*")],
+                principals=[iam.ServicePrincipal("cloudfront.amazonaws.com")],
+                conditions={
+                    "StringEquals": {
+                        "AWS:SourceArn": f"arn:aws:cloudfront::{self.account}:distribution/*"
+                    }
+                }
+            )
+        )
+        
         # Create a CloudFront distribution with updated behaviors
         distribution = cloudfront.Distribution(
             self,
             "Distribution",
             domain_names=["dctech.events", "www.dctech.events"],
-            certificate=cert,
+            certificate=certificate,
             minimum_protocol_version=cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
             default_behavior=cloudfront.BehaviorOptions(
-                # Set Hypertext API as the default origin with path rewriting
-                origin=origins.HttpOrigin(
-                    domain_name=f"{self.hypertext_api_id}.execute-api.{self.region}.amazonaws.com",
-                    protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-                    origin_path="/api"  # This adds /api to the beginning of all requests
-                ),
+                # Set rendered_site_bucket as the default origin
+                origin=origins.S3BucketOrigin.with_origin_access_control(self.rendered_site_bucket),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
-                cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
-                origin_request_policy = cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
                 function_associations=[
                     cloudfront.FunctionAssociation(
                         function=combined_function,
@@ -160,80 +153,20 @@ class WebsiteSite(Stack):
                 ],
                 response_headers_policy=hsts_policy
             ),
-            additional_behaviors={
-                # Route /confirm/* path to the API Gateway
-                "/confirm/*": cloudfront.BehaviorOptions(
-                    origin=origins.HttpOrigin(
-                        domain_name=f"{signup_stack.http_api.api_id}.execute-api.{self.region}.amazonaws.com",
-                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY
-                    ),
-                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
-                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
-                    origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+            default_root_object="index.html",
+            error_responses=[
+                cloudfront.ErrorResponse(
+                    http_status=403,
+                    response_http_status=404,
+                    response_page_path="/404.html",
+                    ttl=Duration.minutes(30)
                 ),
-
-                # Route /signup path to the API Gateway
-                "/signup": cloudfront.BehaviorOptions(
-                    origin=origins.HttpOrigin(
-                        domain_name=f"{signup_stack.http_api.api_id}.execute-api.{self.region}.amazonaws.com",
-                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY
-                    ),
-                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
-                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
-                    origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                ),
-                
-                # Route /login path to the login form endpoint
-                "/login": cloudfront.BehaviorOptions(
-                    origin=origins.HttpOrigin(
-                        domain_name=f"{self.api_stack.http_api.api_id}.execute-api.{self.region}.amazonaws.com",
-                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY
-                    ),
-                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
-                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
-                    origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                ),
-
-                
-                "/api/*": cloudfront.BehaviorOptions(
-                    origin=origins.HttpOrigin(
-                        domain_name=f"{self.api_stack.http_api.api_id}.execute-api.us-east-1.amazonaws.com",
-                        protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-                        origin_path=""
-                    ),
-                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
-                    cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
-                    origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                ),
-                "/static/*": cloudfront.BehaviorOptions(
-                    origin=origins.S3BucketOrigin.with_origin_access_control(bucket),
-                    viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
-                    function_associations=[
-                        cloudfront.FunctionAssociation(
-                            function=combined_function,
-                            event_type=cloudfront.FunctionEventType.VIEWER_REQUEST
-                        ),
-                    ],
-                    response_headers_policy=hsts_policy
-                ),
-
-                
-            },
-            #default_root_object="index.html",
-        )
-        s3deploy.BucketDeployment(
-            self,
-            "DeployWebsite",
-            sources=[s3deploy.Source.asset("./website")],  # Directory containing your website files
-            destination_bucket=bucket,
-            distribution=distribution,  # This enables CloudFront invalidation
-            distribution_paths=["/*"],  # Invalidate all paths
-            destination_key_prefix=""  # Put all website files under /static/
+                cloudfront.ErrorResponse(
+                    http_status=404,
+                    response_page_path="/404.html",
+                    ttl=Duration.minutes(30)
+                )
+            ]
         )
 
         ipv4 = route53.ARecord(
@@ -275,13 +208,12 @@ class WebsiteSite(Stack):
             ),
         )
         
-        # Output the distribution domain name for reference
-        CfnOutput(
+        # Deploy static files from ./website/static to the /static directory in the rendered_site_bucket
+        s3deploy.BucketDeployment(
             self,
-            "DistributionDomainName",
-            value=distribution.distribution_domain_name,
-            description="The domain name of the CloudFront distribution"
+            "DeployStaticFiles",
+            sources=[s3deploy.Source.asset("website/")],
+            destination_bucket=self.rendered_site_bucket,
+            prune=False,  # Don't remove files that aren't in the source
+            retain_on_delete=False,  # Clean up files when the stack is deleted
         )
-
-
-

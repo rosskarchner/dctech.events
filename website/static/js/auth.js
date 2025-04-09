@@ -1,30 +1,52 @@
-/**
- * Authentication helper functions
- */
-
-// Check if user is authenticated
+// Check if the user is authenticated
 function isAuthenticated() {
-    // Check for auth cookie
-    return document.cookie.includes('auth_token=');
-}
-
-// Require authentication for the current page
-function requireAuth() {
-    if (!isAuthenticated()) {
-        // Redirect to login page with return URL
-        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
-        return false;
+  try {
+    const idToken = localStorage.getItem('id_token');
+    const expiration = localStorage.getItem('token_expiration');
+    
+    if (!idToken || !expiration) {
+      return false;
     }
+    
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (now > parseInt(expiration, 10)) {
+      return false;
+    }
+    
     return true;
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    return false;
+  }
 }
 
-// Add event listener for logout buttons
-document.addEventListener('DOMContentLoaded', function() {
-    const logoutButtons = document.querySelectorAll('.logout-button');
-    logoutButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/logout';
-        });
-    });
-});
+// Sign out the user
+function signOut() {
+  localStorage.removeItem('id_token');
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('token_expiration');
+  localStorage.removeItem('user_email');
+  localStorage.removeItem('user_name');
+  
+  window.location.href = '/';
+}
+
+// Get the current user's information
+function getCurrentUser() {
+  if (!isAuthenticated()) {
+    return null;
+  }
+  
+  return {
+    email: localStorage.getItem('user_email'),
+    name: localStorage.getItem('user_name')
+  };
+}
+
+// Redirect to login
+function login(returnTo = window.location.pathname) {
+  localStorage.setItem('auth_return_to', returnTo);
+  window.location.href = 'https://api.dctech.events/api/login-redirect';
+}

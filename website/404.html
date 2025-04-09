@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - DC Tech Events</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 50px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .error-code {
+            font-size: 120px;
+            font-weight: bold;
+            color: #0066cc;
+            margin: 0;
+            line-height: 1;
+        }
+        .error-message {
+            font-size: 24px;
+            margin: 20px 0 40px;
+        }
+        .home-button {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .home-button:hover {
+            background-color: #0055aa;
+        }
+        .suggestions {
+            margin-top: 40px;
+            text-align: left;
+        }
+        .suggestions h3 {
+            margin-bottom: 15px;
+        }
+        .suggestions ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .suggestions li {
+            margin-bottom: 10px;
+        }
+        .suggestions a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .suggestions a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/">DC Tech Events</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/groups/">Groups</a></li>
+                    <li><a href="/about/">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="error-container">
+            <h1 class="error-code">404</h1>
+            <p class="error-message">Oops! The page you're looking for doesn't exist.</p>
+            <a href="/" class="home-button">Go to Homepage</a>
+            
+            <div class="suggestions">
+                <h3>You might be looking for:</h3>
+                <ul>
+                    <li><a href="/">Events Calendar</a> - Find upcoming tech events in DC</li>
+                    <li><a href="/groups/">Tech Groups</a> - Browse local tech communities</li>
+                    <li><a href="/about/">About</a> - Learn more about DC Tech Events</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 DC Tech Events</p>
+        </div>
+    </footer>
+</body>
+</html>
