@@ -14,6 +14,7 @@ from aws_cdk import (
     aws_route53_targets as targets,
     aws_events as events,
     aws_events_targets as events_targets,
+    aws_cloudfront as cloudfront,
     CustomResource,
     custom_resources as cr,
     RemovalPolicy
@@ -23,7 +24,7 @@ from constructs import Construct
 
 
 class ApiStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, rendered_site_bucket:s3.Bucket, user_pool: cognito.UserPool, user_pool_client:cognito.UserPoolClient, user_pool_stack:Stack, admin_group: cognito.CfnUserPoolGroup, editor_group: cognito.CfnUserPoolGroup, certificate=None, hosted_zone=None, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, rendered_site_bucket:s3.Bucket, user_pool: cognito.UserPool, user_pool_client:cognito.UserPoolClient, user_pool_stack:Stack, admin_group: cognito.CfnUserPoolGroup, editor_group: cognito.CfnUserPoolGroup, certificate=None, hosted_zone=None, distribution=None, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Define the scopes based on your Cognito groups
@@ -35,6 +36,9 @@ class ApiStack(Stack):
         
         # Use the provided certificate
         api_certificate = certificate
+        
+        # Store the CloudFront distribution
+        self.distribution = distribution
         
         # Create API Gateway with custom domain, JWT authorizer, and CORS configuration
         domain_name = apigwv2.DomainName(
@@ -71,8 +75,24 @@ class ApiStack(Stack):
                     "hx-current-url",
                     "hx-target",
                     "hx-trigger",
-                    "hx-boost"
+                    "hx-boosted",
+                    "hx-history-restore-request",
+                    "hx-prompt",
+                    "hx-trigger-name",
                 ],
+                expose_headers=[
+                    "hx-trigger",
+                    "hx-location",
+                    "hx-push-url,"
+                    "hx-redirect",
+                    "hx-refresh",
+                    "hx-replace-url",
+                    "hx-reswap",
+                    "hx-retarget",
+                    "hx-reselect",
+                    "hx-trigger-after-settle",
+                    "hx-trigger-after-swap"
+                    ],
                 allow_credentials=True,
                 max_age=Duration.hours(1)
             ),
@@ -379,7 +399,8 @@ class ApiStack(Stack):
                 }
             ),
             environment={
-                "RENDER_BUCKET": rendered_site_bucket.bucket_name
+                "RENDER_BUCKET": rendered_site_bucket.bucket_name,
+                "DISTRIBUTION_ID": self.distribution.distribution_id if self.distribution else ""
             },
             timeout=Duration.seconds(30)
         )
@@ -387,15 +408,198 @@ class ApiStack(Stack):
         # Grant the Lambda function permission to write to the render bucket
         rendered_site_bucket.grant_read_write(render_function)
         
-        # Create an EventBridge rule to trigger the render function periodically
-        render_rule = events.Rule(
+        # Grant the Lambda function permission to create CloudFront invalidations
+        if self.distribution:
+            render_function.add_to_role_policy(
+                iam.PolicyStatement(
+                    actions=["cloudfront:CreateInvalidation"],
+                    resources=[f"arn:aws:cloudfront::{self.account}:distribution/{self.distribution.distribution_id}"]
+                )
+            )
+        
+        
+        # Create a custom resource that will trigger the renderpage function after deployment
+        render_on_deploy_provider = cr.Provider(
             self,
-            "RenderSchedule",
-            schedule=events.Schedule.rate(Duration.minutes(30))  # Run every 30 minutes
+            "RenderOnDeployProvider",
+            on_event_handler=lambda_.Function(
+                self,
+                "RenderOnDeployFunction",
+                timeout=Duration.seconds(60),
+                runtime=lambda_.Runtime.PYTHON_3_12,
+                handler="index.handler",
+                code=lambda_.Code.from_inline("""
+import boto3
+import cfnresponse
+import os
+import json
+
+def handler(event, context):
+    try:
+        print(f"Received event: {json.dumps(event)}")
+        
+        # Only process Create and Update events
+        if event['RequestType'] in ['Create', 'Update']:
+            # Get the Lambda function name from environment variable
+            function_name = os.environ.get('RENDER_FUNCTION_NAME')
+            
+            if not function_name:
+                raise ValueError("RENDER_FUNCTION_NAME environment variable is not set")
+            
+            # Invoke the renderpage Lambda function
+            lambda_client = boto3.client('lambda')
+            response = lambda_client.invoke(
+                FunctionName=function_name,
+                InvocationType='RequestResponse'
+            )
+            
+            # Get the response payload
+            payload = json.loads(response['Payload'].read().decode('utf-8'))
+            print(f"Render function response: {json.dumps(payload)}")
+            
+            # Send success response
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                'Message': 'Successfully triggered renderpage function',
+                'RenderResult': payload
+            })
+        else:
+            # For Delete events, just send success
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                'Message': f'No action needed for {event["RequestType"]} event'
+            })
+            
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        # Send failure response
+        cfnresponse.send(event, context, cfnresponse.FAILED, {
+            'Message': f'Error triggering renderpage function: {str(e)}'
+        })
+"""),
+                environment={
+                    "RENDER_FUNCTION_NAME": render_function.function_name
+                }
+            )
         )
         
-        # Add the Lambda function as a target for the EventBridge rule
-        render_rule.add_target(events_targets.LambdaFunction(render_function))
+        # Grant the provider function permission to invoke the render function
+        render_function.grant_invoke(render_on_deploy_provider.on_event_handler)
+        
+        # Create the custom resource that will trigger on deployment
+        CustomResource(
+            self,
+            "RenderOnDeploy",
+            service_token=render_on_deploy_provider.service_token,
+            properties={
+                "Timestamp": datetime.now().isoformat()  # Force update on each deployment
+            }
+        )
+        
+        # Admin group management functions
+        admin_groups_function = lambda_.Function(
+            self, "AdminGroupsFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/admin_groups"),
+            environment={
+                "GROUPS_TABLE": self.groups_table.table_name
+            }
+        )
+        
+        admin_group_actions_function = lambda_.Function(
+            self, "AdminGroupActionsFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("functions/admin_group_actions"),
+            environment={
+                "GROUPS_TABLE": self.groups_table.table_name
+            }
+        )
+        
+        # Grant permissions to the admin functions
+        self.groups_table.grant_read_data(admin_groups_function)
+        self.groups_table.grant_full_access(admin_group_actions_function)
+        
+        # Add routes for admin group management
+        self.http_api.add_routes(
+            path="/api/admin/groups",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminGroupsIntegration",
+                handler=admin_groups_function
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/admin/groups/all",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminAllGroupsIntegration",
+                handler=admin_groups_function
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/admin/groups/pending",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminPendingGroupsIntegration",
+                handler=admin_groups_function
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/admin/groups/approved",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminApprovedGroupsIntegration",
+                handler=admin_groups_function
+            ),
+            authorizer=authorizer
+        )
+        
+        # Add routes for admin group actions
+        self.http_api.add_routes(
+            path="/api/admin/groups/{id}",
+            methods=[apigwv2.HttpMethod.GET, apigwv2.HttpMethod.PUT, apigwv2.HttpMethod.DELETE],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminGroupActionsIntegration",
+                handler=admin_group_actions_function
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/admin/groups/{id}/edit",
+            methods=[apigwv2.HttpMethod.GET],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminGroupEditIntegration",
+                handler=admin_group_actions_function
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/admin/groups/{id}/approve",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminGroupApproveIntegration",
+                handler=admin_group_actions_function
+            ),
+            authorizer=authorizer
+        )
+        
+        self.http_api.add_routes(
+            path="/api/admin/groups/{id}/pause",
+            methods=[apigwv2.HttpMethod.POST],
+            integration=integrations.HttpLambdaIntegration(
+                "AdminGroupPauseIntegration",
+                handler=admin_group_actions_function
+            ),
+            authorizer=authorizer
+        )
         
         # Create auth callback fragment endpoint
         auth_callback_fragment_function = lambda_.Function(

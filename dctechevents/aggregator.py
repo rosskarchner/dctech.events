@@ -52,20 +52,24 @@ class AggregatorStack(Stack):
         cache.grant_read_write(aggregator_function)
 
         # Grant DynamoDB permissions
-        GROUPS_TABLE = dynamodb.Table.from_table_name(
-            self, "SourcesTable", groups_table.table_name
+        groups_table_ref = dynamodb.Table.from_table_name(
+            self, "GroupsTable", groups_table.table_name
         )
-        events_table = dynamodb.Table.from_table_name(
+        events_table_ref = dynamodb.Table.from_table_name(
             self, "EventsTable", events_table.table_name
         )
 
-        GROUPS_TABLE.grant_read_data(aggregator_function)
-        events_table.grant_read_write_data(aggregator_function)
+        groups_table_ref.grant_read_data(aggregator_function)
+        events_table_ref.grant_read_write_data(aggregator_function)
+        
+        # Grant access to query the approval-status-index on the groups table
+        # and the group-index on the events table
         aggregator_function.add_to_role_policy(iam.PolicyStatement(
             actions=['dynamodb:Query'],
             resources=[
-                events_table.table_arn,
-                f"{events_table.table_arn}/index/*"  # This grants access to all indexes
+                groups_table.table_arn + "/index/approval-status-index",
+                events_table.table_arn + "/index/group-index",  # Updated to use group-index
+                events_table.table_arn + "/index/*"  # This grants access to all indexes on events table
             ]
         ))
 

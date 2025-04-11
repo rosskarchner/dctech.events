@@ -53,6 +53,12 @@ class WebsiteStack(Stack):
                 var host = headers.host.value;
                 var uri = request.uri;
                 
+                // Check for hx-request header
+                var isHxRequest = false;
+                if (headers['hx-request']) {
+                    isHxRequest = headers['hx-request'].value === 'true';
+                }
+                
                 // Handle www redirect first
                 if (host.startsWith('www.')) {
                     return {
@@ -68,7 +74,10 @@ class WebsiteStack(Stack):
                 
                 // Handle root path specifically
                 if (uri === '/') {
-                    // Keep the URI as is for root
+                    // For root path with hx-request, serve from /hx/index.html
+                    if (isHxRequest) {
+                        request.uri = '/hx/index.html';
+                    }
                     return request;
                 }
                 
@@ -86,10 +95,24 @@ class WebsiteStack(Stack):
                     };
                 }
                 
-                // Handle directory paths with trailing slash - serve index.html
+                // Handle directory paths with trailing slash
                 if (uri.endsWith('/') && uri !== '/') {
-                    // Modify the URI to point to the index.html file in that directory
-                    request.uri = uri + 'index.html';
+                    if (isHxRequest) {
+                        // For hx requests, serve from /hx directory
+                        request.uri = '/hx' + uri + 'index.html';
+                    } else {
+                        // For regular requests, serve index.html
+                        request.uri = uri + 'index.html';
+                    }
+                    return request;
+                }
+                
+                // Handle direct file requests (with extensions)
+                if (uri.indexOf('.') !== -1) {
+                    // If it's an HTML file and an hx-request, serve from /hx directory
+                    if (isHxRequest && uri.endsWith('.html')) {
+                        request.uri = '/hx' + uri;
+                    }
                 }
                 
                 return request;
@@ -134,7 +157,7 @@ class WebsiteStack(Stack):
         )
         
         # Create a CloudFront distribution with updated behaviors
-        distribution = cloudfront.Distribution(
+        self.distribution = cloudfront.Distribution(
             self,
             "Distribution",
             domain_names=["dctech.events", "www.dctech.events"],
@@ -175,7 +198,7 @@ class WebsiteStack(Stack):
             zone=hosted_zone,
             record_name="dctech.events",
             target=route53.RecordTarget.from_alias(
-                targets.CloudFrontTarget(distribution)
+                targets.CloudFrontTarget(self.distribution)
             ),
         )
 
@@ -185,7 +208,7 @@ class WebsiteStack(Stack):
             zone=hosted_zone,
             record_name="dctech.events",
             target=route53.RecordTarget.from_alias(
-                targets.CloudFrontTarget(distribution)
+                targets.CloudFrontTarget(self.distribution)
             ),
         )
         wwwipv4 = route53.ARecord(
@@ -194,7 +217,7 @@ class WebsiteStack(Stack):
             zone=hosted_zone,
             record_name="www.dctech.events",
             target=route53.RecordTarget.from_alias(
-                targets.CloudFrontTarget(distribution)
+                targets.CloudFrontTarget(self.distribution)
             ),
         )
 
@@ -204,7 +227,7 @@ class WebsiteStack(Stack):
             zone=hosted_zone,
             record_name="www.dctech.events",
             target=route53.RecordTarget.from_alias(
-                targets.CloudFrontTarget(distribution)
+                targets.CloudFrontTarget(self.distribution)
             ),
         )
         

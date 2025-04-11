@@ -30,6 +30,13 @@ def handler(event, context):
             <div class="error-message" id="ical-error">Please enter a valid URL</div>
         </div>
         
+        <div class="form-group">
+            <label for="fallback-url">Event Fallback URL <span class="optional">(optional)</span></label>
+            <input type="url" id="fallback-url" name="fallback_url" placeholder="https://example.com/events">
+            <div class="help-text">By default, we only import events from iCal that have a URL. If you provide a fallback URL, we will use that link for events that don't have a URL. Events without a URL and no fallback URL will be ignored.</div>
+            <div class="error-message" id="fallback-error">Please enter a valid URL</div>
+        </div>
+        
         <button type="submit">Submit Group</button>
     </form>
     
@@ -41,6 +48,16 @@ def handler(event, context):
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
+        }}
+        .optional {{
+            font-weight: normal;
+            font-style: italic;
+            color: #666;
+        }}
+        .help-text {{
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
         }}
         input[type="text"], input[type="url"] {{
             width: 100%;

@@ -58,6 +58,7 @@ apistack = ApiStack(
     editor_group=userpoolstack.editor_group,
     certificate=cert_stack.certificate,
     hosted_zone=cert_stack.hosted_zone,
+    distribution=websitestack.distribution,
 )
 
 aggregator = AggregatorStack(

@@ -31,6 +31,7 @@ def handler(event, context):
         name = form_data.get('name', '').strip()
         website = form_data.get('website', '').strip()
         ical = form_data.get('ical', '').strip()
+        fallback_url = form_data.get('fallback_url', '').strip()
         
         # Validate required fields
         if not name or not website or not ical:
@@ -80,24 +81,29 @@ def handler(event, context):
         item = {
             'id': group_id,
             'name': name,
+            'organization_name': name,  # For GSI sort key
             'website': website,
             'ical': ical,  # iCal is required
-            'status': 'pending',  # Pending approval
+            'approval_status': 'pending',  # For GSI partition key
             'created_at': timestamp,
             'created_by': user_id,
             'created_by_email': user_email
         }
+        
+        # Add fallback URL if provided
+        if fallback_url:
+            item['fallback_url'] = fallback_url
         
         # Save to DynamoDB
         table.put_item(Item=item)
         
         # Return success HTML
         success_html = """
-        <div class="success-message">
+        <div class="success-message" id="success">
             <h3>Thank you for your submission!</h3>
             <p>We'll review the group and add it to our listings soon.</p>
             <button hx-get="https://api.dctech.events/api/groups/suggest-form" 
-                    hx-target="#group-form" 
+                    hx-target="#success" 
                     hx-swap="outerHTML">
                 Submit Another Group
             </button>

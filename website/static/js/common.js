@@ -21,3 +21,12 @@ document.addEventListener('htmx:responseError', function(event) {
         window.location.href = 'https://api.dctech.events/api/login-redirect';
     }
 });
+
+// Handle the refreshGroupsList event to refresh the admin groups list
+document.addEventListener('refreshGroupsList', function(event) {
+    // Wait 1 second before refreshing to allow the user to see the success message
+    setTimeout(function() {
+        htmx.ajax('GET', 'https://api.dctech.events/api/admin/groups/all', {target: '#admin-content', swap: 'outerHTML'});
+
+    }, 1000);
+});
