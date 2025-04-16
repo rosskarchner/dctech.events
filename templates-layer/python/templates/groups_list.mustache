@@ -1,0 +1,30 @@
+<div class="groups-container">
+    <h2>Tech Groups</h2>
+    
+    {{#groups}}
+    <div class="group-card">
+        <h3>{{name}}</h3>
+        <div class="group-details">
+            <p><strong>Website:</strong> <a href="{{website}}" target="_blank">{{website}}</a></p>
+            {{#has_fallback_url}}
+            <p><strong>Event Fallback URL:</strong> <a href="{{fallback_url}}" target="_blank">{{fallback_url}}</a></p>
+            {{/has_fallback_url}}
+        </div>
+        <div class="group-events">
+            <a href="/events?group={{id}}" class="btn btn-primary">View Events</a>
+        </div>
+    </div>
+    {{/groups}}
+    
+    {{^groups}}
+    <div class="no-groups">
+        <p>No tech groups found.</p>
+    </div>
+    {{/groups}}
+    
+    <div class="suggest-group">
+        <h3>Don't see your group?</h3>
+        <p>If you run a tech group in the DC area and would like to have your events listed here, you can suggest your group for inclusion.</p>
+        <a href="/groups/suggest" class="btn btn-suggest">Suggest a Group</a>
+    </div>
+</div>
