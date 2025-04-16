@@ -6,8 +6,10 @@ from aws_cdk import (
     aws_apigatewayv2_integrations as integrations,
     aws_apigatewayv2_authorizers as authorizers,
     aws_lambda as lambda_,
+    aws_lambda_event_sources as lambda_event_sources,
     aws_iam as iam,
     aws_s3 as s3,
+    aws_sqs as sqs,
     aws_cognito as cognito,
     aws_certificatemanager as acm,
     aws_route53 as route53,
@@ -39,6 +41,22 @@ class ApiStack(Stack):
         
         # Store the CloudFront distribution
         self.distribution = distribution
+        
+        # Create the templates layer
+        templates_layer = lambda_.LayerVersion(
+            self, "TemplatesLayer",
+            code=lambda_.Code.from_asset("templates-layer", 
+                bundling={
+                    "image": lambda_.Runtime.PYTHON_3_12.bundling_image,
+                    "command": [
+                        "bash", "-c",
+                        "pip install -r requirements.txt -t /asset-output/python && cp -au . /asset-output"
+                    ]
+                }
+            ),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description="Layer containing Mustache templates and utility functions"
+        )
         
         # Create API Gateway with custom domain, JWT authorizer, and CORS configuration
         domain_name = apigwv2.DomainName(
@@ -201,6 +219,7 @@ class ApiStack(Stack):
                     "TABLE_NAME": self.events_table.table_name,
                     "USER_POOL_ID": user_pool.user_pool_id
                 },
+                layers=[templates_layer],
                 initial_policy=[
                     iam.PolicyStatement(
                         actions=[
@@ -224,7 +243,8 @@ class ApiStack(Stack):
                 code=lambda_.Code.from_asset("functions/suggest_group_form"),
                 environment={
                     "USER_POOL_ID": user_pool.user_pool_id
-                }
+                },
+                layers=[templates_layer]
             ),
             "suggest_group": lambda_.Function(
                 self, "SuggestGroupFunction",
@@ -235,6 +255,7 @@ class ApiStack(Stack):
                     "GROUPS_TABLE": self.groups_table.table_name,
                     "USER_POOL_ID": user_pool.user_pool_id
                 },
+                layers=[templates_layer],
                 initial_policy=[
                     iam.PolicyStatement(
                         actions=[
@@ -255,7 +276,8 @@ class ApiStack(Stack):
                 code=lambda_.Code.from_asset("functions/approve_event"),
                 environment={
                     "TABLE_NAME": self.events_table.table_name
-                }
+                },
+                layers=[templates_layer]
             ),
             "update": lambda_.Function(
                 self, "UpdateEventFunction",
@@ -264,7 +286,8 @@ class ApiStack(Stack):
                 code=lambda_.Code.from_asset("functions/update_event"),
                 environment={
                     "TABLE_NAME": self.events_table.table_name
-                }
+                },
+                layers=[templates_layer]
             ),
             "delete": lambda_.Function(
                 self, "DeleteEventFunction",
@@ -273,7 +296,8 @@ class ApiStack(Stack):
                 code=lambda_.Code.from_asset("functions/delete_event"),
                 environment={
                     "TABLE_NAME": self.events_table.table_name
-                }
+                },
+                layers=[templates_layer]
             )
         }
 
@@ -383,6 +407,14 @@ class ApiStack(Stack):
             authorizer=authorizer
         )
 
+        render_queue = sqs.Queue(
+            self,
+            "RenderQueue",
+            visibility_timeout=Duration.seconds(300),
+            retention_period=Duration.days(14)  # 2 weeks
+        
+        )
+
         # Create a Lambda function to render pages to the render bucket
         render_function = lambda_.Function(
             self,
@@ -400,11 +432,22 @@ class ApiStack(Stack):
             ),
             environment={
                 "RENDER_BUCKET": rendered_site_bucket.bucket_name,
-                "DISTRIBUTION_ID": self.distribution.distribution_id if self.distribution else ""
+                "DISTRIBUTION_ID": self.distribution.distribution_id if self.distribution else "",
+                "GROUPS_TABLE": self.groups_table.table_name
             },
-            timeout=Duration.seconds(30)
+            layers=[templates_layer],
+            timeout=Duration.seconds(300)
         )
         
+        render_function.add_event_source(
+            lambda_event_sources.SqsEventSource(
+                queue=render_queue,
+                batch_size=1
+            )
+        
+        )
+        
+        self.groups_table.grant_read_data(render_function)
         # Grant the Lambda function permission to write to the render bucket
         rendered_site_bucket.grant_read_write(render_function)
         

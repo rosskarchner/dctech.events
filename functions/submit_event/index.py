@@ -4,6 +4,7 @@ import boto3
 import uuid
 import urllib.parse
 from datetime import datetime, UTC
+from shared.template_utils import render_template, parse_form_data
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
@@ -19,7 +20,7 @@ def handler(event, context):
             return {
                 'statusCode': 401,
                 'headers': {'Content-Type': 'text/html'},
-                'body': '<div class="error-message">Authentication required</div>'
+                'body': render_template('error.mustache', {'message': 'Authentication required'})
             }
         
         # Get user identifier - prefer sub over email since sub is always present
@@ -30,7 +31,7 @@ def handler(event, context):
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'text/html'},
-                'body': '<div class="error-message">User identifier not found in token</div>'
+                'body': render_template('error.mustache', {'message': 'User identifier not found in token'})
             }
             
         user_pool_id = os.environ.get('USER_POOL_ID')
@@ -46,7 +47,7 @@ def handler(event, context):
                 return {
                     'statusCode': 500,
                     'headers': {'Content-Type': 'text/html'},
-                    'body': '<div class="error-message">Server configuration error</div>'
+                    'body': render_template('error.mustache', {'message': 'Server configuration error'})
                 }
         
         print(f"User submitting event with sub: {user_sub}")
@@ -65,7 +66,7 @@ def handler(event, context):
                 return {
                     'statusCode': 404,
                     'headers': {'Content-Type': 'text/html'},
-                    'body': '<div class="error-message">User not found</div>'
+                    'body': render_template('error.mustache', {'message': 'User not found'})
                 }
             
             # Get the user attributes
@@ -82,30 +83,17 @@ def handler(event, context):
                 return {
                     'statusCode': 403,
                     'headers': {'Content-Type': 'text/html'},
-                    'body': """
-                    <div class="error-message">
-                        <h3>Profile Required</h3>
-                        <p>You need to complete your profile before submitting events.</p>
-                        <a href="/profile" class="btn-primary">Complete Your Profile</a>
-                    </div>
-                    """
+                    'body': render_template('error.mustache', {
+                        'message': 'Profile Required',
+                        'details': 'You need to complete your profile before submitting events.',
+                        'action_url': '/profile',
+                        'action_text': 'Complete Your Profile'
+                    })
                 }
                 
             # Continue with event submission...
             # Parse form data from the request body
-            body = event.get('body', '')
-            is_base64_encoded = event.get('isBase64Encoded', False)
-            
-            if is_base64_encoded:
-                import base64
-                body = base64.b64decode(body).decode('utf-8')
-            
-            # Parse form data
-            form_data = {}
-            if body:
-                pairs = urllib.parse.parse_qs(body)
-                for key, values in pairs.items():
-                    form_data[key] = values[0] if values else ''
+            form_data = parse_form_data(event)
             
             # Extract event details
             title = form_data.get('title', '').strip()
@@ -120,7 +108,7 @@ def handler(event, context):
                 return {
                     'statusCode': 400,
                     'headers': {'Content-Type': 'text/html'},
-                    'body': '<div class="error-message">Title, description, and date are required</div>'
+                    'body': render_template('error.mustache', {'message': 'Title, description, and date are required'})
                 }
             
             # Generate a unique ID for the event
@@ -138,7 +126,7 @@ def handler(event, context):
                 return {
                     'statusCode': 400,
                     'headers': {'Content-Type': 'text/html'},
-                    'body': '<div class="error-message">Invalid date format</div>'
+                    'body': render_template('error.mustache', {'message': 'Invalid date format'})
                 }
             
             # Get user's display name
@@ -170,18 +158,15 @@ def handler(event, context):
             table.put_item(Item=event_item)
             
             # Return success message
-            success_html = """
-            <div class="success-message">
-                <h3>Event Submitted</h3>
-                <p>Your event has been submitted for review. It will appear on the site after approval.</p>
-                <a href="/" class="btn-primary">Back to Home</a>
-            </div>
-            """
-            
             return {
                 'statusCode': 200,
                 'headers': {'Content-Type': 'text/html'},
-                'body': success_html
+                'body': render_template('success.mustache', {
+                    'message': 'Event Submitted',
+                    'details': 'Your event has been submitted for review. It will appear on the site after approval.',
+                    'action_url': '/',
+                    'action_text': 'Back to Home'
+                })
             }
             
         except Exception as e:
@@ -189,7 +174,7 @@ def handler(event, context):
             return {
                 'statusCode': 500,
                 'headers': {'Content-Type': 'text/html'},
-                'body': f'<div class="error-message">Error checking user profile: {str(e)}</div>'
+                'body': render_template('error.mustache', {'message': f'Error checking user profile: {str(e)}'})
             }
             
     except Exception as e:
@@ -197,5 +182,5 @@ def handler(event, context):
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'text/html'},
-            'body': f'<div class="error-message">Error submitting event: {str(e)}</div>'
+            'body': render_template('error.mustache', {'message': f'Error submitting event: {str(e)}'})
         }
