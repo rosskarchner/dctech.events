@@ -168,7 +168,10 @@ def get_approved_groups():
 def handler(event, context):
     """
     Lambda function to render mustache templates and write them to the render bucket.
-    Walks the pages directory tree and renders all .mustache files.
+    Can either:
+    1. Walk the pages directory tree and render all .mustache files (default behavior)
+    2. Render a specific page from the pages directory (if specified in the event)
+    3. Render a particular template to a particular path with provided context
     """
     try:
         # Get environment variables
@@ -186,36 +189,157 @@ def handler(event, context):
         with open(shell_template_path, 'r') as shell_file:
             shell_template = shell_file.read()
         
-        # Walk the pages directory tree
-        pages_dir = pathlib.Path('pages')
         rendered_files = []
         failed_files = []
-        paths_to_invalidate = ['/*']  # Invalidate everything for simplicity
+        paths_to_invalidate = []
         
-        # Find all .mustache files in the pages directory
-        for template_path in pages_dir.glob('**/*.mustache'):
-            logger.info(f"Processing template: {template_path}")
+        # Check if this is an SQS event
+        if 'Records' in event and len(event['Records']) > 0:
+            for record in event['Records']:
+                if record.get('eventSource') == 'aws:sqs':
+                    # Process SQS message
+                    message_body = json.loads(record['body'])
+                    logger.info(f"Processing SQS message: {json.dumps(message_body)}")
+                    
+                    # Check if this is a request to render a specific page
+                    if 'page' in message_body:
+                        page_path = message_body['page']
+                        # Remove leading slash if present
+                        if page_path.startswith('/'):
+                            page_path = page_path[1:]
+                            
+                        # Convert to mustache path in pages directory
+                        if page_path.endswith('.html'):
+                            page_path = page_path[:-5] + '.mustache'
+                        
+                        template_path = pathlib.Path('pages') / page_path
+                        
+                        logger.info(f"Rendering specific page: {template_path}")
+                        
+                        if not template_path.exists():
+                            logger.error(f"Template not found: {template_path}")
+                            failed_files.append(str(template_path))
+                            continue
+                        
+                        # Check if this is a special template that needs data
+                        template_str = str(template_path)
+                        context = None
+                        
+                        # Handle groups list page
+                        if 'groups/index.mustache' in template_str:
+                            logger.info("Rendering groups list page with data")
+                            groups = get_approved_groups()
+                            context = {
+                                'title': 'Tech Groups in DC',
+                                'groups': groups
+                            }
+                        
+                        # Render the template with the appropriate context
+                        success = renderpage(template_str, shell_template, render_bucket, context)
+                        
+                        if success:
+                            rendered_files.append(template_str)
+                            # Add specific path to invalidation list
+                            output_path = '/' + page_path.replace('.mustache', '.html')
+                            paths_to_invalidate.append(output_path)
+                            paths_to_invalidate.append('/hx' + output_path)
+                        else:
+                            failed_files.append(template_str)
+                    
+                    # Handle template_name and output_path with context
+                    elif 'template_name' in message_body and 'output_path' in message_body:
+                        template_name = message_body['template_name']
+                        output_path = message_body['output_path']
+                        template_context = message_body.get('context', {})
+                        
+                        logger.info(f"Rendering template {template_name} to {output_path}")
+                        
+                        # Load the template from the templates layer
+                        template_path = os.path.join('/opt/python/templates', template_name)
+                        
+                        if not os.path.exists(template_path):
+                            logger.error(f"Template not found: {template_path}")
+                            failed_files.append(template_name)
+                            continue
+                        
+                        # Read the template file
+                        with open(template_path, 'r') as template_file:
+                            template_content = template_file.read()
+                        
+                        # Render the template with the context
+                        rendered_content = chevron.render(template_content, template_context)
+                        
+                        # Upload the standalone version
+                        hx_key = f"hx{output_path}"
+                        s3.put_object(
+                            Bucket=render_bucket,
+                            Key=hx_key,
+                            Body=rendered_content,
+                            ContentType="text/html"
+                        )
+                        
+                        # Prepare data for the shell template
+                        shell_data = {
+                            "title": template_context.get("title", "DC Tech Events"),
+                            "content": rendered_content
+                        }
+                        
+                        # Render the shell template with the content
+                        full_rendered_content = chevron.render(shell_template, shell_data)
+                        
+                        # Upload the shell-wrapped version
+                        # Remove leading slash if present
+                        if output_path.startswith('/'):
+                            output_path = output_path[1:]
+                            
+                        s3.put_object(
+                            Bucket=render_bucket,
+                            Key=output_path,
+                            Body=full_rendered_content,
+                            ContentType="text/html"
+                        )
+                        
+                        rendered_files.append(template_name)
+                        paths_to_invalidate.append('/' + output_path)
+                        paths_to_invalidate.append('/hx/' + output_path)
+                        
+                    else:
+                        logger.warning(f"Unrecognized message format: {json.dumps(message_body)}")
             
-            # Check if this is a special template that needs data
-            template_str = str(template_path)
-            context = None
+            # If no specific paths were invalidated, invalidate everything
+            if not paths_to_invalidate:
+                paths_to_invalidate = ['/*']
+                
+        else:
+            # Default behavior: walk the pages directory tree and render all templates
+            logger.info("No specific page requested, rendering all templates")
+            paths_to_invalidate = ['/*']  # Invalidate everything
             
-            # Handle groups list page
-            if 'groups/index.mustache' in template_str:
-                logger.info("Rendering groups list page with data")
-                groups = get_approved_groups()
-                context = {
-                    'title': 'Tech Groups in DC',
-                    'groups': groups
-                }
-            
-            # Render the template with the appropriate context
-            success = renderpage(template_str, shell_template, render_bucket, context)
-            
-            if success:
-                rendered_files.append(template_str)
-            else:
-                failed_files.append(template_str)
+            # Find all .mustache files in the pages directory
+            pages_dir = pathlib.Path('pages')
+            for template_path in pages_dir.glob('**/*.mustache'):
+                logger.info(f"Processing template: {template_path}")
+                
+                # Check if this is a special template that needs data
+                template_str = str(template_path)
+                context = None
+                
+                # Handle groups list page
+                if 'groups/index.mustache' in template_str:
+                    logger.info("Rendering groups list page with data")
+                    groups = get_approved_groups()
+                    context = {
+                        'title': 'Tech Groups in DC',
+                        'groups': groups
+                    }
+                
+                # Render the template with the appropriate context
+                success = renderpage(template_str, shell_template, render_bucket, context)
+                
+                if success:
+                    rendered_files.append(template_str)
+                else:
+                    failed_files.append(template_str)
         
         # Create CloudFront invalidation if distribution ID is provided
         invalidation_id = None

@@ -45,23 +45,27 @@ def render_template(template_name, context=None):
         </div>
         """
 
-def enqueue_static_render(queue_url, template_name, output_path, context=None):
+def enqueue_static_render(queue_url=None, template_name=None, output_path=None, context=None, page=None):
     """
     Enqueues a request to render a static page.
     
     Args:
-        queue_url: URL of the SQS queue
-        template_name: Name of the template to render
-        output_path: Path where the rendered content should be stored
+        queue_url: URL of the SQS queue. If None, will try to get from RENDER_QUEUE_URL environment variable.
+        template_name: Name of the template to render (used with output_path)
+        output_path: Path where the rendered content should be stored (used with template_name)
         context: Dictionary of context data for the template
+        page: Path to a page in the pages directory to render (alternative to template_name/output_path)
     
     Returns:
-        SQS message ID or None if queue_url is not provided
+        SQS message ID or None if queue_url is not provided and not in environment
     """
     try:
-        # If no queue URL is provided, log a warning and return
+        # If no queue URL is provided, try to get from environment
         if not queue_url:
-            logger.warning("No render queue URL provided, skipping static render request")
+            queue_url = os.environ.get('RENDER_QUEUE_URL')
+            
+        if not queue_url:
+            logger.warning("No render queue URL provided or found in environment, skipping static render request")
             return None
             
         # Default empty context if none provided
@@ -70,11 +74,20 @@ def enqueue_static_render(queue_url, template_name, output_path, context=None):
             
         # Create the message body
         message_body = {
-            'template_name': template_name,
-            'output_path': output_path,
-            'context': context,
             'timestamp': datetime.now().isoformat()
         }
+        
+        # Handle page-based rendering (from pages directory)
+        if page:
+            message_body['page'] = page
+        # Handle template-based rendering (template to output path)
+        elif template_name and output_path:
+            message_body['template_name'] = template_name
+            message_body['output_path'] = output_path
+            message_body['context'] = context
+        else:
+            logger.error("Either 'page' or both 'template_name' and 'output_path' must be provided")
+            return None
         
         # Send the message to the queue
         response = sqs.send_message(
@@ -82,7 +95,11 @@ def enqueue_static_render(queue_url, template_name, output_path, context=None):
             MessageBody=json.dumps(message_body)
         )
         
-        logger.info(f"Enqueued static render request for {template_name} to {output_path}: {response['MessageId']}")
+        if page:
+            logger.info(f"Enqueued render request for page {page}: {response['MessageId']}")
+        else:
+            logger.info(f"Enqueued static render request for {template_name} to {output_path}: {response['MessageId']}")
+            
         return response['MessageId']
     except Exception as e:
         logger.error(f"Error enqueuing static render request: {str(e)}")

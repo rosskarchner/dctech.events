@@ -5,6 +5,7 @@ from boto3.dynamodb.conditions import Key, Attr
 import logging
 import uuid
 from datetime import datetime
+from shared.template_utils import enqueue_static_render
 
 # Configure logging
 logger = logging.getLogger()
@@ -12,6 +13,8 @@ logger.setLevel(logging.INFO)
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
+# Initialize SQS client
+sqs = boto3.client('sqs')
 
 def handler(event, context):
     """
@@ -541,6 +544,9 @@ def delete_group(groups_table, group_id):
             }
         )
         
+        # Trigger a render of the groups page
+        enqueue_static_render(page='groups/index.mustache')
+        
         # Return success message with auto-refresh
         return {
             'statusCode': 200,
@@ -596,6 +602,9 @@ def approve_group(groups_table, group_id):
             }
         )
         
+        # Trigger a render of the groups page
+        enqueue_static_render(page='groups/index.html')
+        
         # Return success message with auto-refresh
         return {
             'statusCode': 200,
@@ -650,6 +659,9 @@ def pause_group(groups_table, group_id):
                 ':updated_at': datetime.now().isoformat()
             }
         )
+        
+        # Trigger a render of the groups page
+        enqueue_static_render(page='groups/index.html')
         
         # Return success message with auto-refresh
         return {

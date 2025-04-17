@@ -554,14 +554,16 @@ def handler(event, context):
             handler="index.handler",
             code=lambda_.Code.from_asset("functions/admin_group_actions"),
             environment={
-                "GROUPS_TABLE": self.groups_table.table_name
-            }
+                "GROUPS_TABLE": self.groups_table.table_name,
+                "RENDER_QUEUE_URL": render_queue.queue_url
+            },
+            layers=[templates_layer]
         )
         
         # Grant permissions to the admin functions
         self.groups_table.grant_read_data(admin_groups_function)
         self.groups_table.grant_full_access(admin_group_actions_function)
-        
+        render_queue.grant_send_messages(admin_group_actions_function)
         # Add routes for admin group management
         self.http_api.add_routes(
             path="/api/admin/groups",
