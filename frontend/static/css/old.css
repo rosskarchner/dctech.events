@@ -1,0 +1,372 @@
+/* Main CSS for DC Tech Events */
+
+/* Base styles */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Header */
+header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 1rem 0;
+}
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.logo a {
+    color: white;
+    text-decoration: none;
+}
+
+/* Navigation */
+nav ul {
+    list-style: none;
+    display: flex;
+    margin: 0;
+    padding: 0;
+}
+
+nav li {
+    margin-left: 1.5rem;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+
+
+
+
+
+
+/* Main content */
+main {
+    padding: 2rem 0;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 0.25rem;
+    color: #666;
+    font-size: 0.875rem;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #0066cc;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary:hover {
+    background-color: #0055aa;
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+/* Messages */
+.success-message {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.info-message {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 0.2rem solid rgba(0, 0, 0, 0.1);
+    border-top: 0.2rem solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Profile page specific styles */
+.profile-container {
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-container h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+input[readonly] {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+/* Date Selector Styles */
+.date-selector {
+    background-color: #f0f7ff;
+    padding: 20px;
+    border-radius: 5px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.date-selector h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.date-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-input-container label {
+    margin-right: 10px;
+}
+
+.date-input-container input[type="date"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+@media (max-width: 600px) {
+    .date-input-container {
+        flex-direction: column;
+    }
+    
+    .date-input-container label {
+        margin-right: 0;
+        margin-bottom: 5px;
+    }
+}
+
+/* Homepage Styles */
+.home-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.events-section {
+    margin-bottom: 40px;
+}
+
+.cta-section {
+    text-align: center;
+    padding: 30px;
+    background-color: #f0f7ff;
+    border-radius: 5px;
+    margin-bottom: 40px;
+}
+
+.cta-buttons {
+    margin: 20px 0;
+}
+
+/* Events by Day Styles */
+.events-by-day {
+    margin-bottom: 40px;
+}
+
+.day-container {
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    scroll-margin-top: 20px;
+}
+
+.day-heading {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.event-card {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.event-title {
+    margin-top: 0;
+    color: #0066cc;
+}
+
+.event-details {
+    margin-bottom: 15px;
+}
+
+
+.event-time, .event-group, .event-location {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.event-description {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.event-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.no-events {
+    font-style: italic;
+    color: #666;
+}
+
+.no-events-container {
+    text-align: center;
+    padding: 30px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.empty-day {
+    display: none;
+}
+
+/* Date Selection Container Styles */
+.date-selection-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 30px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.date-selection-container h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+.date-selection-container input[type="date"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.date-selection-container .btn-primary {
+    padding: 12px 24px;
+    margin-top: 10px;
+}
+
+.date-selection-container .error-message {
+    color: #d32f2f;
+    font-size: 14px;
+    margin-top: 5px;
+}

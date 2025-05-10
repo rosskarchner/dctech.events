@@ -1,0 +1,88 @@
+{{#has_errors}}
+<div class="form-errors">
+    <h3>Please correct the following errors:</h3>
+    <ul>
+        {{#errors.title}}<li>{{errors.title}}</li>{{/errors.title}}
+        {{#errors.date}}<li>{{errors.date}}</li>{{/errors.date}}
+        {{#errors.time}}<li>{{errors.time}}</li>{{/errors.time}}
+        {{#errors.url}}<li>{{errors.url}}</li>{{/errors.url}}
+        {{#errors.description}}<li>{{errors.description}}</li>{{/errors.description}}
+    </ul>
+</div>
+{{/has_errors}}
+
+<form id="event-form" hx-post="https://api.dctech.events/api/events" hx-target="#form-container" hx-swap="outerHTML" hx-push-url="false">
+    <h2>Submit Event</h2>
+    
+    <div class="selected-date-info">
+        <p>
+            <strong>Selected Date:</strong> <span class="date-display">{{selected_date_formatted}}</span>
+            <a href="#" class="change-date-link" 
+               hx-get="https://api.dctech.events/api/events/suggest-form" 
+               hx-target="#main-content" 
+               hx-swap="outerHTML"
+               hx-push-url="false">Change date</a>
+        </p>
+    </div>
+    
+    <p>Please provide details about the event you'd like to suggest.</p>
+    
+    <input type="hidden" name="date" value="{{selected_date}}">
+    
+    <div class="form-group {{#errors.title}}has-error{{/errors.title}}">
+        <label for="event-title">Event Title *</label>
+        <input type="text" id="event-title" name="title" value="{{form_data.title}}" required>
+        {{#errors.title}}<div class="error-message" style="display: block;">{{errors.title}}</div>{{/errors.title}}
+    </div>
+    
+    <div class="form-group time-selectors {{#errors.time}}has-error{{/errors.time}}">
+        <label for="event-time">Event Time * <span class="timezone-note">(US/Eastern timezone)</span></label>
+        <div class="time-inputs">
+            <select id="event-hour" name="hour" required>
+                <option value="1" {{#form_data.hour_1}}selected{{/form_data.hour_1}}>1</option>
+                <option value="2" {{#form_data.hour_2}}selected{{/form_data.hour_2}}>2</option>
+                <option value="3" {{#form_data.hour_3}}selected{{/form_data.hour_3}}>3</option>
+                <option value="4" {{#form_data.hour_4}}selected{{/form_data.hour_4}}>4</option>
+                <option value="5" {{#form_data.hour_5}}selected{{/form_data.hour_5}}>5</option>
+                <option value="6" {{^form_data.hour}}selected{{/form_data.hour}}{{#form_data.hour_6}}selected{{/form_data.hour_6}}>6</option>
+                <option value="7" {{#form_data.hour_7}}selected{{/form_data.hour_7}}>7</option>
+                <option value="8" {{#form_data.hour_8}}selected{{/form_data.hour_8}}>8</option>
+                <option value="9" {{#form_data.hour_9}}selected{{/form_data.hour_9}}>9</option>
+                <option value="10" {{#form_data.hour_10}}selected{{/form_data.hour_10}}>10</option>
+                <option value="11" {{#form_data.hour_11}}selected{{/form_data.hour_11}}>11</option>
+                <option value="12" {{#form_data.hour_12}}selected{{/form_data.hour_12}}>12</option>
+            </select>
+            <span>:</span>
+            <select id="event-minute" name="minute" required>
+                <option value="00" {{^form_data.minute}}selected{{/form_data.minute}}{{#form_data.minute_00}}selected{{/form_data.minute_00}}>00</option>
+                <option value="15" {{#form_data.minute_15}}selected{{/form_data.minute_15}}>15</option>
+                <option value="30" {{#form_data.minute_30}}selected{{/form_data.minute_30}}>30</option>
+                <option value="45" {{#form_data.minute_45}}selected{{/form_data.minute_45}}>45</option>
+            </select>
+            <select id="event-ampm" name="ampm" required>
+                <option value="AM" {{#form_data.ampm_AM}}selected{{/form_data.ampm_AM}}>AM</option>
+                <option value="PM" {{^form_data.ampm}}selected{{/form_data.ampm}}{{#form_data.ampm_PM}}selected{{/form_data.ampm_PM}}>PM</option>
+            </select>
+        </div>
+        {{#errors.time}}<div class="error-message" style="display: block;">{{errors.time}}</div>{{/errors.time}}
+    </div>
+    
+    <div class="form-group {{#errors.url}}has-error{{/errors.url}}">
+        <label for="event-url">Event URL *</label>
+        <input type="url" id="event-url" name="url" value="{{form_data.url}}" required placeholder="https://example.com/event">
+        {{#errors.url}}<div class="error-message" style="display: block;">{{errors.url}}</div>{{/errors.url}}
+    </div>
+    
+    <div class="form-group {{#errors.description}}has-error{{/errors.description}}">
+        <label for="event-description">Event Description *</label>
+        <textarea id="event-description" name="description" rows="5" required>{{form_data.description}}</textarea>
+        {{#errors.description}}<div class="error-message" style="display: block;">{{errors.description}}</div>{{/errors.description}}
+    </div>
+    
+    <div class="form-group">
+        <label for="event-location">Event Location <span class="optional">(optional)</span></label>
+        <input type="text" id="event-location" name="location" value="{{form_data.location}}" placeholder="Physical address of the event">
+    </div>
+    
+    <button type="submit" class="btn-primary">Submit Event</button>
+</form>

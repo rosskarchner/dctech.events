@@ -1,0 +1,61 @@
+services:
+  frontend:
+    depends_on:
+     - dynamodb-local
+    build:
+      context: frontend
+      target: builder
+    # flask requires SIGINT to stop gracefully
+    # (default stop signal from Compose is SIGTERM)
+    stop_signal: SIGINT
+    volumes:
+      - ./frontend:/app
+    ports:
+      - '5000:5000'
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://dynamodb-local:8000
+      - EVENTS_TABLE=LOCAL_EVENTS
+      - GROUPS_TABLE=LOCAL_GROUPS
+      - SITEURL=http://localhost:5000
+      - SITENAME=DC Tech Events
+      - TIMEZONE=US/Eastern
+  dynamodb-local:
+   command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+   image: "amazon/dynamodb-local:latest"
+   container_name: dynamodb-local
+   ports:
+     - "8000:8000"
+   volumes:
+     - "./docker/dynamodb:/home/dynamodblocal/data"
+   working_dir: /home/dynamodblocal
+  aggregator-lambda:
+    build:
+      context: aggregator-lambda
+    container_name: aggregator-lambda
+    volumes:
+      - ./aggregator-lambda:/var/task
+    ports:
+      - "8080:8080"
+    environment:
+      - EVENTS_TABLE=LOCAL_EVENTS
+      - GROUPS_TABLE=LOCAL_GROUPS
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_REGION=us-east-1
+      - TIMEZONE=US/Eastern
+      - SITEURL=http://localhost:5000
+  kong:
+    image: kong:latest
+    container_name: kong
+    ports:
+      - "9000:8000"
+    environment:
+      KONG_DATABASE: off
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+    volumes:
+      - ./kong:/usr/local/kong/declarative

@@ -1,0 +1,41 @@
+{{! Partial template for displaying events grouped by day }}
+<div class="events-by-day">
+    {{#days}}
+    {{#has_events}}
+    <div class="day-container" id="{{date}}">
+        <h3 class="day-heading">{{short_date}}</h3>
+  
+        {{#events}}
+            <div class="vevent h-entry">
+            <a href="{{url}}" target="_blank">{{title}}</a>
+            <div class="event-details">
+                {{time}}  
+                {{#location}}
+           / <span class="event-location">
+                {{location}}
+            </span>
+            {{/location}}
+                        {{#group}}
+                / {{group}}
+            {{/group}}
+            </div> 
+            
+
+
+        </div>
+        {{/events}}
+     
+    </div>
+    {{/has_events}}
+    {{^has_events}}
+    <a name="{{date}}"></a>
+    {{/has_events}}
+    {{/days}}
+    
+    {{^days}}
+    <div class="no-events-container">
+        <p>No events found for this period.</p>
+        <p>Check back soon or <a href="/groups">browse our tech groups</a>.</p>
+    </div>
+    {{/days}}
+</div>

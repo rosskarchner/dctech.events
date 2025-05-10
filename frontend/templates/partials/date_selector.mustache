@@ -1,0 +1,10 @@
+<section class="date-selector">
+    <h3>Jump to a specific date</h3>
+    <form hx-post="https://api.dctech.events/jump-to" hx-swap="none">
+        <div class="date-input-container">
+            <label for="date-input">Select a date:</label>
+            <input type="date" id="date-input" name="date" required>
+            <button type="submit" class="btn-primary">Go</button>
+        </div>
+    </form>
+</section>

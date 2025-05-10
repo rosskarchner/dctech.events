@@ -1,0 +1,16 @@
+<div class="week-container">
+    <header class="week-header">
+        <h1>Events for Week of {{week_start_formatted}}</h1>
+        <div class="week-navigation">
+            <a href="/week-of/{{prev_week}}/" class="nav-button">&laquo; Previous Week</a>
+            <a href="/" class="nav-button">Current Week</a>
+            <a href="/week-of/{{next_week}}/" class="nav-button">Next Week &raquo;</a>
+        </div>
+    </header>
+
+    <section class="events-section">
+        {{> events_by_day}}
+    </section>
+    
+    {{> date_selector}}
+</div>

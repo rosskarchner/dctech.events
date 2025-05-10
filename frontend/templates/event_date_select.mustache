@@ -1,0 +1,40 @@
+<div class="date-selection-container" id="main-content">
+    <h2>Select Event Date</h2>
+    <p>Choose the date of your event to continue</p>
+    
+    <form id="date-select-form" hx-get="https://api.dctech.events/api/events/suggest-form" hx-target="#main-content" hx-swap="outerHTML" hx-push-url="false">
+        <div class="form-group">
+            <label for="event-date">Event Date *</label>
+            <input type="date" id="event-date" name="selected_date" required min="{{min_date}}" value="{{default_date}}">
+            <div class="error-message" id="date-error" style="display: none;">Please select a valid date</div>
+        </div>
+        
+        <button type="submit" class="btn-primary">Continue</button>
+    </form>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('date-select-form');
+            const dateInput = document.getElementById('event-date');
+            const dateError = document.getElementById('date-error');
+            
+            // Remove the default form submission
+            form.addEventListener('submit', function(e) {
+                // Always prevent default form submission
+                e.preventDefault();
+                
+                if (!dateInput.value) {
+                    dateError.style.display = 'block';
+                } else {
+                    dateError.style.display = 'none';
+                    
+                    // Manually trigger HTMX request
+                    const event = new CustomEvent('htmx:trigger', {
+                        detail: { target: form }
+                    });
+                    form.dispatchEvent(event);
+                }
+            });
+        });
+    </script>
+</div>
