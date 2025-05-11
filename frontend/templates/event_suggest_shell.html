@@ -1,0 +1,13 @@
+        <h1>Suggest an event</h1>
+        
+        <!-- This div will be replaced with the form content from the API -->
+        <div id="main-content" 
+             hx-get="https://api.dctech.events/api/events/suggest-form" 
+             hx-trigger="load"
+             hx-swap="outerHTML"
+             hx-push-url="false">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading form...</p>
+            </div>
+        </div>

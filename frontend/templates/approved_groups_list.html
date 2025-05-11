@@ -1,0 +1,21 @@
+<h1>Tech Groups in DC</h1>
+<div class="groups-container">
+    {% if groups %}
+        {% for group in groups %}
+            <div class="group-card">
+                <h3>{{ group.name }}</h3>
+                <div class="group-details">
+                    <p><strong>Website:</strong> <a href="{{ group.website }}" target="_blank">{{ group.website }}</a></p>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="no-groups">
+            <p>No approved tech groups found.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="suggest-group">
+    <p>Don't see your tech group? <a href="/groups/suggest/">Suggest a group</a> to be added to our list.</p>
+</div>

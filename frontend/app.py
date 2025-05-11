@@ -1,11 +1,11 @@
-from template_utils import render_template
+from template_utils import prepare_group_for_template, prepare_event_for_template
 from queries import get_events, get_approved_groups
 
-from flask import Flask
+from flask import Flask, render_template
 from flask_htmx import HTMX
 
 from datetime import date
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 htmx = HTMX(app)
 
 base_context = {
@@ -16,11 +16,15 @@ def hx_aware_render(template_name=None, context=None):
     if context is None:
         context = {}
     context.update(base_context)
-    partial_rendered = render_template(template_name=template_name, context=context)
+    
+    # Convert mustache template name to Jinja2 template name
+    jinja_template_name = template_name.replace('.mustache', '.html')
+    
+    partial_rendered = render_template(jinja_template_name, **context)
     if htmx:
         return partial_rendered
     else:
-        return render_template(template_name='shell.mustache', context={'content': partial_rendered})
+        return render_template('shell.html', content=partial_rendered)
 
 @app.route("/")
 def homepage():
@@ -70,7 +74,11 @@ def groups_suggest_shell():
 
 @app.route("/auth-callback/")
 def auth_callback():
-    return render_template(template_name='auth_callback.mustache')
+    return render_template('auth_callback.html')
+    
+@app.route("/test/")
+def test_jinja():
+    return render_template('test/hello.html', title="Test Page", message="Jinja2 is working!")
 
 
 if __name__ == "__main__":

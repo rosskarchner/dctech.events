@@ -1,3 +1,5 @@
-icalendar==5.0.7
-requests==2.32.2
+boto3
+icalendar
+requests
 pytz
+chardet

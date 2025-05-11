@@ -1,5 +1,6 @@
-Flask
+flask
 flask-htmx
 boto3
-chevron
+python-dateutil==2.8.2
 pytz
+python-dotenv

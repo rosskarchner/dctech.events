@@ -10,6 +10,10 @@ from datetime import timedelta
 from urllib.parse import urlparse
 import csv
 import uuid
+import html
+import unicodedata
+import re
+import chardet
 
 from boto3.dynamodb.conditions import Key
 
@@ -75,7 +79,8 @@ def fetch_ical(url, group_id):
 
 def sanitize_text(text):
     """
-    Ensure text is properly encoded as UTF-8 and handle any encoding issues.
+    Ensure text is properly encoded as UTF-8 using chardet for encoding detection.
+    Handles HTML entities and special characters.
     
     Args:
         text: The text to sanitize
@@ -91,11 +96,46 @@ def sanitize_text(text):
         text = str(text)
     
     try:
-        # Try to encode and then decode to ensure proper UTF-8
-        return text.encode('utf-8', errors='replace').decode('utf-8')
-    except Exception:
-        # If any error occurs, return a safe string
-        return "[Text encoding error]"
+        # First, detect the encoding if the text is not ASCII
+        if any(ord(c) > 127 for c in text):
+            # Convert to bytes for chardet
+            byte_str = text.encode('utf-8', errors='replace')
+            detected = chardet.detect(byte_str)
+            encoding = detected['encoding'] or 'utf-8'
+            
+            # Decode with detected encoding and re-encode as UTF-8
+            if encoding.lower() != 'utf-8':
+                text = byte_str.decode(encoding, errors='replace')
+        
+        # Unescape HTML entities
+        text = html.unescape(text)
+        
+        # Handle any remaining HTML character references
+        text = re.sub(r'&(#x[0-9a-f]+|#[0-9]+);', 
+                     lambda m: chr(int(m.group(1)[2:], 16)) if m.group(1).startswith('#x') 
+                              else chr(int(m.group(1)[1:])), 
+                     text)
+        
+        # Handle specific problematic characters
+        replacements = {
+            'â': "'",  # â often appears instead of a smart quote
+            '\u2018': "'",  # Left single quote
+            '\u2019': "'",  # Right single quote
+            '\u201c': '"',  # Left double quote
+            '\u201d': '"',  # Right double quote
+        }
+        
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        
+        # Simple normalization to handle quotes and special characters
+        text = unicodedata.normalize('NFC', text)
+        
+        return text
+    except Exception as e:
+        print(f"Error sanitizing text: {str(e)}")
+        # If any error occurs, return the original text
+        return text
 
 def event_to_item(event, group):
     start = event.get('dtstart').dt

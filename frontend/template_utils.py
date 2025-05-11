@@ -4,13 +4,14 @@ import html
 
 def sanitize_text(text):
     """
-    Ensure text is properly encoded as UTF-8 and handle any encoding issues.
+    Simple function to handle None values and convert to string.
+    No sanitization is performed as requested.
     
     Args:
-        text: The text to sanitize
+        text: The text to handle
         
     Returns:
-        Sanitized text as UTF-8 string
+        String representation of the input
     """
     if text is None:
         return ""
@@ -19,12 +20,7 @@ def sanitize_text(text):
     if not isinstance(text, str):
         text = str(text)
     
-    try:
-        # Try to encode and then decode to ensure proper UTF-8
-        return text.encode('utf-8', errors='replace').decode('utf-8')
-    except Exception:
-        # If any error occurs, return a safe string
-        return "[Text encoding error]"
+    return text
 
 def prepare_group_for_template(group):
     """

@@ -1,0 +1,50 @@
+<div class="group-card" id="group-{{ id }}">
+    <h3>{{ name }}</h3>
+    <div class="group-details">
+        <p><strong>Website:</strong> <a href="{{ website }}" target="_blank">{{ website }}</a></p>
+        <p><strong>iCal URL:</strong> <a href="{{ ical }}" target="_blank">{{ ical }}</a></p>
+        {% if has_fallback_url %}
+        <p><strong>Event Fallback URL:</strong> <a href="{{ fallback_url }}" target="_blank">{{ fallback_url }}</a></p>
+        {% endif %}
+        <p><strong>Status:</strong> {{ approval_status }}</p>
+    </div>
+    <div class="group-actions">
+        <button class="btn btn-edit" 
+                hx-get="https://api.dctech.events/api/admin/groups/{{ id }}/edit" 
+                hx-target="#group-{{ id }}"
+                hx-swap="innerHTML">
+            Edit
+        </button>
+        
+        {% if is_pending %}
+        <button class="btn btn-approve" 
+                hx-post="https://api.dctech.events/api/admin/groups/{{ id }}/approve" 
+                hx-target="#admin-content"
+                hx-swap="outerHTML"
+                hx-trigger="click"
+                hx-confirm="Are you sure you want to approve this group?">
+            Approve
+        </button>
+        {% endif %}
+        
+        {% if is_approved %}
+        <button class="btn btn-pause" 
+                hx-post="https://api.dctech.events/api/admin/groups/{{ id }}/pause" 
+                hx-target="#admin-content"
+                hx-swap="outerHTML"
+                hx-trigger="click"
+                hx-confirm="Are you sure you want to pause this group?">
+            Pause
+        </button>
+        {% endif %}
+        
+        <button class="btn btn-delete" 
+                hx-delete="https://api.dctech.events/api/admin/groups/{{ id }}" 
+                hx-target="#admin-content"
+                hx-swap="outerHTML"
+                hx-trigger="click"
+                hx-confirm="Are you sure you want to delete this group? This action cannot be undone.">
+            Delete
+        </button>
+    </div>
+</div>
