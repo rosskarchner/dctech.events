@@ -71,6 +71,33 @@ Resources:
               }
             ]
           }
+          
+  # ECR Repository for Authenticated User Views
+  AuthenticatedViewsRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: cal-containers-auth-views
+      ImageTagMutability: MUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep only the last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
 
   # IAM Role for GitHub Actions
   GitHubActionsRole:
@@ -129,6 +156,12 @@ Outputs:
     Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AggregatorRepository}
     Export:
       Name: !Sub "${AWS::StackName}-AggregatorRepositoryURI"
+      
+  AuthenticatedViewsRepositoryURI:
+    Description: URI for the Authenticated User Views ECR Repository
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AuthenticatedViewsRepository}
+    Export:
+      Name: !Sub "${AWS::StackName}-AuthenticatedViewsRepositoryURI"
   
   GitHubActionsRoleARN:
     Description: ARN for the GitHub Actions IAM Role

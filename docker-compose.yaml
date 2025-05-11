@@ -49,6 +49,26 @@ services:
       - AWS_REGION=us-east-1
       - TIMEZONE=US/Eastern
       - SITEURL=http://localhost:5000
+  authenticated-user-views:
+    build:
+      context: authenticated-user-views
+    container_name: authenticated-user-views
+    volumes:
+      - ./authenticated-user-views:/var/task
+    ports:
+      - "8081:8080"
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://dynamodb-local:8000
+      - EVENTS_TABLE=LOCAL_EVENTS
+      - GROUPS_TABLE=LOCAL_GROUPS
+      - FLASK_APP=app.py
+      - FLASK_DEBUG=1
+    depends_on:
+      - dynamodb-local
   kong:
     image: kong:latest
     container_name: kong
