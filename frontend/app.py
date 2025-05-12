@@ -65,7 +65,9 @@ def events_admin_shell():
 
 @app.route("/events/suggest/")
 def events_suggest_shell():
-    return hx_aware_render(template_name='event_suggest_shell.mustache') 
+    import os
+    api_url = os.environ.get('AUTH_API_URL', 'http://localhost:5001')
+    return hx_aware_render(template_name='event_suggest_shell.mustache', context={'api_url': api_url}) 
 
 @app.route("/group/suggest/")
 def groups_suggest_shell():

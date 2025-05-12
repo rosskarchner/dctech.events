@@ -1,14 +1,25 @@
-FROM public.ecr.aws/lambda/python:3.12
+FROM python:3.12-slim
+
+WORKDIR /app
 
 # Copy requirements.txt
-COPY requirements.txt ${LAMBDA_TASK_ROOT}
+COPY requirements.txt .
 
 # Install the specified packages
 RUN pip install -r requirements.txt
 
-# Copy function code
-COPY app.py ${LAMBDA_TASK_ROOT}
-COPY lambda_function.py ${LAMBDA_TASK_ROOT}
+# Copy application code
+COPY app.py .
+COPY lambda_function.py .
+COPY templates/ ./templates/
+COPY static/ ./static/
 
-# Set the CMD to your handler
-CMD [ "lambda_function.handler" ]
+# Set environment variable for Flask
+ENV FLASK_APP=app.py
+ENV FLASK_DEBUG=1
+
+# Expose port
+EXPOSE 5001
+
+# Run Flask app
+CMD ["python", "app.py"]

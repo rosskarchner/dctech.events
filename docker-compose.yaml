@@ -2,6 +2,7 @@ services:
   frontend:
     depends_on:
      - dynamodb-local
+     - authenticated-user-views
     build:
       context: frontend
       target: builder
@@ -23,6 +24,7 @@ services:
       - SITEURL=http://localhost:5000
       - SITENAME=DC Tech Events
       - TIMEZONE=US/Eastern
+      - AUTH_API_URL=http://localhost:5001
   dynamodb-local:
    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
    image: "amazon/dynamodb-local:latest"
@@ -54,9 +56,9 @@ services:
       context: authenticated-user-views
     container_name: authenticated-user-views
     volumes:
-      - ./authenticated-user-views:/var/task
+      - ./authenticated-user-views:/app
     ports:
-      - "8081:8080"
+      - "5001:5001"
     environment:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=local
@@ -67,15 +69,7 @@ services:
       - GROUPS_TABLE=LOCAL_GROUPS
       - FLASK_APP=app.py
       - FLASK_DEBUG=1
+      - SECRET_KEY=dev-key-for-testing
+      - API_BASE_URL=http://localhost:5001
     depends_on:
       - dynamodb-local
-  kong:
-    image: kong:latest
-    container_name: kong
-    ports:
-      - "9000:8000"
-    environment:
-      KONG_DATABASE: off
-      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
-    volumes:
-      - ./kong:/usr/local/kong/declarative
