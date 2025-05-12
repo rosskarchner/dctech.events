@@ -1,0 +1,46 @@
+<link rel="stylesheet" href="{{ api_base_url }}/static/css/styles.css">
+
+<div class="review-container">
+    <h1>Event Review</h1>
+    
+    {% if message %}
+    <div class="message {{ message_type }}">
+        {{ message }}
+    </div>
+    {% endif %}
+    
+    {% if events %}
+        <p>You have {{ events|length }} pending event{% if events|length != 1 %}s{% endif %} to review.</p>
+        
+        <div class="events-list">
+            {% for event in events %}
+            <div class="event-card" id="event-{{ event.id }}">
+                <h3>{{ event.title }}</h3>
+                <div class="event-details">
+                    <p><strong>Date:</strong> {{ event.formatted_date }}</p>
+                    <p><strong>Time:</strong> {{ event.formatted_time }}</p>
+                    {% if event.location %}
+                    <p><strong>Location:</strong> {{ event.location }}</p>
+                    {% endif %}
+                    <p><strong>URL:</strong> <a href="{{ event.url }}" target="_blank">{{ event.url }}</a></p>
+                    <p><strong>Submitted:</strong> {{ event.submission_date }}</p>
+                </div>
+                <div class="event-actions">
+                    <form hx-post="{{ api_base_url }}/api/events/approve/{{ event.id }}" hx-swap="outerHTML" hx-target=".review-container">
+                        <input type="hidden" name="week" value="{{ event.week }}">
+                        <input type="hidden" name="sort" value="{{ event.sort }}">
+                        <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form hx-post="{{ api_base_url }}/api/events/delete/{{ event.id }}" hx-swap="outerHTML" hx-target=".review-container">
+                        <input type="hidden" name="week" value="{{ event.week }}">
+                        <input type="hidden" name="sort" value="{{ event.sort }}">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No pending events to review.</p>
+    {% endif %}
+</div>

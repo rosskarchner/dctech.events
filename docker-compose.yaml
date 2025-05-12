@@ -3,6 +3,7 @@ services:
     depends_on:
      - dynamodb-local
      - authenticated-user-views
+     - moderator-views
     build:
       context: frontend
       target: builder
@@ -25,6 +26,7 @@ services:
       - SITENAME=DC Tech Events
       - TIMEZONE=US/Eastern
       - AUTH_API_URL=http://localhost:5001
+      - MODERATOR_API_URL=http://localhost:5002
   dynamodb-local:
    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
    image: "amazon/dynamodb-local:latest"
@@ -71,5 +73,27 @@ services:
       - FLASK_DEBUG=1
       - SECRET_KEY=dev-key-for-testing
       - API_BASE_URL=http://localhost:5001
+    depends_on:
+      - dynamodb-local
+  moderator-views:
+    build:
+      context: moderator-views
+    container_name: moderator-views
+    volumes:
+      - ./moderator-views:/app
+    ports:
+      - "5002:5002"
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://dynamodb-local:8000
+      - EVENTS_TABLE=LOCAL_EVENTS
+      - GROUPS_TABLE=LOCAL_GROUPS
+      - FLASK_APP=app.py
+      - FLASK_DEBUG=1
+      - API_BASE_URL=http://localhost:5002
+      - SECRET_KEY=dev-key-for-testing
     depends_on:
       - dynamodb-local

@@ -69,6 +69,13 @@ def events_suggest_shell():
     api_url = os.environ.get('AUTH_API_URL', 'http://localhost:5001')
     return hx_aware_render(template_name='event_suggest_shell.mustache', context={'api_url': api_url}) 
 
+@app.route("/events/review/")
+def events_review_shell():
+    """Serve the event review shell page with dynamic API URL"""
+    import os
+    api_url = os.environ.get('MODERATOR_API_URL', 'http://localhost:5002')
+    return hx_aware_render(template_name='events_review_shell.html', context={'api_url': api_url})
+
 @app.route("/group/suggest/")
 def groups_suggest_shell():
     return hx_aware_render(template_name='group_suggest_shell.mustache') 
