@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="htmx-config" content='{"selfRequestsOnly":false}'>
+    <title></title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <!-- HTMX for dynamic content loading -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/common.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1 class="logo"><a href="/">DC Tech Events</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/groups">Groups</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            <div class="home-container">
+
+    <section class="date-selector">
+    <h3>Jump to a specific date</h3>
+    <form hx-post="https://api.dctech.events/jump-to" hx-swap="none">
+        <div class="date-input-container">
+            <label for="date-input">Select a date:</label>
+            <input type="date" id="date-input" name="date" required>
+            <button type="submit" class="btn-primary">Go</button>
+        </div>
+    </form>
+</section>
+
+    <section class="events-section">
+        <h2>Upcoming Events</h2>
+        
+<div class="events-by-day">
+    
+        
+            
+                <div class="day-container" id="2025-05-12">
+                    <h3 class="day-heading">Mon 5/12</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/hac-dc/events/307429290/" target="_blank">Open Hac</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                
+                                    / HacDC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-13">
+                    <h3 class="day-heading">Tue 5/13</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/genaidc/events/307582320/" target="_blank">Vibe Coding, Agents, AI... Oh My!</a>
+                            <div class="event-details">
+                                6:00 pm
+                                
+                                
+                                    / Generative AI DC
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/igda-dc/events/307050749/" target="_blank">IGDA DC - Indie Dev Meetup Night (MLK Library 401-E)</a>
+                            <div class="event-details">
+                                6:30 pm
+                                
+                                
+                                    / IGDA DC
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/hac-dc/events/307078174/" target="_blank">Monthly Members Meeting</a>
+                            <div class="event-details">
+                                7:30 pm
+                                
+                                
+                                    / HacDC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-14">
+                    <h3 class="day-heading">Wed 5/14</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/code-with-me/events/307187099/" target="_blank">Agentic Showdown: Lightning Talks + &amp;#x27;Is It Agentic?&amp;#x27;</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / Code With Me
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/dc-ai-llms/events/307377529/" target="_blank">AI Meetup (May): GenAI LLMs and Agent</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / DC AI Developers Group
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/civic-tech-dc/events/307703707/" target="_blank">Project Night at Taoti</a>
+                            <div class="event-details">
+                                6:00 pm
+                                
+                                
+                                    / Civic Tech DC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-15">
+                    <h3 class="day-heading">Thu 5/15</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/code-with-me/events/307189611/" target="_blank">Code With Me 8 Year Anniversary Party</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / Code With Me
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/dc-research-software-engineers/events/307019826/" target="_blank">Maintaining open-source software over a decade</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / DC Research Software Engineers
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/dc-bit-devs/events/307287022/" target="_blank">DC BitDevs #15</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / DC Bit Devs
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-05-16"></a>
+            
+        
+            
+                <a name="2025-05-17"></a>
+            
+        
+            
+                <a name="2025-05-18"></a>
+            
+        
+            
+                <div class="day-container" id="2025-05-19">
+                    <h3 class="day-heading">Mon 5/19</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.nvtc.org/event/data-center-state-of-the-union-with-buddy-rizer/" target="_blank">Fake Event</a>
+                            <div class="event-details">
+                                2:00 pm
+                                
+                                    / <span class="event-location">
+                                        Anywhere, USA
+                                    </span>
+                                
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/hac-dc/events/307553885/" target="_blank">Open Hac</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                
+                                    / HacDC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-05-20"></a>
+            
+        
+            
+                <div class="day-container" id="2025-05-21">
+                    <h3 class="day-heading">Wed 5/21</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/data-visualization-dc/events/307410663/" target="_blank">Data Viz LIGHTNING TALKS </a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / Data Visualization DC
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/nerd-dinner-tysons/events/307591779/" target="_blank">Nerd Talk</a>
+                            <div class="event-details">
+                                6:30 pm
+                                
+                                
+                                    / Nerd Dinner Tysons
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://lu.ma/dctechparties" target="_blank">DC Tech Party #6: Thrive and Build (Sponsored by Gamma)</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                    / <span class="event-location">
+                                        https://lu.ma/e/evt-odhE2FOV5byIl9G
+                                    </span>
+                                
+                                
+                                    / DC Tech Parties
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-22">
+                    <h3 class="day-heading">Thu 5/22</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/bitcoin-district/events/307562536/" target="_blank">Bitcoin Pizza Day with the Bitcoin Policy Institute</a>
+                            <div class="event-details">
+                                5:00 pm
+                                
+                                
+                                    / Bitcoin District
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/power-bi-dc/events/305236151/" target="_blank">From the Audience to a Speaker on the Stage</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / Power BI DC
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/ai-innovators-network-tysons-meetup-dc-nova-md/events/307162105/" target="_blank">Unlocking LinkedIn&amp;#x27;s Hidden Potential w/ Linda Kempin .: Mosaic, VA :.</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                
+                                    / AI Innovators Network
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-05-23"></a>
+            
+        
+            
+                <div class="day-container" id="2025-05-24">
+                    <h3 class="day-heading">Sat 5/24</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/bitcoin-district/events/307412059/" target="_blank">Coffee &amp;amp; Bitcoin in Old Town Alexandria</a>
+                            <div class="event-details">
+                                10:30 am
+                                
+                                
+                                    / Bitcoin District
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/igda-dc/events/307051024/" target="_blank">Game Development Working Session (DC - MLK Library, Room: 401-D)</a>
+                            <div class="event-details">
+                                2:00 pm
+                                
+                                
+                                    / IGDA DC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-25">
+                    <h3 class="day-heading">Sun 5/25</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/igda-dc/events/307340927/" target="_blank">Cherry Blossom Arcade - Indie Showcase</a>
+                            <div class="event-details">
+                                1:30 pm
+                                
+                                
+                                    / IGDA DC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-26">
+                    <h3 class="day-heading">Mon 5/26</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/hac-dc/events/307686269/" target="_blank">Open Hac</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                
+                                    / HacDC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-27">
+                    <h3 class="day-heading">Tue 5/27</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/dc-ai-llms/events/307166051/" target="_blank">AI Ignite Pitch Battle - New York</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / DC AI Developers Group
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://lu.ma/pydistrict" target="_blank">Pydantic, Parsing &amp;amp; Pipelines</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                    / <span class="event-location">
+                                        https://lu.ma/e/evt-PrnKuOUHph8Fgjg
+                                    </span>
+                                
+                                
+                                    / DC Python Dojo
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/data-engineers/events/307586074/" target="_blank">Pydantic, Parsing, and Pipelines</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                
+                                    / Data Engineers DC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-28">
+                    <h3 class="day-heading">Wed 5/28</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/bitcoin-district/events/307403864/" target="_blank">Bitcoin Book Club: Bitcoin Age by Nik Bhatia</a>
+                            <div class="event-details">
+                                6:30 pm
+                                
+                                
+                                    / Bitcoin District
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/civic-tech-dc/events/307190018/" target="_blank">Project Night at Virtru</a>
+                            <div class="event-details">
+                                6:30 pm
+                                
+                                
+                                    / Civic Tech DC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-05-29">
+                    <h3 class="day-heading">Thu 5/29</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/dctechmixer/events/307511402/" target="_blank">DC Startup and tech Mixer 2025</a>
+                            <div class="event-details">
+                                6:00 pm
+                                
+                                
+                                    / DC Startup and Tech Mixer
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-05-30"></a>
+            
+        
+            
+                <a name="2025-05-31"></a>
+            
+        
+            
+                <div class="day-container" id="2025-06-01">
+                    <h3 class="day-heading">Sun 6/1</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/novagamedevs/events/307756425/" target="_blank">Monthly Game Dev Meetup! </a>
+                            <div class="event-details">
+                                3:00 pm
+                                
+                                
+                                    / NOVA Game Developers
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <div class="day-container" id="2025-06-02">
+                    <h3 class="day-heading">Mon 6/2</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/hac-dc/events/kfcjqtyhcjbdb/" target="_blank">Open Hac</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                
+                                    / HacDC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-06-03"></a>
+            
+        
+            
+                <div class="day-container" id="2025-06-04">
+                    <h3 class="day-heading">Wed 6/4</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://lu.ma/DCTechMeetup" target="_blank">DC Tech Meetup #91: Health Edition</a>
+                            <div class="event-details">
+                                5:30 pm
+                                
+                                    / <span class="event-location">
+                                        Martin Luther King Jr. Memorial Library, 901 G St NW, Washington, DC 20001, USA
+                                    </span>
+                                
+                                
+                                    / DC Tech Meetup
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/bitcoin-district/events/307403981/" target="_blank">The Great Monetary Shift: A Conversation with Nik Bhatia</a>
+                            <div class="event-details">
+                                6:00 pm
+                                
+                                
+                                    / Bitcoin District
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/ai-innovators-network-tysons-meetup-dc-nova-md/events/307737501/" target="_blank">PIZZA + HANDS-ON:  Your Local LLM Guide: Smart AI, Safe Data .: Mosaic, VA :.</a>
+                            <div class="event-details">
+                                7:00 pm
+                                
+                                
+                                    / AI Innovators Network
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/hac-dc/events/306974263/" target="_blank">Amateur Radio - W3HAC Club Meeting</a>
+                            <div class="event-details">
+                                7:30 pm
+                                
+                                
+                                    / HacDC
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-06-05"></a>
+            
+        
+            
+                <a name="2025-06-06"></a>
+            
+        
+            
+                <div class="day-container" id="2025-06-07">
+                    <h3 class="day-heading">Sat 6/7</h3>
+                    
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/novagamedevs/events/307205776/" target="_blank">Game Dev Working Session (Tysons-Pimmit VA Library Conference Room)</a>
+                            <div class="event-details">
+                                3:00 pm
+                                
+                                
+                                    / NOVA Game Developers
+                                
+                            </div>
+                        </div>
+                    
+                        <div class="vevent h-entry">
+                            <a href="https://www.meetup.com/dulles-code-coffee/events/307492217/" target="_blank">Dulles Code &amp;amp; Coffee [35] @ BTI360</a>
+                            <div class="event-details">
+                                9:00 am
+                                
+                                
+                                    / Dulles Code &amp; Coffee
+                                
+                            </div>
+                        </div>
+                    
+                </div>
+            
+        
+            
+                <a name="2025-06-08"></a>
+            
+        
+    
+</div>
+    </section>
+    
+    <section class="cta-section">
+        <h2>Have an event to share?</h2>
+        <p>You can suggest an event for our calendar.</p>
+        <div class="cta-buttons">
+            <a href="/events/suggest" class="btn-primary">Suggest an Event</a>
+        </div>
+    </section>
+</div>
+        </main>
+    </div>
+
+    <footer>
+        Made for you by <a href="https://ross.karchner.com/">Ross Karchner</a>.
+    </footer>
+</body>
+</html>

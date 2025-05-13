@@ -4,6 +4,8 @@ services:
      - dynamodb-local
      - authenticated-user-views
      - moderator-views
+     - fake-s3
+     - cognito-local
     build:
       context: frontend
       target: builder
@@ -20,6 +22,8 @@ services:
       - AWS_SECRET_ACCESS_KEY=local
       - AWS_REGION=us-east-1
       - AWS_ENDPOINT_URL=http://dynamodb-local:8000
+      - AWS_S3_ENDPOINT_URL=http://fake-s3:4566
+      - COGNITO_ENDPOINT_URL=http://cognito-local:9229
       - EVENTS_TABLE=LOCAL_EVENTS
       - GROUPS_TABLE=LOCAL_GROUPS
       - SITEURL=http://localhost:5000
@@ -27,6 +31,8 @@ services:
       - TIMEZONE=US/Eastern
       - AUTH_API_URL=http://localhost:5001
       - MODERATOR_API_URL=http://localhost:5002
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-local-frontend-bucket}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
   dynamodb-local:
    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
    image: "amazon/dynamodb-local:latest"
@@ -36,6 +42,27 @@ services:
    volumes:
      - "./docker/dynamodb:/home/dynamodblocal/data"
    working_dir: /home/dynamodblocal
+  fake-s3:
+    image: "localstack/localstack:latest"
+    container_name: fake-s3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - PERSISTENCE=1
+    volumes:
+      - "./docker/localstack:/var/lib/localstack"
+
+  cognito-local:
+    image: "jagregory/cognito-local:latest"
+    container_name: cognito-local
+    ports:
+      - "9229:9229"
+    environment:
+      - COGNITO_LOCAL_DB_PATH=/tmp/cognito-local/db
+    volumes:
+      - "./docker/cognito:/tmp/cognito-local/db"
   aggregator-lambda:
     build:
       context: aggregator-lambda
@@ -51,8 +78,15 @@ services:
       - AWS_ACCESS_KEY_ID=local
       - AWS_SECRET_ACCESS_KEY=local
       - AWS_REGION=us-east-1
+      - AWS_S3_ENDPOINT_URL=http://fake-s3:4566
+      - COGNITO_ENDPOINT_URL=http://cognito-local:9229
       - TIMEZONE=US/Eastern
       - SITEURL=http://localhost:5000
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-local-frontend-bucket}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+    depends_on:
+      - fake-s3
+      - cognito-local
   authenticated-user-views:
     build:
       context: authenticated-user-views
@@ -67,14 +101,20 @@ services:
       - AWS_SECRET_ACCESS_KEY=local
       - AWS_REGION=us-east-1
       - AWS_ENDPOINT_URL=http://dynamodb-local:8000
+      - AWS_S3_ENDPOINT_URL=http://fake-s3:4566
+      - COGNITO_ENDPOINT_URL=http://cognito-local:9229
       - EVENTS_TABLE=LOCAL_EVENTS
       - GROUPS_TABLE=LOCAL_GROUPS
       - FLASK_APP=app.py
       - FLASK_DEBUG=1
       - SECRET_KEY=dev-key-for-testing
       - API_BASE_URL=http://localhost:5001
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-local-frontend-bucket}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
     depends_on:
       - dynamodb-local
+      - fake-s3
+      - cognito-local
   moderator-views:
     build:
       context: moderator-views
@@ -89,11 +129,17 @@ services:
       - AWS_SECRET_ACCESS_KEY=local
       - AWS_REGION=us-east-1
       - AWS_ENDPOINT_URL=http://dynamodb-local:8000
+      - AWS_S3_ENDPOINT_URL=http://fake-s3:4566
+      - COGNITO_ENDPOINT_URL=http://cognito-local:9229
       - EVENTS_TABLE=LOCAL_EVENTS
       - GROUPS_TABLE=LOCAL_GROUPS
       - FLASK_APP=app.py
       - FLASK_DEBUG=1
       - API_BASE_URL=http://localhost:5002
       - SECRET_KEY=dev-key-for-testing
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-local-frontend-bucket}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
     depends_on:
       - dynamodb-local
+      - fake-s3
+      - cognito-local

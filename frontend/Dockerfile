@@ -1,25 +1,36 @@
-FROM --platform=$BUILDPLATFORM python:3.13-alpine AS builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
-COPY requirements.txt /app
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install -r requirements.txt
 
-COPY . /app
+# Install AWS CLI and other dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip awscliv2.zip \
+    && ./aws/install \
+    && rm -rf awscliv2.zip aws \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["python3"]
-CMD ["app.py"]
+# Copy requirements.txt
+COPY requirements.txt .
 
-FROM builder AS dev-envs
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN <<EOF
-apk update
-apk add git
-EOF
+# Copy application code
+COPY . .
 
-RUN <<EOF
-addgroup -S docker
-adduser -S --shell /bin/bash --ingroup docker vscode
-EOF
-# install Docker tools (cli, buildx, compose)
-COPY --from=gloursdocker/docker / /
+# Make scripts executable
+RUN chmod +x freeze.py lambda_function.sh
+
+# Set environment variables
+ENV FLASK_APP=app.py
+ENV FLASK_DEBUG=1
+
+# Expose port
+EXPOSE 5000
+
+# Default command
+CMD ["python", "app.py"]

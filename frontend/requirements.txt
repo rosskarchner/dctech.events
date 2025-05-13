@@ -1,6 +1,5 @@
-flask
-flask-htmx
-boto3
-python-dateutil==2.8.2
+flask>=2.3.0
+Frozen-Flask
+flask-htmx>=0.2.0
+boto3>=1.28.0
 pytz
-python-dotenv
