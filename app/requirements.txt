@@ -3,3 +3,5 @@ Frozen-Flask
 flask-htmx>=0.2.0
 boto3>=1.28.0
 pytz
+flask-wtf>=1.1.0
+flask-cors>=4.0.0

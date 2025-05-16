@@ -19,8 +19,15 @@ document.addEventListener('htmx:configRequest', function(event) {
         }
     }
     
-    // Check if the request is going to api.dctech.events
-    if (event.detail.path.includes('api.dctech.events')) {
+    // Check if the request is going to api.dctech.events or is a protected endpoint
+    if (event.detail.path.includes('api.dctech.events') || 
+        event.detail.path.includes('/api/events/review') || 
+        event.detail.path.includes('/api/events/approve') || 
+        event.detail.path.includes('/api/events/delete') ||
+        event.detail.path.includes('/api/groups/review') ||
+        event.detail.path.includes('/api/groups/approve') ||
+        event.detail.path.includes('/api/groups/delete')) {
+        
         // Get the access token from localStorage
         const accessToken = localStorage.getItem('access_token');
         

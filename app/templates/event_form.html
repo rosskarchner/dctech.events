@@ -1,5 +1,5 @@
-<link rel="stylesheet" href="{{ api_base_url }}/static/css/styles.css">
-<form id="event-form" hx-post="{{ api_base_url }}/api/events/submit" hx-swap="outerHTML" hx-indicator="#loading-indicator">
+
+<form id="event-form" hx-post="/api/events/submit" hx-swap="outerHTML" hx-indicator="#loading-indicator">
     <!-- Loading indicator -->
     <div id="loading-indicator" class="htmx-indicator">
         Submitting...
@@ -94,18 +94,3 @@
         <button type="submit" class="btn btn-primary">Submit Event</button>
     </div>
 </form>
-
-<!-- HTMX debugging script -->
-<script>
-document.addEventListener('htmx:beforeRequest', function(event) {
-    console.log('Request being sent:', event.detail);
-});
-
-document.addEventListener('htmx:afterRequest', function(event) {
-    console.log('Response received:', event.detail);
-});
-
-document.addEventListener('htmx:responseError', function(event) {
-    console.log('Error in response:', event.detail);
-});
-</script>
