@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Events for Week of {{ week_start_formatted }} - DC Tech Events{% endblock %}
+
+{% block content %}
 <div class="week-container">
     <header class="week-header">
         <h1>Events for Week of {{ week_start_formatted }}</h1>
@@ -14,3 +19,4 @@
     
     {% include "partials/date_selector.html" %}
 </div>
+{% endblock %}

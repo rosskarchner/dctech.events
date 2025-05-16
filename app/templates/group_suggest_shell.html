@@ -1,13 +1,19 @@
-        <h1>Suggest a Tech Group</h1>
-        
-        <!-- This div will be replaced with the form content from the API -->
-        <div id="form-container" 
-             hx-get="https://api.dctech.events/api/groups/suggest-form" 
-             hx-trigger="load"
-             hx-target="#form-container"
-             hx-swap="outerHTML">
-            <div class="loading">
-                <div class="loading-spinner"></div>
-                <p>Loading form...</p>
-            </div>
-        </div>
+{% extends "base.html" %}
+
+{% block title %}Suggest a Tech Group - DC Tech Events{% endblock %}
+
+{% block content %}
+<h1>Suggest a Tech Group</h1>
+
+<!-- This div will be replaced with the form content from the API -->
+<div id="form-container" 
+     hx-get="https://api.dctech.events/api/groups/suggest-form" 
+     hx-trigger="load"
+     hx-target="#form-container"
+     hx-swap="outerHTML">
+    <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>Loading form...</p>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,9 @@
-<div class="home-container">
+{% extends "base.html" %}
 
+{% block title %}DC Tech Events{% endblock %}
+
+{% block content %}
+<div class="home-container">
     {% include "partials/date_selector.html" %}
 
     <section class="events-section">
@@ -15,3 +19,4 @@
         </div>
     </section>
 </div>
+{% endblock %}

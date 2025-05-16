@@ -21,36 +21,27 @@ events_table = dynamodb.Table(os.environ.get('EVENTS_TABLE', 'LOCAL_EVENTS'))
 
 app = Flask(__name__, template_folder='templates')
 
-base_context = {
-    'title': 'DC Tech Events!',
-}
-
+# Remove base_context as it's no longer needed with template inheritance
 
 @app.route("/")
 def homepage():
     # Get approved events for current week and next 3 weeks
     days = get_events(start_date=None, additional_weeks=3, status='APPROVED')
-    context = {
-                'days': days
-              }
     
-    return render_template('homepage.html', context=context)
+    return render_template('homepage.html', days=days)
 
 
 @app.route("/week-of/<int:year>-<int:month>-<int:day>/")
 def week_of(year, month, day):
     # Get approved events for the given week
-    requested_date=date(year, month, day )
+    requested_date=date(year, month, day)
     days = get_events(start_date=requested_date, additional_weeks=0, status='APPROVED')
-    context = {
-                'days': days
-              }
-
-    return render_template('week_page.html', context=context)
+    
+    return render_template('week_page.html', days=days)
 
 @app.route("/groups/")
 def approved_groups_list():
-    return render_template('approved_groups_list.html', context={'groups': get_approved_groups()})
+    return render_template('approved_groups_list.html', groups=get_approved_groups())
 
 
 
@@ -67,14 +58,14 @@ def events_admin_shell():
 def events_suggest_shell():
     import os
     api_url = os.environ.get('AUTH_API_URL', 'http://localhost:5001')
-    return render_template('event_suggest_shell.html', context={'api_url': api_url}) 
+    return render_template('event_suggest_shell.html', api_url=api_url) 
 
 @app.route("/events/review/")
 def events_review_shell():
     """Serve the event review shell page with dynamic API URL"""
     import os
     api_url = os.environ.get('MODERATOR_API_URL', 'http://localhost:5002')
-    return render_template('events_review_shell.html', context={'api_url': api_url})
+    return render_template('events_review_shell.html', api_url=api_url)
 
 @app.route("/group/suggest/")
 def groups_suggest_shell():

@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Tech Groups in DC - DC Tech Events{% endblock %}
+
+{% block content %}
 <h1>Tech Groups in DC</h1>
 <div class="groups-container">
     {% if groups %}
@@ -19,3 +24,4 @@
 <div class="suggest-group">
     <p>Don't see your tech group? <a href="/groups/suggest/">Suggest a group</a> to be added to our list.</p>
 </div>
+{% endblock %}

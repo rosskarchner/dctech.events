@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Events - DC Tech Events{% endblock %}
+
+{% block content %}
 <div class="admin-events-container">
     <h1>Manage Events</h1>
     
@@ -10,7 +15,9 @@
         <a href="https://api.dctech.events/api/login-redirect" class="btn-primary">Log In</a>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_head %}
 <style>
     .admin-events-container {
         max-width: 1200px;
@@ -42,7 +49,9 @@
         background-color: #0055aa;
     }
 </style>
+{% endblock %}
 
+{% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Check if user is logged in
@@ -59,3 +68,4 @@
         }
     });
 </script>
+{% endblock %}

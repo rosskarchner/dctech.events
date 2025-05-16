@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Error - DC Tech Events{% endblock %}
+
+{% block content %}
 <div class="error-message">
     <h2>Error</h2>
     <p>{{ message }}</p>
@@ -5,3 +10,4 @@
     <p><a href="{{ back_link }}" class="btn btn-primary">{{ back_text }}</a></p>
     {% endif %}
 </div>
+{% endblock %}
