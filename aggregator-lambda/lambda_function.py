@@ -159,9 +159,9 @@ def event_to_item(event, group):
     site_slug = site_url.replace('http://', '').replace('https://', '').replace(':', '_').replace('/', '_')
 
     # Create unique ID for event
-    weekslug = localstart.strftime("%G-W%V")
-    eventslug = localstart.strftime("%u-%H:%M")
-    partition_key = f"{site_slug}#EventsForWeek{weekslug}"
+    monthslug = localstart.strftime("%Y-%m")
+    eventslug = localstart.strftime("%d-%H:%M")
+    partition_key = f"{site_slug}#EventsForMonth{monthslug}"
     sort_key = f"{eventslug}{group['id']}:{event.get('uid', '')}"
 
     # Extract group information
@@ -184,7 +184,7 @@ def event_to_item(event, group):
     event_location = sanitize_text(event.get('location', ''))
 
     return {
-        'week': partition_key,
+        'month': partition_key,
         'sort': sort_key,
         'sourceId': group_id,  # Keep sourceId for backward compatibility
         'groupId': group_id,   # Add groupId as the new field name
@@ -200,7 +200,8 @@ def event_to_item(event, group):
         'localendDate': localend.isoformat(),
         'url': event_url,
         'status': 'APPROVED',  # Since these are from trusted sources
-        'lastUpdated': datetime.now(timezone.utc).isoformat()
+        'lastUpdated': datetime.now(timezone.utc).isoformat(),
+        'date': localstart.strftime('%Y-%m-%d')  # Add date field for GSI
     }
 
 def load_sample_groups():
@@ -232,13 +233,8 @@ def load_sample_groups():
         except Exception as e:
             print(f"Error clearing table: {str(e)}")
         
-        # Get SITEURL from environment or use default
-        site_url = os.environ.get('SITEURL', 'http://localhost:5000')
-        # Remove trailing slash if present
-        if site_url.endswith('/'):
-            site_url = site_url[:-1]
-        # Create a site slug for the ID prefix
-        site_slug = site_url.replace('http://', '').replace('https://', '').replace(':', '_').replace('/', '_')
+        # Always use localhost as the domain for sample groups
+        site_slug = "localhost_5000"
         
         # Track groups we've already processed to avoid duplicates
         processed_names = set()
@@ -259,7 +255,7 @@ def load_sample_groups():
                 processed_names.add(row['name'])
                 
                 # Generate a unique ID for the group with site prefix
-                group_id = f"{site_slug}#{str(uuid.uuid4())}"
+                group_id = f"{site_slug}!{str(uuid.uuid4())}"
                 
                 # Create the group item with sanitized text
                 group_item = {
@@ -267,7 +263,7 @@ def load_sample_groups():
                     'name': sanitize_text(row['name']),
                     'website': sanitize_text(row['website']),
                     'ical': sanitize_text(row['ical']),
-                    'approval_status': 'approved',  # Set status to APPROVED as requested
+                    'approval_status': f"{site_slug}!APPROVED",  # Set status to APPROVED as requested
                     'active': True,
                     'created_at': datetime.now(timezone.utc).isoformat(),
                     'organization_name': sanitize_text(row['name'])  # Using name as organization_name for GSI
@@ -312,10 +308,11 @@ def handler(event, context):
         
         # Query groups table for approved groups with the site prefix
         response = groups_table.scan(
-            FilterExpression="approval_status = :status AND begins_with(id, :site_prefix)",
+            FilterExpression="(approval_status = :status OR approval_status = :namespaced_status) AND begins_with(id, :site_prefix)",
             ExpressionAttributeValues={
-                ":status": "approved",
-                ":site_prefix": f"{site_slug}#"
+                ":status": "APPROVED",
+                ":namespaced_status": f"{site_slug}!APPROVED",
+                ":site_prefix": f"{site_slug}!"
             }
         )
         groups = response.get('Items', [])
@@ -361,7 +358,7 @@ def handler(event, context):
                             local_skipped_events += 1
                             continue
                             
-                        key_tuple = (item['week'], item['sort'])
+                        key_tuple = (item['month'], item['sort'])
                         processed_keys.add(key_tuple)
                         transaction_items.append({
                             'Put': {
@@ -388,14 +385,14 @@ def handler(event, context):
                 delete_count = 0
                 # Add delete operations to transaction
                 for event in events_to_delete['Items']:
-                    key_tuple = (event['week'], event['sort'])
+                    key_tuple = (event['month'], event['sort'])
                     if key_tuple not in processed_keys:
                         processed_keys.add(key_tuple)
                         transaction_items.append({
                             'Delete': {
                                 'TableName': events_table.name,
                                 'Key': {
-                                    'week': event['week'],
+                                    'month': event['month'],
                                     'sort': event['sort']
                                 }
                             }

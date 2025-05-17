@@ -8,11 +8,11 @@
     
     <p>As an admin or editor, you can review, approve, edit, and delete events.</p>
     
-    <div id="admin-events-content" hx-get="https://api.dctech.events/api/admin/events" hx-trigger="load, refreshEventsList from:body" hx-swap="outerHTML"></div>
+    <div id="admin-events-content" hx-get="{{ api_url }}/api/events/manage" hx-trigger="load, refreshEventsList from:body" hx-swap="outerHTML"></div>
     
     <div class="login-required" style="display: none;">
         <p>You need to be logged in as an admin or editor to manage events.</p>
-        <a href="https://api.dctech.events/api/login-redirect" class="btn-primary">Log In</a>
+        <a href="#" id="login-link" class="btn-primary">Log In</a>
     </div>
 </div>
 {% endblock %}
@@ -58,6 +58,7 @@
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         const adminContent = document.getElementById('admin-events-content');
         const loginRequired = document.querySelector('.login-required');
+        const loginLink = document.getElementById('login-link');
         
         if (!isLoggedIn) {
             if (adminContent) adminContent.style.display = 'none';
@@ -65,6 +66,24 @@
         } else {
             if (adminContent) adminContent.style.display = 'block';
             if (loginRequired) loginRequired.style.display = 'none';
+        }
+        
+        // Set the login link href based on environment
+        if (loginLink) {
+            if (typeof getLoginRedirectUrl === 'function') {
+                loginLink.href = getLoginRedirectUrl();
+            } else {
+                // Fallback if the function is not available
+                const isLocal = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1' ||
+                               window.location.hostname.includes('docker');
+                
+                if (isLocal) {
+                    loginLink.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                } else {
+                    loginLink.href = 'https://api.dctech.events/api/login-redirect';
+                }
+            }
         }
     });
 </script>

@@ -26,14 +26,14 @@ echo "Creating LOCAL_EVENTS table..."
 aws dynamodb create-table \
     --table-name LOCAL_EVENTS \
     --attribute-definitions \
-        AttributeName=week,AttributeType=S \
+        AttributeName=month,AttributeType=S \
         AttributeName=sort,AttributeType=S \
         AttributeName=status,AttributeType=S \
         AttributeName=date,AttributeType=S \
         AttributeName=sourceId,AttributeType=S \
         AttributeName=id,AttributeType=S \
     --key-schema \
-        AttributeName=week,KeyType=HASH \
+        AttributeName=month,KeyType=HASH \
         AttributeName=sort,KeyType=RANGE \
     --global-secondary-indexes \
         "[{

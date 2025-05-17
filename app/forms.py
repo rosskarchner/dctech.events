@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, URLField, DateField, SelectField
+from wtforms import StringField, URLField, DateField, SelectField, FileField
 from wtforms.validators import DataRequired, URL, Optional, Length
 
 class EventForm(FlaskForm):
@@ -13,3 +13,18 @@ class EventForm(FlaskForm):
     event_ampm = SelectField('AM/PM', choices=[('AM', 'AM'), ('PM', 'PM')], default='PM')
     location = StringField('Location', validators=[Optional(), Length(max=200)])
     url = URLField('Event URL', validators=[DataRequired(), URL()])
+
+class GroupForm(FlaskForm):
+    class Meta:
+        csrf = False  # Disable CSRF for cross-domain form submission
+    
+    name = StringField('Group Name', validators=[DataRequired(), Length(min=3, max=100)])
+    website = URLField('Group Website', validators=[DataRequired(), URL()])
+    ical = URLField('iCal URL', validators=[DataRequired(), URL()])
+    fallback_url = URLField('Fallback URL', validators=[Optional(), URL()])
+
+class GroupCSVImportForm(FlaskForm):
+    class Meta:
+        csrf = False  # Disable CSRF for cross-domain form submission
+    
+    csv_file = FileField('CSV File', validators=[DataRequired()])

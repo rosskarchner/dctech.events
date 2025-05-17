@@ -1,7 +1,10 @@
-name: Build and Push to ECR
+name: Build, Test, and Push to ECR
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -13,9 +16,41 @@ permissions:
   id-token: write  # Required for OIDC authentication with AWS
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r app/requirements.txt
+          pip install -r aggregator-lambda/requirements.txt
+          chmod +x *.sh
+          chmod +x app/freeze.py
+          chmod +x test_components.py
+          
+      - name: Run tests
+        run: python test_components.py
+        
+      - name: Build frontend
+        run: |
+          cd app
+          python freeze.py
+          cd ..
+
   build-and-push:
     name: Build and Push Containers
     runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
@@ -34,11 +69,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build and push frontend container
-      - name: Build and push frontend container
+      # Build and push app container (frontend)
+      - name: Build and push app container
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: ./app
           push: true
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_FRONTEND }}:latest
@@ -55,18 +90,5 @@ jobs:
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_AGGREGATOR }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_AGGREGATOR }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          
-      # Build and push authenticated-user-views container
-      - name: Build and push authenticated-user-views container
-        uses: docker/build-push-action@v5
-        with:
-          context: ./authenticated-user-views
-          file: ./authenticated-user-views/Dockerfile.lambda
-          push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_AUTH_VIEWS }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_AUTH_VIEWS }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

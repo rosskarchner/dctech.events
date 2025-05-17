@@ -1,0 +1,18 @@
+schemaVersion: 2.0.0
+components:
+  - name: dev
+    container:
+      image: public.ecr.aws/aws-mde/universal-image:latest
+commands:
+  - id: install
+    exec:
+      component: dev
+      commandLine: "pip install -r app/requirements.txt && pip install -r aggregator-lambda/requirements.txt && chmod +x *.sh && chmod +x app/freeze.py && chmod +x test_components.py"
+  - id: build
+    exec:
+      component: dev
+      commandLine: "cd app && python freeze.py && cd .."
+  - id: test
+    exec:
+      component: dev
+      commandLine: "python test_components.py"

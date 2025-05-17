@@ -7,7 +7,7 @@
 
 <!-- This div will be replaced with the form content from the API -->
 <div id="form-container" 
-     hx-get="https://api.dctech.events/api/groups/suggest-form" 
+     hx-get="{{ api_url }}/api/groups/suggest-form" 
      hx-trigger="load"
      hx-target="#form-container"
      hx-swap="outerHTML">

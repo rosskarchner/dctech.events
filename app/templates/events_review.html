@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="events-review-content">
+    <h1>Event Review</h1>
+    
+    {% if message %}
+    <div class="alert alert-{{ message_type }}">
+        {{ message }}
+    </div>
+    {% endif %}
+    
+    <div id="pending-events">
+        <h2>Pending Events</h2>
+        {% if events %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Location</th>
+                        <th>Group</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr class="event-row pending">
+                        <td>{{ event.title }}</td>
+                        <td>{{ event.date }}</td>
+                        <td>{{ event.time }}</td>
+                        <td>{{ event.location }}</td>
+                        <td>{{ event.group }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <form hx-post="{{ api_base_url }}/api/events/approve/{{ event.id }}" hx-swap="outerHTML" hx-target="#events-review-content">
+                                    <input type="hidden" name="month" value="{{ event.month }}">
+                                    <input type="hidden" name="sort" value="{{ event.sort }}">
+                                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                </form>
+                                {% if not event.from_aggregator %}
+                                <form hx-post="{{ api_base_url }}/api/events/delete/{{ event.id }}" hx-swap="outerHTML" hx-target="#events-review-content" class="ms-1">
+                                    <input type="hidden" name="month" value="{{ event.month }}">
+                                    <input type="hidden" name="sort" value="{{ event.sort }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                                <button class="btn btn-primary btn-sm ms-1" hx-get="{{ api_base_url }}/api/events/edit-form/{{ event.id }}?month={{ event.month }}&sort={{ event.sort }}" hx-target="#events-review-content" hx-swap="outerHTML">Edit</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No pending events found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

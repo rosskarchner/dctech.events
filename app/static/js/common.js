@@ -43,8 +43,21 @@ document.addEventListener('htmx:responseError', function(event) {
     if (event.detail.xhr.status === 401 || event.detail.xhr.status === 403) {
         // Store the current URL to return after login
         localStorage.setItem('auth_return_to', window.location.pathname);
-        // Redirect to login
-        window.location.href = 'https://api.dctech.events/api/login-redirect';
+        // Redirect to login using the environment-aware function
+        if (typeof getLoginRedirectUrl === 'function') {
+            window.location.href = getLoginRedirectUrl();
+        } else {
+            // Fallback if the function is not available
+            const isLocal = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.includes('docker');
+            
+            if (isLocal) {
+                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            } else {
+                window.location.href = 'https://api.dctech.events/api/login-redirect';
+            }
+        }
     }
 });
 

@@ -1,0 +1,58 @@
+<div id="group-form-container">
+    <h2>Suggest a Tech Group</h2>
+    <p>Use this form to suggest a tech group for inclusion in the DC Tech Events calendar.</p>
+    
+    <form hx-post="/api/groups/submit" hx-target="#group-form-container" hx-swap="outerHTML">
+        <div class="form-group">
+            <label for="name">{{ form.name.label }}</label>
+            {{ form.name(class="form-control", placeholder="Group Name") }}
+            {% if form.name.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.name.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="website">{{ form.website.label }}</label>
+            {{ form.website(class="form-control", placeholder="https://example.com") }}
+            {% if form.website.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.website.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="ical">{{ form.ical.label }}</label>
+            {{ form.ical(class="form-control", placeholder="https://example.com/events.ics") }}
+            {% if form.ical.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.ical.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <small class="form-text text-muted">An iCal feed for events is required.</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="fallback_url">{{ form.fallback_url.label }} (Optional)</label>
+            {{ form.fallback_url(class="form-control", placeholder="https://example.com/events") }}
+            {% if form.fallback_url.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.fallback_url.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <small class="form-text text-muted">If the group doesn't have an iCal feed, provide a URL where events can be found.</small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Submit Group</button>
+    </form>
+</div>

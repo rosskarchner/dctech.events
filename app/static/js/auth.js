@@ -1,52 +1,58 @@
-// Check if the user is authenticated
-function isAuthenticated() {
-  try {
-    const idToken = localStorage.getItem('id_token');
-    const expiration = localStorage.getItem('token_expiration');
-    
-    if (!idToken || !expiration) {
-      return false;
+// auth.js - Client-side authentication utilities
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on a protected page that requires authentication
+    if (document.body.classList.contains('requires-auth')) {
+        checkAuthentication();
     }
-    
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (now > parseInt(expiration, 10)) {
-      return false;
+});
+
+// Function to check if the user is authenticated
+function checkAuthentication() {
+    fetch('/api/auth/user')
+        .then(response => response.json())
+        .then(data => {
+            if (!data.authenticated) {
+                // Redirect to login page if not authenticated
+                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            } else if (document.body.classList.contains('requires-moderator') && 
+                      !data.user.groups.includes('localhost-moderators')) {
+                // Check if the page requires moderator privileges
+                showAccessDenied();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking authentication:', error);
+        });
+}
+
+// Function to show access denied message
+function showAccessDenied() {
+    const main = document.querySelector('main');
+    if (main) {
+        main.innerHTML = `
+            <div class="access-denied">
+                <h2>Access Denied</h2>
+                <p>You don't have permission to access this page. This page requires moderator privileges.</p>
+                <p><a href="/">Return to Home</a></p>
+            </div>
+        `;
     }
-    
-    return true;
-  } catch (error) {
-    console.error('Error checking authentication:', error);
-    return false;
-  }
 }
 
-// Sign out the user
-function signOut() {
-  localStorage.removeItem('id_token');
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('token_expiration');
-  localStorage.removeItem('user_email');
-  localStorage.removeItem('user_name');
-  
-  window.location.href = '/';
+// Function to determine if we're running locally
+function isLocalEnvironment() {
+    // Check if we're running on localhost or a local Docker container
+    return window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           window.location.hostname.includes('docker');
 }
 
-// Get the current user's information
-function getCurrentUser() {
-  if (!isAuthenticated()) {
-    return null;
-  }
-  
-  return {
-    email: localStorage.getItem('user_email'),
-    name: localStorage.getItem('user_name')
-  };
-}
-
-// Redirect to login
-function login(returnTo = window.location.pathname) {
-  localStorage.setItem('auth_return_to', returnTo);
-  window.location.href = 'https://api.dctech.events/api/login-redirect';
+// Function to get the appropriate login redirect URL
+function getLoginRedirectUrl() {
+    if (isLocalEnvironment()) {
+        return '/login?next=' + encodeURIComponent(window.location.pathname);
+    } else {
+        return 'https://api.dctech.events/api/login-redirect';
+    }
 }

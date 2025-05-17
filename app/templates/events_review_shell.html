@@ -2,6 +2,18 @@
 
 {% block title %}Event Review - DC Tech Events{% endblock %}
 
+{% block extra_head %}
+<style>
+    .access-denied {
+        text-align: center;
+        padding: 2rem;
+        background-color: #f8d7da;
+        border-radius: 5px;
+        margin: 2rem 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Event Review</h1>
 
@@ -15,4 +27,11 @@
         <p>Loading events...</p>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.body.classList.add('requires-auth');
+    document.body.classList.add('requires-moderator');
+</script>
 {% endblock %}

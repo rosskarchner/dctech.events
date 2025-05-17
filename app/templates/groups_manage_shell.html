@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Groups - DC Tech Events{% endblock %}
+
+{% block content %}
+<div class="admin-groups-container">
+    <h1>Manage Groups</h1>
+    
+    <p>As a moderator, you can review, approve, edit, and delete groups.</p>
+    
+    <div class="action-buttons">
+        <button class="btn btn-primary" 
+                hx-get="{{ api_url }}/api/groups/import-form" 
+                hx-target="#import-form-container"
+                hx-swap="innerHTML">
+            Import Groups from CSV
+        </button>
+    </div>
+    
+    <div id="import-form-container" class="import-form-container"></div>
+    
+    <div id="groups-content" 
+         hx-get="{{ api_url }}/api/groups/manage" 
+         hx-trigger="load, refreshGroupsList from:body" 
+         hx-swap="outerHTML">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading groups...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .admin-groups-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .action-buttons {
+        margin: 20px 0;
+    }
+    
+    .btn-primary {
+        background-color: #0066cc;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-primary:hover {
+        background-color: #0055aa;
+    }
+    
+    .loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+    }
+    
+    .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .import-form-container {
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}
