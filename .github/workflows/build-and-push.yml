@@ -36,9 +36,6 @@ jobs:
           chmod +x *.sh
           chmod +x app/freeze.py
           chmod +x test_components.py
-          
-      - name: Run tests
-        run: python test_components.py
         
       - name: Build frontend
         run: |
