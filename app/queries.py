@@ -269,7 +269,7 @@ def approve_group(group_id):
     Approve a group by setting its approval_status to 'APPROVED'.
     
     Args:
-        group_id: The ID of the group to approve
+        group_id: The ID of the group to approve (without site slug)
         
     Returns:
         Tuple of (success, message)
@@ -281,10 +281,18 @@ def approve_group(group_id):
         # Get site slug
         site_slug = get_site_slug()
         
+        # Check if the group_id already contains the site slug
+        if '!' not in group_id:
+            # Add site slug to the group ID
+            full_group_id = f"{site_slug}!{group_id}"
+        else:
+            # Group ID already has site slug
+            full_group_id = group_id
+        
         # Update the group
         groups_table.update_item(
             Key={
-                'id': group_id
+                'id': full_group_id
             },
             UpdateExpression="SET approval_status = :status, updated_at = :updated_at",
             ExpressionAttributeValues={
@@ -303,7 +311,7 @@ def delete_group(group_id):
     Delete a group from the database.
     
     Args:
-        group_id: The ID of the group to delete
+        group_id: The ID of the group to delete (without site slug)
         
     Returns:
         Tuple of (success, message)
@@ -312,10 +320,21 @@ def delete_group(group_id):
         # Initialize the groups table
         groups_table = get_groups_table()
         
+        # Get site slug
+        site_slug = get_site_slug()
+        
+        # Check if the group_id already contains the site slug
+        if '!' not in group_id:
+            # Add site slug to the group ID
+            full_group_id = f"{site_slug}!{group_id}"
+        else:
+            # Group ID already has site slug
+            full_group_id = group_id
+        
         # Delete the group
         groups_table.delete_item(
             Key={
-                'id': group_id
+                'id': full_group_id
             }
         )
         
@@ -329,7 +348,7 @@ def set_group_pending(group_id):
     Set a group's approval_status to 'PENDING'.
     
     Args:
-        group_id: The ID of the group to set as pending
+        group_id: The ID of the group to set as pending (without site slug)
         
     Returns:
         Tuple of (success, message)
@@ -341,10 +360,18 @@ def set_group_pending(group_id):
         # Get site slug
         site_slug = get_site_slug()
         
+        # Check if the group_id already contains the site slug
+        if '!' not in group_id:
+            # Add site slug to the group ID
+            full_group_id = f"{site_slug}!{group_id}"
+        else:
+            # Group ID already has site slug
+            full_group_id = group_id
+        
         # Update the group
         groups_table.update_item(
             Key={
-                'id': group_id
+                'id': full_group_id
             },
             UpdateExpression="SET approval_status = :status, updated_at = :updated_at",
             ExpressionAttributeValues={
@@ -373,17 +400,21 @@ def update_group(group_id, group_data):
         # Initialize the groups table
         groups_table = get_groups_table()
         
-        # Build update expression and attribute values
+        # Build update expression, attribute values, and attribute names
         update_expr = "SET updated_at = :updated_at"
         expr_attr_values = {
             ":updated_at": datetime.now().isoformat()
         }
+        expr_attr_names = {}
         
         # Add fields to update
         for key, value in group_data.items():
             if key not in ['id', 'created_at']:  # Don't update these fields
-                update_expr += f", {key} = :{key}"
+                # Use ExpressionAttributeNames to handle reserved keywords
+                attr_name = f"#{key}"
+                update_expr += f", {attr_name} = :{key}"
                 expr_attr_values[f":{key}"] = value
+                expr_attr_names[attr_name] = key
         
         # Update the group
         groups_table.update_item(
@@ -391,7 +422,8 @@ def update_group(group_id, group_data):
                 'id': group_id
             },
             UpdateExpression=update_expr,
-            ExpressionAttributeValues=expr_attr_values
+            ExpressionAttributeValues=expr_attr_values,
+            ExpressionAttributeNames=expr_attr_names
         )
         
         return True, "Group updated successfully"
@@ -555,7 +587,9 @@ def get_events(start_date=None, additional_months=0, status=None):
             
             # Add status filter if provided
             if status:
-                query_params['FilterExpression'] = Attr('status').eq(status)
+                # Handle both namespaced and non-namespaced status values for backward compatibility
+                namespaced_status = f"{site_slug}!{status}"
+                query_params['FilterExpression'] = Attr('status').eq(namespaced_status) | Attr('status').eq(status)
             
             logger.info(f"Querying month {month_key}")
             response = events_table.query(**query_params)

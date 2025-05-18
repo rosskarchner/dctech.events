@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Events for {{ month_name }} {{ year }} - DC Tech Events{% endblock %}
+
+{% block content %}
+<div class="month-container">
+    <header class="month-header">
+        <h1>Events for {{ month_name }} {{ year }}</h1>
+        <div class="month-navigation">
+            <a href="/{{ prev_year }}/{{ prev_month }}/" class="nav-button">&laquo; Previous Month</a>
+            <a href="/" class="nav-button">Current Month</a>
+            <a href="/{{ next_year }}/{{ next_month }}/" class="nav-button">Next Month &raquo;</a>
+        </div>
+    </header>
+
+    <section class="events-section">
+        {% include "partials/events_by_day.html" %}
+    </section>
+    
+    {% include "partials/date_selector.html" %}
+</div>
+{% endblock %}

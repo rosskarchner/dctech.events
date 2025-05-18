@@ -42,7 +42,13 @@ def is_in_group(group_name):
         return False
     
     user = session.get('user', {})
-    return group_name in user.get('groups', [])
+    user_groups = user.get('groups', [])
+    
+    # Handle the case where 'moderators' and 'localhost-moderators' are equivalent
+    if group_name == 'moderators' and 'localhost-moderators' in user_groups:
+        return True
+    
+    return group_name in user_groups
 
 def login_required(f):
     """Decorator to require authentication for a route"""

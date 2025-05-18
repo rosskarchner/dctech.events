@@ -27,7 +27,7 @@ services:
       - SITENAME=DC Tech Events
       - TIMEZONE=US/Eastern
       - AUTH_API_URL=http://localhost:5001
-      - MODERATOR_API_URL=http://localhost:5002
+      - MODERATOR_API_URL=http://localhost:5000
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-local-frontend-bucket}
       - ENVIRONMENT=${ENVIRONMENT:-local}
   dynamodb-local:

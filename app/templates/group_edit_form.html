@@ -1,58 +1,60 @@
-<div class="edit-form">
-    <h3>Edit Group: {{ group.name }}</h3>
-    
-    {% if message %}
-    <div class="alert alert-{{ message_type }}">
-        {{ message }}
+<div id="edit-form-{{ group.id.split('!')[-1] }}" class="edit-form-container">
+    <div class="edit-form">
+        <h3>Edit Group: {{ group.name }}</h3>
+        
+        {% if message %}
+        <div class="alert alert-{{ message_type }}">
+            {{ message }}
+        </div>
+        {% endif %}
+        
+        <form hx-post="{{ api_base_url }}/api/groups/edit/{{ group.id.split('!')[-1] }}" 
+              hx-target="#groups-content"
+              hx-swap="outerHTML">
+            
+            <div class="form-group">
+                <label for="name">Group Name:</label>
+                <input type="text" id="name" name="name" value="{{ form.name.data }}" required>
+                {% if form.name.errors %}
+                <div class="form-error">{{ form.name.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="website">Website:</label>
+                <input type="url" id="website" name="website" value="{{ form.website.data }}" required>
+                {% if form.website.errors %}
+                <div class="form-error">{{ form.website.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="ical">iCal URL:</label>
+                <input type="url" id="ical" name="ical" value="{{ form.ical.data }}">
+                {% if form.ical.errors %}
+                <div class="form-error">{{ form.ical.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="fallback_url">Fallback URL:</label>
+                <input type="url" id="fallback_url" name="fallback_url" value="{{ form.fallback_url.data }}">
+                {% if form.fallback_url.errors %}
+                <div class="form-error">{{ form.fallback_url.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" 
+                        hx-get="{{ api_base_url }}/api/groups/manage"
+                        hx-target="#groups-content"
+                        hx-swap="outerHTML">
+                    Cancel
+                </button>
+            </div>
+        </form>
     </div>
-    {% endif %}
-    
-    <form hx-post="{{ api_base_url }}/api/groups/edit/{{ group.id }}" 
-          hx-target="#groups-content"
-          hx-swap="outerHTML">
-        
-        <div class="form-group">
-            <label for="name">Group Name:</label>
-            <input type="text" id="name" name="name" value="{{ form.name.data }}" required>
-            {% if form.name.errors %}
-            <div class="form-error">{{ form.name.errors[0] }}</div>
-            {% endif %}
-        </div>
-        
-        <div class="form-group">
-            <label for="website">Website:</label>
-            <input type="url" id="website" name="website" value="{{ form.website.data }}" required>
-            {% if form.website.errors %}
-            <div class="form-error">{{ form.website.errors[0] }}</div>
-            {% endif %}
-        </div>
-        
-        <div class="form-group">
-            <label for="ical">iCal URL:</label>
-            <input type="url" id="ical" name="ical" value="{{ form.ical.data }}">
-            {% if form.ical.errors %}
-            <div class="form-error">{{ form.ical.errors[0] }}</div>
-            {% endif %}
-        </div>
-        
-        <div class="form-group">
-            <label for="fallback_url">Fallback URL:</label>
-            <input type="url" id="fallback_url" name="fallback_url" value="{{ form.fallback_url.data }}">
-            {% if form.fallback_url.errors %}
-            <div class="form-error">{{ form.fallback_url.errors[0] }}</div>
-            {% endif %}
-        </div>
-        
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Save Changes</button>
-            <button type="button" class="btn btn-secondary" 
-                    hx-get="{{ api_base_url }}/api/groups/manage"
-                    hx-target="#groups-content"
-                    hx-swap="outerHTML">
-                Cancel
-            </button>
-        </div>
-    </form>
 </div>
 
 <style>

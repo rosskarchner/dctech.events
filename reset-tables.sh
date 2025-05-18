@@ -3,6 +3,11 @@
 # Script to delete and recreate the DynamoDB tables
 # This script will delete and recreate both LOCAL_GROUPS and LOCAL_EVENTS tables
 
+# Set mock AWS credentials to avoid token expiration issues
+export AWS_ACCESS_KEY_ID=fake
+export AWS_SECRET_ACCESS_KEY=fake
+export PAGER=cat
+
 echo "Deleting existing tables..."
 aws dynamodb delete-table --table-name LOCAL_GROUPS --endpoint-url http://localhost:8000 || true
 aws dynamodb delete-table --table-name LOCAL_EVENTS --endpoint-url http://localhost:8000 || true

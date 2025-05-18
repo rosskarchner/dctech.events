@@ -199,7 +199,7 @@ def event_to_item(event, group):
         'localstartDate': localstart.isoformat(),
         'localendDate': localend.isoformat(),
         'url': event_url,
-        'status': 'APPROVED',  # Since these are from trusted sources
+        'status': f"{site_slug}!APPROVED",  # Namespace the status with site slug
         'lastUpdated': datetime.now(timezone.utc).isoformat(),
         'date': localstart.strftime('%Y-%m-%d')  # Add date field for GSI
     }

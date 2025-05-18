@@ -31,7 +31,7 @@
                 </thead>
                 <tbody>
                     {% for group in pending_groups %}
-                    <tr class="group-row pending" id="group-{{ group.id }}">
+                    <tr class="group-row pending" id="group-{{ group.id.split('!')[-1] }}">
                         <td>{{ group.name }}</td>
                         <td><a href="{{ group.website }}" target="_blank">{{ group.website }}</a></td>
                         <td>
@@ -43,14 +43,14 @@
                         </td>
                         <td class="actions">
                             <button class="btn btn-edit"
-                                    hx-get="{{ api_base_url }}/api/groups/edit-form/{{ group.id }}"
-                                    hx-target="#edit-form-{{ group.id }}"
-                                    hx-swap="innerHTML">
+                                    hx-get="{{ api_base_url }}/api/groups/edit-form/{{ group.id.split('!')[-1] }}"
+                                    hx-target="#edit-form-{{ group.id.split('!')[-1] }}"
+                                    hx-swap="outerHTML">
                                 Edit
                             </button>
                             
                             <button class="btn btn-approve"
-                                    hx-post="{{ api_base_url }}/api/groups/approve/{{ group.id | replace('!', '') }}"
+                                    hx-post="{{ api_base_url }}/api/groups/approve/{{ group.id.split('!')[-1] }}"
                                     hx-target="#groups-content"
                                     hx-swap="outerHTML"
                                     hx-confirm="Are you sure you want to approve this group?">
@@ -58,7 +58,7 @@
                             </button>
                             
                             <button class="btn btn-delete"
-                                    hx-post="{{ api_base_url }}/api/groups/delete/{{ group.id | replace('!', '') }}"
+                                    hx-post="{{ api_base_url }}/api/groups/delete/{{ group.id.split('!')[-1] }}"
                                     hx-target="#groups-content"
                                     hx-swap="outerHTML"
                                     hx-confirm="Are you sure you want to delete this group? This action cannot be undone.">
@@ -68,7 +68,7 @@
                     </tr>
                     <tr>
                         <td colspan="4">
-                            <div id="edit-form-{{ group.id }}" class="edit-form-container"></div>
+                            <div id="edit-form-{{ group.id.split('!')[-1] }}" class="edit-form-container"></div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -103,7 +103,7 @@
                 </thead>
                 <tbody>
                     {% for group in approved_groups %}
-                    <tr class="group-row approved" id="group-{{ group.id }}">
+                    <tr class="group-row approved" id="group-{{ group.id.split('!')[-1] }}">
                         <td>{{ group.name }}</td>
                         <td><a href="{{ group.website }}" target="_blank">{{ group.website }}</a></td>
                         <td>
@@ -115,14 +115,14 @@
                         </td>
                         <td class="actions">
                             <button class="btn btn-edit"
-                                    hx-get="{{ api_base_url }}/api/groups/edit-form/{{ group.id }}"
-                                    hx-target="#edit-form-{{ group.id }}"
-                                    hx-swap="innerHTML">
+                                    hx-get="{{ api_base_url }}/api/groups/edit-form/{{ group.id.split('!')[-1] }}"
+                                    hx-target="#edit-form-{{ group.id.split('!')[-1] }}"
+                                    hx-swap="outerHTML">
                                 Edit
                             </button>
                             
                             <button class="btn btn-pause"
-                                    hx-post="{{ api_base_url }}/api/groups/pending/{{ group.id | replace('!', '') }}"
+                                    hx-post="{{ api_base_url }}/api/groups/pending/{{ group.id.split('!')[-1] }}"
                                     hx-target="#groups-content"
                                     hx-swap="outerHTML"
                                     hx-confirm="Are you sure you want to set this group to pending?">
@@ -130,7 +130,7 @@
                             </button>
                             
                             <button class="btn btn-delete"
-                                    hx-post="{{ api_base_url }}/api/groups/delete/{{ group.id | replace('!', '') }}"
+                                    hx-post="{{ api_base_url }}/api/groups/delete/{{ group.id.split('!')[-1] }}"
                                     hx-target="#groups-content"
                                     hx-swap="outerHTML"
                                     hx-confirm="Are you sure you want to delete this group? This action cannot be undone.">
@@ -140,7 +140,7 @@
                     </tr>
                     <tr>
                         <td colspan="4">
-                            <div id="edit-form-{{ group.id }}" class="edit-form-container"></div>
+                            <div id="edit-form-{{ group.id.split('!')[-1] }}" class="edit-form-container"></div>
                         </td>
                     </tr>
                     {% endfor %}
