@@ -1,74 +1,106 @@
-# Deployment Guide for Cal-Containers
+# Deployment Guide for DC Tech Events
 
-This guide explains how to set up the infrastructure for building and deploying containers to Amazon ECR using GitHub Actions.
+This guide explains how to deploy the DC Tech Events application using AWS SAM.
 
-## Infrastructure Setup
+## Prerequisites
 
-The project includes a CloudFormation template (`ecr-infrastructure.yaml`) that creates:
-- ECR repositories for the frontend and aggregator containers
-- IAM role for GitHub Actions with permissions to push to ECR
-- OIDC provider configuration for secure authentication between GitHub and AWS
+Before deploying, ensure you have:
 
-### Deploying the CloudFormation Stack
+1. AWS CLI installed and configured with appropriate permissions
+2. AWS SAM CLI installed
+3. Docker installed and running
+4. A domain name (optional, but recommended for production)
 
-1. Update the parameters in the template with your GitHub information:
-   - `GitHubOrg`: Your GitHub username or organization
-   - `GitHubRepo`: The repository name (default: cal-containers)
-   - `GitHubBranch`: The branch that triggers deployments (default: main)
+## Deployment Options
 
-2. Deploy the CloudFormation stack:
-   ```bash
-   aws cloudformation deploy \
-     --template-file ecr-infrastructure.yaml \
-     --stack-name cal-containers-ecr-infra \
-     --capabilities CAPABILITY_NAMED_IAM \
-     --parameter-overrides \
-       GitHubOrg=your-github-username \
-       GitHubRepo=cal-containers \
-       GitHubBranch=main
-   ```
+### Option 1: Using the Deployment Script (Recommended)
 
-3. Get the outputs from the CloudFormation stack:
-   ```bash
-   aws cloudformation describe-stacks \
-     --stack-name cal-containers-ecr-infra \
-     --query "Stacks[0].Outputs"
-   ```
-
-## GitHub Repository Setup
-
-1. Add the following secrets to your GitHub repository:
-   - `AWS_ROLE_ARN`: The ARN of the IAM role created by CloudFormation (from the `GitHubActionsRoleARN` output)
-   - `ECR_REPOSITORY_FRONTEND`: The name of the frontend ECR repository (`cal-containers-frontend`)
-   - `ECR_REPOSITORY_AGGREGATOR`: The name of the aggregator ECR repository (`cal-containers-aggregator`)
-
-2. The GitHub Actions workflow (`.github/workflows/build-and-push.yml`) is already configured to:
-   - Trigger on pushes to the main branch
-   - Authenticate with AWS using OIDC
-   - Build and push the containers to ECR
-
-## Container Deployment
-
-Once the containers are pushed to ECR, you can deploy them using:
-- AWS Lambda for the aggregator container
-- Amazon ECS, EKS, or App Runner for the frontend container
-
-### Example Lambda Deployment
+We provide a deployment script that simplifies the process:
 
 ```bash
-aws lambda create-function \
-  --function-name cal-aggregator \
-  --package-type Image \
-  --code ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cal-containers-aggregator:latest \
-  --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/lambda-execution-role
+# Make the script executable
+chmod +x deploy.sh
+
+# Deploy with default settings
+./deploy.sh
+
+# Deploy with custom settings
+./deploy.sh \
+  --stack-name dctech-events-dev \
+  --environment dev \
+  --domain-name dev.dctech.events \
+  --auth-domain auth.dev.dctech.events \
+  --region us-east-1
+
+# Show all available options
+./deploy.sh --help
 ```
 
-### Example ECS Deployment
+### Option 2: Manual Deployment
 
-Create an ECS task definition and service that references the frontend container in ECR.
+If you prefer to deploy manually:
+
+```bash
+# Build the application
+sam build --template template.yaml
+
+# Deploy the application
+sam deploy \
+  --stack-name dctech-events \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides \
+    DomainName=dctech.events \
+    AuthDomainName=auth.dctech.events \
+    Environment=prod
+```
+
+## How It Works
+
+The deployment process:
+
+1. **Build Phase**: SAM builds Docker container images for each Lambda function using the Dockerfiles in the respective directories.
+2. **Deploy Phase**: SAM deploys the CloudFormation stack, which includes:
+   - Lambda functions with the built container images
+   - DynamoDB tables
+   - S3 bucket for static site
+   - Cognito User Pool
+   - API Gateway
+   - CloudFront distribution
+
+## Post-Deployment Steps
+
+After deployment, you'll need to:
+
+1. **Configure DNS**: Point your domain to the CloudFront distribution URL (found in the stack outputs)
+2. **Validate SSL Certificate**: Follow the instructions in the AWS Certificate Manager console
+3. **Create Users**: Set up users in the Cognito User Pool
+4. **Load Sample Data**: Use the provided scripts to load sample data if needed
+
+## Environment Variables
+
+The following environment variables are set for the Lambda functions:
+
+- `EVENTS_TABLE`: Name of the DynamoDB table for events
+- `GROUPS_TABLE`: Name of the DynamoDB table for groups
+- `S3_BUCKET_NAME`: Name of the S3 bucket for the static site
+- `TIMEZONE`: Set to US/Eastern
+- `SITEURL`: The URL of the site
+- `SITENAME`: Set to "DC Tech Events"
+- `ENVIRONMENT`: The deployment environment (dev or prod)
 
 ## Maintenance
 
-- The ECR repositories are configured with lifecycle policies to keep only the last 10 images
-- Update the GitHub Actions workflow as needed for additional build steps or containers
-- Monitor the GitHub Actions runs to ensure successful deployments
+- Monitor the Lambda functions in CloudWatch Logs
+- Update the application code and redeploy as needed
+- Back up the DynamoDB tables regularly
+
+## Troubleshooting
+
+If you encounter issues during deployment:
+
+1. Check the CloudFormation events in the AWS Console
+2. Review the SAM CLI output for errors
+3. Check the Lambda function logs in CloudWatch
+4. Ensure your AWS credentials have the necessary permissions
+
+For more specific issues, refer to the AWS SAM documentation or open an issue in the project repository.

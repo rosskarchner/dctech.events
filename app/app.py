@@ -17,9 +17,16 @@ from groups_routes import register_groups_routes
 # Define Eastern timezone
 eastern = pytz.timezone('US/Eastern')
 
-# Initialize DynamoDB client
-dynamodb = boto3.resource('dynamodb', 
-                         endpoint_url=os.environ.get('AWS_ENDPOINT_URL', 'http://dynamodb-local:8000'))
+# Initialize DynamoDB client with conditional endpoint URL
+endpoint_url = os.environ.get('AWS_ENDPOINT_URL')
+dynamodb_args = {}
+if endpoint_url:
+    dynamodb_args['endpoint_url'] = endpoint_url
+else:
+    # Default for local development
+    dynamodb_args['endpoint_url'] = 'http://dynamodb-local:8000'
+
+dynamodb = boto3.resource('dynamodb', **dynamodb_args)
 events_table = dynamodb.Table(os.environ.get('EVENTS_TABLE', 'LOCAL_EVENTS'))
 groups_table = dynamodb.Table(os.environ.get('GROUPS_TABLE', 'LOCAL_GROUPS'))
 
@@ -36,8 +43,6 @@ init_auth(app)
 # Register API routes
 register_events_routes(app, events_table, get_events_table)
 register_groups_routes(app, groups_table)
-
-# Remove base_context as it's no longer needed with template inheritance
 
 @app.route("/")
 def homepage():
@@ -110,7 +115,6 @@ def approved_groups_list():
                           has_next=next_key is not None)
 
 
-
 @app.route("/admin/groups/")
 def groups_admin_shell():
     return render_template('admin_group_shell.html') 
@@ -176,76 +180,11 @@ def auth_callback():
 def test_jinja():
     return render_template('test/hello.html', title="Test Page", message="Jinja2 is working!")
 
-
-
-# Function get_next_monday is now defined in events_routes.py
-
-
-
-# Function save_event_to_db is now defined in events_routes.py
-
-
-# Routes for event_suggest_form and submit_event are now defined in events_routes.py
-
-# Route for events_manage is now defined in events_routes.py
-
-# Route for edit_event_form is now defined in events_routes.py
-
-# Route for edit_event is now defined in events_routes.py
-
-# Route for set_event_pending is now defined in events_routes.py
-
-# Function get_pending_events is now defined in events_routes.py
-
-# Function approve_event is now defined in events_routes.py
-
-# Function delete_event is now defined in events_routes.py
-
-@app.route('/')
-def hello_world():
-    return jsonify({
-        "message": "Hello World from moderator-views!",
-        "status": "success"
-    })
-
 @app.route('/health')
 def health():
     return jsonify({
         "status": "healthy"
     })
-
-# Route for events_review is now defined in events_routes.py
-
-# Route for approve_event_route is now defined in events_routes.py
-
-# Route for delete_event_route is now defined in events_routes.py
-
-
-# Route for groups_manage is now defined in groups_routes.py
-
-# Route for groups_import_form is now defined in groups_routes.py
-
-# Route for groups_import is now defined in groups_routes.py
-
-# Function _process_group_action is now defined in groups_routes.py
-
-# Route for approve_group_route is now defined in groups_routes.py
-
-# Route for delete_group_route is now defined in groups_routes.py
-
-# Route for set_group_pending_route is now defined in groups_routes.py
-
-# Route for group_suggest_form is now defined in groups_routes.py
-
-# Route for submit_group is now defined in groups_routes.py
-
-# Function save_group_to_db is now defined in groups_routes.py
-
-# Route for edit_group_form is now defined in groups_routes.py
-# Route for export_groups_csv is now defined in groups_routes.py
-
-# Route for edit_group is now defined in groups_routes.py
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -484,6 +484,69 @@ def test_event_status_namespacing():
         print(f"❌ Event status namespacing test failed: {e}")
         return False
 
+def test_passwordless_auth():
+    """Test that the passwordless authentication flow is correctly configured."""
+    try:
+        # Check auth_callback.html template
+        template_path = './app/templates/auth_callback.html'
+        
+        # Check if the template exists
+        if not os.path.exists(template_path):
+            print("❌ auth_callback.html does not exist")
+            return False
+        
+        # Check if the template contains the required elements for passwordless auth
+        with open(template_path, 'r') as f:
+            template_content = f.read()
+            required_elements = [
+                'id="code-verification"',
+                'id="verification-code"',
+                'id="verify-button"',
+                'function verifyCode(',
+                'params.error === \'login_required\''
+            ]
+            
+            for element in required_elements:
+                if element not in template_content:
+                    print(f"❌ auth_callback.html is missing required element: {element}")
+                    return False
+        
+        # Check template.yaml for Cognito User Pool configuration
+        template_path = './template.yaml'
+        
+        # Check if the template exists
+        if not os.path.exists(template_path):
+            print("❌ template.yaml does not exist")
+            return False
+        
+        # Check if the template contains the required elements for passwordless auth
+        with open(template_path, 'r') as f:
+            template_content = f.read()
+            required_elements = [
+                'AdminCreateUserConfig:',
+                'AllowAdminCreateUserOnly: false',
+                'UsernameConfiguration:',
+                'CaseSensitive: false',
+                'LambdaConfig:',
+                'PreSignUp:',
+                'DefineAuthChallenge:',
+                'CreateAuthChallenge:',
+                'VerifyAuthChallengeResponse:',
+                'ALLOW_CUSTOM_AUTH',
+                'PreventUserExistenceErrors: ENABLED'
+            ]
+            
+            for element in required_elements:
+                if element not in template_content:
+                    print(f"❌ template.yaml is missing required element: {element}")
+                    return False
+        
+        print("✅ Passwordless authentication flow is correctly configured")
+        return True
+    except Exception as e:
+        print(f"❌ Passwordless authentication test failed: {e}")
+        return False
+
 if __name__ == "__main__":
     print("Running component tests...")
     
@@ -502,7 +565,8 @@ if __name__ == "__main__":
         test_group_approval_status,
         test_groups_manage_template_status_check,
         test_month_view_route,
-        test_event_status_namespacing
+        test_event_status_namespacing,
+        test_passwordless_auth
     ]
     
     success = all(test() for test in tests)

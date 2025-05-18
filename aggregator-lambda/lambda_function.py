@@ -18,9 +18,20 @@ import chardet
 from boto3.dynamodb.conditions import Key
 
 
-s3 = boto3.resource('s3')
+# Initialize S3 and DynamoDB clients with conditional endpoint URLs
+s3_endpoint_url = os.environ.get('AWS_S3_ENDPOINT_URL')
+s3_args = {}
+if s3_endpoint_url:
+    s3_args['endpoint_url'] = s3_endpoint_url
 
-dynamodb = boto3.resource('dynamodb',endpoint_url='http://dynamodb-local:8000')
+s3 = boto3.resource('s3', **s3_args)
+
+dynamodb_endpoint_url = os.environ.get('AWS_ENDPOINT_URL')
+dynamodb_args = {}
+if dynamodb_endpoint_url:
+    dynamodb_args['endpoint_url'] = dynamodb_endpoint_url
+
+dynamodb = boto3.resource('dynamodb', **dynamodb_args)
 cache_bucket_name = os.environ.get('CACHE_BUCKET')
 if cache_bucket_name:
     cache_bucket = s3.Bucket(cache_bucket_name)

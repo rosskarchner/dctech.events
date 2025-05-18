@@ -16,27 +16,50 @@ Parameters:
     Type: String
     Description: GitHub branch that is allowed to assume the role
     Default: main
+    
+  StackEnvironment:
+    Type: String
+    Description: Environment name for the stack (dev, staging, prod)
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+      
+  ImageRetentionCount:
+    Type: Number
+    Description: Number of images to retain in ECR repositories
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
 
 Resources:
-  # ECR Repository for Frontend
-  FrontendRepository:
+  # ECR Repository for App
+  AppRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: cal-containers-frontend
+      RepositoryName: "cal-containers-app"
       ImageTagMutability: MUTABLE
       ImageScanningConfiguration:
         ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref StackEnvironment
+        - Key: Application
+          Value: cal-containers
       LifecyclePolicy:
-        LifecyclePolicyText: |
+        LifecyclePolicyText: !Sub |
           {
             "rules": [
               {
                 "rulePriority": 1,
-                "description": "Keep only the last 10 images",
+                "description": "Keep only the last ${ImageRetentionCount} images",
                 "selection": {
                   "tagStatus": "any",
                   "countType": "imageCountMoreThan",
-                  "countNumber": 10
+                  "countNumber": ${ImageRetentionCount}
                 },
                 "action": {
                   "type": "expire"
@@ -49,48 +72,28 @@ Resources:
   AggregatorRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: cal-containers-aggregator
+      RepositoryName: "cal-containers-aggregator"
       ImageTagMutability: MUTABLE
       ImageScanningConfiguration:
         ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref StackEnvironment
+        - Key: Application
+          Value: cal-containers
       LifecyclePolicy:
-        LifecyclePolicyText: |
+        LifecyclePolicyText: !Sub |
           {
             "rules": [
               {
                 "rulePriority": 1,
-                "description": "Keep only the last 10 images",
+                "description": "Keep only the last ${ImageRetentionCount} images",
                 "selection": {
                   "tagStatus": "any",
                   "countType": "imageCountMoreThan",
-                  "countNumber": 10
-                },
-                "action": {
-                  "type": "expire"
-                }
-              }
-            ]
-          }
-          
-  # ECR Repository for Authenticated User Views
-  AuthenticatedViewsRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: cal-containers-auth-views
-      ImageTagMutability: MUTABLE
-      ImageScanningConfiguration:
-        ScanOnPush: true
-      LifecyclePolicy:
-        LifecyclePolicyText: |
-          {
-            "rules": [
-              {
-                "rulePriority": 1,
-                "description": "Keep only the last 10 images",
-                "selection": {
-                  "tagStatus": "any",
-                  "countType": "imageCountMoreThan",
-                  "countNumber": 10
+                  "countNumber": ${ImageRetentionCount}
                 },
                 "action": {
                   "type": "expire"
@@ -103,7 +106,7 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: GitHubActionsECRPushRole
+      RoleName: !Sub "GitHubActionsECRPushRole-${StackEnvironment}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -117,6 +120,11 @@ Resources:
               StringLike:
                 'token.actions.githubusercontent.com:sub': !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}'
       Path: '/'
+      Tags:
+        - Key: Environment
+          Value: !Ref StackEnvironment
+        - Key: Application
+          Value: cal-containers
       Policies:
         - PolicyName: ECRPushPolicy
           PolicyDocument:
@@ -132,6 +140,9 @@ Resources:
                   - 'ecr:UploadLayerPart'
                   - 'ecr:CompleteLayerUpload'
                   - 'ecr:PutImage'
+                  - 'ecr:ListImages'
+                  - 'ecr:DescribeImages'
+                  - 'ecr:TagResource'
                 Resource: '*'
 
   # OIDC Provider for GitHub Actions
@@ -143,28 +154,45 @@ Resources:
         - 'sts.amazonaws.com'
       ThumbprintList:
         - '6938fd4d98bab03faadb97b34396831e3780aea1'
+      Tags:
+        - Key: Environment
+          Value: !Ref StackEnvironment
+        - Key: Application
+          Value: cal-containers
 
 Outputs:
-  FrontendRepositoryURI:
-    Description: URI for the Frontend ECR Repository
-    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${FrontendRepository}
+  AppRepositoryURI:
+    Description: URI for the App ECR Repository
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AppRepository}"
     Export:
-      Name: !Sub "${AWS::StackName}-FrontendRepositoryURI"
+      Name: !Sub "${AWS::StackName}-AppRepositoryURI"
+  
+  AppRepositoryName:
+    Description: Name of the App ECR Repository
+    Value: !Ref AppRepository
+    Export:
+      Name: !Sub "${AWS::StackName}-AppRepositoryName"
   
   AggregatorRepositoryURI:
     Description: URI for the Aggregator Lambda ECR Repository
-    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AggregatorRepository}
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AggregatorRepository}"
     Export:
       Name: !Sub "${AWS::StackName}-AggregatorRepositoryURI"
       
-  AuthenticatedViewsRepositoryURI:
-    Description: URI for the Authenticated User Views ECR Repository
-    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AuthenticatedViewsRepository}
+  AggregatorRepositoryName:
+    Description: Name of the Aggregator Lambda ECR Repository
+    Value: !Ref AggregatorRepository
     Export:
-      Name: !Sub "${AWS::StackName}-AuthenticatedViewsRepositoryURI"
+      Name: !Sub "${AWS::StackName}-AggregatorRepositoryName"
   
   GitHubActionsRoleARN:
     Description: ARN for the GitHub Actions IAM Role
     Value: !GetAtt GitHubActionsRole.Arn
     Export:
       Name: !Sub "${AWS::StackName}-GitHubActionsRoleARN"
+      
+  StackEnvironment:
+    Description: Environment for this stack deployment
+    Value: !Ref StackEnvironment
+    Export:
+      Name: !Sub "${AWS::StackName}-Environment"

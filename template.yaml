@@ -1,0 +1,694 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  DCTech Events Infrastructure
+  
+Parameters:
+  DomainName:
+    Type: String
+    Default: dctech.events
+    Description: Domain name for the CloudFront distribution
+  
+  AuthDomainName:
+    Type: String
+    Default: auth.dctech.events
+    Description: Domain name for the Cognito user pool
+    
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment name
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        EVENTS_TABLE: !Ref EventsTable
+        GROUPS_TABLE: !Ref GroupsTable
+        S3_BUCKET_NAME: !Ref StaticSiteBucket
+        TIMEZONE: US/Eastern
+        SITEURL: !Sub https://${DomainName}
+        SITENAME: DC Tech Events
+        ENVIRONMENT: !Ref Environment
+        AWS_REGION: !Ref AWS::Region
+
+Resources:
+  # DynamoDB Tables
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EVENTS
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: month
+          AttributeType: S
+        - AttributeName: sort
+          AttributeType: S
+        - AttributeName: sourceId
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: month
+          KeyType: HASH
+        - AttributeName: sort
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: group-index
+          KeySchema:
+            - AttributeName: sourceId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: date-index
+          KeySchema:
+            - AttributeName: date
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+            
+  GroupsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: GROUPS
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: organization_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: organization-index
+          KeySchema:
+            - AttributeName: organization_name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+            
+  # S3 Bucket for Static Site
+  StaticSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${DomainName}-static-site
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: 404.html
+        
+  StaticSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticSiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${StaticSiteBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+                
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${DomainName}-user-pool
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      # Enable passwordless authentication
+      UsernameConfiguration:
+        CaseSensitive: false
+      # Simplified password policy for passwordless flow
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+          RequireUppercase: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      # Lambda triggers for passwordless authentication
+      LambdaConfig:
+        PreSignUp: !GetAtt CognitoPreSignUpLambda.Arn
+        DefineAuthChallenge: !GetAtt CognitoDefineAuthChallengeLambda.Arn
+        CreateAuthChallenge: !GetAtt CognitoCreateAuthChallengeLambda.Arn
+        VerifyAuthChallengeResponse: !GetAtt CognitoVerifyAuthChallengeLambda.Arn
+          
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref AuthDomainName
+      UserPoolId: !Ref UserPool
+      
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${DomainName}-app-client
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlows:
+        - implicit
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      CallbackURLs:
+        - !Sub https://${DomainName}/auth-callback/
+      LogoutURLs:
+        - !Sub https://${DomainName}/
+      SupportedIdentityProviders:
+        - COGNITO
+      # Enable passwordless authentication
+      AuthSessionValidity: 15
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        
+  # Cognito Lambda Triggers for Passwordless Authentication
+  CognitoPreSignUpLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-pre-signup
+      Handler: index.handler
+      Runtime: nodejs16.x
+      InlineCode: |
+        exports.handler = async (event, context) => {
+          // Auto-confirm and auto-verify all users
+          event.response.autoConfirmUser = true;
+          event.response.autoVerifyEmail = true;
+          
+          return event;
+        };
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          
+  CognitoDefineAuthChallengeLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-define-auth-challenge
+      Handler: index.handler
+      Runtime: nodejs16.x
+      InlineCode: |
+        exports.handler = async (event, context) => {
+          // If user doesn't exist, create a new user
+          if (event.request.userNotFound) {
+            event.response.issueTokens = false;
+            event.response.failAuthentication = false;
+            event.response.challengeName = 'CUSTOM_CHALLENGE';
+            return event;
+          }
+          
+          // For existing users or new users after creation
+          if (!event.request.session || event.request.session.length === 0) {
+            // First challenge - send email code
+            event.response.issueTokens = false;
+            event.response.failAuthentication = false;
+            event.response.challengeName = 'CUSTOM_CHALLENGE';
+          } else if (event.request.session.length === 1 && 
+                    event.request.session[0].challengeName === 'CUSTOM_CHALLENGE' && 
+                    event.request.session[0].challengeResult === true) {
+            // User successfully completed the challenge
+            event.response.issueTokens = true;
+            event.response.failAuthentication = false;
+          } else {
+            // User failed the challenge
+            event.response.issueTokens = false;
+            event.response.failAuthentication = true;
+          }
+          
+          return event;
+        };
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          
+  CognitoCreateAuthChallengeLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-create-auth-challenge
+      Handler: index.handler
+      Runtime: nodejs16.x
+      InlineCode: |
+        const crypto = require('crypto');
+        
+        exports.handler = async (event, context) => {
+          // Generate a random 6-digit code
+          const code = crypto.randomInt(100000, 999999).toString();
+          
+          // Store the code in the private challenge parameters
+          event.response.privateChallengeParameters = { code };
+          
+          // Send the code to the user's email
+          event.response.challengeMetadata = 'CUSTOM_CHALLENGE';
+          
+          // Include the code in the public challenge parameters
+          event.response.publicChallengeParameters = {
+            email: event.request.userAttributes.email,
+            message: 'Please check your email for the verification code'
+          };
+          
+          return event;
+        };
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          
+  CognitoVerifyAuthChallengeLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-verify-auth-challenge
+      Handler: index.handler
+      Runtime: nodejs16.x
+      InlineCode: |
+        exports.handler = async (event, context) => {
+          // Check if the answer matches the code
+          const expectedCode = event.request.privateChallengeParameters.code;
+          const providedCode = event.request.challengeAnswer;
+          
+          event.response.answerCorrect = (expectedCode === providedCode);
+          
+          return event;
+        };
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          
+  # Lambda permissions for Cognito triggers
+  CognitoPreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoPreSignUpLambda.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+      
+  CognitoDefineAuthChallengePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoDefineAuthChallengeLambda.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+      
+  CognitoCreateAuthChallengePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoCreateAuthChallengeLambda.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+      
+  CognitoVerifyAuthChallengePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CognitoVerifyAuthChallengeLambda.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+      
+  # Lambda Functions
+  AggregatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-aggregator
+      ImageUri: aggregatorfunction:latest  
+      PackageType: Image
+      ImageConfig:
+        Command: ["lambda_function.handler"]
+      Metadata:
+        Dockerfile: Dockerfile
+        DockerContext: ./aggregator-lambda
+        DockerTag: latest
+      Role: !GetAtt AggregatorFunctionRole.Arn
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+            
+  AggregatorFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt EventsTable.Arn
+                  - !GetAtt GroupsTable.Arn
+                  - !Sub ${EventsTable.Arn}/index/*
+                  - !Sub ${GroupsTable.Arn}/index/*
+            
+  CognitoLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminSetUserPassword
+                Resource: !GetAtt UserPool.Arn
+                  
+  StaticSiteGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-static-site-generator
+      PackageType: Image
+      ImageUri: staticsitegeneratorfunction:latest
+      ImageConfig:
+        Command: ["lambda_function.static_site_generator_handler"]
+      Metadata:
+        Dockerfile: Dockerfile
+        DockerContext: ./app
+        DockerTag: latest
+      Role: !GetAtt StaticSiteGeneratorFunctionRole.Arn
+      Environment:
+        Variables:
+          MODERATOR_API_URL: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod
+          AUTH_API_URL: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+            Enabled: true
+            Input: '{"action": "generate-static-site"}'
+            
+  StaticSiteGeneratorFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt EventsTable.Arn
+                  - !GetAtt GroupsTable.Arn
+                  - !Sub ${EventsTable.Arn}/index/*
+                  - !Sub ${GroupsTable.Arn}/index/*
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:DeleteObject
+                Resource:
+                  - !GetAtt StaticSiteBucket.Arn
+                  - !Sub ${StaticSiteBucket.Arn}/*
+                  
+  # API Gateway and API Lambda
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${DomainName}-api
+      PackageType: Image
+      ImageUri: apifunction:latest
+      ImageConfig:
+        Command: ["lambda_function.api_handler"]
+      Metadata:
+        Dockerfile: Dockerfile
+        DockerContext: ./app
+        DockerTag: latest
+      Role: !GetAtt ApiFunctionRole.Arn
+      Environment:
+        Variables:
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_APP_CLIENT_ID: !Ref UserPoolClient
+          MODERATOR_API_URL: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod
+          AUTH_API_URL: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/{proxy+}
+            Method: ANY
+            Auth:
+              Authorizer: CognitoAuthorizer
+              
+  ApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt EventsTable.Arn
+                  - !GetAtt GroupsTable.Arn
+                  - !Sub ${EventsTable.Arn}/index/*
+                  - !Sub ${GroupsTable.Arn}/index/*
+                  
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+            
+  # SSL Certificate
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub www.${DomainName}
+        - !Ref AuthDomainName
+      ValidationMethod: DNS
+      
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+          - !Sub www.${DomainName}
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt StaticSiteBucket.RegionalDomainName
+            OriginAccessControl:
+              Id: !Ref CloudFrontOriginAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+          - Id: ApiOrigin
+            DomainName: !Sub ${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com
+            OriginPath: /Prod
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - DELETE
+              - GET
+              - HEAD
+              - OPTIONS
+              - PATCH
+              - POST
+              - PUT
+            CachedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            ForwardedValues:
+              QueryString: true
+              Headers:
+                - Authorization
+              Cookies:
+                Forward: all
+            MinTTL: 0
+            DefaultTTL: 0
+            MaxTTL: 0
+            
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${DomainName}-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+        
+Outputs:
+  CloudFrontDistributionDomainName:
+    Description: Domain name of the CloudFront distribution
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    
+  CloudFrontDistributionId:
+    Description: ID of the CloudFront distribution
+    Value: !Ref CloudFrontDistribution
+    
+  StaticSiteBucketName:
+    Description: Name of the S3 bucket for the static site
+    Value: !Ref StaticSiteBucket
+    
+  UserPoolId:
+    Description: ID of the Cognito User Pool
+    Value: !Ref UserPool
+    
+  UserPoolClientId:
+    Description: ID of the Cognito User Pool Client
+    Value: !Ref UserPoolClient
+    
+  ApiGatewayUrl:
+    Description: URL of the API Gateway
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod
+    
+  AggregatorFunctionName:
+    Description: Name of the Aggregator Lambda function
+    Value: !Ref AggregatorFunction
+    
+  StaticSiteGeneratorFunctionName:
+    Description: Name of the Static Site Generator Lambda function
+    Value: !Ref StaticSiteGeneratorFunction
+    
+  ApiFunctionName:
+    Description: Name of the API Lambda function
+    Value: !Ref ApiFunction
