@@ -5,14 +5,14 @@
 all: fetch generate freeze
 
 fetch:
-        python aggregator.py
+	python aggregator.py
 
 generate:
-        python aggregator.py --force
+	python aggregator.py --force
 
 freeze:
-        python freeze.py
+	python freeze.py
 
 clean:
-        rm -rf build
-        rm -rf _cache/*.meta
+	rm -rf build
+	rm -rf _cache/*.meta
