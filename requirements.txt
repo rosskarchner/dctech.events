@@ -1,0 +1,9 @@
+flask>=2.3.0
+Frozen-Flask
+flask-htmx>=0.2.0
+pytz
+pyyaml
+icalendar
+requests
+pytz
+pyyaml

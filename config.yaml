@@ -1,0 +1,7 @@
+# DC Tech Events Configuration
+
+# Site name
+site_name: "DC Tech Events"
+
+# Timezone for event display and processing
+timezone: "US/Eastern"

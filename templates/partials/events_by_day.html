@@ -1,0 +1,35 @@
+{# Partial template for displaying events grouped by day #}
+<div class="events-by-day">
+    {% if days %}
+        {% for day in days %}
+            <a id="{{ day.date }}" style="display:none;"></a>
+            {% if day.has_events %}
+                <div class="day-container">
+                    <h3 class="day-heading">{{ day.short_date }}</h3>
+                    
+                    {% for event in day.events %}
+                        <div class="vevent h-entry">
+                            <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>
+                            <div class="event-details">
+                                {{ event.time }}
+                                {% if event.location %}
+                                    / <span class="event-location">
+                                        {{ event.location }}
+                                    </span>
+                                {% endif %}
+                                {% if event.group %}
+                                    / {{ event.group }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <div class="no-events-container">
+            <p>No events found for this period.</p>
+            <p>Check back soon or <a href="/groups">browse our tech groups</a>.</p>
+        </div>
+    {% endif %}
+</div>

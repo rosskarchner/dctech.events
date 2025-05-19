@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}DC Tech Events{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    {% include "partials/date_selector.html" %}
+
+    <section class="events-section">
+        <h2>Upcoming Events</h2>
+        {% include "partials/events_by_day.html" %}
+    </section>
+    
+    <section class="cta-section">
+        <h2>Have an event to share?</h2>
+        <p>You can suggest an event for our calendar.</p>
+        <div class="cta-buttons">
+            <a href="/events/suggest" class="btn-primary">Suggest an Event</a>
+        </div>
+    </section>
+
+    <section class="upcoming-months-section" id="upcoming-months">
+        <h2>Upcoming Months</h2>
+        {% if future_months %}
+            {% for year, months in future_months.items() %}
+                <div class="year-container">
+                    <h3>{{ year }}</h3>
+                    <ul class="months-list">
+                        {% for month in months %}
+                            <li>
+                                {% if month.count > 0 %}
+                                    <a href="/{{ month.year }}/{{ month.number }}/">{{ month.name }} ({{ month.count }})</a>
+                                {% else %}
+                                    {{ month.name }}
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No future events scheduled yet.</p>
+        {% endif %}
+    </section>
+</div>
+
+{# Add invisible anchors for next week and next month #}
+<a id="{{ next_week_date }}" style="display:none;"></a>
+<a id="{{ next_month_date }}" style="display:none;"></a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .upcoming-months-section {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+    
+    .year-container {
+        margin-bottom: 1.5rem;
+    }
+    
+    .months-list {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .months-list li {
+        margin-right: 1rem;
+    }
+    
+    .skip-links {
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}

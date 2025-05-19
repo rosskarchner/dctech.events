@@ -1,0 +1,5 @@
+name: DC Python Dojo
+website: https://pydistrict.org/
+ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-Wg8JJjExSGrXXNA
+fallback_url: https://lu.ma/pydistrict
+active: true

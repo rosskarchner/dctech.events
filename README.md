@@ -1,110 +1,100 @@
 # DC Tech Events
 
-A platform for aggregating and displaying tech events in the DC area.
+A static site generator for aggregating and displaying tech events in the DC area.
+
+## Project Structure
+
+- `_groups/`: YAML files describing each tech group
+- `_single_events/`: YAML files for events that don't come from groups
+- `_data/`: Generated YAML files containing event data
+- `_cache/`: Cache for downloaded iCal files
+- `app/`: Flask application for rendering the site
+- `build/`: Generated static site
 
 ## Local Development
 
-To run the application locally:
+### Prerequisites
+
+- Python 3.8+
+- pip
+
+### Setup
+
+1. Install dependencies:
 
 ```bash
-docker-compose up
+pip install -r app/requirements.txt
+pip install -r aggregator-requirements.txt
 ```
 
-This will start the following services:
-- Frontend app at http://localhost:5000
-- DynamoDB local at http://localhost:8000
-- S3 emulator (LocalStack) at http://localhost:4566
-- Aggregator Lambda function
+2. Run the aggregator to fetch events:
+
+```bash
+python aggregator.py
+```
+
+3. Run the Flask app locally:
+
+```bash
+cd app
+flask run
+```
+
+4. Visit http://localhost:5000 in your browser
+
+### Building the Static Site
+
+To build the complete static site:
+
+```bash
+make all
+```
+
+This will:
+1. Fetch iCal files from group sources
+2. Generate YAML files with event data
+3. Build the static site using Flask-Frozen
+
+The generated site will be in the `build/` directory.
+
+## Adding Content
+
+### Adding a Group
+
+Create a new YAML file in the `_groups/` directory with the following format:
+
+```yaml
+name: Group Name
+website: https://example.com
+ical: https://example.com/events.ics
+fallback_url: https://example.com/events  # Optional
+active: true  # Optional, defaults to true
+```
+
+### Adding a Single Event
+
+Create a new YAML file in the `_single_events/` directory with the following format:
+
+```yaml
+title: Event Title
+date: 2023-12-15  # YYYY-MM-DD
+time: 18:00  # 24-hour format
+end_date: 2023-12-15  # Optional
+end_time: 20:00  # Optional
+url: https://example.com/event
+description: Event description
+location: Event location
+group: Organizing Group
+```
 
 ## Deployment
 
-### Prerequisites
+The site is automatically deployed to GitHub Pages when changes are pushed to the main branch.
 
-1. AWS CLI installed and configured
-2. SAM CLI installed
-3. Docker installed
+## Makefile Commands
 
-### Deployment with SAM
-
-The application is now configured to build and deploy as a single unit using AWS SAM:
-
-```bash
-# Make the deployment script executable
-chmod +x deploy.sh
-
-# Deploy with default settings
-./deploy.sh
-
-# Deploy with custom settings
-./deploy.sh \
-  --stack-name dctech-events-dev \
-  --environment dev \
-  --domain-name dev.dctech.events \
-  --auth-domain auth.dev.dctech.events \
-  --region us-east-1
-
-# Build without deploying
-./deploy.sh --build-only
-
-# Delete the stack
-./deploy.sh --delete
-```
-
-The deployment script will:
-1. Build the container images for the Lambda functions using SAM
-2. Deploy the entire stack as one unit
-3. Display the outputs from the CloudFormation stack
-
-### Manual Deployment
-
-If you prefer to deploy manually:
-
-```bash
-# Build the application
-sam build --template template.yaml
-
-# Deploy the application
-sam deploy \
-  --stack-name dctech-events \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    DomainName=dctech.events \
-    AuthDomainName=auth.dctech.events \
-    Environment=prod
-```
-
-## Architecture
-
-The deployed infrastructure includes:
-
-- **CloudFront Distribution**: Serves the static site and routes API requests
-- **S3 Bucket**: Stores the static site files
-- **DynamoDB Tables**: Store events and groups data
-- **Cognito User Pool**: Handles authentication
-- **Lambda Functions**:
-  - Aggregator: Runs hourly to fetch and process events
-  - Static Site Generator: Runs hourly to generate and upload the static site
-  - API: Handles authenticated API requests
-
-## API Routes
-
-All API routes are protected by Cognito authentication and are available under the `/api/` path:
-
-- `/api/events/suggest-form`: Get the event suggestion form
-- `/api/events/submit`: Submit a new event
-- `/api/events/review`: Review pending events
-- `/api/events/approve/{id}`: Approve an event
-- `/api/events/delete/{id}`: Delete an event
-- `/api/groups/manage`: Manage groups
-- `/api/groups/approve/{id}`: Approve a group
-- `/api/groups/delete/{id}`: Delete a group
-
-## Authentication
-
-Authentication is handled by Amazon Cognito. Users can sign in at `https://auth.dctech.events`.
-
-## Additional Documentation
-
-- [Authenticated Views](README-authenticated-views.md)
-- [Deployment Details](README-deployment.md)
-- [Recent Changes](README-changes.md)
+- `make all`: Run the complete build process
+- `make fetch`: Fetch iCal files (Phase 1)
+- `make generate`: Generate YAML files (Phase 2)
+- `make freeze`: Generate the static site
+- `make clean`: Clean build artifacts
