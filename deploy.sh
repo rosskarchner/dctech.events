@@ -8,6 +8,9 @@ ENVIRONMENT="dev"
 DOMAIN_NAME="dctech.events"
 AUTH_DOMAIN_NAME="auth.dctech.events"
 REGION=$(aws configure get region || echo "us-east-1")
+AGGREGATOR_IMAGE_URI=""
+API_IMAGE_URI=""
+STATIC_SITE_GENERATOR_IMAGE_URI=""
 
 # Help function
 function show_help {
@@ -25,6 +28,9 @@ function show_help {
     echo "  -r, --region REGION        Set the AWS region (default: $REGION)"
     echo "  -b, --build-only           Build the application without deploying"
     echo "  --delete                   Delete the CloudFormation stack"
+    echo "  --aggregator-image URI     Set the Aggregator Lambda container image URI"
+    echo "  --api-image URI            Set the API Lambda container image URI"
+    echo "  --static-site-image URI    Set the Static Site Generator Lambda container image URI"
     echo ""
 }
 
@@ -68,6 +74,18 @@ while [[ $# -gt 0 ]]; do
             DELETE_STACK=true
             shift
             ;;
+        --aggregator-image)
+            AGGREGATOR_IMAGE_URI="$2"
+            shift 2
+            ;;
+        --api-image)
+            API_IMAGE_URI="$2"
+            shift 2
+            ;;
+        --static-site-image)
+            STATIC_SITE_GENERATOR_IMAGE_URI="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             show_help
@@ -102,14 +120,32 @@ if [ "$DELETE_STACK" = true ]; then
     exit 0
 fi
 
-# Build the application
-echo "Building the application with SAM..."
-sam build --template "$TEMPLATE_FILE" --region "$REGION"
+# Build the application if no container images are provided
+if [ -z "$AGGREGATOR_IMAGE_URI" ] || [ -z "$API_IMAGE_URI" ] || [ -z "$STATIC_SITE_GENERATOR_IMAGE_URI" ]; then
+    echo "Building the application with SAM..."
+    sam build --template "$TEMPLATE_FILE" --region "$REGION"
+fi
 
 # Exit if build-only flag is set
 if [ "$BUILD_ONLY" = true ]; then
     echo "Build completed successfully. Skipping deployment as requested."
     exit 0
+fi
+
+# Prepare parameter overrides
+PARAMS="DomainName=$DOMAIN_NAME AuthDomainName=$AUTH_DOMAIN_NAME Environment=$ENVIRONMENT"
+
+# Add container image URIs if provided
+if [ -n "$AGGREGATOR_IMAGE_URI" ]; then
+    PARAMS="$PARAMS AggregatorImageUri=$AGGREGATOR_IMAGE_URI"
+fi
+
+if [ -n "$API_IMAGE_URI" ]; then
+    PARAMS="$PARAMS ApiImageUri=$API_IMAGE_URI"
+fi
+
+if [ -n "$STATIC_SITE_GENERATOR_IMAGE_URI" ]; then
+    PARAMS="$PARAMS StaticSiteGeneratorImageUri=$STATIC_SITE_GENERATOR_IMAGE_URI"
 fi
 
 # Deploy the application
@@ -118,10 +154,7 @@ sam deploy \
     --stack-name "$STACK_NAME" \
     --capabilities CAPABILITY_IAM \
     --region "$REGION" \
-    --parameter-overrides \
-        DomainName="$DOMAIN_NAME" \
-        AuthDomainName="$AUTH_DOMAIN_NAME" \
-        Environment="$ENVIRONMENT"
+    --parameter-overrides $PARAMS
 
 echo "Deployment completed successfully!"
 

@@ -21,6 +21,21 @@ Parameters:
       - dev
       - prod
     Description: Environment name
+    
+  AggregatorImageUri:
+    Type: String
+    Description: URI for the Aggregator Lambda container image
+    Default: ""
+    
+  ApiImageUri:
+    Type: String
+    Description: URI for the API Lambda container image
+    Default: ""
+    
+  StaticSiteGeneratorImageUri:
+    Type: String
+    Description: URI for the Static Site Generator Lambda container image
+    Default: ""
 
 Globals:
   Function:
@@ -36,6 +51,11 @@ Globals:
         SITENAME: DC Tech Events
         ENVIRONMENT: !Ref Environment
         AWS_REGION: !Ref AWS::Region
+
+Conditions:
+  HasAggregatorImage: !Not [!Equals [!Ref AggregatorImageUri, ""]]
+  HasApiImage: !Not [!Equals [!Ref ApiImageUri, ""]]
+  HasStaticSiteGeneratorImage: !Not [!Equals [!Ref StaticSiteGeneratorImageUri, ""]]
 
 Resources:
   # DynamoDB Tables
@@ -357,14 +377,16 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${DomainName}-aggregator
-      ImageUri: aggregatorfunction:latest  
+      ImageUri: !If [HasAggregatorImage, !Ref AggregatorImageUri, aggregatorfunction:latest]
       PackageType: Image
       ImageConfig:
         Command: ["lambda_function.handler"]
-      Metadata:
-        Dockerfile: Dockerfile
-        DockerContext: ./aggregator-lambda
-        DockerTag: latest
+      Metadata: !If 
+        - HasAggregatorImage
+        - {}
+        - Dockerfile: Dockerfile
+          DockerContext: ./aggregator-lambda
+          DockerTag: latest
       Role: !GetAtt AggregatorFunctionRole.Arn
       Events:
         ScheduledEvent:
@@ -431,13 +453,15 @@ Resources:
     Properties:
       FunctionName: !Sub ${DomainName}-static-site-generator
       PackageType: Image
-      ImageUri: staticsitegeneratorfunction:latest
+      ImageUri: !If [HasStaticSiteGeneratorImage, !Ref StaticSiteGeneratorImageUri, staticsitegeneratorfunction:latest]
       ImageConfig:
         Command: ["lambda_function.static_site_generator_handler"]
-      Metadata:
-        Dockerfile: Dockerfile
-        DockerContext: ./app
-        DockerTag: latest
+      Metadata: !If 
+        - HasStaticSiteGeneratorImage
+        - {}
+        - Dockerfile: Dockerfile
+          DockerContext: ./app
+          DockerTag: latest
       Role: !GetAtt StaticSiteGeneratorFunctionRole.Arn
       Environment:
         Variables:
@@ -498,13 +522,15 @@ Resources:
     Properties:
       FunctionName: !Sub ${DomainName}-api
       PackageType: Image
-      ImageUri: apifunction:latest
+      ImageUri: !If [HasApiImage, !Ref ApiImageUri, apifunction:latest]
       ImageConfig:
         Command: ["lambda_function.api_handler"]
-      Metadata:
-        Dockerfile: Dockerfile
-        DockerContext: ./app
-        DockerTag: latest
+      Metadata: !If 
+        - HasApiImage
+        - {}
+        - Dockerfile: Dockerfile
+          DockerContext: ./app
+          DockerTag: latest
       Role: !GetAtt ApiFunctionRole.Arn
       Environment:
         Variables:

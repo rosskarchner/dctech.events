@@ -37,12 +37,6 @@ jobs:
           chmod +x app/freeze.py
           chmod +x test_components.py
         
-      - name: Build frontend
-        run: |
-          cd app
-          python freeze.py
-          cd ..
-
   build-and-push:
     name: Build and Push Containers
     runs-on: ubuntu-latest

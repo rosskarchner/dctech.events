@@ -36,3 +36,56 @@ The changes have been verified to ensure:
 These changes ensure that the ECR infrastructure matches the current container setup, which consists of:
 1. An app container (cal-containers-app)
 2. An aggregator lambda container (cal-containers-aggregator)
+
+# Container Deployment Changes
+
+## Summary of Changes
+
+The deployment process has been updated to allow specifying container images by URL instead of building them locally. The following changes were made:
+
+1. Added parameters to `template.yaml` for container image URIs
+2. Updated Lambda function definitions to use the image URIs from parameters
+3. Added conditions to determine whether to use the provided image URIs or build locally
+4. Updated `deploy.sh` to accept container image URIs as parameters
+
+## Details
+
+### Before:
+- All container images were built locally during deployment using `sam build`
+- The `freeze.py` script was run as part of the GitHub Actions workflow
+
+### After:
+- Container images can be specified by URL using the new parameters
+- Local building is only performed if image URIs are not provided
+- The `freeze.py` script is no longer required as part of the GitHub Actions workflow
+
+## Files Changed
+
+1. `template.yaml`: Added parameters for container image URIs and conditions to use them
+2. `deploy.sh`: Updated to accept container image URIs as parameters
+3. Created `test_ecr_deployment.py`: Tests to verify the changes
+
+## Usage
+
+To deploy using container images from ECR:
+
+```bash
+./deploy.sh \
+  --aggregator-image 123456789012.dkr.ecr.us-east-1.amazonaws.com/cal-containers-aggregator:latest \
+  --api-image 123456789012.dkr.ecr.us-east-1.amazonaws.com/cal-containers-app:latest \
+  --static-site-image 123456789012.dkr.ecr.us-east-1.amazonaws.com/cal-containers-app:latest
+```
+
+To deploy using locally built images (previous behavior):
+
+```bash
+./deploy.sh
+```
+
+## Verification
+
+The changes have been verified to ensure:
+- The template accepts container image URIs as parameters
+- The Lambda functions use the provided image URIs when available
+- The deployment script accepts container image URIs as parameters
+- Local building is only performed when necessary
