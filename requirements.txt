@@ -5,5 +5,3 @@ pytz
 pyyaml
 icalendar
 requests
-pytz
-pyyaml

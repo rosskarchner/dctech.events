@@ -8,7 +8,7 @@ A static site generator for aggregating and displaying tech events in the DC are
 - `_single_events/`: YAML files for events that don't come from groups
 - `_data/`: Generated YAML files containing event data
 - `_cache/`: Cache for downloaded iCal files
-- `app/`: Flask application for rendering the site
+- `app.py`: Flask application for rendering the site
 - `build/`: Generated static site
 
 ## Local Development
@@ -23,8 +23,7 @@ A static site generator for aggregating and displaying tech events in the DC are
 1. Install dependencies:
 
 ```bash
-pip install -r app/requirements.txt
-pip install -r aggregator-requirements.txt
+pip install -r requirements.txt
 ```
 
 2. Run the aggregator to fetch events:
@@ -36,8 +35,7 @@ python aggregator.py
 3. Run the Flask app locally:
 
 ```bash
-cd app
-flask run
+python app.py
 ```
 
 4. Visit http://localhost:5000 in your browser
