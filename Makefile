@@ -1,13 +1,13 @@
 .PHONY: all clean clean-all force refresh-calendars generate-month-data freeze
 
-all: generate-month-data freeze
+# Default target
+all: refresh-calendars generate-month-data freeze
 
-_data/.refreshed:
-	mkdir -p _data
+# Always run refresh-calendars by making it .PHONY and a prerequisite for generate-month-data
+refresh-calendars:
 	python refresh_calendars.py
-	touch _data/.refreshed
 
-generate-month-data: _data/.refreshed
+generate-month-data: refresh-calendars
 	python generate_month_data.py
 
 freeze: generate-month-data
@@ -15,8 +15,7 @@ freeze: generate-month-data
 
 clean:
 	rm -rf build/
-	rm -f _data/.refreshed
-	rm -f _data/*.yaml
+	rm -rf _data/
 
 clean-all: clean
 	rm -rf _cache/
