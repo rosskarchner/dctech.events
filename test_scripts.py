@@ -124,6 +124,34 @@ class TestScripts(unittest.TestCase):
                 'url': 'http://test.com',
                 'date': '2024-01-15',
                 'time': 1000,  # Integer time format
+            },
+            {
+                'title': 'Test Event 7',
+                'description': 'Event with ordinal date format',
+                'location': 'Test Location',
+                'url': 'http://test.com',
+                'date': 'June 6th 2025',  # Date with ordinal suffix
+                'time': '14:00',
+            },
+            {
+                'title': 'Test Event 8',
+                'description': 'Event with ordinal date and end date',
+                'location': 'Test Location',
+                'url': 'http://test.com',
+                'date': 'June 6th 2025',
+                'time': '14:00',
+                'end_date': 'June 7th 2025',
+                'end_time': '16:00',
+            },
+            {
+                'title': 'Test Event 9',
+                'description': 'Event with mixed date formats',
+                'location': 'Test Location',
+                'url': 'http://test.com',
+                'date': 'June 6th 2025',
+                'time': '2pm',
+                'end_date': '2025-06-06',  # Standard format end date
+                'end_time': '16:00',
             }
         ]
         
@@ -136,7 +164,7 @@ class TestScripts(unittest.TestCase):
         events = generate_month_data_module.load_single_events()
         
         # Check that we got all events
-        self.assertEqual(len(events), 6)
+        self.assertEqual(len(events), 9)
         
         # Check that all events with 6pm were parsed correctly to 18:00
         for event in events[:4]:
@@ -150,6 +178,22 @@ class TestScripts(unittest.TestCase):
         # Check that integer time 1000 was parsed correctly to 10:00
         self.assertEqual(events[5]['start_time'], '10:00')
         self.assertEqual(events[5]['start_date'], '2024-01-15')
+        
+        # Check ordinal date format (June 6th 2025)
+        self.assertEqual(events[6]['start_date'], '2025-06-06')
+        self.assertEqual(events[6]['start_time'], '14:00')
+        
+        # Check ordinal dates with end date
+        self.assertEqual(events[7]['start_date'], '2025-06-06')
+        self.assertEqual(events[7]['start_time'], '14:00')
+        self.assertEqual(events[7]['end_date'], '2025-06-07')
+        self.assertEqual(events[7]['end_time'], '16:00')
+        
+        # Check mixed date formats
+        self.assertEqual(events[8]['start_date'], '2025-06-06')
+        self.assertEqual(events[8]['start_time'], '14:00')  # 2pm -> 14:00
+        self.assertEqual(events[8]['end_date'], '2025-06-06')
+        self.assertEqual(events[8]['end_time'], '16:00')
 
 if __name__ == '__main__':
     unittest.main()
