@@ -4,15 +4,6 @@
 
 {% block content %}
 <div class="home-container">
-    <section class="skip-links">
-    <strong>Skip to:</strong>
-    <span class="skip-links">
-        <a href="#{{ next_week_date }}">next week</a>,
-        <a href="#{{ next_month_date }}">next month</a>,
-        or <a href="#upcoming-months">beyond</a>
-    </span>
-    </section>
-
     {# Add invisible anchors for next week and next month at the top of events section #}
     <a id="{{ next_week_date }}" class="anchor"></a>
     <a id="{{ next_month_date }}" class="anchor"></a>
@@ -21,14 +12,7 @@
         <h2>Upcoming Events</h2>
         {% include "partials/events_by_day.html" %}
     </section>
-    
-    <section class="cta-section">
-        <h2>Have an event to share?</h2>
-        <p>You can suggest an event for our calendar.</p>
-        <div class="cta-buttons">
-            <a href="/events/suggest" class="btn-primary">Suggest an Event</a>
-        </div>
-    </section>
+
 
     <section class="upcoming-months-section" id="upcoming-months">
         <h2>Upcoming Months</h2>
@@ -53,11 +37,19 @@
             <p>No future events scheduled yet.</p>
         {% endif %}
     </section>
+
+            <div class="container">
+        <h2>More</h2>
+            <nav>
+                <ul>
+                    <li><a href="/groups">Groups list</a></li>
+                    <li><a href="/add-events/">Add Events</a></li>
+                </ul>
+            </nav>
+        </div>
 </div>
 
-{# Add invisible anchors for next week and next month #}
-<a id="{{ next_week_date }}" style="display:none;"></a>
-<a id="{{ next_month_date }}" style="display:none;"></a>
+
 {% endblock %}
 
 {% block extra_head %}

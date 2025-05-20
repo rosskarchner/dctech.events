@@ -24,6 +24,9 @@ h4.time-heading{
 }
 
 
-.event {padding-top:4px;margin-left:80px;line-height: 1em; margin-bottom: 1em;}
+.event {padding-top:4px;margin-left:85px;line-height: 1em; margin-bottom: 1em;}
+.event .event-details{
+    font-size: smaller;
+}
 
 a {text-decoration: none;}
