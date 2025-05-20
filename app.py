@@ -94,13 +94,13 @@ def get_approved_groups():
 
 def prepare_events_by_day(events):
     """
-    Organize events by day
+    Organize events by day and time
     
     Args:
         events: List of event dictionaries
     
     Returns:
-        List of days with events, each day is a dictionary with date, short_date, and events
+        List of days with events, each day is a dictionary with date, short_date, and time_slots
     """
     # Create a dictionary to store events by day
     events_by_day = {}
@@ -119,34 +119,54 @@ def prepare_events_by_day(events):
             events_by_day[day_key] = {
                 'date': day_key,
                 'short_date': short_date,
-                'events': []
+                'time_slots': {}
             }
         
-        # Format the time for display
+        # Format and group by time
+        time_key = 'TBD'
         if 'time' in event:
             try:
                 time_obj = datetime.strptime(event['time'], '%H:%M').time()
                 event['time'] = time_obj.strftime('%-I:%M %p').lower()  # Format as "1:30 pm"
+                time_key = event['time']
             except:
                 pass
         
-        events_by_day[day_key]['events'].append(event)
+        if time_key not in events_by_day[day_key]['time_slots']:
+            events_by_day[day_key]['time_slots'][time_key] = []
+        
+        events_by_day[day_key]['time_slots'][time_key].append(event)
     
     # Convert the dictionary to a sorted list of days
     sorted_days = sorted(events_by_day.keys())
-    days_data = [events_by_day[day] for day in sorted_days]
+    days_data = []
     
-    # Sort events within each day by time
-    for day_data in days_data:
-        day_data['events'] = sorted(day_data['events'], key=lambda x: x.get('time', ''))
-        # Add a flag to indicate if the day has events
-        day_data['has_events'] = len(day_data['events']) > 0
+    for day in sorted_days:
+        day_data = events_by_day[day]
+        # Sort events within each time slot
+        time_slots = []
+        sorted_times = sorted(day_data['time_slots'].keys())
+        
+        # Move 'TBD' to the end if it exists
+        if 'TBD' in sorted_times:
+            sorted_times.remove('TBD')
+            sorted_times.append('TBD')
+        
+        for time in sorted_times:
+            time_slots.append({
+                'time': time,
+                'events': sorted(day_data['time_slots'][time], key=lambda x: x.get('title', ''))
+            })
+        
+        day_data['time_slots'] = time_slots
+        day_data['has_events'] = bool(time_slots)  # True if there are any time slots with events
+        days_data.append(day_data)
     
     return days_data
 
 def get_future_months_with_events():
     """
-    Get all future months with events
+    Get all future months with events, excluding current and next month
     
     Returns:
         A dictionary with years as keys and lists of month data as values
@@ -158,6 +178,14 @@ def get_future_months_with_events():
     today = datetime.now(local_tz).date()
     current_month = today.month
     current_year = today.year
+    
+    # Calculate next month
+    if current_month == 12:
+        next_month = 1
+        next_month_year = current_year + 1
+    else:
+        next_month = current_month + 1
+        next_month_year = current_year
     
     # Find all month files
     pattern = os.path.join(DATA_DIR, "*.yaml")
@@ -187,8 +215,8 @@ def get_future_months_with_events():
                 
             month_num = month_names[month_name]
             
-            # Skip past months
-            if year < current_year or (year == current_year and month_num < current_month):
+            if (year < current_year or 
+                (year == current_year and month_num < current_month)):
                 continue
                 
             # Count events in the file
@@ -220,27 +248,54 @@ def get_future_months_with_events():
     
     return result
 
-def get_next_week_and_month_dates():
+def get_next_week_and_month_dates(events):
     """
-    Get the dates for next week and next month
+    Get the dates for next week and next month, finding the nearest event dates
+    
+    Args:
+        events: List of event dictionaries
     
     Returns:
         A tuple of (next_week_date, next_month_date)
     """
     today = datetime.now(local_tz).date()
     
-    # Next week (7 days from today)
-    next_week = today + timedelta(days=7)
-    next_week_str = next_week.strftime('%Y-%m-%d')
-    
-    # Next month (first day of next month)
+    # Next week target (7 days from today)
+    next_week_target = today + timedelta(days=7)
+    # Next month target (first day of next month)
     if today.month == 12:
-        next_month = date(today.year + 1, 1, 1)
+        next_month_target = date(today.year + 1, 1, 1)
     else:
-        next_month = date(today.year, today.month + 1, 1)
-    next_month_str = next_month.strftime('%Y-%m-%d')
+        next_month_target = date(today.year, today.month + 1, 1)
     
-    return (next_week_str, next_month_str)
+    # Convert events dates to date objects
+    event_dates = []
+    for event in events:
+        try:
+            event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
+            if event_date >= today:  # Only consider future events
+                event_dates.append(event_date)
+        except:
+            continue
+    
+    if not event_dates:
+        # If no events, return the target dates
+        return (next_week_target.strftime('%Y-%m-%d'), 
+                next_month_target.strftime('%Y-%m-%d'))
+    
+    # Sort dates
+    event_dates.sort()
+    
+    # Find nearest future date to next week target
+    next_week_date = min(event_dates, 
+                        key=lambda d: abs((d - next_week_target).days))
+    
+    # Find nearest future date to next month target
+    next_month_date = min(event_dates, 
+                         key=lambda d: abs((d - next_month_target).days))
+    
+    return (next_week_date.strftime('%Y-%m-%d'), 
+            next_month_date.strftime('%Y-%m-%d'))
 
 @app.route("/")
 def homepage():
@@ -252,7 +307,7 @@ def homepage():
     future_months = get_future_months_with_events()
     
     # Get next week and month dates
-    next_week_date, next_month_date = get_next_week_and_month_dates()
+    next_week_date, next_month_date = get_next_week_and_month_dates(events)
     
     return render_template('homepage.html', 
                           days=days, 
@@ -306,6 +361,12 @@ def approved_groups_list():
                           next_key=None,
                           has_next=False,
                           site_name=SITE_NAME)
+
+@app.route("/add-events/")
+def add_events_page():
+    return render_template('add_events.html', site_name=SITE_NAME)
+
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

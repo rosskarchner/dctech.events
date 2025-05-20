@@ -2,9 +2,6 @@
 import os
 import yaml
 import icalendar
-import requests
-import hashlib
-import json
 import pytz
 from datetime import datetime, timedelta, timezone, date
 import glob
@@ -12,6 +9,7 @@ import re
 from pathlib import Path
 import sys
 import calendar as cal_module
+import dateparser
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -30,10 +28,10 @@ SINGLE_EVENTS_DIR = '_single_events'
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
-CURRENT_DAY_FILE = os.path.join(DATA_DIR, 'current_day.txt')
+REFRESH_FLAG_FILE = os.path.join(DATA_DIR, '.refreshed')
+UPDATED_FLAG_FILE = os.path.join(DATA_DIR, '.updated')
 
 # Ensure directories exist
-os.makedirs(ICAL_CACHE_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Custom YAML representer for icalendar.prop.vText objects
@@ -60,73 +58,6 @@ def sanitize_text(text):
         text = str(text)
     
     return text
-
-def fetch_ical(url, group_id):
-    """
-    Fetch an iCal file and cache it locally.
-    Only update if the content has changed (using ETag or Last-Modified).
-    
-    Args:
-        url: The URL of the iCal file
-        group_id: The ID of the group (used for caching)
-        
-    Returns:
-        The parsed iCal calendar if changed, None otherwise
-    """
-    try:
-        print(f"Fetching calendar from {url}")
-        # Create a cache key based on the group_id
-        cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.ics")
-        cache_meta_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.meta")
-        
-        # Prepare headers for conditional GET
-        headers = {}
-        meta_data = {}
-        
-        # Check if we have cached metadata
-        if os.path.exists(cache_meta_file):
-            with open(cache_meta_file, 'r') as f:
-                meta_data = json.load(f)
-                if 'etag' in meta_data:
-                    headers['If-None-Match'] = meta_data['etag']
-                if 'last_modified' in meta_data:
-                    headers['If-Modified-Since'] = meta_data['last_modified']
-        
-        # Make the request
-        response = requests.get(url, headers=headers)
-        
-        # If the content hasn't changed (304 Not Modified)
-        if response.status_code == 304:
-            print(f"Calendar for {group_id} not modified, using cached version")
-            with open(cache_file, 'r') as f:
-                return icalendar.Calendar.from_ical(f.read())
-        
-        # If we got a successful response
-        if response.status_code == 200:
-            # Save the content
-            with open(cache_file, 'w') as f:
-                f.write(response.text)
-            
-            # Save the metadata
-            new_meta = {}
-            if 'ETag' in response.headers:
-                new_meta['etag'] = response.headers['ETag']
-            if 'Last-Modified' in response.headers:
-                new_meta['last_modified'] = response.headers['Last-Modified']
-            
-            with open(cache_meta_file, 'w') as f:
-                json.dump(new_meta, f)
-            
-            # Parse and return the calendar
-            return icalendar.Calendar.from_ical(response.text)
-        
-        # If we got an error
-        print(f"Error fetching calendar: {response.status_code}")
-        return None
-        
-    except Exception as e:
-        print(f"Error fetching calendar from {url}: {str(e)}")
-        return None
 
 def event_to_dict(event, group=None):
     """
@@ -227,24 +158,70 @@ def load_single_events():
                 # Add the event ID (filename without extension)
                 event['id'] = os.path.splitext(os.path.basename(file_path))[0]
                 
-                # Ensure date and time are in the correct format
+                # Parse date and time using dateparser
                 if 'date' in event and 'time' in event:
                     # Convert date to string if it's a date object
                     if isinstance(event['date'], date):
                         event['date'] = event['date'].strftime('%Y-%m-%d')
                     
-                    # Create a datetime object - assume it's in local timezone
-                    event_datetime_str = f"{event['date']} {event['time']}"
-                    naive_dt = datetime.strptime(event_datetime_str, '%Y-%m-%d %H:%M')
+                    # Parse the date and time using dateparser
+                    # First try to parse time in standard format HH:MM or as integer
+                    try:
+                        if isinstance(event['time'], int):
+                            # Handle integer time format (e.g., 1000 for 10:00)
+                            time_str = str(event['time']).zfill(4)
+                            hours = int(time_str[:-2])
+                            minutes = int(time_str[-2:])
+                        else:
+                            # Handle HH:MM string format
+                            hours, minutes = map(int, str(event['time']).split(':'))
+                        
+                        if 0 <= hours <= 23 and 0 <= minutes <= 59:
+                            # Time is in valid format, use it directly
+                            event_datetime_str = f"{event['date']} {hours:02d}:{minutes:02d}"
+                            event_datetime = dateparser.parse(event_datetime_str, settings={
+                                'TIMEZONE': timezone_name,
+                                'RETURN_AS_TIMEZONE_AWARE': True,
+                                'DATE_ORDER': 'YMD',
+                                'PREFER_DATES_FROM': 'future',
+                                'PREFER_DAY_OF_MONTH': 'first'
+                            })
+                        else:
+                            raise ValueError
+                    except (ValueError, TypeError):
+                        # If not standard format, try flexible parsing
+                        event_datetime_str = f"{event['date']} {event['time']}"
+                        event_datetime = dateparser.parse(event_datetime_str, settings={
+                            'TIMEZONE': timezone_name,
+                            'RETURN_AS_TIMEZONE_AWARE': True,
+                            'DATE_ORDER': 'YMD',
+                            'PREFER_DATES_FROM': 'future',
+                            'PREFER_DAY_OF_MONTH': 'first'
+                        })
                     
-                    # Localize the datetime to the configured timezone
-                    event_datetime = local_tz.localize(naive_dt)
+                    if event_datetime is None:
+                        raise ValueError(f"Could not parse date/time: {event_datetime_str}")
                     
                     # Add formatted fields
                     event['start_date'] = event_datetime.strftime('%Y-%m-%d')
                     event['start_time'] = event_datetime.strftime('%H:%M')
-                    event['end_date'] = event.get('end_date', event['start_date'])
-                    event['end_time'] = event.get('end_time', event['start_time'])
+                    
+                    # Handle end date/time
+                    if 'end_date' in event and 'end_time' in event:
+                        end_datetime = dateparser.parse(f"{event['end_date']} {event['end_time']}", settings={
+                            'TIMEZONE': timezone_name,
+                            'RETURN_AS_TIMEZONE_AWARE': True,
+                            'DATE_ORDER': 'YMD',
+                            'PREFER_DATES_FROM': 'future',
+                            'PREFER_DAY_OF_MONTH': 'first'
+                        })
+                        if end_datetime is None:
+                            end_datetime = event_datetime
+                    else:
+                        end_datetime = event_datetime
+                        
+                    event['end_date'] = end_datetime.strftime('%Y-%m-%d')
+                    event['end_time'] = end_datetime.strftime('%H:%M')
                 
                 events.append(event)
         except Exception as e:
@@ -252,77 +229,14 @@ def load_single_events():
     
     return events
 
-def is_current_day_file_updated():
+def generate_yaml():
     """
-    Check if the current day file exists and is up to date.
-    
-    Returns:
-        bool: True if the file is up to date, False otherwise
-    """
-    today = datetime.now(local_tz).date()
-    today_str = today.strftime('%Y-%m-%d')
-    
-    # Check if the file exists
-    if not os.path.exists(CURRENT_DAY_FILE):
-        return False
-    
-    # Read the file content
-    with open(CURRENT_DAY_FILE, 'r') as f:
-        content = f.read().strip()
-    
-    # Check if the content matches today's date
-    return content == today_str
-
-def update_current_day_file():
-    """
-    Update the current day file with today's date.
-    """
-    today = datetime.now(local_tz).date()
-    today_str = today.strftime('%Y-%m-%d')
-    
-    # Write today's date to the file
-    with open(CURRENT_DAY_FILE, 'w') as f:
-        f.write(today_str)
-    
-    # Create a flag file to indicate that YAML files need to be updated
-    with open(os.path.join(DATA_DIR, '.updated'), 'w') as f:
-        f.write(datetime.now().isoformat())
-    
-    return True
-
-def phase1_fetch_icals():
-    """
-    Phase 1: Fetch all iCal files from groups
-    
-    Returns:
-        True if any calendars were updated, False otherwise
-    """
-    print("Phase 1: Fetching iCal files...")
-    groups = load_groups()
-    updated = False
-    
-    # Check if the current day file is up to date
-    if not is_current_day_file_updated():
-        print("Current day file is out of date, forcing update...")
-        update_current_day_file()
-        updated = True
-    
-    for group in groups:
-        if 'ical' in group and group['ical'] and group.get('active', True):
-            calendar = fetch_ical(group['ical'], group['id'])
-            if calendar is not None:
-                updated = True
-    
-    return updated
-
-def phase2_generate_yaml():
-    """
-    Phase 2: Generate YAML files from iCal and single events
+    Generate YAML files from iCal and single events
     
     Returns:
         True if any YAML files were updated, False otherwise
     """
-    print("Phase 2: Generating YAML files...")
+    print("Generating YAML files...")
     
     # Load all groups
     groups = load_groups()
@@ -374,7 +288,20 @@ def phase2_generate_yaml():
     # Filter events for upcoming.yaml (remainder of current month + next month)
     upcoming_events = []
     for event in all_events:
-        event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
+        # Parse date using dateparser for consistency
+        event_date_str = event.get('date')
+        if isinstance(event_date_str, date):
+            event_date = event_date_str
+        else:
+            parsed_date = dateparser.parse(event_date_str, settings={
+                'TIMEZONE': timezone_name,
+                'DATE_ORDER': 'YMD',
+                'PREFER_DATES_FROM': 'future'
+            })
+            if parsed_date is None:
+                print(f"Warning: Could not parse date: {event_date_str}")
+                continue
+            event_date = parsed_date.date()
         
         # Include if event is today or later and in current or next month
         if event_date >= today and (
@@ -386,7 +313,21 @@ def phase2_generate_yaml():
     # Group events by month for per-month files
     events_by_month = {}
     for event in all_events:
-        event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
+        # Parse date using dateparser for consistency
+        event_date_str = event.get('date')
+        if isinstance(event_date_str, date):
+            event_date = event_date_str
+        else:
+            parsed_date = dateparser.parse(event_date_str, settings={
+                'TIMEZONE': timezone_name,
+                'DATE_ORDER': 'YMD',
+                'PREFER_DATES_FROM': 'future'
+            })
+            if parsed_date is None:
+                print(f"Warning: Could not parse date: {event_date_str}")
+                continue
+            event_date = parsed_date.date()
+            
         month_key = f"{event_date.year}-{event_date.month:02d}"
         
         if month_key not in events_by_month:
@@ -408,36 +349,24 @@ def phase2_generate_yaml():
         with open(month_file, 'w') as f:
             yaml.dump(month_events, f, sort_keys=False)
     
+    # Create a flag file to indicate that YAML files were updated
+    with open(UPDATED_FLAG_FILE, 'w') as f:
+        f.write(datetime.now().isoformat())
+    
+    print("YAML files updated successfully")
     return True
 
 def main():
     """
-    Main function to run the aggregator
+    Main function to generate month data
     """
-    # Create cache directory if it doesn't exist
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    os.makedirs(ICAL_CACHE_DIR, exist_ok=True)
+    # Create data directory if it doesn't exist
     os.makedirs(DATA_DIR, exist_ok=True)
     
-    # Always check and update the current day file
-    if not is_current_day_file_updated():
-        print("Current day file is out of date, updating...")
-        update_current_day_file()
+    # Generate YAML files
+    generate_yaml()
     
-    # Run Phase 1
-    updated = phase1_fetch_icals()
-    
-    # Run Phase 2 if Phase 1 updated any calendars or if --force is specified
-    if updated or '--force' in sys.argv:
-        phase2_generate_yaml()
-        print("YAML files updated successfully")
-        # Create a flag file to indicate that YAML files were updated
-        with open(os.path.join(DATA_DIR, '.updated'), 'w') as f:
-            f.write(datetime.now().isoformat())
-        return 0
-    else:
-        print("No updates needed")
-        return 0
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())

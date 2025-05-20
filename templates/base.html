@@ -6,10 +6,7 @@
     <meta name="htmx-config" content='{"selfRequestsOnly":false}'>
     <title>{% block title %}DC Tech Events{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/main.css">
-    <!-- HTMX for dynamic content loading -->
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <script src="/static/js/auth.js"></script>
-    <script src="/static/js/common.js"></script>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -18,13 +15,8 @@
             <h1 class="logo"><a href="/">DC Tech Events</a></h1>
             <nav>
                 <ul>
-                    <li><a href="/">Home</a></li>
                     <li><a href="/groups">Groups</a></li>
-                    <li><a href="/events/suggest/">Suggest Event</a></li>
-                    <li><a href="/group/suggest/">Suggest Group</a></li>
-                    <li id="auth-section">
-                        <div id="auth-loading">Loading...</div>
-                    </li>
+                    <li><a href="/add-events/">Add Events</a></li>
                 </ul>
             </nav>
         </div>
@@ -40,36 +32,6 @@
         Made for you by <a href="https://ross.karchner.com/">Ross Karchner</a>.
     </footer>
     
-    <script>
-        // Check authentication status and update the auth section
-        document.addEventListener('DOMContentLoaded', function() {
-            fetch('/api/auth/user')
-                .then(response => response.json())
-                .then(data => {
-                    const authSection = document.getElementById('auth-section');
-                    if (data.authenticated) {
-                        // User is logged in
-                        let authContent = `<span>Welcome, ${data.user.username}</span>`;
-                        
-                        // Check if user is a moderator
-                        if (data.user.groups && data.user.groups.includes('localhost-moderators')) {
-                            authContent += ` | <a href="/events/review/">Review Events</a>`;
-                            authContent += ` | <a href="/groups/manage/">Manage Groups</a>`;
-                        }
-                        
-                        authContent += ` | <a href="/logout">Logout</a>`;
-                        authSection.innerHTML = authContent;
-                    } else {
-                        // User is not logged in
-                        authSection.innerHTML = `<a href="/login">Login</a>`;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking authentication:', error);
-                    document.getElementById('auth-section').innerHTML = `<a href="/login">Login</a>`;
-                });
-        });
-    </script>
     
     {% block scripts %}{% endblock %}
 </body>

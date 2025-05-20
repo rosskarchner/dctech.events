@@ -6,29 +6,21 @@
 <h1>Tech Groups in DC</h1>
 <div class="groups-container">
     {% if groups %}
+    <ul>
         {% for group in groups %}
-            <div class="group-card">
-                <h3>{{ group.name }}</h3>
-                <div class="group-details">
-                    <p><strong>Website:</strong> <a href="{{ group.website }}" target="_blank">{{ group.website }}</a></p>
-                </div>
-            </div>
+            <li class="group-card">
+                <a href="{{ group.website }}">{{ group.name }}</a>
+
+            </li>
         {% endfor %}
         
-        {% if has_next %}
-        <div class="pagination-controls">
-            <a href="/groups/?last_key={{ next_key }}" class="load-more-btn">Load More Groups</a>
-        </div>
-        {% endif %}
-    {% else %}
-        <div class="no-groups">
-            <p>No approved tech groups found.</p>
-        </div>
+        </ul>
+  
     {% endif %}
 </div>
 
 <div class="suggest-group">
-    <p>Don't see your tech group? <a href="/groups/suggest/">Suggest a group</a> to be added to our list.</p>
+    <p>Don't see your tech group? Learn about<a href="/add-events/">How to add groups and single events</a>.</p>
 </div>
 {% endblock %}
 

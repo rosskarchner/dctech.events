@@ -1,18 +1,24 @@
-# Makefile for DC Tech Events
+.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze
 
-.PHONY: all fetch generate freeze clean
+all: generate-month-data freeze
 
-all: fetch generate freeze
+_data/.refreshed:
+	mkdir -p _data
+	python refresh_calendars.py
+	touch _data/.refreshed
 
-fetch:
-	python aggregator.py
+generate-month-data: _data/.refreshed
+	python generate_month_data.py
 
-generate:
-	python aggregator.py --force
-
-freeze:
+freeze: generate-month-data
 	python freeze.py
 
 clean:
-	rm -rf build
-	rm -rf _cache/*.meta
+	rm -rf build/
+	rm -f _data/.refreshed
+	rm -f _data/*.yaml
+
+clean-all: clean
+	rm -rf _cache/
+
+force: clean-all all

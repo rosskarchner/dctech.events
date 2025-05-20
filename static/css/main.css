@@ -14,15 +14,16 @@ body{
 
 
 h3.day-heading {
-    margin:2px 0px 0px -5px;font-size:.8em;float:left;width:80px;text-align:right;color:gray;font-weight:bold;
+    margin:2px 0px 0px -5px;font-size:.8em;width:80px;text-align:right;color:gray;font-weight:bold;
 
 }
 
-.events-by-day ul{
-    padding-left: 11em;
-    clear:left
+
+h4.time-heading{
+    margin:0px 0px 0px -5px;width:80px;font-size:.8em;text-align:right;color:gray;font-weight:lighter;float:left
 }
 
-.vevent{font-size:1.0em;margin-left:90px;max-width:28em;}#events #thisweek .vevent .details{font-size:.7em;}
+
+.event {padding-top:4px;margin-left:80px;line-height: 1em; margin-bottom: 1em;}
 
 a {text-decoration: none;}

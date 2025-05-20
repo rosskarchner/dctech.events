@@ -26,10 +26,18 @@ A static site generator for aggregating and displaying tech events in the DC are
 pip install -r requirements.txt
 ```
 
-2. Run the aggregator to fetch events:
+2. Run the scripts to fetch events:
 
 ```bash
-python aggregator.py
+# Fetch calendars
+python refresh-calendars.py
+
+# Generate event data
+python generate-month-data.py
+
+# Or use make to handle dependencies automatically
+make refresh-calendars
+make generate-month-data
 ```
 
 3. Run the Flask app locally:
@@ -92,7 +100,9 @@ The site is automatically deployed to GitHub Pages when changes are pushed to th
 ## Makefile Commands
 
 - `make all`: Run the complete build process
-- `make fetch`: Fetch iCal files (Phase 1)
-- `make generate`: Generate YAML files (Phase 2)
+- `make refresh-calendars`: Fetch iCal files
+- `make generate-month-data`: Generate YAML files from iCal data
 - `make freeze`: Generate the static site
 - `make clean`: Clean build artifacts
+- `make clean-all`: Clean everything including cache
+- `make force`: Force refresh and regeneration

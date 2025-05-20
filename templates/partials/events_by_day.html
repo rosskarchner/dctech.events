@@ -1,26 +1,31 @@
-{# Partial template for displaying events grouped by day #}
+{# Partial template for displaying events grouped by day and time #}
 <div class="events-by-day">
     {% if days %}
         {% for day in days %}
-            <a id="{{ day.date }}" style="display:none;"></a>
+            
             {% if day.has_events %}
                 <div class="day-container">
-                    <h3 class="day-heading">{{ day.short_date }}</h3>
+                    <h3 class="day-heading">{{ day.short_date }} <a name="{{ day.date }}"></a></h3>
                     
-                    {% for event in day.events %}
-                        <div class="vevent h-entry">
-                            <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>
-                            <div class="event-details">
-                                {{ event.time }}
-                                {% if event.location %}
-                                    / <span class="event-location">
-                                        {{ event.location }}
-                                    </span>
-                                {% endif %}
-                                {% if event.group %}
-                                    / {{ event.group }}
-                                {% endif %}
-                            </div>
+                    {% for time_slot in day.time_slots %}
+                        <div class="time-slot">
+                            <h4 class="time-heading">{{ time_slot.time }}</h4>
+                            {% for event in time_slot.events %}
+                                <div class="event">
+                                    <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>
+                                    <div class="event-details">
+                                        {% if event.location %}
+                                            <span class="event-location">
+                                                {{ event.location }}
+                                            </span>
+                                        {% endif %}
+                                        {% if event.group %}
+                                            {% if event.location %} / {% endif %}
+                                            {{ event.group }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
                         </div>
                     {% endfor %}
                 </div>

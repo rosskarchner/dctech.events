@@ -4,8 +4,19 @@
 
 {% block content %}
 <div class="home-container">
-    {% include "partials/date_selector.html" %}
+    <section class="skip-links">
+    <strong>Skip to:</strong>
+    <span class="skip-links">
+        <a href="#{{ next_week_date }}">next week</a>,
+        <a href="#{{ next_month_date }}">next month</a>,
+        or <a href="#upcoming-months">beyond</a>
+    </span>
+    </section>
 
+    {# Add invisible anchors for next week and next month at the top of events section #}
+    <a id="{{ next_week_date }}" class="anchor"></a>
+    <a id="{{ next_month_date }}" class="anchor"></a>
+    
     <section class="events-section">
         <h2>Upcoming Events</h2>
         {% include "partials/events_by_day.html" %}
@@ -50,32 +61,5 @@
 {% endblock %}
 
 {% block extra_head %}
-<style>
-    .upcoming-months-section {
-        margin-top: 2rem;
-        padding-top: 1rem;
-        border-top: 1px solid #eee;
-    }
-    
-    .year-container {
-        margin-bottom: 1.5rem;
-    }
-    
-    .months-list {
-        list-style: none;
-        padding: 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    
-    .months-list li {
-        margin-right: 1rem;
-    }
-    
-    .skip-links {
-        display: flex;
-        gap: 0.5rem;
-    }
-</style>
+
 {% endblock %}
