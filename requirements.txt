@@ -9,3 +9,4 @@ dateparser
 feedparser
 extruct
 w3lib
+responses
