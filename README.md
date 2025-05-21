@@ -63,7 +63,7 @@ Create a new YAML file in the `_groups/` directory with the following format:
 name: Group Name
 website: https://example.com
 ical: https://example.com/events.ics
-fallback_url: https://example.com/events  # Optional
+fallback_url: https://example.com/events  # Optional, used when individual events don't have a URL. Otherwise they would be ignored!
 active: true  # Optional, defaults to true
 ```
 
