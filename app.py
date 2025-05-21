@@ -81,9 +81,8 @@ def get_approved_groups():
                 group = yaml.safe_load(f)
                 # Add the group ID (filename without extension)
                 group['id'] = file_path.stem
-                # Only include active groups
-                if group.get('active', True):
-                    groups.append(group)
+
+                groups.append(group)
         except Exception as e:
             print(f"Error loading group from {file_path}: {str(e)}")
     
