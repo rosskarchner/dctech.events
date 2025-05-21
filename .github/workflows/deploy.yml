@@ -5,6 +5,10 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    # Runs at 2 AM Eastern (UTC-4)
+    # Note: GitHub Actions uses UTC, so 2 AM Eastern is 6 AM UTC
+    - cron: '0 6 * * *'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
