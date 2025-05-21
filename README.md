@@ -6,10 +6,7 @@ A static site generator for aggregating and displaying tech events in the DC are
 
 - `_groups/`: YAML files describing each tech group
 - `_single_events/`: YAML files for events that don't come from groups
-- `_data/`: Generated YAML files containing event data
-- `_cache/`: Cache for downloaded iCal files
 - `app.py`: Flask application for rendering the site
-- `build/`: Generated static site
 
 ## Local Development
 
@@ -29,21 +26,14 @@ pip install -r requirements.txt
 2. Run the scripts to fetch events:
 
 ```bash
-# Fetch calendars
-python refresh-calendars.py
-
-# Generate event data
-python generate-month-data.py
-
-# Or use make to handle dependencies automatically
-make refresh-calendars
-make generate-month-data
+make clean
+make
 ```
 
 3. Run the Flask app locally:
 
 ```bash
-python app.py
+flask run --debug
 ```
 
 4. Visit http://localhost:5000 in your browser
@@ -88,21 +78,9 @@ time: 18:00  # 24-hour format
 end_date: 2023-12-15  # Optional
 end_time: 20:00  # Optional
 url: https://example.com/event
-description: Event description
 location: Event location
-group: Organizing Group
 ```
 
 ## Deployment
 
 The site is automatically deployed to GitHub Pages when changes are pushed to the main branch.
-
-## Makefile Commands
-
-- `make all`: Run the complete build process
-- `make refresh-calendars`: Fetch iCal files
-- `make generate-month-data`: Generate YAML files from iCal data
-- `make freeze`: Generate the static site
-- `make clean`: Clean build artifacts
-- `make clean-all`: Clean everything including cache
-- `make force`: Force refresh and regeneration
