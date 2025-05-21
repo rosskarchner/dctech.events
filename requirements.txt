@@ -6,3 +6,6 @@ pyyaml
 icalendar
 requests
 dateparser
+feedparser
+extruct
+w3lib

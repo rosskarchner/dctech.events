@@ -29,7 +29,7 @@ app = Flask(__name__, template_folder='templates')
 def load_yaml_data(file_path):
     """Load data from a YAML file"""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
     except Exception as e:
         print(f"Error loading YAML from {file_path}: {str(e)}")
@@ -361,12 +361,6 @@ def approved_groups_list():
                           next_key=None,
                           has_next=False,
                           site_name=SITE_NAME)
-
-@app.route("/add-events/")
-def add_events_page():
-    return render_template('add_events.html', site_name=SITE_NAME)
-
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

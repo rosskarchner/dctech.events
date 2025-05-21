@@ -10,6 +10,9 @@ import glob
 import re
 from pathlib import Path
 import sys
+import feedparser
+import extruct
+from w3lib.html import get_base_url
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -27,11 +30,13 @@ GROUPS_DIR = '_groups'
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
+RSS_CACHE_DIR = os.path.join(CACHE_DIR, 'rss')
 CURRENT_DAY_FILE = os.path.join(DATA_DIR, 'current_day.txt')
 REFRESH_FLAG_FILE = os.path.join(DATA_DIR, '.refreshed')
 
 # Ensure directories exist
 os.makedirs(ICAL_CACHE_DIR, exist_ok=True)
+os.makedirs(RSS_CACHE_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 def fetch_ical(url, group_id):
@@ -94,11 +99,178 @@ def fetch_ical(url, group_id):
             return icalendar.Calendar.from_ical(response.text)
         
         # If we got an error
-        print(f"Error fetching calendar: {response.status_code}")
+        print(f"Error fetching calendar from {url}: HTTP {response.status_code}")
         return None
-        
+            
     except Exception as e:
         print(f"Error fetching calendar from {url}: {str(e)}")
+        return None
+
+def fetch_rss_and_extract_events(url, group_id):
+    """
+    Fetch an RSS feed, visit each event link to extract JSON-LD event data, and cache it locally.
+    
+    Args:
+        url: The URL of the RSS feed
+        group_id: The ID of the group (used for caching)
+        
+    Returns:
+        A list of event dictionaries if changed, None otherwise
+    """
+    try:
+        print(f"Fetching RSS feed from {url}")
+        # Create cache files
+        cache_file = os.path.join(RSS_CACHE_DIR, f"{group_id}.json")
+        cache_meta_file = os.path.join(RSS_CACHE_DIR, f"{group_id}.meta")
+        
+        # Prepare headers for conditional GET
+        headers = {}
+        meta_data = {}
+        
+        # Check if we have cached metadata
+        if os.path.exists(cache_meta_file):
+            with open(cache_meta_file, 'r') as f:
+                meta_data = json.load(f)
+                if 'etag' in meta_data:
+                    headers['If-None-Match'] = meta_data['etag']
+                if 'last_modified' in meta_data:
+                    headers['If-Modified-Since'] = meta_data['last_modified']
+        
+        # Parse the RSS feed
+        feed = feedparser.parse(url, request_headers=headers)
+        
+        # If the content hasn't changed (304 Not Modified)
+        if hasattr(feed, 'status') and feed.status == 304:
+            print(f"RSS feed for {group_id} not modified, using cached version")
+            if os.path.exists(cache_file):
+                with open(cache_file, 'r') as f:
+                    return json.load(f)
+            return None
+        
+        # Process each entry and extract event data
+        events = []
+        for entry in feed.entries:
+            try:
+                # Get the event page URL
+                event_url = entry.link
+                
+                # Fetch the event page
+                response = requests.get(event_url)
+                response.raise_for_status()
+                
+                # Extract JSON-LD data
+                base_url = get_base_url(response.text, response.url)
+                data = extruct.extract(response.text, base_url=base_url, syntaxes=['json-ld'])
+                
+                # Find Event schema
+                event_data = None
+                for item in data.get('json-ld', []):
+                    if item.get('@type') == 'Event':
+                        event_data = item
+                        break
+                
+                if event_data:
+                    # Convert to our event format
+                    event = {
+                        'title': event_data.get('name', entry.title),
+                        'description': event_data.get('description', entry.get('description', '')),
+                        'url': event_url,
+                    }
+                    
+                    # Handle location with both place name and address
+                    location = event_data.get('location', {})
+                    if isinstance(location, dict):
+                        place_name = location.get('name', '')
+                        address = location.get('address', {})
+                        
+                        # Handle address object
+                        if isinstance(address, dict):
+                            street = address.get('streetAddress', '')
+                            locality = address.get('addressLocality', '')
+                            region = address.get('addressRegion', '')
+                            
+                            # Build formatted address
+                            address_parts = []
+                            if street:
+                                address_parts.append(street)
+                            if locality:
+                                address_parts.append(locality)
+                            if region:
+                                address_parts.append(region)
+                            
+                            formatted_address = ', '.join(part for part in address_parts if part)
+                            
+                            if place_name and formatted_address:
+                                event['location'] = f"{place_name}, {formatted_address}"
+                            elif place_name:
+                                event['location'] = place_name
+                            elif formatted_address:
+                                event['location'] = formatted_address
+                        else:
+                            # Handle string address
+                            if place_name and address:
+                                event['location'] = f"{place_name}, {address}"
+                            elif place_name:
+                                event['location'] = place_name
+                            elif address:
+                                event['location'] = address
+                    else:
+                        event['location'] = str(location) if location else ''
+                        
+                    # Handle submitter information if present
+                    submitter = event_data.get('submitter', {})
+                    if isinstance(submitter, dict):
+                        name = submitter.get('name', '')
+                        if name and name.lower() != 'anonymous':
+                            event['submitter_name'] = name
+                            if submitter.get('url'):
+                                event['submitter_link'] = submitter['url']
+                    
+                    # Parse start date/time
+                    start_date = event_data.get('startDate')
+                    if start_date:
+                        start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                        local_start = start_dt.astimezone(local_tz)
+                        event['start_date'] = local_start.strftime('%Y-%m-%d')
+                        event['start_time'] = local_start.strftime('%H:%M')
+                        event['date'] = event['start_date']  # For sorting
+                        event['time'] = event['start_time']  # For sorting
+                    
+                    # Parse end date/time
+                    end_date = event_data.get('endDate')
+                    if end_date:
+                        end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                        local_end = end_dt.astimezone(local_tz)
+                        event['end_date'] = local_end.strftime('%Y-%m-%d')
+                        event['end_time'] = local_end.strftime('%H:%M')
+                    elif start_date:  # If no end date, use start date
+                        event['end_date'] = event['start_date']
+                        event['end_time'] = event['start_time']
+                    
+                    events.append(event)
+            
+            except Exception as e:
+                print(f"Error processing event {entry.link}: {str(e)}")
+                continue
+        
+        # Save the events
+        with open(cache_file, 'w') as f:
+            json.dump(events, f)
+        
+        # Save the metadata
+        new_meta = {}
+        if hasattr(feed, 'etag'):
+            new_meta['etag'] = feed.etag
+        if hasattr(feed, 'modified'):
+            new_meta['last_modified'] = feed.modified
+        
+        with open(cache_meta_file, 'w') as f:
+            json.dump(new_meta, f)
+        
+        return events
+        
+    except Exception as e:
+        print(f"Error fetching RSS feed from {url}: {str(e)}")
         return None
 
 def load_groups():
@@ -157,7 +329,7 @@ def update_current_day_file():
 
 def refresh_calendars():
     """
-    Fetch all iCal files from groups
+    Fetch all iCal files and RSS feeds from groups
     
     Returns:
         True if any calendars were updated, False otherwise
@@ -173,9 +345,16 @@ def refresh_calendars():
         updated = True
     
     for group in groups:
-        if 'ical' in group and group['ical'] and group.get('active', True):
+        if not group.get('active', True):
+            continue
+            
+        if 'ical' in group and group['ical']:
             calendar = fetch_ical(group['ical'], group['id'])
             if calendar is not None:
+                updated = True
+        elif 'rss' in group and group['rss']:
+            events = fetch_rss_and_extract_events(group['rss'], group['id'])
+            if events is not None:
                 updated = True
     
     # Create a flag file to indicate that calendars were refreshed

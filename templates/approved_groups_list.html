@@ -5,6 +5,13 @@
 {% block content %}
 <h1>Tech Groups in DC</h1>
 <div class="groups-container">
+<div class="suggest-group">
+    <p>Don't see your group? 
+        <a href="https://github.com/rosskarchner/dctech.events/issues">Open an issue</a> or <a href="https://github.com/rosskarchner/dctech.events/tree/main/_groups">submit a pull request</a> on GitHub.
+    Not GitHub savvy? Just email ross@karchner.com.
+    </p>
+</div>
+
     {% if groups %}
     <ul>
         {% for group in groups %}
@@ -19,9 +26,7 @@
     {% endif %}
 </div>
 
-<div class="suggest-group">
-    <p>Don't see your tech group? Learn about<a href="/add-events/">How to add groups and single events</a>.</p>
-</div>
+
 {% endblock %}
 
 {% block extra_head %}

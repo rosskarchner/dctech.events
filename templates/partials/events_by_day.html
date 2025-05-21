@@ -19,9 +19,21 @@
                                                 {{ event.location }}
                                             </span>
                                         {% endif %}
-                                        {% if event.group %}
+                                        {% if event.submitter_name and event.submitter_name != 'anonymous' %}
+                                            {% if event.location %} / {% endif %} submitted by
+                                            {% if event.submitter_link %}
+                                                <a href="{{ event.submitter_link }}" target="_blank">{{ event.submitter_name }}</a>
+                                            {% else %}
+                                                {{ event.submitter_name }}
+                                            {% endif %}
+
+                                        {% elif event.group %}
                                             {% if event.location %} / {% endif %}
-                                            {{ event.group }}
+                                            {% if event.group_website %}
+                                                <a href="{{ event.group_website }}" target="_blank">{{ event.group }}</a>
+                                            {% else %}
+                                                {{ event.group }}
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>

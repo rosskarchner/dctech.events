@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 import calendar as cal_module
 import dateparser
+import json
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -28,6 +29,7 @@ SINGLE_EVENTS_DIR = '_single_events'
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
+RSS_CACHE_DIR = os.path.join(CACHE_DIR, 'rss')
 REFRESH_FLAG_FILE = os.path.join(DATA_DIR, '.refreshed')
 UPDATED_FLAG_FILE = os.path.join(DATA_DIR, '.updated')
 
@@ -133,7 +135,7 @@ def load_groups():
     groups = []
     for file_path in glob.glob(os.path.join(GROUPS_DIR, '*.yaml')):
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 group = yaml.safe_load(f)
                 # Add the group ID (filename without extension)
                 group['id'] = os.path.splitext(os.path.basename(file_path))[0]
@@ -153,10 +155,17 @@ def load_single_events():
     events = []
     for file_path in glob.glob(os.path.join(SINGLE_EVENTS_DIR, '*.yaml')):
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 event = yaml.safe_load(f)
                 # Add the event ID (filename without extension)
                 event['id'] = os.path.splitext(os.path.basename(file_path))[0]
+                
+                # Map submitted_by to submitter_name and submitter_link
+                if 'submitted_by' in event:
+                    if event['submitted_by'].lower() != 'anonymous':
+                        event['submitter_name'] = event['submitted_by']
+                        if 'submitter_link' in event:
+                            event['submitter_link'] = event['submitter_link']
                 
                 # Parse date and time using dateparser
                 if 'date' in event and 'time' in event:
@@ -315,6 +324,21 @@ def generate_yaml():
                                 all_events.append(event_dict)
                 except Exception as e:
                     print(f"Error processing calendar for group {group['id']}: {str(e)}")
+        
+        # Process RSS events
+        elif 'rss' in group and group['rss']:
+            cache_file = os.path.join(RSS_CACHE_DIR, f"{group['id']}.json")
+            if os.path.exists(cache_file):
+                try:
+                    with open(cache_file, 'r') as f:
+                        events = json.load(f)
+                        for event in events:
+                            # Add group information
+                            event['group'] = str(group.get('name', ''))
+                            event['group_website'] = str(group.get('website', ''))
+                            all_events.append(event)
+                except Exception as e:
+                    print(f"Error processing RSS events for group {group['id']}: {str(e)}")
     
     # Add single events
     all_events.extend(single_events)
@@ -387,8 +411,8 @@ def generate_yaml():
     
     # Write upcoming.yaml
     upcoming_file = os.path.join(DATA_DIR, 'upcoming.yaml')
-    with open(upcoming_file, 'w') as f:
-        yaml.dump(upcoming_events, f, sort_keys=False)
+    with open(upcoming_file, 'w', encoding='utf-8') as f:
+        yaml.dump(upcoming_events, f, sort_keys=False, allow_unicode=True)
     
     # Write per-month files
     for month_key, month_events in events_by_month.items():
@@ -396,11 +420,11 @@ def generate_yaml():
         month_name = cal_module.month_name[int(month)].lower()
         month_file = os.path.join(DATA_DIR, f"{year}_{month_name}.yaml")
         
-        with open(month_file, 'w') as f:
-            yaml.dump(month_events, f, sort_keys=False)
+        with open(month_file, 'w', encoding='utf-8') as f:
+            yaml.dump(month_events, f, sort_keys=False, allow_unicode=True)
     
     # Create a flag file to indicate that YAML files were updated
-    with open(UPDATED_FLAG_FILE, 'w') as f:
+    with open(UPDATED_FLAG_FILE, 'w', encoding='utf-8') as f:
         f.write(datetime.now().isoformat())
     
     print("YAML files updated successfully")

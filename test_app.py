@@ -158,5 +158,51 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
+    def test_emoji_handling(self):
+        """Test that emojis in event titles are preserved"""
+        from app import prepare_events_by_day
+        import os
+        import yaml
+        
+        # Create test event with emoji
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_title = "⚡️ Data, AI, and ML Lightning talks!"
+        events = [
+            {'date': today_str, 'time': '09:00', 'title': test_title}
+        ]
+        
+        # Test through prepare_events_by_day
+        days = prepare_events_by_day(events)
+        
+        # Verify emoji is preserved
+        self.assertEqual(len(days), 1)
+        self.assertEqual(days[0]['time_slots'][0]['events'][0]['title'], test_title)
+        
+        # Test YAML serialization/deserialization
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'test_emoji.yaml')
+        
+        try:
+            # Write test data
+            with open(test_file, 'w', encoding='utf-8') as f:
+                yaml.dump(events, f, allow_unicode=True)
+            
+            # Read test data back
+            with open(test_file, 'r', encoding='utf-8') as f:
+                loaded_events = yaml.safe_load(f)
+            
+            # Verify emoji is preserved through YAML operations
+            self.assertEqual(loaded_events[0]['title'], test_title)
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
 if __name__ == '__main__':
     unittest.main()
