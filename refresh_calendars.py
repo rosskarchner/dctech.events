@@ -39,10 +39,32 @@ os.makedirs(ICAL_CACHE_DIR, exist_ok=True)
 os.makedirs(RSS_CACHE_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
+def should_fetch(meta_data, group_id):
+    """
+    Check if we should fetch new data based on last fetch time
+    
+    Args:
+        meta_data: Dictionary containing metadata including last_fetch
+        group_id: The ID of the group (for logging)
+        
+    Returns:
+        bool: True if we should fetch, False otherwise
+    """
+    last_fetch = meta_data.get('last_fetch')
+    if last_fetch:
+        last_fetch_time = datetime.fromisoformat(last_fetch)
+        time_since_fetch = datetime.now(timezone.utc) - last_fetch_time
+        if time_since_fetch < timedelta(hours=4):
+            print(f"Data for {group_id} was fetched less than 4 hours ago, using cached version")
+            return False
+    return True
+
 def fetch_ical(url, group_id):
     """
     Fetch an iCal file and cache it locally.
-    Only update if the content has changed (using ETag or Last-Modified).
+    Only update if:
+    - Content has changed (using ETag or Last-Modified)
+    - Last fetch was more than 4 hours ago
     
     Args:
         url: The URL of the iCal file
@@ -65,6 +87,15 @@ def fetch_ical(url, group_id):
         if os.path.exists(cache_meta_file):
             with open(cache_meta_file, 'r') as f:
                 meta_data = json.load(f)
+                
+                # Check if we should skip fetching due to time constraint
+                if not should_fetch(meta_data, group_id):
+                    if os.path.exists(cache_file):
+                        with open(cache_file, 'r') as f:
+                            return icalendar.Calendar.from_ical(f.read())
+                    return None
+                
+                # Add conditional GET headers
                 if 'etag' in meta_data:
                     headers['If-None-Match'] = meta_data['etag']
                 if 'last_modified' in meta_data:
@@ -91,6 +122,7 @@ def fetch_ical(url, group_id):
                 new_meta['etag'] = response.headers['ETag']
             if 'Last-Modified' in response.headers:
                 new_meta['last_modified'] = response.headers['Last-Modified']
+            new_meta['last_fetch'] = datetime.now(timezone.utc).isoformat()
             
             with open(cache_meta_file, 'w') as f:
                 json.dump(new_meta, f)
@@ -131,6 +163,15 @@ def fetch_rss_and_extract_events(url, group_id):
         if os.path.exists(cache_meta_file):
             with open(cache_meta_file, 'r') as f:
                 meta_data = json.load(f)
+                
+                # Check if we should skip fetching due to time constraint
+                if not should_fetch(meta_data, group_id):
+                    if os.path.exists(cache_file):
+                        with open(cache_file, 'r') as f:
+                            return json.load(f)
+                    return None
+                
+                # Add conditional GET headers
                 if 'etag' in meta_data:
                     headers['If-None-Match'] = meta_data['etag']
                 if 'last_modified' in meta_data:
@@ -259,6 +300,7 @@ def fetch_rss_and_extract_events(url, group_id):
             new_meta['etag'] = feed.etag
         if hasattr(feed, 'modified'):
             new_meta['last_modified'] = feed.modified
+        new_meta['last_fetch'] = datetime.now(timezone.utc).isoformat()
         
         with open(cache_meta_file, 'w') as f:
             json.dump(new_meta, f)

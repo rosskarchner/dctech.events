@@ -48,6 +48,16 @@ def represent_vuri(dumper, data):
 yaml.add_representer(icalendar.prop.vText, represent_vtext)
 yaml.add_representer(icalendar.prop.vUri, represent_vuri)
 
+def looks_like_url(text):
+    """
+    Check if a string looks like a URL
+    """
+    if not text:
+        return False
+    # Simple check for common URL patterns
+    url_patterns = ['http://', 'https://', 'www.']
+    return any(pattern in text.lower() for pattern in url_patterns)
+
 def sanitize_text(text):
     """
     Sanitize text for safe usage
@@ -93,6 +103,13 @@ def event_to_dict(event, group=None):
         
         # Get event URL or use fallback URL if provided
         event_url = sanitize_text(event.get('url', ''))
+        
+        # If location looks like a URL and we don't have a URL yet, use it as the URL
+        if not event_url and looks_like_url(event_location):
+            event_url = event_location
+            event_location = ''  # Clear the location since we're using it as URL
+        
+        # If still no URL, try fallback URL from group
         if not event_url and group and group.get('fallback_url'):
             event_url = sanitize_text(group.get('fallback_url'))
             

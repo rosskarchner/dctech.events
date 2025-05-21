@@ -3,7 +3,26 @@ import unittest
 import os
 import yaml
 import responses
+from datetime import datetime, timedelta, timezone
 from add_meetup import validate_meetup_url, get_group_name_from_url, create_group_file, get_group_name_from_jsonld
+from refresh_calendars import should_fetch
+
+class TestRefreshCalendars(unittest.TestCase):
+    def test_should_fetch_no_metadata(self):
+        """Test that should_fetch returns True when no metadata exists"""
+        self.assertTrue(should_fetch({}, 'test-group'))
+
+    def test_should_fetch_old_data(self):
+        """Test that should_fetch returns True when data is older than 4 hours"""
+        old_time = (datetime.now(timezone.utc) - timedelta(hours=5)).isoformat()
+        meta_data = {'last_fetch': old_time}
+        self.assertTrue(should_fetch(meta_data, 'test-group'))
+
+    def test_should_fetch_recent_data(self):
+        """Test that should_fetch returns False when data is less than 4 hours old"""
+        recent_time = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        meta_data = {'last_fetch': recent_time}
+        self.assertFalse(should_fetch(meta_data, 'test-group'))
 
 class TestAddMeetup(unittest.TestCase):
     def setUp(self):
@@ -152,6 +171,72 @@ class TestAddMeetup(unittest.TestCase):
             # Cleanup
             if os.path.exists(test_file):
                 os.remove(test_file)
+
+class TestEventProcessing(unittest.TestCase):
+    def test_looks_like_url(self):
+        """Test that URLs are correctly identified"""
+        from generate_month_data import looks_like_url
+        
+        # Test valid URLs
+        valid_urls = [
+            'http://example.com',
+            'https://example.com',
+            'www.example.com',
+            'https://www.example.com/path',
+            'http://subdomain.example.com/path?param=value'
+        ]
+        for url in valid_urls:
+            self.assertTrue(looks_like_url(url), f"Should identify {url} as URL")
+        
+        # Test invalid URLs
+        invalid_urls = [
+            '',
+            None,
+            'Just some text',
+            '123 Main St, City',
+            'example.com',  # No www or http(s)
+            'Virtual Event'
+        ]
+        for url in invalid_urls:
+            self.assertFalse(looks_like_url(url), f"Should not identify {url} as URL")
+    
+    def test_event_url_from_location(self):
+        """Test that location field is used as URL when appropriate"""
+        from generate_month_data import event_to_dict
+        from icalendar import Event
+        from datetime import datetime
+        import pytz
+        
+        # Create a basic event
+        event = Event()
+        event.add('summary', 'Test Event')
+        event.add('dtstart', datetime.now(pytz.UTC))
+        event.add('dtend', datetime.now(pytz.UTC) + timedelta(hours=1))
+        
+        # Test case 1: Location is a URL, no explicit URL
+        event['location'] = 'https://zoom.us/j/123456789'
+        result = event_to_dict(event)
+        self.assertEqual(result['url'], 'https://zoom.us/j/123456789')
+        self.assertEqual(result['location'], '')  # Location should be cleared
+        
+        # Test case 2: Location is a URL but explicit URL exists
+        event['url'] = 'https://example.com/event'
+        event['location'] = 'https://zoom.us/j/123456789'
+        result = event_to_dict(event)
+        self.assertEqual(result['url'], 'https://example.com/event')  # Should use explicit URL
+        self.assertEqual(result['location'], 'https://zoom.us/j/123456789')  # Location should remain
+        
+        # Test case 3: Location is not a URL
+        event['url'] = ''
+        event['location'] = '123 Main St, City'
+        result = event_to_dict(event)
+        self.assertIsNone(result)  # Should return None as no URL is available
+        
+        # Test case 4: Location is not a URL but group has fallback URL
+        group = {'name': 'Test Group', 'fallback_url': 'https://example.com/group'}
+        result = event_to_dict(event, group)
+        self.assertEqual(result['url'], 'https://example.com/group')
+        self.assertEqual(result['location'], '123 Main St, City')
 
 if __name__ == '__main__':
     unittest.main()
