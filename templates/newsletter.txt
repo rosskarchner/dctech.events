@@ -1,0 +1,27 @@
+{{ site_name }} - Upcoming Events
+===============================
+
+{% if days %}
+{% for day in days %}
+{% if day.has_events %}
+{{ day.short_date }}
+{{ '-' * day.short_date|length }}
+
+{% for time_slot in day.time_slots %}
+{{ time_slot.time }}:
+{% for event in time_slot.events %}
+* {{ event.title }}
+  {% if event.location %}Location: {{ event.location }}{% endif %}
+  {% if event.group %}Group: {{ event.group }}{% endif %}
+  URL: {{ event.url }}
+
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% else %}
+No events found for this period.
+{% endif %}
+
+---
+View more events at https://dctech.events

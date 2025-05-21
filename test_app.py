@@ -204,5 +204,59 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
+    def test_newsletter_endpoints(self):
+        """Test the newsletter HTML and plaintext endpoints"""
+        from app import app
+        import os
+        import yaml
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test data
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        test_events = [
+            {
+                'date': self.today.strftime('%Y-%m-%d'),
+                'time': '09:00',
+                'title': 'Test Event 1',
+                'location': 'Test Location',
+                'url': 'http://test.com'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Test HTML newsletter endpoint
+            response = client.get('/newsletter.html')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('text/html', response.content_type)
+            self.assertIn('Test Event 1', response.data.decode())
+            self.assertIn('Test Location', response.data.decode())
+            self.assertIn('http://test.com', response.data.decode())
+            
+            # Test plaintext newsletter endpoint
+            response = client.get('/newsletter.txt')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+            self.assertIn('Test Event 1', response.data.decode())
+            self.assertIn('Test Location', response.data.decode())
+            self.assertIn('http://test.com', response.data.decode())
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
 if __name__ == '__main__':
     unittest.main()

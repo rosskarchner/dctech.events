@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ site_name }} Newsletter</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #333;">{{ site_name }} - Upcoming Events</h1>
+
+    {% if days %}
+        {% for day in days %}
+            {% if day.has_events %}
+                <div style="margin-bottom: 20px;">
+                    <h2 style="color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;">{{ day.short_date }}</h2>
+                    
+                    {% for time_slot in day.time_slots %}
+                        <div style="margin-bottom: 15px;">
+                            <h3 style="color: #666; margin: 10px 0;">{{ time_slot.time }}</h3>
+                            {% for event in time_slot.events %}
+                                <div style="margin-bottom: 10px;">
+                                    <div style="font-weight: bold;">
+                                        <a href="{{ event.url }}" style="color: #0066cc; text-decoration: none;">{{ event.title }}</a>
+                                    </div>
+                                    <div style="color: #666; font-size: 14px;">
+                                        {% if event.location %}
+                                            {{ event.location }}
+                                        {% endif %}
+                                        {% if event.group %}
+                                            {% if event.location %} / {% endif %}
+                                            {% if event.group_website %}
+                                                <a href="{{ event.group_website }}" style="color: #0066cc; text-decoration: none;">{{ event.group }}</a>
+                                            {% else %}
+                                                {{ event.group }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No events found for this period.</p>
+    {% endif %}
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px; color: #666;">
+        <p>View more events at <a href="https://dctech.events" style="color: #0066cc; text-decoration: none;">dctech.events</a></p>
+    </div>
+</body>
+</html>

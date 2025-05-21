@@ -361,5 +361,26 @@ def approved_groups_list():
                           has_next=False,
                           site_name=SITE_NAME)
 
+@app.route("/newsletter.html")
+def newsletter_html():
+    # Get upcoming events
+    events = get_events()
+    days = prepare_events_by_day(events)
+    
+    return render_template('newsletter.html',
+                          days=days,
+                          site_name=SITE_NAME)
+
+@app.route("/newsletter.txt")
+def newsletter_text():
+    # Get upcoming events
+    events = get_events()
+    days = prepare_events_by_day(events)
+    
+    response = render_template('newsletter.txt',
+                             days=days,
+                             site_name=SITE_NAME)
+    return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
