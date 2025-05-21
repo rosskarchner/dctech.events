@@ -311,7 +311,7 @@ class TestScripts(unittest.TestCase):
                     'submitter': {'name': 'John Doe', 'url': 'http://johndoe.com'}
                 },
                 'expected': {
-                    'location': 'Test Venue, 123 Test St, Test City, TC',
+                    'location': 'Test Venue, 123 Test St',
                     'submitter_name': 'John Doe',
                     'submitter_link': 'http://johndoe.com'
                 }
@@ -356,7 +356,7 @@ class TestScripts(unittest.TestCase):
                     }
                 },
                 'expected': {
-                    'location': 'Test Venue, 456 Test Ave, Test City',
+                    'location': 'Test Venue, 456 Test Ave',
                     'submitter_name': None,
                     'submitter_link': None
                 }
@@ -380,16 +380,16 @@ class TestScripts(unittest.TestCase):
                     locality = address.get('addressLocality', '')
                     region = address.get('addressRegion', '')
                     
-                    # Build formatted address
-                    address_parts = []
-                    if street:
-                        address_parts.append(street)
-                    if locality:
-                        address_parts.append(locality)
-                    if region:
-                        address_parts.append(region)
+                    # Build formatted address - only use street address to avoid city duplication
+                    street = address.get('streetAddress', '')
+                    region = address.get('addressRegion', '')
                     
-                    formatted_address = ', '.join(part for part in address_parts if part)
+                    # Build formatted address
+                    formatted_address = street if street else ''
+                    
+                    # Add region if we have it but no place name
+                    if not place_name and region:
+                        formatted_address = f"{formatted_address}, {region}" if formatted_address else region
                     
                     if place_name and formatted_address:
                         event['location'] = f"{place_name}, {formatted_address}"

@@ -1,0 +1,28 @@
+name: Nightly Build
+
+on:
+  schedule:
+    # Runs at 2 AM Eastern (UTC-4)
+    # Note: GitHub Actions uses UTC, so 2 AM Eastern is 6 AM UTC
+    - cron: '0 6 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        python -m unittest test_app.py test_scripts.py
