@@ -76,8 +76,6 @@ Create a new YAML file in the `_single_events/` directory with the following for
 title: Event Title
 date: 2023-12-15  # YYYY-MM-DD
 time: 18:00  # 24-hour format
-end_date: 2023-12-15  # Optional
-end_time: 20:00  # Optional
 url: https://example.com/event
 location: Event location
 ```
