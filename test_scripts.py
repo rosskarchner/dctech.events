@@ -238,5 +238,31 @@ class TestEventProcessing(unittest.TestCase):
         self.assertEqual(result['url'], 'https://example.com/group')
         self.assertEqual(result['location'], '123 Main St, City')
 
+class TestStatsGeneration(unittest.TestCase):
+    def test_calculate_stats(self):
+        """Test that stats are calculated correctly"""
+        from generate_month_data import calculate_stats
+        
+        # Test with empty data
+        stats = calculate_stats([], [])
+        self.assertEqual(stats['upcoming_events'], 0)
+        self.assertEqual(stats['active_groups'], 0)
+        
+        # Test with some groups and events
+        groups = [
+            {'name': 'Group 1', 'active': True},
+            {'name': 'Group 2', 'active': True},
+            {'name': 'Group 3', 'active': False}
+        ]
+        
+        events = [
+            {'title': 'Event 1', 'date': '2025-01-01'},
+            {'title': 'Event 2', 'date': '2025-01-02'}
+        ]
+        
+        stats = calculate_stats(groups, events)
+        self.assertEqual(stats['upcoming_events'], 2)
+        self.assertEqual(stats['active_groups'], 2)
+
 if __name__ == '__main__':
     unittest.main()

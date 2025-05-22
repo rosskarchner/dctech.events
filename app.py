@@ -144,12 +144,30 @@ def prepare_events_by_day(events):
         day_data = events_by_day[day]
         # Sort events within each time slot
         time_slots = []
-        sorted_times = sorted(day_data['time_slots'].keys())
         
-        # Move 'TBD' to the end if it exists
-        if 'TBD' in sorted_times:
-            sorted_times.remove('TBD')
-            sorted_times.append('TBD')
+        # Custom sort function for time values
+        def time_sort_key(time_str):
+            if time_str == 'TBD':
+                return (24, 0)  # Put TBD at the end
+            try:
+                # Parse time like "1:30 pm" or "10:00 am"
+                parts = time_str.split()
+                time_part = parts[0]
+                am_pm = parts[1] if len(parts) > 1 else 'am'
+                
+                hour, minute = map(int, time_part.split(':'))
+                
+                # Convert to 24-hour format for sorting
+                if am_pm.lower() == 'pm' and hour < 12:
+                    hour += 12
+                elif am_pm.lower() == 'am' and hour == 12:
+                    hour = 0
+                    
+                return (hour, minute)
+            except:
+                return (0, 0)  # Default case
+                
+        sorted_times = sorted(day_data['time_slots'].keys(), key=time_sort_key)
         
         for time in sorted_times:
             time_slots.append({
@@ -296,6 +314,18 @@ def get_next_week_and_month_dates(events):
     return (next_week_date.strftime('%Y-%m-%d'), 
             next_month_date.strftime('%Y-%m-%d'))
 
+def get_stats():
+    """
+    Load statistics from stats.yaml
+    
+    Returns:
+        Dictionary containing stats, or empty dict if file doesn't exist
+    """
+    stats_file = os.path.join(DATA_DIR, 'stats.yaml')
+    if not os.path.exists(stats_file):
+        return {}
+    return load_yaml_data(stats_file) or {}
+
 @app.route("/")
 def homepage():
     # Get upcoming events
@@ -308,12 +338,16 @@ def homepage():
     # Get next week and month dates
     next_week_date, next_month_date = get_next_week_and_month_dates(events)
     
+    # Get stats
+    stats = get_stats()
+    
     return render_template('homepage.html', 
                           days=days, 
                           future_months=future_months,
                           next_week_date=next_week_date,
                           next_month_date=next_month_date,
-                          site_name=SITE_NAME)
+                          site_name=SITE_NAME,
+                          stats=stats)
 
 @app.route("/<int:year>/<int:month>/")
 def month_view(year, month):
@@ -367,9 +401,13 @@ def newsletter_html():
     events = get_events()
     days = prepare_events_by_day(events)
     
+    # Get stats
+    stats = get_stats()
+    
     return render_template('newsletter.html',
                           days=days,
-                          site_name=SITE_NAME)
+                          site_name=SITE_NAME,
+                          stats=stats)
 
 @app.route("/newsletter.txt")
 def newsletter_text():
@@ -377,9 +415,13 @@ def newsletter_text():
     events = get_events()
     days = prepare_events_by_day(events)
     
+    # Get stats
+    stats = get_stats()
+    
     response = render_template('newsletter.txt',
                              days=days,
-                             site_name=SITE_NAME)
+                             site_name=SITE_NAME,
+                             stats=stats)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 if __name__ == "__main__":

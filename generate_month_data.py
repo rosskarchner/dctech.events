@@ -305,6 +305,28 @@ def load_single_events():
     
     return events
 
+def calculate_stats(groups, upcoming_events):
+    """
+    Calculate statistics about events and groups
+    
+    Args:
+        groups: List of all groups
+        upcoming_events: List of upcoming events
+        
+    Returns:
+        Dictionary containing stats
+    """
+    # Count active groups
+    active_groups = len([g for g in groups if g.get('active', True)])
+    
+    # Count upcoming events (already filtered to current + next month)
+    upcoming_event_count = len(upcoming_events)
+    
+    return {
+        'upcoming_events': upcoming_event_count,
+        'active_groups': active_groups
+    }
+
 def generate_yaml():
     """
     Generate YAML files from iCal and single events
@@ -430,6 +452,12 @@ def generate_yaml():
     upcoming_file = os.path.join(DATA_DIR, 'upcoming.yaml')
     with open(upcoming_file, 'w', encoding='utf-8') as f:
         yaml.dump(upcoming_events, f, sort_keys=False, allow_unicode=True)
+    
+    # Generate and write stats.yaml
+    stats = calculate_stats(groups, upcoming_events)
+    stats_file = os.path.join(DATA_DIR, 'stats.yaml')
+    with open(stats_file, 'w', encoding='utf-8') as f:
+        yaml.dump(stats, f, sort_keys=False, allow_unicode=True)
     
     # Write per-month files
     for month_key, month_events in events_by_month.items():

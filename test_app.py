@@ -258,5 +258,45 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
+    def test_get_stats(self):
+        """Test loading stats from stats.yaml"""
+        from app import get_stats
+        import os
+        import yaml
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'stats.yaml')
+        
+        test_stats = {
+            'upcoming_events': 42,
+            'active_groups': 10
+        }
+        
+        try:
+            # Test with no stats file
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            stats = get_stats()
+            self.assertEqual(stats, {})
+            
+            # Test with stats file
+            with open(test_file, 'w') as f:
+                yaml.dump(test_stats, f)
+            
+            stats = get_stats()
+            self.assertEqual(stats['upcoming_events'], 42)
+            self.assertEqual(stats['active_groups'], 10)
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
 if __name__ == '__main__':
     unittest.main()
