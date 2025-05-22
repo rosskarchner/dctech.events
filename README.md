@@ -66,7 +66,7 @@ ical: https://example.com/events.ics
 fallback_url: https://example.com/events  # Optional, used when individual events don't have a URL. Otherwise they would be ignored!
 active: true  # Optional, defaults to true
 ```
-In addition, groups can use an RSS feed *if* each event has a unique URL, and those URL's point to pages with embedded [JSON-LD Events](https://jsonld.com/event/). (more format support coming soon!)
+In addition, groups can use an `rss:` feed *if* each event has a unique URL, and those URL's point to pages with embedded [JSON-LD Events](https://jsonld.com/event/). (more format support coming soon!)
 
 ### Adding a Single Event
 
