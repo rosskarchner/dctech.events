@@ -305,13 +305,13 @@ def load_single_events():
     
     return events
 
-def calculate_stats(groups, upcoming_events):
+def calculate_stats(groups, all_events):
     """
     Calculate statistics about events and groups
     
     Args:
         groups: List of all groups
-        upcoming_events: List of upcoming events
+        all_events: List of all events
         
     Returns:
         Dictionary containing stats
@@ -319,8 +319,17 @@ def calculate_stats(groups, upcoming_events):
     # Count active groups
     active_groups = len([g for g in groups if g.get('active', True)])
     
-    # Count upcoming events (already filtered to current + next month)
-    upcoming_event_count = len(upcoming_events)
+    # Get current date
+    today = datetime.now(local_tz).date()
+    
+    # Count all future events
+    upcoming_event_count = len([
+        event for event in all_events 
+        if dateparser.parse(event['date'], settings={
+            'TIMEZONE': timezone_name,
+            'DATE_ORDER': 'YMD'
+        }).date() >= today
+    ])
     
     return {
         'upcoming_events': upcoming_event_count,
@@ -335,6 +344,9 @@ def generate_yaml():
         True if any YAML files were updated, False otherwise
     """
     print("Generating YAML files...")
+    
+    # Get current date at the start
+    today = datetime.now(local_tz).date()
     
     # Load all groups
     groups = load_groups()
@@ -360,7 +372,13 @@ def generate_yaml():
                         for component in calendar.walk('VEVENT'):
                             event_dict = event_to_dict(component, group)
                             if event_dict:
-                                all_events.append(event_dict)
+                                # Only include events from today or in the future
+                                event_date = dateparser.parse(event_dict['date'], settings={
+                                    'TIMEZONE': timezone_name,
+                                    'DATE_ORDER': 'YMD'
+                                }).date()
+                                if event_date >= today:
+                                    all_events.append(event_dict)
                 except Exception as e:
                     print(f"Error processing calendar for group {group['id']}: {str(e)}")
         
@@ -379,14 +397,19 @@ def generate_yaml():
                 except Exception as e:
                     print(f"Error processing RSS events for group {group['id']}: {str(e)}")
     
-    # Add single events
-    all_events.extend(single_events)
+    # Add single events (only current and future)
+    for event in single_events:
+        event_date = dateparser.parse(event['date'], settings={
+            'TIMEZONE': timezone_name,
+            'DATE_ORDER': 'YMD'
+        }).date()
+        if event_date >= today:
+            all_events.append(event)
     
     # Sort events by date and time
     all_events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
     
-    # Get current date
-    today = datetime.now(local_tz).date()
+    # Get current month and year
     current_month = today.month
     current_year = today.year
     
@@ -423,7 +446,7 @@ def generate_yaml():
         ):
             upcoming_events.append(event)
     
-    # Group events by month for per-month files
+    # Group events by month for per-month files, skipping current and next months
     events_by_month = {}
     for event in all_events:
         # Parse date using dateparser for consistency
@@ -441,6 +464,11 @@ def generate_yaml():
                 continue
             event_date = parsed_date.date()
             
+        # Skip events in current and next month
+        if (event_date.year == current_year and event_date.month == current_month) or \
+           (event_date.year == next_year and event_date.month == next_month):
+            continue
+            
         month_key = f"{event_date.year}-{event_date.month:02d}"
         
         if month_key not in events_by_month:
@@ -454,7 +482,7 @@ def generate_yaml():
         yaml.dump(upcoming_events, f, sort_keys=False, allow_unicode=True)
     
     # Generate and write stats.yaml
-    stats = calculate_stats(groups, upcoming_events)
+    stats = calculate_stats(groups, all_events)
     stats_file = os.path.join(DATA_DIR, 'stats.yaml')
     with open(stats_file, 'w', encoding='utf-8') as f:
         yaml.dump(stats, f, sort_keys=False, allow_unicode=True)

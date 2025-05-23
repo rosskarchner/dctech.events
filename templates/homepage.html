@@ -5,7 +5,11 @@
 {% block content %}
 <div class="home-container">
     {# Add invisible anchors for next week and next month at the top of events section #}
-    
+    <div id="stats">
+       Now tracking <strong>{{ stats.upcoming_events }}</strong> upcoming events and 
+       <strong>{{ stats.active_groups }}</strong> <a href="/groups">groups</a>. <br/>You can help by <a href="https://add.dctech.events/">adding more</a>!
+    </div>
+
     <section class="events-section">
         <h2>Upcoming Events</h2>
         {% include "partials/events_by_day.html" %}
@@ -36,14 +40,6 @@
         {% endif %}
     </section>
 
-            <div class="container">
-        <h2>More</h2>
-            <nav>
-                <ul>
-                    <li><a href="https://add.dctech.events" class="add-event-button">Add Events!</a></li>
-                </ul>
-            </nav>
-        </div>
 </div>
 
 

@@ -237,11 +237,47 @@ class TestEventProcessing(unittest.TestCase):
         result = event_to_dict(event, group)
         self.assertEqual(result['url'], 'https://example.com/group')
         self.assertEqual(result['location'], '123 Main St, City')
+    
+    def test_today_variable_in_generate_yaml(self):
+        """Test that the 'today' variable is properly defined in generate_yaml"""
+        import os
+        from datetime import datetime, date
+        import pytz
+        from generate_month_data import generate_yaml, local_tz
+        
+        # Create necessary directories
+        os.makedirs('_data', exist_ok=True)
+        os.makedirs('_groups', exist_ok=True)
+        os.makedirs('_single_events', exist_ok=True)
+        
+        try:
+            # Run generate_yaml
+            result = generate_yaml()
+            
+            # If we get here without an UnboundLocalError, the test passes
+            self.assertTrue(result)
+            
+        except UnboundLocalError as e:
+            self.fail(f"generate_yaml raised UnboundLocalError: {e}")
+        finally:
+            # Clean up any files created during the test
+            if os.path.exists('_data/upcoming.yaml'):
+                os.remove('_data/upcoming.yaml')
+            if os.path.exists('_data/stats.yaml'):
+                os.remove('_data/stats.yaml')
 
 class TestStatsGeneration(unittest.TestCase):
     def test_calculate_stats(self):
         """Test that stats are calculated correctly"""
         from generate_month_data import calculate_stats
+        from datetime import datetime, timedelta
+        import pytz
+        
+        # Get current date for testing
+        today = datetime.now(pytz.timezone('US/Eastern')).date()
+        yesterday = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+        tomorrow = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+        next_month = (today + timedelta(days=40)).strftime('%Y-%m-%d')
         
         # Test with empty data
         stats = calculate_stats([], [])
@@ -256,13 +292,62 @@ class TestStatsGeneration(unittest.TestCase):
         ]
         
         events = [
-            {'title': 'Event 1', 'date': '2025-01-01'},
-            {'title': 'Event 2', 'date': '2025-01-02'}
+            {'title': 'Past Event', 'date': yesterday},
+            {'title': 'Tomorrow Event', 'date': tomorrow},
+            {'title': 'Next Month Event', 'date': next_month}
         ]
         
         stats = calculate_stats(groups, events)
-        self.assertEqual(stats['upcoming_events'], 2)
+        self.assertEqual(stats['upcoming_events'], 2)  # Only future events
         self.assertEqual(stats['active_groups'], 2)
+
+class TestMonthlyYamlGeneration(unittest.TestCase):
+    def test_skip_current_and_next_month(self):
+        """Test that monthly YAML files skip current and next months"""
+        import os
+        from datetime import datetime, date, timedelta
+        import pytz
+        from generate_month_data import generate_yaml, local_tz
+        
+        # Create necessary directories
+        os.makedirs('_data', exist_ok=True)
+        os.makedirs('_groups', exist_ok=True)
+        os.makedirs('_single_events', exist_ok=True)
+        
+        # Create a test event file
+        test_event = {
+            'title': 'Test Event',
+            'date': '2025-05-31',  # Current month
+            'time': '10:00',
+            'url': 'https://example.com',
+            'location': 'Test Location'
+        }
+        
+        test_event_file = '_single_events/test_event.yaml'
+        try:
+            with open(test_event_file, 'w') as f:
+                yaml.dump(test_event, f)
+            
+            # Run generate_yaml
+            result = generate_yaml()
+            self.assertTrue(result)
+            
+            # Check that May 2025 and June 2025 files were not created
+            may_file = '_data/2025_may.yaml'
+            june_file = '_data/2025_june.yaml'
+            july_file = '_data/2025_july.yaml'
+            
+            self.assertFalse(os.path.exists(may_file), "May 2025 file should not exist")
+            self.assertFalse(os.path.exists(june_file), "June 2025 file should not exist")
+            # July file may or may not exist depending on if there are events
+            
+        finally:
+            # Clean up test files
+            if os.path.exists(test_event_file):
+                os.remove(test_event_file)
+            for file in [may_file, june_file, july_file]:
+                if os.path.exists(file):
+                    os.remove(file)
 
 if __name__ == '__main__':
     unittest.main()
