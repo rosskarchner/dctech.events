@@ -4,14 +4,9 @@
 
 {% block content %}
 <div class="home-container">
-    {# Add invisible anchors for next week and next month at the top of events section #}
-    <div id="stats">
-       <strong>{{ stats.upcoming_events }}</strong> upcoming events from 
-       <strong>{{ stats.active_groups }}</strong> <a href="/groups">groups</a>. <br/>You can help by <a href="https://add.dctech.events/">adding more</a>!
-    </div>
 
     <section class="events-section">
-        <h2>Upcoming Events</h2>
+        <h2>{{ stats.upcoming_events }} Upcoming Events (<a href="https://add.dctech.events">add more</a>)</h2>
         {% include "partials/events_by_day.html" %}
     </section>
 
