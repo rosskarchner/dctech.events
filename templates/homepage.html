@@ -6,7 +6,7 @@
 <div class="home-container">
     {# Add invisible anchors for next week and next month at the top of events section #}
     <div id="stats">
-       Now tracking <strong>{{ stats.upcoming_events }}</strong> upcoming events and 
+       <strong>{{ stats.upcoming_events }}</strong> upcoming events from 
        <strong>{{ stats.active_groups }}</strong> <a href="/groups">groups</a>. <br/>You can help by <a href="https://add.dctech.events/">adding more</a>!
     </div>
 
@@ -17,7 +17,7 @@
 
 
     <section class="upcoming-months-section" id="upcoming-months">
-        <h2>Events by month</h2>
+        <h2>More events</h2>
         {% if future_months %}
             {% for year, months in future_months.items() %}
                 <div class="year-container">
