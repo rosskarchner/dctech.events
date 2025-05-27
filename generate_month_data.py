@@ -372,12 +372,14 @@ def generate_yaml():
                         for component in calendar.walk('VEVENT'):
                             event_dict = event_to_dict(component, group)
                             if event_dict:
-                                # Only include events from today or in the future
+                                # Only include events from today or in the future and not in suppress_urls
                                 event_date = dateparser.parse(event_dict['date'], settings={
                                     'TIMEZONE': timezone_name,
                                     'DATE_ORDER': 'YMD'
                                 }).date()
-                                if event_date >= today:
+                                # Check if event URL is in suppress_urls list
+                                suppress_urls = group.get('suppress_urls', [])
+                                if event_date >= today and event_dict['url'] not in suppress_urls:
                                     all_events.append(event_dict)
                 except Exception as e:
                     print(f"Error processing calendar for group {group['id']}: {str(e)}")
@@ -390,10 +392,13 @@ def generate_yaml():
                     with open(cache_file, 'r') as f:
                         events = json.load(f)
                         for event in events:
-                            # Add group information
-                            event['group'] = str(group.get('name', ''))
-                            event['group_website'] = str(group.get('website', ''))
-                            all_events.append(event)
+                            # Check if event URL is in suppress_urls list
+                            suppress_urls = group.get('suppress_urls', [])
+                            if event.get('url') not in suppress_urls:
+                                # Add group information
+                                event['group'] = str(group.get('name', ''))
+                                event['group_website'] = str(group.get('website', ''))
+                                all_events.append(event)
                 except Exception as e:
                     print(f"Error processing RSS events for group {group['id']}: {str(e)}")
     

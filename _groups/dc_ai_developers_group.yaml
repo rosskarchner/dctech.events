@@ -2,3 +2,5 @@ name: DC AI Developers Group
 website: https://www.meetup.com/dc-ai-llms/
 rss: https://www.meetup.com/dc-ai-llms/events/rss/
 active: true
+suppress_urls:
+  - https://www.meetup.com/dc-ai-llms/events/307166051/

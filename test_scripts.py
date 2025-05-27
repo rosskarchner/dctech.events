@@ -349,5 +349,68 @@ class TestMonthlyYamlGeneration(unittest.TestCase):
                 if os.path.exists(file):
                     os.remove(file)
 
+class TestSuppressUrls(unittest.TestCase):
+    def test_suppress_urls(self):
+        """Test that events with URLs in suppress_urls list are ignored"""
+        from generate_month_data import event_to_dict, generate_yaml
+        from icalendar import Event
+        from datetime import datetime
+        import pytz
+        import os
+        
+        # Create necessary directories
+        os.makedirs('_data', exist_ok=True)
+        os.makedirs('_groups', exist_ok=True)
+        os.makedirs('_cache/ical', exist_ok=True)
+        
+        # Create a test group with suppress_urls
+        group = {
+            'name': 'Test Group',
+            'website': 'https://example.com',
+            'suppress_urls': ['https://example.com/suppressed']
+        }
+        
+        # Create a basic event that should be suppressed
+        event = Event()
+        event.add('summary', 'Test Event')
+        event.add('dtstart', datetime.now(pytz.UTC))
+        event.add('dtend', datetime.now(pytz.UTC) + timedelta(hours=1))
+        event.add('url', 'https://example.com/suppressed')
+        
+        # Test that event_to_dict works but event is filtered out
+        result = event_to_dict(event, group)
+        self.assertIsNotNone(result)
+        self.assertEqual(result['url'], 'https://example.com/suppressed')
+        
+        # Create test group file
+        group_file = '_groups/test_group.yaml'
+        with open(group_file, 'w') as f:
+            yaml.dump(group, f)
+            
+        # Create test calendar file with the event
+        calendar = icalendar.Calendar()
+        calendar.add_component(event)
+        cache_file = '_cache/ical/test_group.ics'
+        with open(cache_file, 'w') as f:
+            f.write(calendar.to_ical().decode('utf-8'))
+            
+        try:
+            # Run generate_yaml
+            generate_yaml()
+            
+            # Check that the event was not included in upcoming.yaml
+            with open('_data/upcoming.yaml', 'r') as f:
+                upcoming_events = yaml.safe_load(f)
+                self.assertTrue(isinstance(upcoming_events, list))
+                # Verify the suppressed event is not in the list
+                suppressed_events = [e for e in upcoming_events if e['url'] == 'https://example.com/suppressed']
+                self.assertEqual(len(suppressed_events), 0)
+                
+        finally:
+            # Clean up test files
+            for file in [group_file, cache_file, '_data/upcoming.yaml', '_data/stats.yaml']:
+                if os.path.exists(file):
+                    os.remove(file)
+
 if __name__ == '__main__':
     unittest.main()

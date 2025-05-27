@@ -2,3 +2,6 @@ name: Data Science DC
 website: https://www.meetup.com/data-science-dc/
 rss: https://www.meetup.com/data-science-dc/events/rss/
 active: true
+suppress_urls:
+  - https://www.meetup.com/data-science-dc/events/307917678/
+ 
