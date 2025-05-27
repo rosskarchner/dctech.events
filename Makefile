@@ -16,6 +16,7 @@ freeze: generate-month-data
 clean:
 	rm -rf build/
 	rm -rf _data/
+	rm -rf _cache/
 
 clean-all: clean
 	rm -rf _cache/
