@@ -9,7 +9,9 @@
     <section class="events-section">
         <h2>{{ stats.upcoming_events }} Upcoming Events (<a href="https://add.dctech.events">add more</a>)</h2>
         <div id="subscribe">
+            <div>
             Get this calendar in your inbox every week! <a href="https://newsletter.dctech.events/" hx-get="https://newsletter.dctech.events/" hx-target="#subscribe" hx-swap="innerHTML">Subscribe today</a>.
+            </div>
         </div>
         {% include "partials/events_by_day.html" %}
     </section>
