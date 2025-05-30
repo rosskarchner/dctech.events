@@ -17,6 +17,10 @@ h1.logo{
 
 }
 
+.day-container {
+    padding : 0.5em
+}
+
 .even{
     background-color:aliceblue;
 }

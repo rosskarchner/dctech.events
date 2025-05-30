@@ -15,25 +15,27 @@
                                     <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>
                                     <div class="event-details">
                                         {% if event.location %}
-                                            <span class="event-location">
+                                            <div class="event-location">
                                                 {{ event.location }}
-                                            </span>
+                                            </div>
                                         {% endif %}
                                         {% if event.submitter_name and event.submitter_name != 'anonymous' %}
-                                            {% if event.location %} / {% endif %} submitted by
+                                            <div>submitted by
                                             {% if event.submitter_link %}
                                                 <a href="{{ event.submitter_link }}" target="_blank">{{ event.submitter_name }}</a>
                                             {% else %}
                                                 {{ event.submitter_name }}
                                             {% endif %}
+                                            </div>
 
                                         {% elif event.group %}
-                                            {% if event.location %} / {% endif %}
+                                           <div>
                                             {% if event.group_website %}
                                                 <a href="{{ event.group_website }}" target="_blank">{{ event.group }}</a>
                                             {% else %}
                                                 {{ event.group }}
                                             {% endif %}
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
