@@ -22,7 +22,7 @@ h3.day-heading {
 
 
 h4.time-heading{
-    margin:0px 0px 0px -5px;width:80px;font-size:.8em;text-align:right;color:gray;font-weight:lighter;float:left
+    margin:0px 0px 0px -5px;width:80px;font-size:.8em;text-align:right;color:gray;font-weight:normal;float:left
 }
 
 
@@ -45,5 +45,6 @@ a {text-decoration: none;}
 #subscribe {
     margin-top:-30px;
     background-color: cornsilk;
-    padding:0.5em
+    padding:0.5em;
+    font-size:smaller
 }

@@ -15,29 +15,7 @@
     </section>
 
 
-    <section class="upcoming-months-section" id="upcoming-months">
-        <h2>More events</h2>
-        {% if future_months %}
-            {% for year, months in future_months.items() %}
-                <div class="year-container">
-                    <h3>{{ year }}</h3>
-                    <ul class="months-list">
-                        {% for month in months %}
-                            <li>
-                                {% if month.count > 0 %}
-                                    <a href="/{{ month.year }}/{{ month.number }}/">{{ month.name }} ({{ month.count }})</a>
-                                {% else %}
-                                    {{ month.name }}
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>No future events scheduled yet.</p>
-        {% endif %}
-    </section>
+    <!-- Future months section removed as all events are now in one list -->
 
 </div>
 

@@ -426,80 +426,16 @@ def generate_yaml():
         next_month = current_month + 1
         next_year = current_year
     
-    # Filter events for upcoming.yaml (remainder of current month + next month)
-    upcoming_events = []
-    for event in all_events:
-        # Parse date using dateparser for consistency
-        event_date_str = event.get('date')
-        if isinstance(event_date_str, date):
-            event_date = event_date_str
-        else:
-            parsed_date = dateparser.parse(event_date_str, settings={
-                'TIMEZONE': timezone_name,
-                'DATE_ORDER': 'YMD',
-                'PREFER_DATES_FROM': 'future'
-            })
-            if parsed_date is None:
-                print(f"Warning: Could not parse date: {event_date_str}")
-                continue
-            event_date = parsed_date.date()
-        
-        # Include if event is today or later and in current or next month
-        if event_date >= today and (
-            (event_date.year == current_year and event_date.month == current_month) or
-            (event_date.year == next_year and event_date.month == next_month)
-        ):
-            upcoming_events.append(event)
-    
-    # Group events by month for per-month files, skipping current and next months
-    events_by_month = {}
-    for event in all_events:
-        # Parse date using dateparser for consistency
-        event_date_str = event.get('date')
-        if isinstance(event_date_str, date):
-            event_date = event_date_str
-        else:
-            parsed_date = dateparser.parse(event_date_str, settings={
-                'TIMEZONE': timezone_name,
-                'DATE_ORDER': 'YMD',
-                'PREFER_DATES_FROM': 'future'
-            })
-            if parsed_date is None:
-                print(f"Warning: Could not parse date: {event_date_str}")
-                continue
-            event_date = parsed_date.date()
-            
-        # Skip events in current and next month
-        if (event_date.year == current_year and event_date.month == current_month) or \
-           (event_date.year == next_year and event_date.month == next_month):
-            continue
-            
-        month_key = f"{event_date.year}-{event_date.month:02d}"
-        
-        if month_key not in events_by_month:
-            events_by_month[month_key] = []
-        
-        events_by_month[month_key].append(event)
-    
-    # Write upcoming.yaml
+    # Write all events to upcoming.yaml
     upcoming_file = os.path.join(DATA_DIR, 'upcoming.yaml')
     with open(upcoming_file, 'w', encoding='utf-8') as f:
-        yaml.dump(upcoming_events, f, sort_keys=False, allow_unicode=True)
+        yaml.dump(all_events, f, sort_keys=False, allow_unicode=True)
     
     # Generate and write stats.yaml
     stats = calculate_stats(groups, all_events)
     stats_file = os.path.join(DATA_DIR, 'stats.yaml')
     with open(stats_file, 'w', encoding='utf-8') as f:
         yaml.dump(stats, f, sort_keys=False, allow_unicode=True)
-    
-    # Write per-month files
-    for month_key, month_events in events_by_month.items():
-        year, month = month_key.split('-')
-        month_name = cal_module.month_name[int(month)].lower()
-        month_file = os.path.join(DATA_DIR, f"{year}_{month_name}.yaml")
-        
-        with open(month_file, 'w', encoding='utf-8') as f:
-            yaml.dump(month_events, f, sort_keys=False, allow_unicode=True)
     
     # Create a flag file to indicate that YAML files were updated
     with open(UPDATED_FLAG_FILE, 'w', encoding='utf-8') as f:

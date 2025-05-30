@@ -35,32 +35,14 @@ def load_yaml_data(file_path):
         print(f"Error loading YAML from {file_path}: {str(e)}")
         return []
 
-def get_events(month_name=None, year=None):
+def get_events():
     """
-    Get events from the appropriate YAML file
-    
-    Args:
-        month_name: The name of the month (lowercase) to get events for
-                   If None, returns upcoming events
-        year: The year for the events (required if month_name is provided)
+    Get events from the upcoming.yaml file
     
     Returns:
         A list of events
     """
-    if month_name and year:
-        file_path = os.path.join(DATA_DIR, f"{year}_{month_name.lower()}.yaml")
-    elif month_name:
-        # For backward compatibility, try to find any file with this month name
-        # This should be removed once all files are migrated to the new format
-        import glob
-        pattern = os.path.join(DATA_DIR, f"*_{month_name.lower()}.yaml")
-        files = glob.glob(pattern)
-        if files:
-            file_path = files[0]  # Use the first matching file
-        else:
-            return []
-    else:
-        file_path = os.path.join(DATA_DIR, 'upcoming.yaml')
+    file_path = os.path.join(DATA_DIR, 'upcoming.yaml')
     
     if not os.path.exists(file_path):
         return []
@@ -183,87 +165,13 @@ def prepare_events_by_day(events):
 
 def get_future_months_with_events():
     """
-    Get all future months with events, excluding current and next month
+    This function is no longer used as we don't break down events by month anymore.
+    Returns an empty dictionary.
     
     Returns:
-        A dictionary with years as keys and lists of month data as values
+        An empty dictionary
     """
-    import glob
-    import re
-    
-    # Get current date
-    today = datetime.now(local_tz).date()
-    current_month = today.month
-    current_year = today.year
-    
-    # Calculate next month
-    if current_month == 12:
-        next_month = 1
-        next_month_year = current_year + 1
-    else:
-        next_month = current_month + 1
-        next_month_year = current_year
-    
-    # Find all month files
-    pattern = os.path.join(DATA_DIR, "*.yaml")
-    files = glob.glob(pattern)
-    
-    # Dictionary to store months by year
-    years_months = {}
-    
-    # Regular expression to extract year and month from filenames
-    file_pattern = re.compile(r'(\d{4})_([a-z]+)\.yaml')
-    
-    for file_path in files:
-        # Skip the upcoming.yaml file
-        if os.path.basename(file_path) == 'upcoming.yaml':
-            continue
-            
-        # Extract year and month from filename
-        match = file_pattern.search(os.path.basename(file_path))
-        if match:
-            year_str, month_name = match.groups()
-            year = int(year_str)
-            
-            # Convert month name to number
-            month_names = {month.lower(): i for i, month in enumerate(calendar.month_name) if i > 0}
-            if month_name not in month_names:
-                continue
-                
-            month_num = month_names[month_name]
-            
-            if (year < current_year or 
-                (year == current_year and month_num < current_month)):
-                continue
-                
-            # Count events in the file
-            events = load_yaml_data(file_path) or []
-            event_count = len(events)
-            
-            # Skip if no events
-            if event_count == 0:
-                continue
-                
-            # Add to the dictionary
-            if year not in years_months:
-                years_months[year] = []
-                
-            years_months[year].append({
-                'name': month_name.capitalize(),
-                'number': month_num,
-                'count': event_count,
-                'year': year
-            })
-    
-    # Sort months within each year
-    for year in years_months:
-        years_months[year].sort(key=lambda x: x['number'])
-    
-    # Sort years
-    sorted_years = sorted(years_months.keys())
-    result = {year: years_months[year] for year in sorted_years}
-    
-    return result
+    return {}
 
 def get_next_week_and_month_dates(events):
     """
@@ -332,9 +240,6 @@ def homepage():
     events = get_events()
     days = prepare_events_by_day(events)
     
-    # Get future months with events
-    future_months = get_future_months_with_events()
-    
     # Get next week and month dates
     next_week_date, next_month_date = get_next_week_and_month_dates(events)
     
@@ -343,46 +248,12 @@ def homepage():
     
     return render_template('homepage.html', 
                           days=days, 
-                          future_months=future_months,
                           next_week_date=next_week_date,
                           next_month_date=next_month_date,
                           site_name=SITE_NAME,
                           stats=stats)
 
-@app.route("/<int:year>/<int:month>/")
-def month_view(year, month):
-    # Get the month name
-    month_name = calendar.month_name[month].lower()
-    
-    # Get events for the month
-    events = get_events(month_name, year)
-    days = prepare_events_by_day(events)
-    
-    # Calculate previous and next month
-    if month == 1:
-        prev_month = 12
-        prev_year = year - 1
-    else:
-        prev_month = month - 1
-        prev_year = year
-        
-    if month == 12:
-        next_month = 1
-        next_year = year + 1
-    else:
-        next_month = month + 1
-        next_year = year
-    
-    return render_template('month_page.html', 
-                          days=days, 
-                          year=year, 
-                          month=month,
-                          month_name=calendar.month_name[month],
-                          prev_month=prev_month,
-                          prev_year=prev_year,
-                          next_month=next_month,
-                          next_year=next_year,
-                          site_name=SITE_NAME)
+# Month view route removed - all events are now in upcoming.yaml
 
 @app.route("/groups/")
 def approved_groups_list():
