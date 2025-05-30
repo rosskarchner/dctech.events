@@ -298,5 +298,33 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
+    def test_sitemap(self):
+        """Test the XML sitemap endpoint"""
+        from app import app
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Test sitemap endpoint
+        response = client.get('/sitemap.xml')
+        
+        # Verify response code and content type
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'application/xml')
+        
+        # Verify XML content
+        content = response.data.decode()
+        self.assertTrue(content.startswith('<?xml version="1.0" encoding="UTF-8"?>'))
+        self.assertIn('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', content)
+        
+        # Verify required URLs are present
+        self.assertIn('<loc>http://localhost:5000/</loc>', content)
+        self.assertIn('<loc>http://localhost:5000/groups/</loc>', content)
+        self.assertIn('<loc>http://localhost:5000/newsletter.html</loc>', content)
+        
+        # Verify each URL has required elements
+        self.assertIn('<lastmod>', content)
+        self.assertIn('<changefreq>daily</changefreq>', content)
+
 if __name__ == '__main__':
     unittest.main()

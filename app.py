@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, Response
 from datetime import date, datetime, timedelta
 import os
 import yaml
@@ -294,6 +294,33 @@ def newsletter_text():
                              site_name=SITE_NAME,
                              stats=stats)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
+@app.route("/sitemap.xml")
+def sitemap():
+    """Generate an XML sitemap of the site's main pages"""
+    # Get base URL from config or use a default
+    base_url = config.get('base_url', 'http://localhost:5000')
+    
+    # Create list of URLs with last modified dates
+    urls = [
+        {'loc': f"{base_url}/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/groups/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+    ]
+    
+    # Generate XML sitemap
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    
+    for url in urls:
+        xml.append('  <url>')
+        xml.append(f'    <loc>{url["loc"]}</loc>')
+        xml.append(f'    <lastmod>{url["lastmod"]}</lastmod>')
+        xml.append('    <changefreq>daily</changefreq>')
+        xml.append('  </url>')
+    
+    xml.append('</urlset>')
+    
+    return Response('\n'.join(xml), mimetype='application/xml')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
