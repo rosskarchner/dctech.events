@@ -412,5 +412,112 @@ class TestSuppressUrls(unittest.TestCase):
                 if os.path.exists(file):
                     os.remove(file)
 
+class TestFutureEventLimit(unittest.TestCase):
+    def test_future_event_limit(self):
+        """Test that aggregated events more than 90 days in the future are excluded,
+        but single events beyond 90 days are included"""
+        import os
+        from datetime import datetime, timedelta
+        import pytz
+        import icalendar
+        from generate_month_data import generate_yaml, local_tz
+        
+        # Create necessary directories
+        os.makedirs('_data', exist_ok=True)
+        os.makedirs('_groups', exist_ok=True)
+        os.makedirs('_single_events', exist_ok=True)
+        os.makedirs('_cache/ical', exist_ok=True)
+        
+        # Get current date
+        today = datetime.now(local_tz).date()
+        
+        # Create test single events at different future dates
+        test_single_events = [
+            {
+                'title': 'Tomorrow Single Event',
+                'date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
+                'time': '10:00',
+                'url': 'https://example.com/tomorrow-single'
+            },
+            {
+                'title': '91 Days Single Event',
+                'date': (today + timedelta(days=91)).strftime('%Y-%m-%d'),
+                'time': '10:00',
+                'url': 'https://example.com/91days-single'
+            }
+        ]
+        
+        # Create test group and iCal events
+        test_group = {
+            'name': 'Test Group',
+            'website': 'https://example.com',
+            'ical': 'https://example.com/calendar.ics'
+        }
+        
+        # Create iCal calendar with events
+        calendar = icalendar.Calendar()
+        
+        # Add tomorrow event
+        event1 = icalendar.Event()
+        event1.add('summary', 'Tomorrow iCal Event')
+        event1.add('dtstart', datetime.now(pytz.UTC) + timedelta(days=1))
+        event1.add('dtend', datetime.now(pytz.UTC) + timedelta(days=1, hours=1))
+        event1.add('url', 'https://example.com/tomorrow-ical')
+        calendar.add_component(event1)
+        
+        # Add 91 days event
+        event2 = icalendar.Event()
+        event2.add('summary', '91 Days iCal Event')
+        event2.add('dtstart', datetime.now(pytz.UTC) + timedelta(days=91))
+        event2.add('dtend', datetime.now(pytz.UTC) + timedelta(days=91, hours=1))
+        event2.add('url', 'https://example.com/91days-ical')
+        calendar.add_component(event2)
+        
+        try:
+            # Create test single event files
+            for i, event in enumerate(test_single_events):
+                with open(f'_single_events/test_event_{i}.yaml', 'w') as f:
+                    yaml.dump(event, f)
+            
+            # Create test group file
+            with open('_groups/test_group.yaml', 'w') as f:
+                yaml.dump(test_group, f)
+                
+            # Create test iCal cache file
+            with open('_cache/ical/test_group.ics', 'w') as f:
+                f.write(calendar.to_ical().decode('utf-8'))
+            
+            # Run generate_yaml
+            generate_yaml()
+            
+            # Check upcoming.yaml
+            with open('_data/upcoming.yaml', 'r') as f:
+                upcoming_events = yaml.safe_load(f)
+                
+            # Get all event URLs
+            event_urls = [e['url'] for e in upcoming_events]
+            
+            # Verify single events are included regardless of date
+            self.assertIn('https://example.com/tomorrow-single', event_urls, "Tomorrow's single event should be included")
+            self.assertIn('https://example.com/91days-single', event_urls, "91-day future single event should be included")
+            
+            # Verify iCal events follow the 90-day limit
+            self.assertIn('https://example.com/tomorrow-ical', event_urls, "Tomorrow's iCal event should be included")
+            self.assertNotIn('https://example.com/91days-ical', event_urls, "91-day future iCal event should be excluded")
+            
+        finally:
+            # Clean up test files
+            for i in range(len(test_single_events)):
+                if os.path.exists(f'_single_events/test_event_{i}.yaml'):
+                    os.remove(f'_single_events/test_event_{i}.yaml')
+            if os.path.exists('_groups/test_group.yaml'):
+                os.remove('_groups/test_group.yaml')
+            if os.path.exists('_cache/ical/test_group.ics'):
+                os.remove('_cache/ical/test_group.ics')
+            if os.path.exists('_data/upcoming.yaml'):
+                os.remove('_data/upcoming.yaml')
+            if os.path.exists('_data/stats.yaml'):
+                os.remove('_data/stats.yaml')
+
 if __name__ == '__main__':
     unittest.main()

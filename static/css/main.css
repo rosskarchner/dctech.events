@@ -11,10 +11,17 @@ html {
 body{
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }
-
 h1.logo{
     margin: 0px;
+    font-family: "Red Hat Text", sans-serif;
+
 }
+
+.even{
+    background-color:aliceblue;
+}
+
+h2 {margin-top:0px;font-weight:bold;}
 h3.day-heading {
     margin:2px 0px 0px -5px;font-size:.8em;width:80px;text-align:right;color:gray;font-weight:bold;
 

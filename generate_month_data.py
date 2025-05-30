@@ -348,6 +348,9 @@ def generate_yaml():
     # Get current date at the start
     today = datetime.now(local_tz).date()
     
+    # Calculate date 90 days from now
+    max_future_date = today + timedelta(days=90)
+    
     # Load all groups
     groups = load_groups()
     
@@ -379,7 +382,8 @@ def generate_yaml():
                                 }).date()
                                 # Check if event URL is in suppress_urls list
                                 suppress_urls = group.get('suppress_urls', [])
-                                if event_date >= today and event_dict['url'] not in suppress_urls:
+                                # For aggregated events (iCal/RSS), apply 90-day limit
+                                if today <= event_date <= max_future_date and event_dict['url'] not in suppress_urls:
                                     all_events.append(event_dict)
                 except Exception as e:
                     print(f"Error processing calendar for group {group['id']}: {str(e)}")
@@ -398,17 +402,23 @@ def generate_yaml():
                                 # Add group information
                                 event['group'] = str(group.get('name', ''))
                                 event['group_website'] = str(group.get('website', ''))
-                                all_events.append(event)
+                                # For RSS events, apply 90-day limit
+                                event_date = dateparser.parse(event['date'], settings={
+                                    'TIMEZONE': timezone_name,
+                                    'DATE_ORDER': 'YMD'
+                                }).date()
+                                if today <= event_date <= max_future_date:
+                                    all_events.append(event)
                 except Exception as e:
                     print(f"Error processing RSS events for group {group['id']}: {str(e)}")
     
-    # Add single events (only current and future)
+    # Add single events (include all future events regardless of date)
     for event in single_events:
         event_date = dateparser.parse(event['date'], settings={
             'TIMEZONE': timezone_name,
             'DATE_ORDER': 'YMD'
         }).date()
-        if event_date >= today:
+        if today <= event_date:  # Only check that event is in the future
             all_events.append(event)
     
     # Sort events by date and time

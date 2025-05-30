@@ -4,7 +4,7 @@
         {% for day in days %}
             
             {% if day.has_events %}
-                <div class="day-container">
+                <div class="day-container {{ loop.cycle('odd', 'even') }}">
                     <h3 class="day-heading">{{ day.short_date }} <a name="{{ day.date }}"></a></h3>
                     
                     {% for time_slot in day.time_slots %}
