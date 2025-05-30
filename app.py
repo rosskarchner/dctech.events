@@ -299,7 +299,7 @@ def newsletter_text():
 def sitemap():
     """Generate an XML sitemap of the site's main pages"""
     # Get base URL from config or use a default
-    base_url = config.get('base_url', 'http://localhost:5000')
+    base_url = config.get('base_url', 'https://dctech.events')
     
     # Create list of URLs with last modified dates
     urls = [
