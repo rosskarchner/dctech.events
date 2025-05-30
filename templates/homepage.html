@@ -2,11 +2,15 @@
 
 {% block title %}DC Tech Events{% endblock %}
 
+
 {% block content %}
 <div class="home-container">
 
     <section class="events-section">
         <h2>{{ stats.upcoming_events }} Upcoming Events (<a href="https://add.dctech.events">add more</a>)</h2>
+        <div id="subscribe">
+            Get this calendar in your inbox every week! <a href="https://newsletter.dctech.events/" hx-get="https://newsletter.dctech.events/" hx-target="#subscribe" hx-swap="innerHTML">Subscribe today</a>.
+        </div>
         {% include "partials/events_by_day.html" %}
     </section>
 
@@ -41,5 +45,5 @@
 {% endblock %}
 
 {% block extra_head %}
-
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 {% endblock %}

@@ -41,3 +41,9 @@ a {text-decoration: none;}
 }
 
 #tools a{font-size:.8em;background-color:#EEE;color:black;text-decoration:none;padding:2px;}
+
+#subscribe {
+    margin-top:-30px;
+    background-color: cornsilk;
+    padding:0.5em
+}
