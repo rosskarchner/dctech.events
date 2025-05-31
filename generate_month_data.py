@@ -292,12 +292,10 @@ def load_single_events():
                         if end_datetime is None:
                             end_datetime = event_datetime
                     else:
-                        end_datetime = event_datetime
-                        event['end_date'] = event['date']
-                        event['end_time'] = event['time']
-                    
-                    event['end_date'] = end_datetime.strftime('%Y-%m-%d')
-                    event['end_time'] = end_datetime.strftime('%H:%M')
+                        # Only set end_date and end_time if they were explicitly provided
+                        if 'end_date' in event and 'end_time' in event:
+                            event['end_date'] = end_datetime.strftime('%Y-%m-%d')
+                            event['end_time'] = end_datetime.strftime('%H:%M')
                 
                 events.append(event)
         except Exception as e:

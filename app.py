@@ -92,31 +92,76 @@ def prepare_events_by_day(events):
         if not day_key:
             continue
         
-        # Parse the date
-        event_date = datetime.strptime(day_key, '%Y-%m-%d').date()
-        short_date = event_date.strftime('%a %-m/%-d')  # Format as "Mon 5/5"
-        
-        if day_key not in events_by_day:
-            events_by_day[day_key] = {
-                'date': day_key,
-                'short_date': short_date,
-                'time_slots': {}
-            }
-        
-        # Format and group by time
-        time_key = 'TBD'
-        if 'time' in event:
+        # Parse the start date and end date if it exists
+        start_date = datetime.strptime(day_key, '%Y-%m-%d').date()
+        end_date = None
+        if 'end_date' in event:
             try:
-                time_obj = datetime.strptime(event['time'], '%H:%M').time()
-                event['time'] = time_obj.strftime('%-I:%M %p').lower()  # Format as "1:30 pm"
-                time_key = event['time']
+                end_date = datetime.strptime(event['end_date'], '%Y-%m-%d').date()
             except:
                 pass
         
-        if time_key not in events_by_day[day_key]['time_slots']:
-            events_by_day[day_key]['time_slots'][time_key] = []
+        # Generate list of dates for this event
+        event_dates = []
+        if end_date and end_date > start_date:
+            current_date = start_date
+            while current_date <= end_date:
+                event_dates.append(current_date)
+                current_date += timedelta(days=1)
+        else:
+            event_dates = [start_date]
         
-        events_by_day[day_key]['time_slots'][time_key].append(event)
+        # Add event to each day
+        for i, event_date in enumerate(event_dates):
+            day_key = event_date.strftime('%Y-%m-%d')
+            short_date = event_date.strftime('%a %-m/%-d')  # Format as "Mon 5/5"
+            
+            if day_key not in events_by_day:
+                events_by_day[day_key] = {
+                    'date': day_key,
+                    'short_date': short_date,
+                    'time_slots': {}
+                }
+            
+            # Format time once for all days
+            time_key = 'TBD'
+            formatted_time = 'TBD'
+            original_time = event.get('time', '')
+            
+            # Only try to parse time if it exists and hasn't been formatted yet
+            if original_time and isinstance(original_time, str):
+                try:
+                    # Handle time parsing - only do this if time is in HH:MM format
+                    if ':' in original_time:
+                        time_obj = datetime.strptime(original_time.strip(), '%H:%M').time()
+                        # For time_key, use the original HH:MM format for consistent sorting
+                        time_key = time_obj.strftime('%H:%M')
+                        # For display, use am/pm format
+                        formatted_time = time_obj.strftime('%-I:%M %p').lower()  # Format as "1:30 pm"
+                except ValueError:
+                    # If time parsing fails, keep TBD
+                    pass
+            
+            # Store both the original and formatted time
+            event['original_time'] = original_time
+            event['formatted_time'] = formatted_time
+            
+            # Create a copy of the event for this day
+            event_copy = event.copy()
+            # For display, use the formatted time
+            event_copy['time'] = formatted_time
+            
+            # Add display_title with (continuing) for days after the first
+            if i > 0:
+                event_copy['display_title'] = f"{event['title']} (continuing)"
+            else:
+                event_copy['display_title'] = event['title']
+            
+            # Create time slot if it doesn't exist
+            if time_key not in events_by_day[day_key]['time_slots']:
+                events_by_day[day_key]['time_slots'][time_key] = []
+            
+            events_by_day[day_key]['time_slots'][time_key].append(event_copy)
     
     # Convert the dictionary to a sorted list of days
     sorted_days = sorted(events_by_day.keys())
@@ -173,54 +218,6 @@ def get_future_months_with_events():
     """
     return {}
 
-def get_next_week_and_month_dates(events):
-    """
-    Get the dates for next week and next month, finding the nearest event dates
-    
-    Args:
-        events: List of event dictionaries
-    
-    Returns:
-        A tuple of (next_week_date, next_month_date)
-    """
-    today = datetime.now(local_tz).date()
-    
-    # Next week target (7 days from today)
-    next_week_target = today + timedelta(days=7)
-    # Next month target (first day of next month)
-    if today.month == 12:
-        next_month_target = date(today.year + 1, 1, 1)
-    else:
-        next_month_target = date(today.year, today.month + 1, 1)
-    
-    # Convert events dates to date objects
-    event_dates = []
-    for event in events:
-        try:
-            event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
-            if event_date >= today:  # Only consider future events
-                event_dates.append(event_date)
-        except:
-            continue
-    
-    if not event_dates:
-        # If no events, return the target dates
-        return (next_week_target.strftime('%Y-%m-%d'), 
-                next_month_target.strftime('%Y-%m-%d'))
-    
-    # Sort dates
-    event_dates.sort()
-    
-    # Find nearest future date to next week target
-    next_week_date = min(event_dates, 
-                        key=lambda d: abs((d - next_week_target).days))
-    
-    # Find nearest future date to next month target
-    next_month_date = min(event_dates, 
-                         key=lambda d: abs((d - next_month_target).days))
-    
-    return (next_week_date.strftime('%Y-%m-%d'), 
-            next_month_date.strftime('%Y-%m-%d'))
 
 def get_stats():
     """
@@ -240,16 +237,12 @@ def homepage():
     events = get_events()
     days = prepare_events_by_day(events)
     
-    # Get next week and month dates
-    next_week_date, next_month_date = get_next_week_and_month_dates(events)
-    
+
     # Get stats
     stats = get_stats()
-    
+    print(days)
     return render_template('homepage.html', 
                           days=days, 
-                          next_week_date=next_week_date,
-                          next_month_date=next_month_date,
                           site_name=SITE_NAME,
                           stats=stats)
 

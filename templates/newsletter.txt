@@ -10,7 +10,7 @@
 {% for time_slot in day.time_slots %}
 {{ time_slot.time }}:
 {% for event in time_slot.events %}
-* {{ event.title }}
+* {{ event.display_title }}
   {% if event.location %}Location: {{ event.location }}{% endif %}
   {% if event.group %}Group: {{ event.group }}{% endif %}
   URL: {{ event.url }}

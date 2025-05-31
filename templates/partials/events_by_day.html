@@ -9,10 +9,10 @@
                     
                     {% for time_slot in day.time_slots %}
                         <div class="time-slot">
-                            <h4 class="time-heading">{{ time_slot.time }}</h4>
+                            <h4 class="time-heading">{{ time_slot.events[0].formatted_time }}</h4>
                             {% for event in time_slot.events %}
                                 <div class="event">
-                                    <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>
+                                    <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>{% if event.display_title != event.title %} {{ event.display_title | replace(event.title, '') }}{% endif %}
                                     <div class="event-details">
                                         {% if event.location %}
                                             <div class="event-location">

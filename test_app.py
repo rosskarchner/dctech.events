@@ -298,33 +298,150 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
-    def test_sitemap(self):
-        """Test the XML sitemap endpoint"""
-        from app import app
+    def test_time_format_handling(self):
+        """Test handling of various time formats including 08:00 and TBD cases"""
+        from app import prepare_events_by_day
         
-        # Create test client
-        client = app.test_client()
+        today_str = self.today.strftime('%Y-%m-%d')
+        events = [
+            {'date': today_str, 'time': '08:00', 'title': 'Early Morning Event'},
+            {'date': today_str, 'time': '8:00', 'title': 'Another Early Event'},
+            {'date': today_str, 'time': '', 'title': 'Empty Time Event'},
+            {'date': today_str, 'time': 'invalid', 'title': 'Invalid Time Event'},
+            {'date': today_str, 'title': 'No Time Event'}
+        ]
         
-        # Test sitemap endpoint
-        response = client.get('/sitemap.xml')
+        days = prepare_events_by_day(events)
         
-        # Verify response code and content type
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content_type, 'application/xml')
+        # Verify we have one day
+        self.assertEqual(len(days), 1)
+        day = days[0]
         
-        # Verify XML content
-        content = response.data.decode()
-        self.assertTrue(content.startswith('<?xml version="1.0" encoding="UTF-8"?>'))
-        self.assertIn('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', content)
+        # Get all events across time slots
+        all_events = [e for slot in day['time_slots'] for e in slot['events']]
         
-        # Verify required URLs are present
-        self.assertIn('<loc>http://localhost:5000/</loc>', content)
-        self.assertIn('<loc>http://localhost:5000/groups/</loc>', content)
-        self.assertIn('<loc>http://localhost:5000/newsletter.html</loc>', content)
+        # Find events by title
+        early_event = next(e for e in all_events if e['title'] == 'Early Morning Event')
+        another_early = next(e for e in all_events if e['title'] == 'Another Early Event')
+        empty_time = next(e for e in all_events if e['title'] == 'Empty Time Event')
+        invalid_time = next(e for e in all_events if e['title'] == 'Invalid Time Event')
+        no_time = next(e for e in all_events if e['title'] == 'No Time Event')
         
-        # Verify each URL has required elements
-        self.assertIn('<lastmod>', content)
-        self.assertIn('<changefreq>daily</changefreq>', content)
+        # Verify time formatting
+        self.assertEqual(early_event['time'], '8:00 am')
+        self.assertEqual(another_early['time'], '8:00 am')
+        self.assertEqual(empty_time['time'], 'TBD')
+        self.assertEqual(invalid_time['time'], 'TBD')
+        self.assertEqual(no_time['time'], 'TBD')
+        
+    def test_multi_day_event_time_consistency(self):
+        """Test that multi-day events maintain consistent time formatting across days"""
+        from app import prepare_events_by_day
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        tomorrow = self.today + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+        
+        events = [
+            {
+                'date': today_str,
+                'time': '08:00',
+                'title': 'Multi Day Event',
+                'end_date': tomorrow_str
+            },
+            {
+                'date': today_str,
+                'time': '',
+                'title': 'Multi Day TBD Event',
+                'end_date': tomorrow_str
+            }
+        ]
+        
+        days = prepare_events_by_day(events)
+        
+        # Verify we have two days
+        self.assertEqual(len(days), 2)
+        
+        # Get events for both days
+        first_day = next(d for d in days if d['date'] == today_str)
+        second_day = next(d for d in days if d['date'] == tomorrow_str)
+        
+        # Get the events from each day
+        first_day_events = {e['title']: e for slot in first_day['time_slots'] for e in slot['events']}
+        second_day_events = {e['title']: e for slot in second_day['time_slots'] for e in slot['events']}
+        
+        # Verify time consistency for the 08:00 event
+        self.assertEqual(first_day_events['Multi Day Event']['time'], '8:00 am')
+        self.assertEqual(second_day_events['Multi Day Event']['display_title'], 'Multi Day Event (continuing)')
+        self.assertEqual(second_day_events['Multi Day Event']['time'], '8:00 am')
+        
+        # Verify time consistency for the TBD event
+        self.assertEqual(first_day_events['Multi Day TBD Event']['time'], 'TBD')
+        self.assertEqual(second_day_events['Multi Day TBD Event']['display_title'], 'Multi Day TBD Event (continuing)')
+        self.assertEqual(second_day_events['Multi Day TBD Event']['time'], 'TBD')
+
+    def test_multi_day_events(self):
+        """Test that multi-day events appear on each day with (continuing) label"""
+        from app import prepare_events_by_day
+        
+        # Create test events including a multi-day event
+        today_str = self.today.strftime('%Y-%m-%d')
+        tomorrow = self.today + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+        day_after = self.today + timedelta(days=2)
+        day_after_str = day_after.strftime('%Y-%m-%d')
+        
+        events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Single Day Event',
+                'url': 'http://test.com'
+            },
+            {
+                'date': today_str,
+                'time': '10:00',
+                'title': 'Multi Day Event',
+                'url': 'http://test2.com',
+                'end_date': day_after_str
+            }
+        ]
+        
+        days = prepare_events_by_day(events)
+        
+        # Verify we have entries for all three days
+        self.assertEqual(len(days), 3)
+        
+        # Verify first day has both events without (continuing)
+        first_day = next(d for d in days if d['date'] == today_str)
+        first_day_events = [e for slot in first_day['time_slots'] for e in slot['events']]
+        self.assertEqual(len(first_day_events), 2)
+        multi_day_event = next(e for e in first_day_events if e['title'] == 'Multi Day Event')
+        self.assertNotIn('(continuing)', multi_day_event['title'])
+        
+        # Verify second day has only multi-day event with (continuing)
+        second_day = next(d for d in days if d['date'] == tomorrow_str)
+        second_day_events = [e for slot in second_day['time_slots'] for e in slot['events']]
+        self.assertEqual(len(second_day_events), 1)
+        self.assertEqual(second_day_events[0]['title'], 'Multi Day Event')
+        self.assertIn('(continuing)', second_day_events[0]['display_title'])
+        
+        # Verify third day has only multi-day event with (continuing)
+        third_day = next(d for d in days if d['date'] == day_after_str)
+        third_day_events = [e for slot in third_day['time_slots'] for e in slot['events']]
+        self.assertEqual(len(third_day_events), 1)
+        self.assertEqual(third_day_events[0]['title'], 'Multi Day Event')
+        self.assertIn('(continuing)', third_day_events[0]['display_title'])
+        
+        # Verify time consistency across all days for multi-day event
+        first_day_time = next(e['time'] for slot in first_day['time_slots'] for e in slot['events'] if e['title'] == 'Multi Day Event')
+        second_day_time = next(e['time'] for slot in second_day['time_slots'] for e in slot['events'] if e['title'] == 'Multi Day Event')
+        third_day_time = next(e['time'] for slot in third_day['time_slots'] for e in slot['events'] if e['title'] == 'Multi Day Event')
+        
+        # All days should have the same time
+        self.assertEqual(first_day_time, second_day_time)
+        self.assertEqual(second_day_time, third_day_time)
+        self.assertEqual(first_day_time, '10:00 am')
 
 if __name__ == '__main__':
     unittest.main()

@@ -19,7 +19,7 @@
                             {% for event in time_slot.events %}
                                 <div style="margin-bottom: 10px;">
                                     <div style="font-weight: bold;">
-                                        <a href="{{ event.url }}" style="color: #0066cc; text-decoration: none;">{{ event.title }}</a>
+                                        <a href="{{ event.url }}" style="color: #0066cc; text-decoration: none;">{{ event.title }}</a>{% if event.display_title != event.title %} {{ event.display_title | replace(event.title, '') }}{% endif %}
                                     </div>
                                     <div style="color: #666; font-size: 14px;">
                                         {% if event.location %}

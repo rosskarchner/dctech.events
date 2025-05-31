@@ -349,6 +349,74 @@ class TestMonthlyYamlGeneration(unittest.TestCase):
                 if os.path.exists(file):
                     os.remove(file)
 
+    def test_single_event_end_time(self):
+        """Test that single events don't get end_date/end_time unless explicitly provided"""
+        import os
+        from datetime import datetime, date, timedelta
+        import pytz
+        from generate_month_data import generate_yaml, local_tz
+        
+        # Create necessary directories
+        os.makedirs('_data', exist_ok=True)
+        os.makedirs('_groups', exist_ok=True)
+        os.makedirs('_single_events', exist_ok=True)
+        
+        # Create test events
+        test_events = [
+            {
+                'title': 'Event without end time',
+                'date': '2025-05-31',
+                'time': '10:00',
+                'url': 'https://example.com/event1',
+                'location': 'Test Location'
+            },
+            {
+                'title': 'Event with end time',
+                'date': '2025-05-31',
+                'time': '10:00',
+                'end_date': '2025-05-31',
+                'end_time': '11:00',
+                'url': 'https://example.com/event2',
+                'location': 'Test Location'
+            }
+        ]
+        
+        try:
+            # Create test event files
+            for i, event in enumerate(test_events):
+                with open(f'_single_events/test_event_{i}.yaml', 'w') as f:
+                    yaml.dump(event, f)
+            
+            # Run generate_yaml
+            result = generate_yaml()
+            self.assertTrue(result)
+            
+            # Check upcoming.yaml
+            with open('_data/upcoming.yaml', 'r') as f:
+                upcoming_events = yaml.safe_load(f)
+            
+            # Find our test events in the output
+            event1 = next(e for e in upcoming_events if e['url'] == 'https://example.com/event1')
+            event2 = next(e for e in upcoming_events if e['url'] == 'https://example.com/event2')
+            
+            # Verify event1 doesn't have end_date/end_time
+            self.assertNotIn('end_date', event1, "Event without end time should not have end_date")
+            self.assertNotIn('end_time', event1, "Event without end time should not have end_time")
+            
+            # Verify event2 has end_date/end_time
+            self.assertEqual(event2['end_date'], '2025-05-31', "Event with end time should have correct end_date")
+            self.assertEqual(event2['end_time'], '11:00', "Event with end time should have correct end_time")
+            
+        finally:
+            # Clean up test files
+            for i in range(len(test_events)):
+                if os.path.exists(f'_single_events/test_event_{i}.yaml'):
+                    os.remove(f'_single_events/test_event_{i}.yaml')
+            if os.path.exists('_data/upcoming.yaml'):
+                os.remove('_data/upcoming.yaml')
+            if os.path.exists('_data/stats.yaml'):
+                os.remove('_data/stats.yaml')
+
 class TestSuppressUrls(unittest.TestCase):
     def test_suppress_urls(self):
         """Test that events with URLs in suppress_urls list are ignored"""
