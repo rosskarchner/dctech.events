@@ -8,7 +8,7 @@
 {{ '-' * day.short_date|length }}
 
 {% for time_slot in day.time_slots %}
-{{ time_slot.time }}:
+{{ time_slot.events[0].formatted_time }}:
 {% for event in time_slot.events %}
 * {{ event.display_title }}
   {% if event.location %}Location: {{ event.location }}{% endif %}
