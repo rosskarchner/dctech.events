@@ -240,7 +240,6 @@ def homepage():
 
     # Get stats
     stats = get_stats()
-    print(days)
     return render_template('homepage.html', 
                           days=days, 
                           site_name=SITE_NAME,
