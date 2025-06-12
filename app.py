@@ -237,13 +237,16 @@ def homepage():
     events = get_events()
     days = prepare_events_by_day(events)
     
+    # Get base URL from config or use a default
+    base_url = config.get('base_url', 'https://dctech.events')
 
     # Get stats
     stats = get_stats()
     return render_template('homepage.html', 
                           days=days, 
                           site_name=SITE_NAME,
-                          stats=stats)
+                          stats=stats,
+                          base_url=base_url)
 
 # Month view route removed - all events are now in upcoming.yaml
 

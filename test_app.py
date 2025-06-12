@@ -204,6 +204,26 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
+    def test_opengraph_tags(self):
+        """Test that OpenGraph tags are present in the homepage"""
+        from app import app
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Get homepage
+        response = client.get('/')
+        self.assertEqual(response.status_code, 200)
+        
+        # Convert response to string
+        html = response.data.decode()
+        
+        # Check for required OpenGraph tags
+        self.assertIn('<meta property="og:title" content="DC Tech Events"', html)
+        self.assertIn('<meta property="og:type" content="website"', html)
+        self.assertIn('<meta property="og:description" content="Discover and explore upcoming tech events in the DC area"', html)
+        self.assertIn('<meta property="og:site_name" content="DC Tech Events"', html)
+        
     def test_newsletter_endpoints(self):
         """Test the newsletter HTML and plaintext endpoints"""
         from app import app
