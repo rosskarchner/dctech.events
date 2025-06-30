@@ -21,6 +21,9 @@ h1.logo{
     padding : 0.5em
 }
 
+.dt-start{
+    display: none;
+}
 .even{
     background-color:aliceblue;
 }

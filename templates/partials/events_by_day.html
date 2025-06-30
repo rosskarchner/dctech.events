@@ -11,29 +11,30 @@
                         <div class="time-slot">
                             <h4 class="time-heading">{{ time_slot.events[0].formatted_time }}</h4>
                             {% for event in time_slot.events %}
-                                <div class="event">
-                                    <a href="{{ event.url }}" target="_blank">{{ event.title }}</a>{% if event.display_title != event.title %} {{ event.display_title | replace(event.title, '') }}{% endif %}
+                                <div class="h-event event">
+                                    <a class="u-url p-name" href="{{ event.url }}" target="_blank">{{ event.title }}</a>{% if event.display_title != event.title %} <span class="p-summary">{{ event.display_title | replace(event.title, '') }}</span>{% endif %}
+                                    <time class="dt-start" datetime="{{ day.date }}T{{ event.time }}">{{ event.formatted_time }}</time>
                                     <div class="event-details">
                                         {% if event.location %}
-                                            <div class="event-location">
+                                            <div class="p-location event-location">
                                                 {{ event.location }}
                                             </div>
                                         {% endif %}
                                         {% if event.submitter_name and event.submitter_name != 'anonymous' %}
                                             <div>submitted by
                                             {% if event.submitter_link %}
-                                                <a href="{{ event.submitter_link }}" target="_blank">{{ event.submitter_name }}</a>
+                                                <a href="{{ event.submitter_link }}" target="_blank" class="p-author h-card">{{ event.submitter_name }}</a>
                                             {% else %}
-                                                {{ event.submitter_name }}
+                                                <span class="p-author">{{ event.submitter_name }}</span>
                                             {% endif %}
                                             </div>
 
                                         {% elif event.group %}
-                                           <div>
+                                           <div class="p-organizer h-card">
                                             {% if event.group_website %}
-                                                <a href="{{ event.group_website }}" target="_blank">{{ event.group }}</a>
+                                                <a class="u-url p-name" href="{{ event.group_website }}" target="_blank">{{ event.group }}</a>
                                             {% else %}
-                                                {{ event.group }}
+                                                <span class="p-name">{{ event.group }}</span>
                                             {% endif %}
                                             </div>
                                         {% endif %}

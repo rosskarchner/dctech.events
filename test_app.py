@@ -400,6 +400,53 @@ class TestApp(unittest.TestCase):
         self.assertEqual(second_day_events['Multi Day TBD Event']['display_title'], 'Multi Day TBD Event (continuing)')
         self.assertEqual(second_day_events['Multi Day TBD Event']['time'], 'TBD')
 
+    def test_microformats_h_event(self):
+        """Test that event listings contain valid microformats2 h-event markup"""
+        from app import app
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test event data
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_event = {
+            'date': today_str,
+            'time': '09:00',
+            'title': 'Test Event',
+            'location': 'Test Location',
+            'url': 'http://test.com',
+            'group': 'Test Group',
+            'group_website': 'http://group.com'
+        }
+        
+        # Patch the app to use our test data
+        import json
+        with app.test_client() as client:
+            with client.session_transaction() as session:
+                session['events'] = [test_event]
+            
+            # Get homepage
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            
+            # Convert response to string
+            html = response.data.decode()
+            
+            # Check for required microformat classes
+            self.assertIn('class="h-event event"', html)
+            self.assertIn('class="u-url p-name"', html)
+            self.assertIn('class="dt-start"', html)
+            self.assertIn('class="p-location event-location"', html)
+            self.assertIn('class="p-organizer h-card"', html)
+            
+            # Check that the event data is properly marked up
+            self.assertIn(f'datetime="{today_str}T09:00"', html)
+            self.assertIn('Test Event', html)
+            self.assertIn('Test Location', html)
+            self.assertIn('http://test.com', html)
+            self.assertIn('Test Group', html)
+            self.assertIn('http://group.com', html)
+
     def test_multi_day_events(self):
         """Test that multi-day events appear on each day with (continuing) label"""
         from app import prepare_events_by_day
