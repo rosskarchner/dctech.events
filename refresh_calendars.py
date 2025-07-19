@@ -220,6 +220,26 @@ def fetch_rss_and_extract_events(url, group_id):
                     
                     # Handle location with both place name and address
                     location = event_data.get('location', {})
+                    physical_location = None
+                    
+                    # Handle array of locations (hybrid events)
+                    if isinstance(location, list):
+                        # Find the physical location (Place type) in the array
+                        for loc in location:
+                            if isinstance(loc, dict) and loc.get('@type') == 'Place':
+                                physical_location = loc
+                                break
+                        # If no physical location found, skip this event
+                        if not physical_location:
+                            print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                            continue
+                        location = physical_location
+                    
+                    # Skip virtual-only events
+                    if isinstance(location, dict) and location.get('@type') == 'VirtualLocation':
+                        print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                        continue
+                    
                     if isinstance(location, dict):
                         place_name = location.get('name', '')
                         address = location.get('address', {})
@@ -230,12 +250,12 @@ def fetch_rss_and_extract_events(url, group_id):
                             locality = address.get('addressLocality', '')
                             region = address.get('addressRegion', '')
                             
-                            # Build formatted address - only use street address to avoid city duplication
-                            formatted_address = street if street else ''
-                            
-                            # Add region if we have it but no place name
-                            if not place_name and region:
-                                formatted_address = f"{formatted_address}, {region}" if formatted_address else region
+                            # Build formatted address
+                            address_parts = []
+                            if street: address_parts.append(street)
+                            if locality: address_parts.append(locality)
+                            if region: address_parts.append(region)
+                            formatted_address = ', '.join(address_parts)
                             
                             if place_name and formatted_address:
                                 event['location'] = f"{place_name}, {formatted_address}"
