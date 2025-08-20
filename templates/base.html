@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="htmx-config" content='{"selfRequestsOnly":false}'>
-    <title>{% block title %}DC Tech Events{% endblock %}</title>
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
     
 
     <link rel="stylesheet" href="/static/css/main.css">
@@ -14,8 +14,8 @@
 <body>
     <header>
         <div class="container">
-            <h1 class="logo"><a href="/">DC Tech Events</a></h1>
-            <div>Technology conferences and meetups in and around Washington, DC</div>
+            <h1 class="logo"><a href="/">{{ site_name }}</a></h1>
+            <div>{{ tagline }}</div>
         </div>
     </header>
 

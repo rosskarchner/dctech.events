@@ -2,7 +2,9 @@
 
 # Site name
 site_name: "DC Tech Events"
-
+tagline: Technology conferences and meetups in and around Washington, DC
+add_events_link: https://add.dctech.events/washington
+newsletter_signup_link: https://newsletter.dctech.events/washington
 # Timezone for event display and processing
 timezone: "US/Eastern"
 

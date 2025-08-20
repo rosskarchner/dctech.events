@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}DC Tech Events{% endblock %}
+{% block title %}{{ site_name }}{% endblock %}
 
 
 {% block content %}
 <div class="home-container">
 
     <section class="events-section">
-        <h2>{{ stats.upcoming_events }} Upcoming Events (<a href="https://add.dctech.events">add more</a>)</h2>
+        <h2>{{ stats.upcoming_events }} Upcoming Events (<a href="{{ add_events_link }}">add more</a>)</h2>
         <div id="subscribe">
             <div>
-            Get this calendar in your inbox every week! <a href="https://newsletter.dctech.events/" hx-get="https://newsletter.dctech.events/" hx-target="#subscribe" hx-swap="innerHTML">Subscribe today</a>.
+            Get this calendar in your inbox every week! <a href="{{ newsletter_signup_link }}" hx-get="{{ newsletter_signup_link }}" hx-target="#subscribe" hx-swap="innerHTML">Subscribe today</a>.
             </div>
+        </div>
+        <div class="search-container">
+            <input type="text" id="event-search" placeholder="Search events..." />
         </div>
         {% include "partials/events_by_day.html" %}
     </section>
@@ -26,12 +29,62 @@
 
 {% block extra_head %}
     <!-- OpenGraph tags -->
-    <meta property="og:title" content="DC Tech Events">
+    <meta property="og:title" content="{{ site_name }}">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://dctech.events">
-    <meta property="og:description" content="Upcoming technology events in and around Washington, DC">
-    <meta property="og:site_name" content="DC Tech Events">
+    <meta property="og:url" content="{{ base_url }}">
+    <meta property="og:description" content="{{ tagline }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+    
+<style>
+.search-container {
+    margin: 1rem 0;
+}
+
+#event-search {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+</style>
     
 
 <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('event-search');
+    const eventsContainer = document.querySelector('.events-by-day');
+    
+    if (searchInput && eventsContainer) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const dayContainers = eventsContainer.querySelectorAll('.day-container');
+            
+            dayContainers.forEach(dayContainer => {
+                const events = dayContainer.querySelectorAll('.event');
+                let hasVisibleEvents = false;
+                
+                events.forEach(event => {
+                    const title = event.querySelector('.p-name').textContent.toLowerCase();
+                    const location = event.querySelector('.event-location');
+                    const locationText = location ? location.textContent.toLowerCase() : '';
+                    const group = event.querySelector('.p-organizer .p-name, .p-author');
+                    const groupText = group ? group.textContent.toLowerCase() : '';
+                    
+                    const matches = title.includes(searchTerm) || 
+                                  locationText.includes(searchTerm) || 
+                                  groupText.includes(searchTerm);
+                    
+                    event.style.display = matches ? '' : 'none';
+                    if (matches) hasVisibleEvents = true;
+                });
+                
+                dayContainer.style.display = hasVisibleEvents ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -17,14 +17,26 @@ if os.path.exists(CONFIG_FILE):
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
 
-# Get site name from config
+# Get site configuration
 SITE_NAME = config.get('site_name', 'DC Tech Events')
+TAGLINE = config.get('tagline', 'Technology events in the area')
+ADD_EVENTS_LINK = config.get('add_events_link', 'https://add.dctech.events')
+NEWSLETTER_SIGNUP_LINK = config.get('newsletter_signup_link', 'https://newsletter.dctech.events')
 
 # Constants
 DATA_DIR = '_data'
 GROUPS_DIR = '_groups'
 
 app = Flask(__name__, template_folder='templates')
+
+@app.context_processor
+def inject_config():
+    return {
+        'site_name': SITE_NAME,
+        'tagline': TAGLINE,
+        'add_events_link': ADD_EVENTS_LINK,
+        'newsletter_signup_link': NEWSLETTER_SIGNUP_LINK
+    }
 
 def load_yaml_data(file_path):
     """Load data from a YAML file"""
@@ -244,7 +256,6 @@ def homepage():
     stats = get_stats()
     return render_template('homepage.html', 
                           days=days, 
-                          site_name=SITE_NAME,
                           stats=stats,
                           base_url=base_url)
 
@@ -258,8 +269,7 @@ def approved_groups_list():
     return render_template('approved_groups_list.html', 
                           groups=groups, 
                           next_key=None,
-                          has_next=False,
-                          site_name=SITE_NAME)
+                          has_next=False)
 
 @app.route("/newsletter.html")
 def newsletter_html():
@@ -272,7 +282,6 @@ def newsletter_html():
     
     return render_template('newsletter.html',
                           days=days,
-                          site_name=SITE_NAME,
                           stats=stats)
 
 @app.route("/newsletter.txt")
@@ -286,7 +295,6 @@ def newsletter_text():
     
     response = render_template('newsletter.txt',
                              days=days,
-                             site_name=SITE_NAME,
                              stats=stats)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
