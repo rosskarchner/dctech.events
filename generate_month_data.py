@@ -71,6 +71,56 @@ def sanitize_text(text):
     
     return text
 
+def are_events_duplicates(event1, event2):
+    """
+    Check if two events are likely duplicates based on title, date, and time
+    
+    Args:
+        event1: First event dictionary
+        event2: Second event dictionary
+        
+    Returns:
+        True if events are likely duplicates, False otherwise
+    """
+    # Compare normalized titles (case-insensitive, stripped)
+    title1 = event1.get('title', '').strip().lower()
+    title2 = event2.get('title', '').strip().lower()
+    
+    # Compare dates and times
+    date1 = event1.get('date', '')
+    date2 = event2.get('date', '')
+    time1 = event1.get('time', '')
+    time2 = event2.get('time', '')
+    
+    # Events are duplicates if they have the same title, date, and time
+    return (title1 == title2 and date1 == date2 and time1 == time2)
+
+def remove_duplicates(events):
+    """
+    Remove duplicate events from a list
+    
+    Args:
+        events: List of event dictionaries
+        
+    Returns:
+        List of events with duplicates removed
+    """
+    unique_events = []
+    
+    for event in events:
+        # Check if this event is a duplicate of any existing event
+        is_duplicate = False
+        for existing_event in unique_events:
+            if are_events_duplicates(event, existing_event):
+                is_duplicate = True
+                print(f"Removing duplicate event: {event.get('title', 'Unknown')} on {event.get('date', 'Unknown')}")
+                break
+        
+        if not is_duplicate:
+            unique_events.append(event)
+    
+    return unique_events
+
 def event_to_dict(event, group=None):
     """
     Convert an iCal event to a dictionary
@@ -370,6 +420,7 @@ def generate_yaml():
                     with open(cache_file, 'r') as f:
                         calendar = icalendar.Calendar.from_ical(f.read())
                         
+                        group_events = []
                         for component in calendar.walk('VEVENT'):
                             event_dict = event_to_dict(component, group)
                             if event_dict:
@@ -382,7 +433,11 @@ def generate_yaml():
                                 suppress_urls = group.get('suppress_urls', [])
                                 # For aggregated events (iCal/RSS), apply 90-day limit
                                 if today <= event_date <= max_future_date and event_dict['url'] not in suppress_urls:
-                                    all_events.append(event_dict)
+                                    group_events.append(event_dict)
+                        
+                        # Remove duplicates within this group's events
+                        group_events = remove_duplicates(group_events)
+                        all_events.extend(group_events)
                 except Exception as e:
                     print(f"Error processing calendar for group {group['id']}: {str(e)}")
         
@@ -393,6 +448,7 @@ def generate_yaml():
                 try:
                     with open(cache_file, 'r') as f:
                         events = json.load(f)
+                        group_events = []
                         for event in events:
                             # Check if event URL is in suppress_urls list
                             suppress_urls = group.get('suppress_urls', [])
@@ -406,7 +462,11 @@ def generate_yaml():
                                     'DATE_ORDER': 'YMD'
                                 }).date()
                                 if today <= event_date <= max_future_date:
-                                    all_events.append(event)
+                                    group_events.append(event)
+                        
+                        # Remove duplicates within this group's events
+                        group_events = remove_duplicates(group_events)
+                        all_events.extend(group_events)
                 except Exception as e:
                     print(f"Error processing RSS events for group {group['id']}: {str(e)}")
     

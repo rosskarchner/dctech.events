@@ -5,3 +5,6 @@ site_name: "DC Tech Events"
 
 # Timezone for event display and processing
 timezone: "US/Eastern"
+
+location: "Washington, DC"
+max_distance_miles: 50
