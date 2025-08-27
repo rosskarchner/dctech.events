@@ -81,10 +81,6 @@ class CopilotEventValidator:
         if not self.copilot_validate_event_content(data['url'], data['title']):
             return False
 
-        # Validate location
-        if not self.validate_location(data['location']):
-            return False
-
         return True
 
     def validate_url(self, url: str) -> bool:
@@ -115,13 +111,12 @@ class CopilotEventValidator:
             if response:
                 return self._process_copilot_response(response, "event")
             else:
-                # Fallback to basic validation if Copilot fails
-                self.warnings.append("Copilot validation failed, using fallback validation")
-                return self._fallback_event_validation(title, content)
+                self.errors.append("Copilot validation failed and no fallback available")
+                return False
                 
         except Exception as e:
-            self.warnings.append(f"Copilot validation error: {str(e)}, using fallback")
-            return self._fallback_event_validation(title, content if 'content' in locals() else "")
+            self.errors.append(f"Copilot validation error: {str(e)}")
+            return False
 
     def _create_event_validation_prompt(self, title: str, content: str, url: str) -> str:
         """Create a prompt for Copilot event validation."""
@@ -253,49 +248,9 @@ Be inclusive about technology topics - include emerging tech, tech business topi
             self.warnings.append(f"Error processing Copilot response: {str(e)}")
             return False
 
-    def _fallback_event_validation(self, title: str, content: str) -> bool:
-        """Fallback validation using simple keyword matching."""
-        # Basic tech keywords
-        tech_keywords = [
-            'programming', 'software', 'developer', 'coding', 'python', 'javascript',
-            'data science', 'machine learning', 'ai', 'cybersecurity', 'devops',
-            'cloud', 'aws', 'tech', 'meetup', 'hackathon'
-        ]
-        
-        # Training keywords
-        training_keywords = [
-            'certification', 'bootcamp', 'tuition', 'course fee', 'paid training'
-        ]
-        
-        text = (title + " " + content).lower()
-        
-        # Check for training keywords
-        if any(keyword in text for keyword in training_keywords):
-            self.errors.append("Appears to be paid training (fallback validation)")
-            return False
-        
-        # Check for tech keywords
-        if not any(keyword in text for keyword in tech_keywords):
-            self.errors.append("Does not appear to be tech-related (fallback validation)")
-            return False
-        
-        return True
 
-    def validate_location(self, location: str) -> bool:
-        """Validate location appears to be in DC area using keyword matching."""
-        dc_keywords = [
-            'washington', 'dc', 'd.c.', 'arlington', 'alexandria', 'bethesda',
-            'rockville', 'silver spring', 'fairfax', 'reston', 'herndon',
-            'tysons', 'vienna', 'falls church', 'college park', 'greenbelt',
-            'virtual', 'online', 'remote'  # Allow virtual events
-        ]
-        
-        location_lower = location.lower()
-        if any(keyword in location_lower for keyword in dc_keywords):
-            return True
-        
-        self.warnings.append(f"Location '{location}' may not be in DC area - please verify it's within 50 miles of Washington, DC")
-        return True  # Allow with warning rather than blocking
+
+
 
 
 
