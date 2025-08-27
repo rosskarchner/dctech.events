@@ -181,6 +181,12 @@ Be inclusive about technology topics - include emerging tech, tech business topi
             if response.status_code == 200:
                 result = response.json()
                 return result['choices'][0]['message']['content']
+            elif response.status_code == 401:
+                self.errors.append("GitHub Copilot API access denied - check token permissions")
+                return None
+            elif response.status_code == 403:
+                self.errors.append("GitHub Copilot API forbidden - Copilot subscription may be required")
+                return None
             else:
                 self.warnings.append(f"Copilot API error: {response.status_code} - {response.text}")
                 return None
