@@ -9,12 +9,10 @@ import os
 import sys
 import yaml
 import requests
-import boto3
 import json
 import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
-from botocore.exceptions import ClientError
 
 # DC coordinates (White House)
 DC_LAT = 38.8977
@@ -23,8 +21,6 @@ MAX_DISTANCE_MILES = 50
 
 class CopilotEventValidator:
     def __init__(self):
-        self.location_client = boto3.client('location')
-        self.place_index = 'DCTechEventsIndex'
         self.errors = []
         self.warnings = []
         
@@ -85,10 +81,6 @@ class CopilotEventValidator:
         if not self.copilot_validate_event_content(data['url'], data['title']):
             return False
 
-        # Validate location
-        if not self.validate_location(data['location']):
-            return False
-
         return True
 
     def validate_url(self, url: str) -> bool:
@@ -119,13 +111,12 @@ class CopilotEventValidator:
             if response:
                 return self._process_copilot_response(response, "event")
             else:
-                # Fallback to basic validation if Copilot fails
-                self.warnings.append("Copilot validation failed, using fallback validation")
-                return self._fallback_event_validation(title, content)
+                self.errors.append("Copilot validation failed and no fallback available")
+                return False
                 
         except Exception as e:
-            self.warnings.append(f"Copilot validation error: {str(e)}, using fallback")
-            return self._fallback_event_validation(title, content if 'content' in locals() else "")
+            self.errors.append(f"Copilot validation error: {str(e)}")
+            return False
 
     def _create_event_validation_prompt(self, title: str, content: str, url: str) -> str:
         """Create a prompt for Copilot event validation."""
@@ -257,96 +248,11 @@ Be inclusive about technology topics - include emerging tech, tech business topi
             self.warnings.append(f"Error processing Copilot response: {str(e)}")
             return False
 
-    def _fallback_event_validation(self, title: str, content: str) -> bool:
-        """Fallback validation using simple keyword matching."""
-        # Basic tech keywords
-        tech_keywords = [
-            'programming', 'software', 'developer', 'coding', 'python', 'javascript',
-            'data science', 'machine learning', 'ai', 'cybersecurity', 'devops',
-            'cloud', 'aws', 'tech', 'meetup', 'hackathon'
-        ]
-        
-        # Training keywords
-        training_keywords = [
-            'certification', 'bootcamp', 'tuition', 'course fee', 'paid training'
-        ]
-        
-        text = (title + " " + content).lower()
-        
-        # Check for training keywords
-        if any(keyword in text for keyword in training_keywords):
-            self.errors.append("Appears to be paid training (fallback validation)")
-            return False
-        
-        # Check for tech keywords
-        if not any(keyword in text for keyword in tech_keywords):
-            self.errors.append("Does not appear to be tech-related (fallback validation)")
-            return False
-        
-        return True
 
-    def validate_location(self, location: str) -> bool:
-        """Validate location is within 50 miles of DC using AWS Location Service."""
-        try:
-            # Try to geocode the location
-            response = self.location_client.search_place_index_for_text(
-                IndexName=self.place_index,
-                Text=location,
-                MaxResults=1
-            )
-            
-            if not response['Results']:
-                self.errors.append(f"Could not geocode location: {location}")
-                return False
 
-            result = response['Results'][0]
-            place = result['Place']
-            coordinates = place['Geometry']['Point']
-            
-            # Calculate distance from DC
-            distance = self.calculate_distance(
-                DC_LAT, DC_LON, 
-                coordinates[1], coordinates[0]  # AWS returns [lon, lat]
-            )
-            
-            if distance > MAX_DISTANCE_MILES:
-                self.errors.append(f"Location '{location}' is {distance:.1f} miles from DC (max {MAX_DISTANCE_MILES} miles)")
-                return False
 
-            return True
 
-        except Exception as e:
-            # Fallback: check if location contains DC area keywords
-            dc_keywords = [
-                'washington', 'dc', 'd.c.', 'arlington', 'alexandria', 'bethesda',
-                'rockville', 'silver spring', 'fairfax', 'reston', 'herndon',
-                'tysons', 'vienna', 'falls church', 'college park', 'greenbelt'
-            ]
-            
-            location_lower = location.lower()
-            if any(keyword in location_lower for keyword in dc_keywords):
-                self.warnings.append(f"Could not verify exact distance for '{location}', but appears to be in DC area")
-                return True
-            
-            self.errors.append(f"Could not validate location '{location}' and no DC area keywords found")
-            return False
 
-    def calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """Calculate distance between two points in miles."""
-        from math import radians, cos, sin, asin, sqrt
-        
-        # Convert to radians
-        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-        
-        # Haversine formula
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a))
-        
-        # Radius of earth in miles
-        r = 3956
-        return c * r
 
 def main():
     if len(sys.argv) != 2:
