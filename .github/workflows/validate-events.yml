@@ -1,0 +1,105 @@
+name: Validate Single Events with Copilot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '_single_events/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pyyaml boto3
+
+      - name: Install GitHub CLI
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            _single_events/**
+
+      - name: Validate single events with Copilot
+        id: validate
+        run: |
+          # Try Copilot API validation first
+          if python .github/scripts/copilot_event_validator.py "${{ steps.changed-files.outputs.all_changed_files }}"; then
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+            echo "validation_method=copilot_api" >> $GITHUB_OUTPUT
+          else
+            echo "Copilot API validation failed, trying CLI method..."
+            if python .github/scripts/copilot_cli_validator.py "${{ steps.changed-files.outputs.all_changed_files }}"; then
+              echo "validation_passed=true" >> $GITHUB_OUTPUT
+              echo "validation_method=copilot_cli" >> $GITHUB_OUTPUT
+            else
+              echo "Both Copilot methods failed, leaving PR open for human review..."
+              echo "validation_passed=false" >> $GITHUB_OUTPUT
+              echo "validation_method=copilot_failed" >> $GITHUB_OUTPUT
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+
+      - name: Comment on validation status
+        run: |
+          case "${{ steps.validate.outputs.validation_method }}" in
+            "copilot_api")
+              echo "✅ Event validation completed using GitHub Copilot API" >> /tmp/method_comment.md
+              ;;
+            "copilot_cli")
+              echo "✅ Event validation completed using GitHub Copilot CLI (API unavailable)" >> /tmp/method_comment.md
+              ;;
+            "copilot_failed")
+              echo "⚠️ **GitHub Copilot validation failed - Human review required**" >> /tmp/method_comment.md
+              echo "" >> /tmp/method_comment.md
+              echo "Both Copilot API and CLI methods were unavailable. Please manually review this event submission to ensure:" >> /tmp/method_comment.md
+              echo "- Event is technology-related (programming, data science, AI, cybersecurity, etc.)" >> /tmp/method_comment.md
+              echo "- Event is a community gathering (meetup, conference, workshop, etc.)" >> /tmp/method_comment.md
+              echo "- Event is NOT paid training, bootcamp, or certification course" >> /tmp/method_comment.md
+              echo "- Event location is within 50 miles of Washington, DC" >> /tmp/method_comment.md
+              echo "" >> /tmp/method_comment.md
+              echo "If the event looks appropriate, you can manually merge this PR." >> /tmp/method_comment.md
+              ;;
+          esac
+          gh pr comment ${{ github.event.number }} --body-file /tmp/method_comment.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-merge if validation passes
+        if: steps.validate.outputs.validation_passed == 'true'
+        run: |
+          gh pr merge ${{ github.event.number }} --auto --squash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

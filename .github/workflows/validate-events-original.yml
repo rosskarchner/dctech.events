@@ -1,0 +1,61 @@
+name: Validate Events and Groups (Original)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '_groups/**'
+      - '_single_events/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pyyaml boto3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            _groups/**
+            _single_events/**
+
+      - name: Validate events and groups
+        id: validate
+        run: |
+          python .github/scripts/validate_events.py "${{ steps.changed-files.outputs.all_changed_files }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+
+      - name: Auto-merge if validation passes
+        if: steps.validate.outputs.validation_passed == 'true'
+        run: |
+          gh pr merge ${{ github.event.number }} --auto --squash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,4 +1,4 @@
-.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze
+.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze validate validate-report
 
 # Default target
 all: refresh-calendars generate-month-data freeze
@@ -12,6 +12,13 @@ generate-month-data: refresh-calendars
 
 freeze: generate-month-data
 	python freeze.py
+
+# Validation targets
+validate:
+	python .github/scripts/validate_all_existing.py
+
+validate-report:
+	python .github/scripts/validate_all_existing.py --report
 
 clean:
 	rm -rf build/
