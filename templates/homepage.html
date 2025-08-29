@@ -32,47 +32,5 @@
     
 
 <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('event-search');
-    const eventsContainer = document.querySelector('.events-by-day');
-    
-    if (searchInput && eventsContainer) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            const dayContainers = eventsContainer.querySelectorAll('.day-container');
-            
-            dayContainers.forEach(dayContainer => {
-                const timeSlots = dayContainer.querySelectorAll('.time-slot');
-                let hasVisibleEvents = false;
-                
-                timeSlots.forEach(timeSlot => {
-                    const events = timeSlot.querySelectorAll('.event');
-                    let hasVisibleEventsInSlot = false;
-                    
-                    events.forEach(event => {
-                        const title = event.querySelector('.p-name').textContent.toLowerCase();
-                        const location = event.querySelector('.event-location');
-                        const locationText = location ? location.textContent.toLowerCase() : '';
-                        const group = event.querySelector('.p-organizer .p-name, .p-author');
-                        const groupText = group ? group.textContent.toLowerCase() : '';
-                        
-                        const matches = title.includes(searchTerm) || 
-                                      locationText.includes(searchTerm) || 
-                                      groupText.includes(searchTerm);
-                        
-                        event.style.display = matches ? '' : 'none';
-                        if (matches) hasVisibleEventsInSlot = true;
-                    });
-                    
-                    timeSlot.style.display = hasVisibleEventsInSlot ? '' : 'none';
-                    if (hasVisibleEventsInSlot) hasVisibleEvents = true;
-                });
-                
-                dayContainer.style.display = hasVisibleEvents ? '' : 'none';
-            });
-        });
-    }
-});
-</script>
+
 {% endblock %}
