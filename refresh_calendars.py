@@ -13,6 +13,7 @@ import sys
 import feedparser
 import extruct
 from w3lib.html import get_base_url
+from address_utils import normalize_address
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -258,21 +259,21 @@ def fetch_rss_and_extract_events(url, group_id):
                             formatted_address = ', '.join(address_parts)
                             
                             if place_name and formatted_address:
-                                event['location'] = f"{place_name}, {formatted_address}"
+                                event['location'] = normalize_address(f"{place_name}, {formatted_address}")
                             elif place_name:
-                                event['location'] = place_name
+                                event['location'] = normalize_address(place_name)
                             elif formatted_address:
-                                event['location'] = formatted_address
+                                event['location'] = normalize_address(formatted_address)
                         else:
                             # Handle string address
                             if place_name and address:
-                                event['location'] = f"{place_name}, {address}"
+                                event['location'] = normalize_address(f"{place_name}, {address}")
                             elif place_name:
-                                event['location'] = place_name
+                                event['location'] = normalize_address(place_name)
                             elif address:
-                                event['location'] = address
+                                event['location'] = normalize_address(address)
                     else:
-                        event['location'] = str(location) if location else ''
+                        event['location'] = normalize_address(str(location)) if location else ''
                         
                     # Handle submitter information if present
                     submitter = event_data.get('submitter', {})
