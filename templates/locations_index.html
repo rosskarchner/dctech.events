@@ -11,7 +11,7 @@
         <ul>
             {% for region, count in location_stats.items() %}
                 <li>
-                    <a href="/locations/{{ region.split()[0].lower() if region != 'Washington DC' else 'dc' }}/">
+                    <a href="/locations/{% if region == 'Washington DC' %}dc{% elif region == 'Virginia' %}va{% elif region == 'Maryland' %}md{% endif %}/">
                         {{ region }}
                     </a> ({{ count }} events)
                 </li>
