@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ location_name }} Tech Events - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>{{ stats.upcoming_events }} Upcoming Events in {{ location_name }}</h2>
+        
+        {% if stats.upcoming_events == 0 %}
+            <p>No upcoming events found for {{ location_name }}. <a href="/">View all events</a> or <a href="{{ add_events_link }}">add an event</a>.</p>
+        {% else %}
+            {% include "partials/events_by_day.html" %}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+    <meta property="og:title" content="{{ location_name }} Tech Events">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Technology events in {{ location_name }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+{% endblock %}

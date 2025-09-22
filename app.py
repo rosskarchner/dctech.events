@@ -5,6 +5,7 @@ import yaml
 import pytz
 import calendar
 from pathlib import Path
+from location_utils import extract_location_info, get_region_name
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -243,6 +244,34 @@ def get_stats():
         return {}
     return load_yaml_data(stats_file) or {}
 
+def filter_events_by_location(events, city=None, state=None):
+    """
+    Filter events by city and/or state.
+    
+    Args:
+        events: List of event dictionaries
+        city: City name to filter by (optional)
+        state: State abbreviation to filter by (optional)
+        
+    Returns:
+        Filtered list of events
+    """
+    filtered = []
+    for event in events:
+        event_city, event_state = extract_location_info(event.get('location', ''))
+        
+        if city and state:
+            if event_city and event_state and event_city.lower() == city.lower() and event_state == state:
+                filtered.append(event)
+        elif state:
+            if event_state == state:
+                filtered.append(event)
+        elif city:
+            if event_city and event_city.lower() == city.lower():
+                filtered.append(event)
+    
+    return filtered
+
 @app.route("/")
 def homepage():
     # Get upcoming events
@@ -260,6 +289,39 @@ def homepage():
                           base_url=base_url)
 
 # Month view route removed - all events are now in upcoming.yaml
+
+@app.route("/locations/")
+def locations_index():
+    """Show available locations with event counts"""
+    events = get_events()
+    
+    # Count events by location
+    location_stats = {}
+    cities = set()
+    
+    for event in events:
+        city, state = extract_location_info(event.get('location', ''))
+        if state in ['DC', 'VA', 'MD']:
+            # Add to region count
+            region = get_region_name(state)
+            location_stats[region] = location_stats.get(region, 0) + 1
+            
+            # Add to city count (skip Washington, DC since it's same as DC region)
+            if city and not (city == 'Washington' and state == 'DC'):
+                city_key = f"{city}, {state}"
+                cities.add((city, state))
+    
+    # Get city counts
+    city_stats = {}
+    for city, state in cities:
+        city_events = filter_events_by_location(events, city=city, state=state)
+        if len(city_events) > 0:
+            city_name = city if state != 'DC' else 'Washington'
+            city_stats[f"{city_name}, {state}"] = len(city_events)
+    
+    return render_template('locations_index.html',
+                          location_stats=location_stats,
+                          city_stats=city_stats)
 
 @app.route("/groups/")
 def approved_groups_list():
@@ -298,6 +360,49 @@ def newsletter_text():
                              stats=stats)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
+@app.route("/locations/<state>/")
+def region_page(state):
+    """Show events for a specific state/region"""
+    state = state.upper()
+    if state not in ['DC', 'VA', 'MD']:
+        return "Region not found", 404
+    
+    events = get_events()
+    filtered_events = filter_events_by_location(events, state=state)
+    days = prepare_events_by_day(filtered_events)
+    
+    region_name = get_region_name(state)
+    stats = {'upcoming_events': len(filtered_events)}
+    
+    return render_template('location_page.html',
+                          days=days,
+                          stats=stats,
+                          location_name=region_name,
+                          location_type='region')
+
+@app.route("/locations/<state>/<city>/")
+def city_page(state, city):
+    """Show events for a specific city"""
+    state = state.upper()
+    if state not in ['DC', 'VA', 'MD']:
+        return "Region not found", 404
+    
+    events = get_events()
+    filtered_events = filter_events_by_location(events, city=city, state=state)
+    days = prepare_events_by_day(filtered_events)
+    
+    city_name = city.replace('-', ' ').title()
+    if state == 'DC':
+        city_name = 'Washington DC'
+    
+    stats = {'upcoming_events': len(filtered_events)}
+    
+    return render_template('location_page.html',
+                          days=days,
+                          stats=stats,
+                          location_name=f"{city_name}, {state}",
+                          location_type='city')
+
 @app.route("/sitemap.xml")
 def sitemap():
     """Generate an XML sitemap of the site's main pages"""
@@ -308,6 +413,10 @@ def sitemap():
     urls = [
         {'loc': f"{base_url}/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/groups/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/locations/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/locations/dc/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/locations/va/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/locations/md/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
     ]
     
     # Generate XML sitemap
