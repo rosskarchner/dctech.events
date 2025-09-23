@@ -17,12 +17,12 @@
             <h1 class="logo"><a href="/">{{ site_name }}</a></h1>
             <div>{{ tagline }}</div>
             <nav style="margin-top: 10px; font-size: 0.9em;">
-                <a href="/">All Events</a> | 
-                <a href="/locations/">Locations</a> | 
-                <a href="/locations/dc/">Washington DC</a> | 
-                <a href="/locations/va/">Virginia</a> | 
-                <a href="/locations/md/">Maryland</a> | 
-                <a href="/groups/">Groups</a>
+                {% if request.path == '/' %}All Events{% else %}<a href="/">All Events</a>{% endif %} | 
+                {% if request.path == '/locations/' %}Locations{% else %}<a href="/locations/">Locations</a>{% endif %} | 
+                {% if request.path == '/locations/dc/' %}Washington DC{% else %}<a href="/locations/dc/">Washington DC</a>{% endif %} | 
+                {% if request.path == '/locations/va/' %}Virginia{% else %}<a href="/locations/va/">Virginia</a>{% endif %} | 
+                {% if request.path == '/locations/md/' %}Maryland{% else %}<a href="/locations/md/">Maryland</a>{% endif %} | 
+                {% if request.path == '/groups/' %}Groups{% else %}<a href="/groups/">Groups</a>{% endif %}
             </nav>
         </div>
     </header>
