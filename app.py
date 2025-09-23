@@ -388,10 +388,9 @@ def city_page(state, city):
         return "Region not found", 404
     
     events = get_events()
-    filtered_events = filter_events_by_location(events, city=city, state=state)
-    days = prepare_events_by_day(filtered_events)
-    
     city_name = city.replace('-', ' ').title()
+    filtered_events = filter_events_by_location(events, city=city_name, state=state)
+    days = prepare_events_by_day(filtered_events)
     if state == 'DC':
         city_name = 'Washington DC'
     
