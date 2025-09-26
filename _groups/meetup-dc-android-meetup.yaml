@@ -4,5 +4,5 @@ rss: https://www.meetup.com/dcandroid/events/rss/
 submitted_by: anonymous
 submitter_link: ''
 website: https://www.meetup.com/dcandroid/
-supress_urls: 
+suppress_urls: 
   - https://www.meetup.com/dcandroid/events/311127378/
