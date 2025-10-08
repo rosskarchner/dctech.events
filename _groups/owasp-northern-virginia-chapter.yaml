@@ -1,4 +1,5 @@
 name: OWASP Northern Virginia Chapter
 website: https://www.meetup.com/owasp-northern-virginia-chapter
-rss: https://www.meetup.com/owasp-northern-virginia-chapter/events/rss
+ical: https://www.meetup.com/OWASP-Northern-Virginia-Chapter/events/ical/
+ical_extract_jsonld: true
 active: true

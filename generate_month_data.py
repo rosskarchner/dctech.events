@@ -417,14 +417,45 @@ def generate_yaml():
     for group in groups:
         if not group.get('active', True):
             continue
-            
+
         if 'ical' in group and group['ical']:
-            cache_file = os.path.join(ICAL_CACHE_DIR, f"{group['id']}.ics")
-            if os.path.exists(cache_file):
+            # Check if we have JSON-LD enriched data first (for groups with ical_extract_jsonld)
+            json_cache_file = os.path.join(ICAL_CACHE_DIR, f"{group['id']}.json")
+            ics_cache_file = os.path.join(ICAL_CACHE_DIR, f"{group['id']}.ics")
+
+            # Prefer JSON cache if it exists (JSON-LD enriched data)
+            if os.path.exists(json_cache_file):
                 try:
-                    with open(cache_file, 'r') as f:
+                    with open(json_cache_file, 'r') as f:
+                        events = json.load(f)
+                        group_events = []
+                        for event in events:
+                            # Check if event URL is in suppress_urls list
+                            suppress_urls = group.get('suppress_urls', [])
+                            if event.get('url') not in suppress_urls:
+                                # Add group information
+                                event['group'] = str(group.get('name', ''))
+                                event['group_website'] = str(group.get('website', ''))
+                                # Apply 90-day limit
+                                event_date = dateparser.parse(event['date'], settings={
+                                    'TIMEZONE': timezone_name,
+                                    'DATE_ORDER': 'YMD'
+                                }).date()
+                                if today <= event_date <= max_future_date:
+                                    group_events.append(event)
+
+                        # Remove duplicates within this group's events
+                        group_events = remove_duplicates(group_events)
+                        all_events.extend(group_events)
+                except Exception as e:
+                    print(f"Error processing JSON cache for group {group['id']}: {str(e)}")
+
+            # Fall back to .ics file if no JSON cache
+            elif os.path.exists(ics_cache_file):
+                try:
+                    with open(ics_cache_file, 'r') as f:
                         calendar = icalendar.Calendar.from_ical(f.read())
-                        
+
                         group_events = []
                         for component in calendar.walk('VEVENT'):
                             event_dict = event_to_dict(component, group)
@@ -439,7 +470,7 @@ def generate_yaml():
                                 # For aggregated events (iCal/RSS), apply 90-day limit
                                 if today <= event_date <= max_future_date and event_dict['url'] not in suppress_urls:
                                     group_events.append(event_dict)
-                        
+
                         # Remove duplicates within this group's events
                         group_events = remove_duplicates(group_events)
                         all_events.extend(group_events)
