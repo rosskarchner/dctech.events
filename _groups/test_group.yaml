@@ -1,0 +1,4 @@
+name: Test Group
+suppress_urls:
+- https://example.com/suppressed
+website: https://example.com
