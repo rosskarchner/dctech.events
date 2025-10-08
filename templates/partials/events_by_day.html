@@ -13,7 +13,7 @@
                             {% for event in time_slot.events %}
                                 <div class="h-event event">
                                     <a class="u-url p-name" href="{{ event.url }}" target="_blank">{{ event.title }}</a>{% if event.display_title != event.title %} <span class="p-summary">{{ event.display_title | replace(event.title, '') }}</span>{% endif %}
-                                    <time class="dt-start" datetime="{{ day.date }}T{{ event.time }}">{{ event.formatted_time }}</time>
+                                    {% if event.time %}<time class="dt-start" datetime="{{ day.date }}T{{ event.time }}">{{ event.formatted_time }}</time>{% endif %}
                                     <div class="event-details">
                                         {% if event.location %}
                                             <div class="p-location event-location">

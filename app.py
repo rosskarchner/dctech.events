@@ -161,8 +161,10 @@ def prepare_events_by_day(events):
             
             # Create a copy of the event for this day
             event_copy = event.copy()
-            # For display, use the formatted time
-            event_copy['time'] = formatted_time
+            # Store the machine-readable time (HH:MM format) for datetime attribute
+            event_copy['time'] = time_key if time_key != 'TBD' else ''
+            # Store the formatted time for display
+            event_copy['formatted_time'] = formatted_time
             
             # Add display_title with (continuing) for days after the first
             if i > 0:
