@@ -66,11 +66,11 @@ def fetch_ical(url, group_id):
     Only update if:
     - Content has changed (using ETag or Last-Modified)
     - Last fetch was more than 4 hours ago
-    
+
     Args:
         url: The URL of the iCal file
         group_id: The ID of the group (used for caching)
-        
+
     Returns:
         The parsed iCal calendar if changed, None otherwise
     """
@@ -79,44 +79,44 @@ def fetch_ical(url, group_id):
         # Create a cache key based on the group_id
         cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.ics")
         cache_meta_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.meta")
-        
+
         # Prepare headers for conditional GET
         headers = {}
         meta_data = {}
-        
+
         # Check if we have cached metadata
         if os.path.exists(cache_meta_file):
             with open(cache_meta_file, 'r') as f:
                 meta_data = json.load(f)
-                
+
                 # Check if we should skip fetching due to time constraint
                 if not should_fetch(meta_data, group_id):
                     if os.path.exists(cache_file):
                         with open(cache_file, 'r') as f:
                             return icalendar.Calendar.from_ical(f.read())
                     return None
-                
+
                 # Add conditional GET headers
                 if 'etag' in meta_data:
                     headers['If-None-Match'] = meta_data['etag']
                 if 'last_modified' in meta_data:
                     headers['If-Modified-Since'] = meta_data['last_modified']
-        
+
         # Make the request
         response = requests.get(url, headers=headers)
-        
+
         # If the content hasn't changed (304 Not Modified)
         if response.status_code == 304:
             print(f"Calendar for {group_id} not modified, using cached version")
             with open(cache_file, 'r') as f:
                 return icalendar.Calendar.from_ical(f.read())
-        
+
         # If we got a successful response
         if response.status_code == 200:
             # Save the content
             with open(cache_file, 'w') as f:
                 f.write(response.text)
-            
+
             # Save the metadata
             new_meta = {}
             if 'ETag' in response.headers:
@@ -124,19 +124,281 @@ def fetch_ical(url, group_id):
             if 'Last-Modified' in response.headers:
                 new_meta['last_modified'] = response.headers['Last-Modified']
             new_meta['last_fetch'] = datetime.now(timezone.utc).isoformat()
-            
+
             with open(cache_meta_file, 'w') as f:
                 json.dump(new_meta, f)
-            
+
             # Parse and return the calendar
             return icalendar.Calendar.from_ical(response.text)
-        
+
         # If we got an error
         print(f"Error fetching calendar from {url}: HTTP {response.status_code}")
         return None
-            
+
     except Exception as e:
         print(f"Error fetching calendar from {url}: {str(e)}")
+        return None
+
+def fetch_ical_and_extract_events(url, group_id):
+    """
+    Fetch an iCal feed, visit each event link to extract JSON-LD event data, and cache it locally.
+    Similar to fetch_rss_and_extract_events but for iCal feeds.
+
+    Args:
+        url: The URL of the iCal feed
+        group_id: The ID of the group (used for caching)
+
+    Returns:
+        A list of event dictionaries if changed, None otherwise
+    """
+    try:
+        print(f"Fetching iCal feed from {url}")
+        # Create cache files - store enriched events as JSON
+        cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.json")
+        cache_meta_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.meta")
+
+        # Prepare headers for conditional GET
+        headers = {}
+        meta_data = {}
+
+        # Check if we have cached metadata
+        if os.path.exists(cache_meta_file):
+            with open(cache_meta_file, 'r') as f:
+                meta_data = json.load(f)
+
+                # Check if we should skip fetching due to time constraint
+                if not should_fetch(meta_data, group_id):
+                    if os.path.exists(cache_file):
+                        with open(cache_file, 'r') as f:
+                            return json.load(f)
+                    return None
+
+                # Add conditional GET headers
+                if 'etag' in meta_data:
+                    headers['If-None-Match'] = meta_data['etag']
+                if 'last_modified' in meta_data:
+                    headers['If-Modified-Since'] = meta_data['last_modified']
+
+        # Fetch the iCal feed
+        response = requests.get(url, headers=headers)
+
+        # If the content hasn't changed (304 Not Modified)
+        if response.status_code == 304:
+            print(f"iCal feed for {group_id} not modified, using cached version")
+            if os.path.exists(cache_file):
+                with open(cache_file, 'r') as f:
+                    return json.load(f)
+            return None
+
+        # If we got a successful response
+        if response.status_code != 200:
+            print(f"Error fetching iCal from {url}: HTTP {response.status_code}")
+            return None
+
+        # Parse the iCal calendar
+        calendar = icalendar.Calendar.from_ical(response.text)
+
+        # Process each event and extract JSON-LD data
+        events = []
+        for component in calendar.walk('VEVENT'):
+            try:
+                # Get the event URL
+                event_url = component.get('url')
+                if not event_url:
+                    # Skip events without URLs - we can't fetch JSON-LD without a URL
+                    continue
+
+                event_url = str(event_url)
+
+                # Get basic event info from iCal
+                start = component.get('dtstart').dt
+                end = component.get('dtend').dt if component.get('dtend') else start
+
+                # Convert to UTC if datetime is naive
+                if isinstance(start, datetime) and start.tzinfo is None:
+                    start = start.replace(tzinfo=timezone.utc)
+                if isinstance(end, datetime) and end.tzinfo is None:
+                    end = end.replace(tzinfo=timezone.utc)
+
+                # Convert to local timezone
+                local_start = start.astimezone(local_tz)
+                local_end = end.astimezone(local_tz)
+
+                # Fetch the event page
+                try:
+                    event_response = requests.get(event_url, timeout=10)
+                    event_response.raise_for_status()
+                except Exception as e:
+                    print(f"Error fetching event page {event_url}: {str(e)}")
+                    # Fall back to basic iCal data if we can't fetch the page
+                    event = {
+                        'title': str(component.get('summary', '')),
+                        'description': str(component.get('description', '')),
+                        'location': str(component.get('location', '')),
+                        'url': event_url,
+                        'start_date': local_start.strftime('%Y-%m-%d'),
+                        'start_time': local_start.strftime('%H:%M'),
+                        'end_date': local_end.strftime('%Y-%m-%d'),
+                        'end_time': local_end.strftime('%H:%M'),
+                        'date': local_start.strftime('%Y-%m-%d'),
+                        'time': local_start.strftime('%H:%M'),
+                    }
+                    events.append(event)
+                    continue
+
+                # Extract JSON-LD data
+                base_url = get_base_url(event_response.text, event_response.url)
+                data = extruct.extract(event_response.text, base_url=base_url, syntaxes=['json-ld'])
+
+                # Find Event schema
+                event_data = None
+                for item in data.get('json-ld', []):
+                    if item.get('@type') == 'Event':
+                        event_data = item
+                        break
+
+                if event_data:
+                    # Use JSON-LD data (similar to RSS processing)
+                    event = {
+                        'title': event_data.get('name', str(component.get('summary', ''))),
+                        'description': event_data.get('description', str(component.get('description', ''))),
+                        'url': event_url,
+                    }
+
+                    # Handle location with both place name and address
+                    location = event_data.get('location', {})
+                    physical_location = None
+
+                    # Handle array of locations (hybrid events)
+                    if isinstance(location, list):
+                        # Find the physical location (Place type) in the array
+                        for loc in location:
+                            if isinstance(loc, dict) and loc.get('@type') == 'Place':
+                                physical_location = loc
+                                break
+                        # If no physical location found, skip this event
+                        if not physical_location:
+                            print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                            continue
+                        location = physical_location
+
+                    # Skip virtual-only events
+                    if isinstance(location, dict) and location.get('@type') == 'VirtualLocation':
+                        print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                        continue
+
+                    if isinstance(location, dict):
+                        place_name = location.get('name', '')
+                        address = location.get('address', {})
+
+                        # Handle address object
+                        if isinstance(address, dict):
+                            street = address.get('streetAddress', '')
+                            locality = address.get('addressLocality', '')
+                            region = address.get('addressRegion', '')
+
+                            # Build formatted address
+                            address_parts = []
+                            if street: address_parts.append(street)
+                            if locality: address_parts.append(locality)
+                            if region: address_parts.append(region)
+                            formatted_address = ', '.join(address_parts)
+
+                            if place_name and formatted_address:
+                                event['location'] = normalize_address(f"{place_name}, {formatted_address}")
+                            elif place_name:
+                                event['location'] = normalize_address(place_name)
+                            elif formatted_address:
+                                event['location'] = normalize_address(formatted_address)
+                        else:
+                            # Handle string address
+                            if place_name and address:
+                                event['location'] = normalize_address(f"{place_name}, {address}")
+                            elif place_name:
+                                event['location'] = normalize_address(place_name)
+                            elif address:
+                                event['location'] = normalize_address(address)
+                    else:
+                        event['location'] = normalize_address(str(location)) if location else ''
+
+                    # Handle submitter information if present
+                    submitter = event_data.get('submitter', {})
+                    if isinstance(submitter, dict):
+                        name = submitter.get('name', '')
+                        if name and name.lower() != 'anonymous':
+                            event['submitter_name'] = name
+                            if submitter.get('url'):
+                                event['submitter_link'] = submitter['url']
+
+                    # Parse start date/time from JSON-LD
+                    start_date = event_data.get('startDate')
+                    if start_date:
+                        start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                        local_start = start_dt.astimezone(local_tz)
+                        event['start_date'] = local_start.strftime('%Y-%m-%d')
+                        event['start_time'] = local_start.strftime('%H:%M')
+                        event['date'] = event['start_date']
+                        event['time'] = event['start_time']
+                    else:
+                        # Fall back to iCal dates
+                        event['start_date'] = local_start.strftime('%Y-%m-%d')
+                        event['start_time'] = local_start.strftime('%H:%M')
+                        event['date'] = event['start_date']
+                        event['time'] = event['start_time']
+
+                    # Parse end date/time from JSON-LD
+                    end_date = event_data.get('endDate')
+                    if end_date:
+                        end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                        local_end = end_dt.astimezone(local_tz)
+                        event['end_date'] = local_end.strftime('%Y-%m-%d')
+                        event['end_time'] = local_end.strftime('%H:%M')
+                    else:
+                        # Fall back to iCal dates
+                        event['end_date'] = local_end.strftime('%Y-%m-%d')
+                        event['end_time'] = local_end.strftime('%H:%M')
+
+                    events.append(event)
+                else:
+                    # No JSON-LD found, fall back to basic iCal data
+                    print(f"No JSON-LD found for {event_url}, using iCal data")
+                    event = {
+                        'title': str(component.get('summary', '')),
+                        'description': str(component.get('description', '')),
+                        'location': normalize_address(str(component.get('location', ''))),
+                        'url': event_url,
+                        'start_date': local_start.strftime('%Y-%m-%d'),
+                        'start_time': local_start.strftime('%H:%M'),
+                        'end_date': local_end.strftime('%Y-%m-%d'),
+                        'end_time': local_end.strftime('%H:%M'),
+                        'date': local_start.strftime('%Y-%m-%d'),
+                        'time': local_start.strftime('%H:%M'),
+                    }
+                    events.append(event)
+
+            except Exception as e:
+                print(f"Error processing iCal event: {str(e)}")
+                continue
+
+        # Save the events
+        with open(cache_file, 'w') as f:
+            json.dump(events, f)
+
+        # Save the metadata
+        new_meta = {}
+        if 'ETag' in response.headers:
+            new_meta['etag'] = response.headers['ETag']
+        if 'Last-Modified' in response.headers:
+            new_meta['last_modified'] = response.headers['Last-Modified']
+        new_meta['last_fetch'] = datetime.now(timezone.utc).isoformat()
+
+        with open(cache_meta_file, 'w') as f:
+            json.dump(new_meta, f)
+
+        return events
+
+    except Exception as e:
+        print(f"Error fetching iCal feed from {url}: {str(e)}")
         return None
 
 def fetch_rss_and_extract_events(url, group_id):
@@ -406,11 +668,17 @@ def refresh_calendars():
     for group in groups:
         if not group.get('active', True):
             continue
-            
+
         if 'ical' in group and group['ical']:
-            calendar = fetch_ical(group['ical'], group['id'])
-            if calendar is not None:
-                updated = True
+            # Check if group wants JSON-LD extraction for iCal
+            if group.get('ical_extract_jsonld', False):
+                events = fetch_ical_and_extract_events(group['ical'], group['id'])
+                if events is not None:
+                    updated = True
+            else:
+                calendar = fetch_ical(group['ical'], group['id'])
+                if calendar is not None:
+                    updated = True
         elif 'rss' in group and group['rss']:
             events = fetch_rss_and_extract_events(group['rss'], group['id'])
             if events is not None:
