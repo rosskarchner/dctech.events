@@ -455,14 +455,27 @@ def generate_week_calendar_image(week_start, week_end, events):
         draw.rectangle([x, y, x + day_width - 5, y + day_height],
                       fill=day_bg_color, outline=text_color)
 
-        # Draw day name and date
+        # Draw day name and date (separately to avoid multiline anchor issue)
         day_name = current_date.strftime('%a')
         day_num = current_date.strftime('%-d')
-        day_text = f"{day_name}\n{day_num}"
 
-        # Center the day text
-        draw.text((x + day_width // 2, y + 15), day_text,
-                 fill=text_color, font=day_font, anchor="mt")
+        # Draw day name at top
+        try:
+            # Use anchor if supported
+            draw.text((x + day_width // 2, y + 10), day_name,
+                     fill=text_color, font=day_font, anchor="mt")
+            draw.text((x + day_width // 2, y + 35), day_num,
+                     fill=text_color, font=day_font, anchor="mt")
+        except TypeError:
+            # Fallback for older PIL versions without anchor support
+            bbox_name = draw.textbbox((0, 0), day_name, font=day_font)
+            bbox_num = draw.textbbox((0, 0), day_num, font=day_font)
+            text_width_name = bbox_name[2] - bbox_name[0]
+            text_width_num = bbox_num[2] - bbox_num[0]
+            draw.text((x + (day_width - text_width_name) // 2, y + 10), day_name,
+                     fill=text_color, font=day_font)
+            draw.text((x + (day_width - text_width_num) // 2, y + 35), day_num,
+                     fill=text_color, font=day_font)
 
         # Count events for this day
         date_key = current_date.strftime('%Y-%m-%d')
@@ -474,19 +487,38 @@ def generate_week_calendar_image(week_start, week_end, events):
         # Draw event count if there are events
         if event_count > 0:
             count_text = str(event_count)
-            draw.text((x + day_width // 2, y + day_height // 2), count_text,
-                     fill=header_color, font=count_font, anchor="mm")
+            try:
+                draw.text((x + day_width // 2, y + day_height // 2), count_text,
+                         fill=header_color, font=count_font, anchor="mm")
+            except TypeError:
+                bbox = draw.textbbox((0, 0), count_text, font=count_font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                draw.text((x + (day_width - text_width) // 2, y + (day_height - text_height) // 2),
+                         count_text, fill=header_color, font=count_font)
 
             event_label = "event" if event_count == 1 else "events"
-            draw.text((x + day_width // 2, y + day_height // 2 + 40), event_label,
-                     fill=text_color, font=event_font, anchor="mm")
+            try:
+                draw.text((x + day_width // 2, y + day_height // 2 + 40), event_label,
+                         fill=text_color, font=event_font, anchor="mm")
+            except TypeError:
+                bbox = draw.textbbox((0, 0), event_label, font=event_font)
+                text_width = bbox[2] - bbox[0]
+                draw.text((x + (day_width - text_width) // 2, y + day_height // 2 + 40),
+                         event_label, fill=text_color, font=event_font)
 
         current_date += timedelta(days=1)
 
     # Add site branding
     site_text = SITE_NAME
-    draw.text((width - margin, height - 30), site_text,
-             fill=text_color, font=event_font, anchor="rm")
+    try:
+        draw.text((width - margin, height - 30), site_text,
+                 fill=text_color, font=event_font, anchor="rm")
+    except TypeError:
+        bbox = draw.textbbox((0, 0), site_text, font=event_font)
+        text_width = bbox[2] - bbox[0]
+        draw.text((width - margin - text_width, height - 30), site_text,
+                 fill=text_color, font=event_font)
 
     return img
 
