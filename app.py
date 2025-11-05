@@ -409,12 +409,14 @@ def generate_week_calendar_image(week_start, week_end, events):
     width = 1200
     height = 630  # Standard OG image size
 
-    # Colors
-    bg_color = '#1a1a1a'
-    text_color = '#ffffff'
-    header_color = '#4a9eff'
-    day_color = '#e0e0e0'
-    event_color = '#b0b0b0'
+    # Colors - light, professional theme
+    bg_color = '#f8f9fa'
+    text_color = '#1f2937'
+    brand_color = '#2563eb'
+    day_color = '#374151'
+    event_color = '#4b5563'
+    url_color = '#6b7280'
+    accent_bg = '#e0e7ff'
 
     # Create image
     img = Image.new('RGB', (width, height), bg_color)
@@ -422,31 +424,52 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # Try to load fonts, fall back to default if not available
     try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
-        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
-        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+        brand_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
+        url_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+        week_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 17)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 15)
     except:
-        title_font = ImageFont.load_default()
+        brand_font = ImageFont.load_default()
+        url_font = ImageFont.load_default()
+        week_font = ImageFont.load_default()
         day_font = ImageFont.load_default()
         event_font = ImageFont.load_default()
         small_font = ImageFont.load_default()
 
-    # Draw title
-    title = f"Week of {week_start.strftime('%B %-d, %Y')}"
-    draw.text((40, 30), title, fill=header_color, font=title_font)
+    # Draw header background bar
+    header_height = 100
+    draw.rectangle([0, 0, width, header_height], fill=accent_bg)
+
+    # Draw brand name prominently
+    brand_text = "DC Tech Events"
+    draw.text((30, 22), brand_text, fill=brand_color, font=brand_font)
+
+    # Draw URL below brand
+    url_text = "dctech.events"
+    draw.text((32, 70), url_text, fill=url_color, font=url_font)
+
+    # Draw week info on right side of header
+    week_text = f"{week_start.strftime('%b %-d')} - {week_end.strftime('%b %-d, %Y')}"
+    try:
+        draw.text((width - 30, 42), week_text, fill=day_color, font=week_font, anchor="rm")
+    except TypeError:
+        bbox = draw.textbbox((0, 0), week_text, font=week_font)
+        text_width = bbox[2] - bbox[0]
+        draw.text((width - 30 - text_width, 42), week_text, fill=day_color, font=week_font)
 
     # Prepare events by day
     days_data = prepare_events_by_day(events)
     events_by_date = {day['date']: day for day in days_data}
 
-    # Layout configuration
-    margin_left = 40
-    margin_right = 40
-    y_position = 100
-    line_height = 26
-    day_spacing = 8
-    max_events_per_day = 4
+    # Layout configuration - use space more efficiently
+    margin_left = 30
+    margin_right = 30
+    y_position = header_height + 25
+    line_height = 23
+    day_spacing = 6
+    max_events_per_day = 5
     max_text_width = width - margin_left - margin_right
 
     # Helper function to truncate text
@@ -467,6 +490,12 @@ def generate_week_calendar_image(week_start, week_end, events):
     current_date = week_start
     days_with_events = 0
 
+    # Use two columns if there are many events
+    column_width = (width - 3 * margin_left) // 2
+    left_column_x = margin_left
+    right_column_x = margin_left * 2 + column_width
+    max_left_column_y = header_height + 25
+
     for i in range(7):
         date_key = current_date.strftime('%Y-%m-%d')
 
@@ -474,16 +503,22 @@ def generate_week_calendar_image(week_start, week_end, events):
         if date_key in events_by_date and events_by_date[date_key]['has_events']:
             days_with_events += 1
 
-            # Check if we have space
-            if y_position > height - 80:
-                # Add "and more..." if we run out of space
-                draw.text((margin_left, y_position), "...", fill=event_color, font=event_font)
-                break
+            # Check if we need to switch to right column or are out of space
+            if y_position > height - 60:
+                if left_column_x == margin_left:
+                    # Switch to right column
+                    y_position = max_left_column_y
+                    margin_left = right_column_x
+                    max_text_width = column_width
+                else:
+                    # Out of space in both columns
+                    draw.text((margin_left, y_position), "...", fill=event_color, font=event_font)
+                    break
 
             # Draw day header
-            day_header = current_date.strftime('%A, %B %-d')
+            day_header = current_date.strftime('%a, %b %-d')
             draw.text((margin_left, y_position), day_header, fill=day_color, font=day_font)
-            y_position += line_height + 4
+            y_position += line_height + 2
 
             # Collect all events for this day
             all_events = []
@@ -496,18 +531,18 @@ def generate_week_calendar_image(week_start, week_end, events):
             for event in all_events:
                 if events_shown >= max_events_per_day:
                     remaining = len(all_events) - events_shown
-                    draw.text((margin_left + 20, y_position),
-                             f"+ {remaining} more event{'s' if remaining > 1 else ''}",
+                    draw.text((margin_left + 15, y_position),
+                             f"+ {remaining} more",
                              fill=event_color, font=small_font)
                     y_position += line_height
                     break
 
                 # Truncate long event titles
-                event_title = truncate_text(event.get('title', 'Untitled'), event_font, max_text_width - 30)
+                event_title = truncate_text(event.get('title', 'Untitled'), event_font, max_text_width - 25)
 
                 # Draw bullet and event
-                draw.text((margin_left + 10, y_position), "•", fill=header_color, font=event_font)
-                draw.text((margin_left + 30, y_position), event_title, fill=text_color, font=event_font)
+                draw.text((margin_left + 5, y_position), "•", fill=brand_color, font=event_font)
+                draw.text((margin_left + 20, y_position), event_title, fill=text_color, font=event_font)
                 y_position += line_height
                 events_shown += 1
 
@@ -518,22 +553,11 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # If no events found, show message
     if days_with_events == 0:
+        y_position = header_height + 120
         draw.text((margin_left, y_position), "No events scheduled this week",
-                 fill=event_color, font=event_font)
-        y_position += line_height + 20
-        draw.text((margin_left, y_position), "Check back soon!",
-                 fill=event_color, font=small_font)
-
-    # Add site branding at bottom
-    site_text = SITE_NAME
-    try:
-        draw.text((width - margin_right, height - 40), site_text,
-                 fill=event_color, font=small_font, anchor="rs")
-    except TypeError:
-        # Fallback without anchor support
-        bbox = draw.textbbox((0, 0), site_text, font=small_font)
-        text_width = bbox[2] - bbox[0]
-        draw.text((width - margin_right - text_width, height - 40), site_text,
+                 fill=event_color, font=day_font)
+        y_position += line_height + 15
+        draw.text((margin_left, y_position), "Check back soon or add your event!",
                  fill=event_color, font=small_font)
 
     return img
