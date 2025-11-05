@@ -2,10 +2,16 @@
 <div class="events-by-day">
     {% if days %}
         {% for day in days %}
-            
+
             {% if day.has_events %}
                 <div class="day-container {{ loop.cycle('odd', 'even') }}">
-                    <h2 class="day-heading" id="{{ day.date }}">{{ day.short_date }}</h2>
+                    <h2 class="day-heading" id="{{ day.date }}">
+                        {% if day.week_url %}
+                            <a href="{{ day.week_url }}">{{ day.short_date }}</a>
+                        {% else %}
+                            {{ day.short_date }}
+                        {% endif %}
+                    </h2>
 
                     {% for time_slot in day.time_slots %}
                         <div class="time-slot">

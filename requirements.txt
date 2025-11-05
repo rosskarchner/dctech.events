@@ -10,3 +10,4 @@ feedparser
 extruct
 w3lib
 responses
+Pillow

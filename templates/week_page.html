@@ -1,22 +1,52 @@
 {% extends "base.html" %}
 
-{% block title %}Events for Week of {{ week_start_formatted }} - DC Tech Events{% endblock %}
+{% block title %}Events for Week of {{ week_start_formatted }} - {{ site_name }}{% endblock %}
+
+{% block description %}Tech events in the DC area for the week of {{ week_start_formatted }}. {{ stats.upcoming_events }} events this week.{% endblock %}
+
+{% block og_title %}Events for Week of {{ week_start_formatted }}{% endblock %}
+{% block og_description %}{{ stats.upcoming_events }} tech events in the DC area for the week of {{ week_start_formatted }}{% endblock %}
+
+{% block twitter_title %}Events for Week of {{ week_start_formatted }}{% endblock %}
+{% block twitter_description %}{{ stats.upcoming_events }} tech events in the DC area for the week of {{ week_start_formatted }}{% endblock %}
+
+{% block extra_head %}
+<!-- OG Image -->
+<meta property="og:image" content="{{ og_image_url }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Calendar showing {{ stats.upcoming_events }} events for the week of {{ week_start_formatted }}">
+
+<!-- Twitter Card -->
+<meta name="twitter:image" content="{{ og_image_url }}">
+<meta name="twitter:image:alt" content="Calendar showing {{ stats.upcoming_events }} events for the week of {{ week_start_formatted }}">
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Events for Week of {{ week_start_formatted }}",
+  "description": "{{ stats.upcoming_events }} tech events in the DC area",
+  "url": "{{ base_url }}/week/{{ week_id }}/"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="week-container">
     <header class="week-header">
         <h1>Events for Week of {{ week_start_formatted }}</h1>
         <div class="week-navigation">
-            <a href="/week-of/{{ prev_week }}/" class="nav-button">&laquo; Previous Week</a>
+            <a href="/week/{{ prev_week }}/" class="nav-button">&laquo; Previous Week</a>
             <a href="/" class="nav-button">Current Week</a>
-            <a href="/week-of/{{ next_week }}/" class="nav-button">Next Week &raquo;</a>
+            <a href="/week/{{ next_week }}/" class="nav-button">Next Week &raquo;</a>
         </div>
     </header>
 
     <section class="events-section">
+        <h2>{{ stats.upcoming_events }} Events This Week</h2>
         {% include "partials/events_by_day.html" %}
     </section>
-    
-    {% include "partials/date_selector.html" %}
 </div>
 {% endblock %}

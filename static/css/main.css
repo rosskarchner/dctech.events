@@ -92,6 +92,16 @@ h2.day-heading {
     letter-spacing: 0.05em;
 }
 
+h2.day-heading a {
+    color: var(--color-text-light);
+    text-decoration: none;
+}
+
+h2.day-heading a:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
 h3.time-heading {
     margin: 0;
     padding: var(--spacing-xs) 0;
