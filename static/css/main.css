@@ -29,14 +29,14 @@ h1.logo{
 }
 
 h2 {margin-top:0px;font-weight:bold;}
-h3.day-heading {
-    margin:2px 0px 0px -5px;font-size:.8em;width:80px;text-align:right;color:gray;font-weight:bold;
+h2.day-heading {
+    margin:2px 0px 0px -5px;font-size:.8em;width:80px;text-align:right;color:#555;font-weight:bold;
 
 }
 
 
-h4.time-heading{
-    margin:0px 0px 0px -5px;width:80px;font-size:.8em;text-align:right;color:gray;font-weight:normal;float:left
+h3.time-heading{
+    margin:0px 0px 0px -5px;width:80px;font-size:.8em;text-align:right;color:#555;font-weight:normal;float:left
 }
 
 
@@ -63,15 +63,29 @@ a {text-decoration: none;}
     font-size:smaller
 }
 
-.search-container {
-    margin: 1rem 0;
-    margin-left: 85px;
+/* Skip link for keyboard navigation accessibility */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100;
 }
 
-#event-search {
-    width:450px;
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
+.skip-link:focus {
+    top: 0;
+}
+
+/* Navigation styling */
+nav {
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+nav [aria-current="page"] {
+    font-weight: bold;
+    color: #000;
 }
