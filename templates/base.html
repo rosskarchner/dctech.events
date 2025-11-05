@@ -5,30 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="htmx-config" content='{"selfRequestsOnly":false}'>
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
-    
+
 
     <link rel="stylesheet" href="/static/css/main.css">
 
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <header>
         <div class="container">
             <h1 class="logo"><a href="/">{{ site_name }}</a></h1>
             <div>{{ tagline }}</div>
-            <nav style="margin-top: 10px; font-size: 0.9em;">
-                {% if request.path == '/' %}All Events{% else %}<a href="/">All Events</a>{% endif %} | 
-                {% if request.path == '/locations/' %}Locations{% else %}<a href="/locations/">Locations</a>{% endif %} | 
-                {% if request.path == '/locations/dc/' %}Washington DC{% else %}<a href="/locations/dc/">Washington DC</a>{% endif %} | 
-                {% if request.path == '/locations/va/' %}Virginia{% else %}<a href="/locations/va/">Virginia</a>{% endif %} | 
-                {% if request.path == '/locations/md/' %}Maryland{% else %}<a href="/locations/md/">Maryland</a>{% endif %} | 
-                {% if request.path == '/groups/' %}Groups{% else %}<a href="/groups/">Groups</a>{% endif %}
+            <nav aria-label="Main navigation">
+                {% if request.path == '/' %}<span aria-current="page">All Events</span>{% else %}<a href="/">All Events</a>{% endif %} |
+                {% if request.path == '/locations/' %}<span aria-current="page">Locations</span>{% else %}<a href="/locations/">Locations</a>{% endif %} |
+                {% if request.path == '/locations/dc/' %}<span aria-current="page">Washington DC</span>{% else %}<a href="/locations/dc/">Washington DC</a>{% endif %} |
+                {% if request.path == '/locations/va/' %}<span aria-current="page">Virginia</span>{% else %}<a href="/locations/va/">Virginia</a>{% endif %} |
+                {% if request.path == '/locations/md/' %}<span aria-current="page">Maryland</span>{% else %}<a href="/locations/md/">Maryland</a>{% endif %} |
+                {% if request.path == '/groups/' %}<span aria-current="page">Groups</span>{% else %}<a href="/groups/">Groups</a>{% endif %}
             </nav>
         </div>
     </header>
 
     <div class="container">
-        <main>
+        <main id="main-content">
             {% block content %}{% endblock %}
         </main>
     </div>
