@@ -95,11 +95,12 @@ h2.day-heading {
 h3.time-heading {
     margin: 0;
     padding: var(--spacing-xs) 0;
-    min-width: 90px;
+    width: 90px;
     font-size: 0.875rem;
     text-align: right;
     color: var(--color-text-lighter);
     font-weight: 400;
+    float: left;
 }
 
 /* Links */
@@ -176,15 +177,12 @@ nav [aria-current="page"] {
 
 /* Time Slots */
 .time-slot {
-    display: flex;
-    gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
-    align-items: flex-start;
 }
 
 /* Events */
 .event {
-    flex: 1;
+    margin-left: 100px;
     line-height: 1.5;
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-sm);
