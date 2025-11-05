@@ -85,7 +85,7 @@ h2.day-heading {
     padding: var(--spacing-sm) 0;
     font-size: 0.875rem;
     min-width: 90px;
-    text-align: right;
+    text-align: left;
     color: var(--color-text-light);
     font-weight: 600;
     text-transform: uppercase;
