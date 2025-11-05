@@ -395,7 +395,7 @@ def get_upcoming_weeks(num_weeks=12):
 
 def generate_week_calendar_image(week_start, week_end, events):
     """
-    Generate a calendar image for a week showing events.
+    Generate a calendar image for a week showing events as a list.
 
     Args:
         week_start: Start date of the week (Monday)
@@ -413,8 +413,8 @@ def generate_week_calendar_image(week_start, week_end, events):
     bg_color = '#1a1a1a'
     text_color = '#ffffff'
     header_color = '#4a9eff'
-    day_bg_color = '#2a2a2a'
-    event_color = '#3a3a3a'
+    day_color = '#e0e0e0'
+    event_color = '#b0b0b0'
 
     # Create image
     img = Image.new('RGB', (width, height), bg_color)
@@ -422,103 +422,119 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # Try to load fonts, fall back to default if not available
     try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
-        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
+        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
         event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
-        count_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
     except:
         title_font = ImageFont.load_default()
         day_font = ImageFont.load_default()
         event_font = ImageFont.load_default()
-        count_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
 
     # Draw title
     title = f"Week of {week_start.strftime('%B %-d, %Y')}"
-    draw.text((50, 40), title, fill=header_color, font=title_font)
+    draw.text((40, 30), title, fill=header_color, font=title_font)
 
     # Prepare events by day
     days_data = prepare_events_by_day(events)
     events_by_date = {day['date']: day for day in days_data}
 
-    # Draw calendar grid
-    margin = 50
-    top_offset = 120
-    day_width = (width - 2 * margin) // 7
-    day_height = height - top_offset - margin
+    # Layout configuration
+    margin_left = 40
+    margin_right = 40
+    y_position = 100
+    line_height = 26
+    day_spacing = 8
+    max_events_per_day = 4
+    max_text_width = width - margin_left - margin_right
 
+    # Helper function to truncate text
+    def truncate_text(text, font, max_width):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        if text_width <= max_width:
+            return text
+        while len(text) > 0:
+            test_text = text + '...'
+            bbox = draw.textbbox((0, 0), test_text, font=font)
+            if bbox[2] - bbox[0] <= max_width:
+                return test_text
+            text = text[:-1]
+        return '...'
+
+    # Draw events by day
     current_date = week_start
+    days_with_events = 0
+
     for i in range(7):
-        x = margin + i * day_width
-        y = top_offset
-
-        # Draw day box
-        draw.rectangle([x, y, x + day_width - 5, y + day_height],
-                      fill=day_bg_color, outline=text_color)
-
-        # Draw day name and date (separately to avoid multiline anchor issue)
-        day_name = current_date.strftime('%a')
-        day_num = current_date.strftime('%-d')
-
-        # Draw day name at top
-        try:
-            # Use anchor if supported
-            draw.text((x + day_width // 2, y + 10), day_name,
-                     fill=text_color, font=day_font, anchor="mt")
-            draw.text((x + day_width // 2, y + 35), day_num,
-                     fill=text_color, font=day_font, anchor="mt")
-        except TypeError:
-            # Fallback for older PIL versions without anchor support
-            bbox_name = draw.textbbox((0, 0), day_name, font=day_font)
-            bbox_num = draw.textbbox((0, 0), day_num, font=day_font)
-            text_width_name = bbox_name[2] - bbox_name[0]
-            text_width_num = bbox_num[2] - bbox_num[0]
-            draw.text((x + (day_width - text_width_name) // 2, y + 10), day_name,
-                     fill=text_color, font=day_font)
-            draw.text((x + (day_width - text_width_num) // 2, y + 35), day_num,
-                     fill=text_color, font=day_font)
-
-        # Count events for this day
         date_key = current_date.strftime('%Y-%m-%d')
-        event_count = 0
-        if date_key in events_by_date:
+
+        # Check if this day has events
+        if date_key in events_by_date and events_by_date[date_key]['has_events']:
+            days_with_events += 1
+
+            # Check if we have space
+            if y_position > height - 80:
+                # Add "and more..." if we run out of space
+                draw.text((margin_left, y_position), "...", fill=event_color, font=event_font)
+                break
+
+            # Draw day header
+            day_header = current_date.strftime('%A, %B %-d')
+            draw.text((margin_left, y_position), day_header, fill=day_color, font=day_font)
+            y_position += line_height + 4
+
+            # Collect all events for this day
+            all_events = []
             for time_slot in events_by_date[date_key]['time_slots']:
-                event_count += len(time_slot['events'])
+                for event in time_slot['events']:
+                    all_events.append(event)
 
-        # Draw event count if there are events
-        if event_count > 0:
-            count_text = str(event_count)
-            try:
-                draw.text((x + day_width // 2, y + day_height // 2), count_text,
-                         fill=header_color, font=count_font, anchor="mm")
-            except TypeError:
-                bbox = draw.textbbox((0, 0), count_text, font=count_font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-                draw.text((x + (day_width - text_width) // 2, y + (day_height - text_height) // 2),
-                         count_text, fill=header_color, font=count_font)
+            # Draw events (limit to max_events_per_day)
+            events_shown = 0
+            for event in all_events:
+                if events_shown >= max_events_per_day:
+                    remaining = len(all_events) - events_shown
+                    draw.text((margin_left + 20, y_position),
+                             f"+ {remaining} more event{'s' if remaining > 1 else ''}",
+                             fill=event_color, font=small_font)
+                    y_position += line_height
+                    break
 
-            event_label = "event" if event_count == 1 else "events"
-            try:
-                draw.text((x + day_width // 2, y + day_height // 2 + 40), event_label,
-                         fill=text_color, font=event_font, anchor="mm")
-            except TypeError:
-                bbox = draw.textbbox((0, 0), event_label, font=event_font)
-                text_width = bbox[2] - bbox[0]
-                draw.text((x + (day_width - text_width) // 2, y + day_height // 2 + 40),
-                         event_label, fill=text_color, font=event_font)
+                # Truncate long event titles
+                event_title = truncate_text(event.get('title', 'Untitled'), event_font, max_text_width - 30)
+
+                # Draw bullet and event
+                draw.text((margin_left + 10, y_position), "•", fill=header_color, font=event_font)
+                draw.text((margin_left + 30, y_position), event_title, fill=text_color, font=event_font)
+                y_position += line_height
+                events_shown += 1
+
+            # Add spacing after this day
+            y_position += day_spacing
 
         current_date += timedelta(days=1)
 
-    # Add site branding
+    # If no events found, show message
+    if days_with_events == 0:
+        draw.text((margin_left, y_position), "No events scheduled this week",
+                 fill=event_color, font=event_font)
+        y_position += line_height + 20
+        draw.text((margin_left, y_position), "Check back soon!",
+                 fill=event_color, font=small_font)
+
+    # Add site branding at bottom
     site_text = SITE_NAME
     try:
-        draw.text((width - margin, height - 30), site_text,
-                 fill=text_color, font=event_font, anchor="rm")
+        draw.text((width - margin_right, height - 40), site_text,
+                 fill=event_color, font=small_font, anchor="rs")
     except TypeError:
-        bbox = draw.textbbox((0, 0), site_text, font=event_font)
+        # Fallback without anchor support
+        bbox = draw.textbbox((0, 0), site_text, font=small_font)
         text_width = bbox[2] - bbox[0]
-        draw.text((width - margin - text_width, height - 30), site_text,
-                 fill=text_color, font=event_font)
+        draw.text((width - margin_right - text_width, height - 40), site_text,
+                 fill=event_color, font=small_font)
 
     return img
 
