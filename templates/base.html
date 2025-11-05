@@ -6,6 +6,25 @@
     <meta name="htmx-config" content='{"selfRequestsOnly":false}'>
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
 
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="{% block description %}{{ tagline }}{% endblock %}">
+    <meta name="keywords" content="tech events, meetups, conferences, Washington DC, DMV, technology, networking">
+    <meta name="author" content="DC Tech Events">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{% block og_title %}{{ site_name }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ tagline }}{% endblock %}">
+    <meta property="og:url" content="{{ base_url }}{{ request.path }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}{{ site_name }}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{{ tagline }}{% endblock %}">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ base_url }}{{ request.path }}">
 
     <link rel="stylesheet" href="/static/css/main.css">
 

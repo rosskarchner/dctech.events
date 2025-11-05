@@ -21,6 +21,7 @@ local_tz = pytz.timezone(timezone_name)
 # Get site configuration
 SITE_NAME = config.get('site_name', 'DC Tech Events')
 TAGLINE = config.get('tagline', 'Technology events in the area')
+BASE_URL = config.get('base_url', 'https://dctech.events')
 ADD_EVENTS_LINK = config.get('add_events_link', 'https://add.dctech.events')
 NEWSLETTER_SIGNUP_LINK = config.get('newsletter_signup_link', 'https://newsletter.dctech.events')
 
@@ -35,6 +36,7 @@ def inject_config():
     return {
         'site_name': SITE_NAME,
         'tagline': TAGLINE,
+        'base_url': BASE_URL,
         'add_events_link': ADD_EVENTS_LINK,
         'newsletter_signup_link': NEWSLETTER_SIGNUP_LINK
     }
