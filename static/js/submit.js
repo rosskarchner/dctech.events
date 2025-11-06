@@ -273,6 +273,8 @@ async function createPullRequest(eventData) {
             // Wait for fork to be ready. GitHub's fork creation is async.
             // A more robust solution would poll the fork status, but a 3-second
             // delay is sufficient for most cases and keeps the implementation simple.
+            // If the fork isn't ready in 3 seconds (rare), the subsequent branch
+            // creation will fail with a clear error that the user can retry.
             statusMessage.textContent = 'Waiting for fork to be ready...';
             await new Promise(resolve => setTimeout(resolve, 3000));
             
