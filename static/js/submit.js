@@ -250,7 +250,41 @@ async function handleFormSubmit(e) {
  * Create a pull request with the event data
  */
 async function createPullRequest(eventData) {
-    // Step 1: Get the default branch ref
+    // Step 1: Check if user has a fork, create one if needed
+    let forkExists = false;
+    try {
+        // Try to get the existing fork
+        await octokit.rest.repos.get({
+            owner: userData.login,
+            repo: REPO_CONFIG.repo
+        });
+        forkExists = true;
+    } catch (error) {
+        if (error.status === 404) {
+            // Fork doesn't exist, create it
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = 'Creating a fork of the repository...';
+            
+            await octokit.rest.repos.createFork({
+                owner: REPO_CONFIG.owner,
+                repo: REPO_CONFIG.repo
+            });
+            
+            // Wait for fork to be ready. GitHub's fork creation is async.
+            // A more robust solution would poll the fork status, but a 3-second
+            // delay is sufficient for most cases and keeps the implementation simple.
+            // If the fork isn't ready in 3 seconds (rare), the subsequent branch
+            // creation will fail with a clear error that the user can retry.
+            statusMessage.textContent = 'Waiting for fork to be ready...';
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            statusMessage.textContent = 'Creating pull request...';
+        } else {
+            throw error;
+        }
+    }
+
+    // Step 2: Get the default branch ref from the upstream repo
     const { data: mainBranch } = await octokit.rest.repos.getBranch({
         owner: REPO_CONFIG.owner,
         repo: REPO_CONFIG.repo,
@@ -259,23 +293,23 @@ async function createPullRequest(eventData) {
 
     const mainSha = mainBranch.commit.sha;
 
-    // Step 2: Create a new branch
+    // Step 3: Create a new branch in the user's fork
     const branchName = `event-submission-${Date.now()}`;
     await octokit.rest.git.createRef({
-        owner: REPO_CONFIG.owner,
+        owner: userData.login,
         repo: REPO_CONFIG.repo,
         ref: `refs/heads/${branchName}`,
         sha: mainSha
     });
 
-    // Step 3: Create YAML content
+    // Step 4: Create YAML content
     const yamlContent = generateYAML(eventData);
     const fileName = `${eventData.date}-${slugify(eventData.title)}.yaml`;
     const filePath = `${REPO_CONFIG.targetDir}/${fileName}`;
 
-    // Step 4: Create file in the new branch
+    // Step 5: Create file in the new branch of the fork
     await octokit.rest.repos.createOrUpdateFileContents({
-        owner: REPO_CONFIG.owner,
+        owner: userData.login,
         repo: REPO_CONFIG.repo,
         path: filePath,
         message: `Add event: ${eventData.title}`,
@@ -283,12 +317,12 @@ async function createPullRequest(eventData) {
         branch: branchName
     });
 
-    // Step 5: Create pull request
+    // Step 6: Create pull request from fork to upstream
     const { data: pr } = await octokit.rest.pulls.create({
         owner: REPO_CONFIG.owner,
         repo: REPO_CONFIG.repo,
         title: `Add event: ${eventData.title}`,
-        head: branchName,
+        head: `${userData.login}:${branchName}`,
         base: REPO_CONFIG.branch,
         body: `## Event Submission
 
