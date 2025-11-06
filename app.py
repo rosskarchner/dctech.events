@@ -6,7 +6,7 @@ import pytz
 import calendar
 from pathlib import Path
 from location_utils import extract_location_info, get_region_name
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, __version__ as PIL_VERSION
 import io
 
 # Load configuration
@@ -463,23 +463,34 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # Helper to draw text with emoji support
     def draw_text_with_emoji(xy, text, fill, font, emoji_font_override=None):
-        """Draw text, attempting to render emoji if present"""
-        try:
-            # Try drawing with regular font first
-            draw.text(xy, text, fill=fill, font=font)
-        except:
-            # If it fails, try with emoji font if available
-            if emoji_font_override:
-                try:
-                    draw.text(xy, text, fill=fill, font=emoji_font_override, embedded_color=True)
-                except:
-                    # Fall back to regular font without emoji
-                    # Remove emoji characters
-                    import re
-                    text_no_emoji = re.sub(r'[^\x00-\x7F]+', '', text)
-                    draw.text(xy, text_no_emoji, fill=fill, font=font)
-            else:
-                draw.text(xy, text, fill=fill, font=font)
+        """Draw text with emoji support using bundled Noto Color Emoji font"""
+        import re
+
+        # Check if text contains emoji
+        emoji_pattern = re.compile("["
+            u"\U0001F600-\U0001F64F"  # emoticons
+            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+            u"\U0001F680-\U0001F6FF"  # transport & map symbols
+            u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+            u"\U00002702-\U000027B0"
+            u"\U000024C2-\U0001F251"
+            "]+", flags=re.UNICODE)
+
+        has_emoji = bool(emoji_pattern.search(text))
+
+        # PIL 10+ supports embedded_color for color emoji fonts
+        if has_emoji and emoji_font_override:
+            try:
+                # Use emoji font with embedded_color for text containing emoji
+                # Note: This renders the entire text with the emoji font
+                draw.text(xy, text, font=emoji_font_override, fill=fill, embedded_color=True)
+                return
+            except:
+                # If embedded_color fails, fallthrough
+                pass
+
+        # Use regular font (emoji may not render but text will)
+        draw.text(xy, text, fill=fill, font=font)
 
     # Helper function to get ordinal suffix
     def get_ordinal_suffix(day):
