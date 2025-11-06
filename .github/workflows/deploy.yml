@@ -69,6 +69,8 @@ jobs:
         run: npm ci
 
       - name: Run aggregator and build site
+        env:
+          GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
         run: |
           make all
 
