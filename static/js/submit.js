@@ -47,7 +47,7 @@ function initializeAuth() {
     const error = urlParams.get('error');
 
     if (error) {
-        showError('Authentication failed: ' + error);
+        showAuthError('Authentication failed: ' + error);
         return;
     }
 
@@ -82,7 +82,7 @@ async function initializeOctokit(token) {
     } catch (error) {
         console.error('Authentication error:', error);
         sessionStorage.removeItem('github_token');
-        showError('Failed to authenticate with GitHub');
+        showAuthError('Failed to authenticate with GitHub');
     }
 }
 
@@ -125,7 +125,7 @@ function handleGitHubLogin() {
     // In production, this should go through the add.dctech.events OAuth handler
 
     if (!CONFIG.clientId) {
-        showError('GitHub OAuth is not configured. Please see the documentation for setup instructions.');
+        showAuthError('GitHub OAuth is not configured. Please see the documentation for setup instructions.');
         return;
     }
 
@@ -306,6 +306,30 @@ function slugify(text) {
         .replace(/[\s_-]+/g, '-')
         .replace(/^-+|-+$/g, '')
         .substring(0, 50); // Limit length
+}
+
+/**
+ * Show error message in the auth section (visible area)
+ */
+function showAuthError(message) {
+    const authStatus = document.getElementById('auth-status');
+
+    // Create or update error message element
+    let errorDiv = authStatus.querySelector('.auth-error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'auth-error';
+        authStatus.appendChild(errorDiv);
+    }
+
+    errorDiv.textContent = '⚠ ' + message;
+    errorDiv.style.display = 'block';
+    errorDiv.style.marginTop = 'var(--spacing-md)';
+    errorDiv.style.padding = 'var(--spacing-md)';
+    errorDiv.style.backgroundColor = '#fef2f2';
+    errorDiv.style.border = '1px solid #fca5a5';
+    errorDiv.style.borderRadius = 'var(--border-radius)';
+    errorDiv.style.color = '#991b1b';
 }
 
 /**
