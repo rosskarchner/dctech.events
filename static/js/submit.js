@@ -194,13 +194,31 @@ async function handleFormSubmit(e) {
     statusMessage.style.display = 'block';
 
     try {
+        // Convert 12-hour time to 24-hour format
+        const timeHour = document.getElementById('time-hour').value;
+        const timeMinute = document.getElementById('time-minute').value;
+        const timeAmPm = document.getElementById('time-ampm').value;
+        let time24 = '';
+
+        if (timeHour && timeMinute && timeAmPm) {
+            let hour = parseInt(timeHour);
+            if (timeAmPm === 'PM' && hour !== 12) {
+                hour += 12;
+            } else if (timeAmPm === 'AM' && hour === 12) {
+                hour = 0;
+            }
+            time24 = `${hour.toString().padStart(2, '0')}:${timeMinute}`;
+        }
+
         // Collect form data
         const formData = {
             title: document.getElementById('title').value.trim(),
             date: document.getElementById('date').value,
-            time: document.getElementById('time').value || '',
+            time: time24,
             url: document.getElementById('url').value.trim(),
             location: document.getElementById('location').value.trim() || '',
+            end_date: document.getElementById('end_date').value || '',
+            cost: document.getElementById('cost').value.trim() || '',
             submitter_link: document.getElementById('submitter_link').value.trim() || '',
             submitted_by: userData.login
         };
@@ -208,6 +226,10 @@ async function handleFormSubmit(e) {
         // Validate data
         if (!formData.title || !formData.date || !formData.url) {
             throw new Error('Please fill in all required fields');
+        }
+
+        if (!time24) {
+            throw new Error('Please select a time for the event');
         }
 
         // Create the PR
@@ -272,9 +294,8 @@ async function createPullRequest(eventData) {
 
 **Title:** ${eventData.title}
 **Date:** ${eventData.date}${eventData.time ? ' at ' + eventData.time : ''}
-**URL:** ${eventData.url}
-${eventData.location ? `**Location:** ${eventData.location}\n` : ''}
-${eventData.submitter_link ? `**Submitted by:** ${eventData.submitter_link}\n` : ''}
+${eventData.end_date ? `**End Date:** ${eventData.end_date}\n` : ''}**URL:** ${eventData.url}
+${eventData.location ? `**Location:** ${eventData.location}\n` : ''}${eventData.cost ? `**Cost:** ${eventData.cost}\n` : ''}${eventData.submitter_link ? `**Submitted by:** ${eventData.submitter_link}\n` : ''}
 
 This event was submitted via the web form by @${eventData.submitted_by}.`
     });
@@ -295,8 +316,16 @@ function generateYAML(data) {
     if (data.location) {
         yaml += `location: ${data.location}\n`;
     }
+    if (data.end_date) {
+        yaml += `end_date: '${data.end_date}'\n`;
+    }
+    if (data.cost) {
+        yaml += `cost: '${data.cost}'\n`;
+    }
     yaml += `submitted_by: ${data.submitted_by}\n`;
-    yaml += `submitter_link: '${data.submitter_link}'\n`;
+    if (data.submitter_link) {
+        yaml += `submitter_link: '${data.submitter_link}'\n`;
+    }
 
     return yaml;
 }
