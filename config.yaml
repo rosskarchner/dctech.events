@@ -14,7 +14,7 @@ location: "Washington, DC"
 max_distance_miles: 50
 
 # GitHub OAuth Configuration (for event submission)
-# Set these values or use environment variables GITHUB_CLIENT_ID and OAUTH_CALLBACK_ENDPOINT
+# Client ID is set via GITHUB_CLIENT_ID environment variable from GitHub Repository Variable
 # See OAUTH_SETUP.md for detailed setup instructions
-github_client_id: ""  # Your GitHub OAuth App Client ID
-oauth_callback_endpoint: ""  # e.g., https://add.dctech.events/oauth/callback
+github_client_id: ""  # Set via GITHUB_CLIENT_ID environment variable
+oauth_callback_endpoint: "https://add.dctech.events/oauth/callback"
