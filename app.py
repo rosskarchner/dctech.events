@@ -424,17 +424,50 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # Try to load fonts, fall back to default if not available
     try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
-        url_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
-        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
-        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 17)
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
+        url_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 19)
     except:
         title_font = ImageFont.load_default()
         url_font = ImageFont.load_default()
         day_font = ImageFont.load_default()
         event_font = ImageFont.load_default()
         small_font = ImageFont.load_default()
+
+    # Try to load emoji font for emoji support
+    emoji_font = None
+    emoji_font_event = None
+    emoji_font_day = None
+    try:
+        # NotoColorEmoji doesn't work well with PIL's text rendering
+        # Try to use it but fall back gracefully
+        emoji_font = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 52)
+        emoji_font_event = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 22)
+        emoji_font_day = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 24)
+    except:
+        pass
+
+    # Helper to draw text with emoji support
+    def draw_text_with_emoji(xy, text, fill, font, emoji_font_override=None):
+        """Draw text, attempting to render emoji if present"""
+        try:
+            # Try drawing with regular font first
+            draw.text(xy, text, fill=fill, font=font)
+        except:
+            # If it fails, try with emoji font if available
+            if emoji_font_override:
+                try:
+                    draw.text(xy, text, fill=fill, font=emoji_font_override, embedded_color=True)
+                except:
+                    # Fall back to regular font without emoji
+                    # Remove emoji characters
+                    import re
+                    text_no_emoji = re.sub(r'[^\x00-\x7F]+', '', text)
+                    draw.text(xy, text_no_emoji, fill=fill, font=font)
+            else:
+                draw.text(xy, text, fill=fill, font=font)
 
     # Helper function to get ordinal suffix
     def get_ordinal_suffix(day):
@@ -452,11 +485,11 @@ def generate_week_calendar_image(week_start, week_end, events):
     day_num = int(week_start.strftime('%-d'))
     ordinal_suffix = get_ordinal_suffix(day_num)
     title_text = f"DC Tech Events for the week of {week_start.strftime('%B %-d')}{ordinal_suffix}, {week_start.strftime('%Y')}"
-    draw.text((30, 20), title_text, fill=brand_color, font=title_font)
+    draw_text_with_emoji((30, 18), title_text, fill=brand_color, font=title_font, emoji_font_override=emoji_font)
 
     # Draw URL below in smaller text
     url_text = "dctech.events"
-    draw.text((30, 75), url_text, fill=url_color, font=url_font)
+    draw_text_with_emoji((30, 78), url_text, fill=url_color, font=url_font)
 
     # Prepare events by day
     days_data = prepare_events_by_day(events)
@@ -466,7 +499,7 @@ def generate_week_calendar_image(week_start, week_end, events):
     margin_left = 30
     margin_right = 30
     y_position = header_height + 25
-    line_height = 26
+    line_height = 28
     day_spacing = 8
     max_events_per_day = 5
     max_text_width = width - margin_left - margin_right
@@ -516,7 +549,7 @@ def generate_week_calendar_image(week_start, week_end, events):
 
             # Draw day header
             day_header = current_date.strftime('%a, %b %-d')
-            draw.text((margin_left, y_position), day_header, fill=day_color, font=day_font)
+            draw_text_with_emoji((margin_left, y_position), day_header, fill=day_color, font=day_font, emoji_font_override=emoji_font_day)
             y_position += line_height + 2
 
             # Collect all events for this day
@@ -530,7 +563,7 @@ def generate_week_calendar_image(week_start, week_end, events):
             for event in all_events:
                 if events_shown >= max_events_per_day:
                     remaining = len(all_events) - events_shown
-                    draw.text((margin_left + 15, y_position),
+                    draw_text_with_emoji((margin_left + 15, y_position),
                              f"+ {remaining} more",
                              fill=event_color, font=small_font)
                     y_position += line_height
@@ -540,8 +573,8 @@ def generate_week_calendar_image(week_start, week_end, events):
                 event_title = truncate_text(event.get('title', 'Untitled'), event_font, max_text_width - 25)
 
                 # Draw bullet and event
-                draw.text((margin_left + 5, y_position), "•", fill=brand_color, font=event_font)
-                draw.text((margin_left + 20, y_position), event_title, fill=text_color, font=event_font)
+                draw_text_with_emoji((margin_left + 5, y_position), "•", fill=brand_color, font=event_font)
+                draw_text_with_emoji((margin_left + 20, y_position), event_title, fill=text_color, font=event_font, emoji_font_override=emoji_font_event)
                 y_position += line_height
                 events_shown += 1
 
@@ -553,10 +586,10 @@ def generate_week_calendar_image(week_start, week_end, events):
     # If no events found, show message
     if days_with_events == 0:
         y_position = header_height + 100
-        draw.text((margin_left, y_position), "No events scheduled this week",
+        draw_text_with_emoji((margin_left, y_position), "No events scheduled this week",
                  fill=event_color, font=event_font)
         y_position += line_height + 10
-        draw.text((margin_left, y_position), "Check back soon or add your event!",
+        draw_text_with_emoji((margin_left, y_position), "Check back soon or add your event!",
                  fill=event_color, font=url_font)
 
     return img
