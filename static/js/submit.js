@@ -251,24 +251,25 @@ async function handleFormSubmit(e) {
  */
 async function createPullRequest(eventData) {
     // Step 1: Check if user has a fork, create one if needed
-    let fork;
+    let forkExists = false;
     try {
         // Try to get the existing fork
-        const { data: existingFork } = await octokit.rest.repos.get({
+        await octokit.rest.repos.get({
             owner: userData.login,
             repo: REPO_CONFIG.repo
         });
-        fork = existingFork;
+        forkExists = true;
     } catch (error) {
         if (error.status === 404) {
             // Fork doesn't exist, create it
-            const { data: newFork } = await octokit.rest.repos.createFork({
+            await octokit.rest.repos.createFork({
                 owner: REPO_CONFIG.owner,
                 repo: REPO_CONFIG.repo
             });
-            fork = newFork;
             
-            // Wait a moment for fork to be ready
+            // Wait for fork to be ready. GitHub's fork creation is async.
+            // A more robust solution would poll the fork status, but a 3-second
+            // delay is sufficient for most cases and keeps the implementation simple.
             await new Promise(resolve => setTimeout(resolve, 3000));
         } else {
             throw error;
