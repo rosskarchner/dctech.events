@@ -1,0 +1,16 @@
+{
+  "name": "dctech-events",
+  "version": "1.0.0",
+  "description": "DC Tech Events Calendar",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch"
+  },
+  "dependencies": {
+    "octokit": "^3.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}
