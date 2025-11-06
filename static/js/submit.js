@@ -262,6 +262,9 @@ async function createPullRequest(eventData) {
     } catch (error) {
         if (error.status === 404) {
             // Fork doesn't exist, create it
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = 'Creating a fork of the repository...';
+            
             await octokit.rest.repos.createFork({
                 owner: REPO_CONFIG.owner,
                 repo: REPO_CONFIG.repo
@@ -270,7 +273,10 @@ async function createPullRequest(eventData) {
             // Wait for fork to be ready. GitHub's fork creation is async.
             // A more robust solution would poll the fork status, but a 3-second
             // delay is sufficient for most cases and keeps the implementation simple.
+            statusMessage.textContent = 'Waiting for fork to be ready...';
             await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            statusMessage.textContent = 'Creating pull request...';
         } else {
             throw error;
         }
