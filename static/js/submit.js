@@ -24,10 +24,18 @@ let octokit = null;
 let userData = null;
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
+function initialize() {
     initializeAuth();
     setupEventListeners();
-});
+}
+
+// Handle both cases: DOM already loaded or still loading
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+} else {
+    // DOM already loaded, initialize immediately
+    initialize();
+}
 
 /**
  * Initialize authentication state
@@ -82,13 +90,31 @@ async function initializeOctokit(token) {
  * Set up event listeners
  */
 function setupEventListeners() {
-    document.getElementById('github-login').addEventListener('click', handleGitHubLogin);
-    document.getElementById('event-form').addEventListener('submit', handleFormSubmit);
-    document.getElementById('cancel-btn').addEventListener('click', resetForm);
-    document.getElementById('submit-another')?.addEventListener('click', () => {
-        document.getElementById('success-message').style.display = 'none';
-        resetForm();
-    });
+    const githubLoginBtn = document.getElementById('github-login');
+    const eventForm = document.getElementById('event-form');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const submitAnotherBtn = document.getElementById('submit-another');
+
+    if (githubLoginBtn) {
+        githubLoginBtn.addEventListener('click', handleGitHubLogin);
+    } else {
+        console.error('GitHub login button not found');
+    }
+
+    if (eventForm) {
+        eventForm.addEventListener('submit', handleFormSubmit);
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', resetForm);
+    }
+
+    if (submitAnotherBtn) {
+        submitAnotherBtn.addEventListener('click', () => {
+            document.getElementById('success-message').style.display = 'none';
+            resetForm();
+        });
+    }
 }
 
 /**
