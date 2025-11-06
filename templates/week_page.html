@@ -27,19 +27,7 @@
 <div class="week-container">
     <header class="week-header">
         <h1>Events for Week of {{ week_start_formatted }}</h1>
-        <div class="week-navigation">
-            {% if show_prev_week %}
-            <a href="/week/{{ prev_week }}/" class="nav-button">&laquo; Previous Week</a>
-            {% else %}
-            <span class="nav-button disabled">&laquo; Previous Week</span>
-            {% endif %}
-            <a href="/" class="nav-button">Current Week</a>
-            {% if show_next_week %}
-            <a href="/week/{{ next_week }}/" class="nav-button">Next Week &raquo;</a>
-            {% else %}
-            <span class="nav-button disabled">Next Week &raquo;</span>
-            {% endif %}
-        </div>
+        <p><a href="/">&larr; Back to full calendar</a></p>
     </header>
 
     <section class="events-section">
