@@ -424,40 +424,39 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # Try to load fonts, fall back to default if not available
     try:
-        brand_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
-        url_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-        week_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
-        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
-        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 17)
-        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 15)
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
+        url_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
+        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 17)
     except:
-        brand_font = ImageFont.load_default()
+        title_font = ImageFont.load_default()
         url_font = ImageFont.load_default()
-        week_font = ImageFont.load_default()
         day_font = ImageFont.load_default()
         event_font = ImageFont.load_default()
         small_font = ImageFont.load_default()
 
+    # Helper function to get ordinal suffix
+    def get_ordinal_suffix(day):
+        if 10 <= day % 100 <= 20:
+            suffix = 'th'
+        else:
+            suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+        return suffix
+
     # Draw header background bar
-    header_height = 100
+    header_height = 110
     draw.rectangle([0, 0, width, header_height], fill=accent_bg)
 
-    # Draw brand name prominently
-    brand_text = "DC Tech Events"
-    draw.text((30, 22), brand_text, fill=brand_color, font=brand_font)
+    # Draw combined title
+    day_num = int(week_start.strftime('%-d'))
+    ordinal_suffix = get_ordinal_suffix(day_num)
+    title_text = f"DC Tech Events for the week of {week_start.strftime('%B %-d')}{ordinal_suffix}, {week_start.strftime('%Y')}"
+    draw.text((30, 20), title_text, fill=brand_color, font=title_font)
 
-    # Draw URL below brand
+    # Draw URL below in smaller text
     url_text = "dctech.events"
-    draw.text((32, 70), url_text, fill=url_color, font=url_font)
-
-    # Draw week info on right side of header
-    week_text = f"{week_start.strftime('%b %-d')} - {week_end.strftime('%b %-d, %Y')}"
-    try:
-        draw.text((width - 30, 42), week_text, fill=day_color, font=week_font, anchor="rm")
-    except TypeError:
-        bbox = draw.textbbox((0, 0), week_text, font=week_font)
-        text_width = bbox[2] - bbox[0]
-        draw.text((width - 30 - text_width, 42), week_text, fill=day_color, font=week_font)
+    draw.text((30, 75), url_text, fill=url_color, font=url_font)
 
     # Prepare events by day
     days_data = prepare_events_by_day(events)
@@ -467,8 +466,8 @@ def generate_week_calendar_image(week_start, week_end, events):
     margin_left = 30
     margin_right = 30
     y_position = header_height + 25
-    line_height = 23
-    day_spacing = 6
+    line_height = 26
+    day_spacing = 8
     max_events_per_day = 5
     max_text_width = width - margin_left - margin_right
 
@@ -553,12 +552,12 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # If no events found, show message
     if days_with_events == 0:
-        y_position = header_height + 120
+        y_position = header_height + 100
         draw.text((margin_left, y_position), "No events scheduled this week",
-                 fill=event_color, font=day_font)
-        y_position += line_height + 15
+                 fill=event_color, font=event_font)
+        y_position += line_height + 10
         draw.text((margin_left, y_position), "Check back soon or add your event!",
-                 fill=event_color, font=small_font)
+                 fill=event_color, font=url_font)
 
     return img
 
