@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="submit-container">
-    <h2>Submit an Event</h2>
+    <h2>Submit events to DC Tech Events</h2>
 
     <div id="auth-section">
         <p>To submit an event, you'll need to sign in with your GitHub account. This allows us to create a pull request on your behalf to add your event to the calendar.</p>
@@ -21,45 +21,90 @@
     </div>
 
     <form id="event-form" style="display: none;">
-        <div class="form-group">
-            <label for="title">Event Title *</label>
-            <input type="text" id="title" name="title" required maxlength="200"
-                   placeholder="e.g., Python User Group Monthly Meetup">
-            <small>The name of your event</small>
-        </div>
+        <div class="event-section">
+            <h3>Event Details</h3>
 
-        <div class="form-group">
-            <label for="date">Date *</label>
-            <input type="date" id="date" name="date" required>
-            <small>When is the event happening?</small>
-        </div>
+            <div class="form-group">
+                <label for="title">Event Title <span class="required">*</span></label>
+                <input type="text" id="title" name="title" required maxlength="200"
+                       placeholder="e.g., Python User Group Monthly Meetup">
+            </div>
 
-        <div class="form-group">
-            <label for="time">Time</label>
-            <input type="time" id="time" name="time"
-                   placeholder="18:00">
-            <small>Event start time in 24-hour format (optional)</small>
-        </div>
+            <div class="form-group">
+                <label for="url">Event URL <span class="required">*</span></label>
+                <input type="url" id="url" name="url" required
+                       placeholder="https://example.com/event">
+            </div>
 
-        <div class="form-group">
-            <label for="url">Event URL *</label>
-            <input type="url" id="url" name="url" required
-                   placeholder="https://example.com/event">
-            <small>Link to registration page or event details</small>
-        </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">Date <span class="required">*</span></label>
+                    <input type="date" id="date" name="date" required>
+                </div>
 
-        <div class="form-group">
-            <label for="location">Location</label>
-            <input type="text" id="location" name="location" maxlength="200"
-                   placeholder="123 Main St, Washington, DC 20001">
-            <small>Event venue address (optional, but recommended)</small>
-        </div>
+                <div class="form-group">
+                    <label for="time-hour">Time <span class="required">*</span></label>
+                    <div class="time-selector">
+                        <select id="time-hour" name="time-hour" required>
+                            <option value="">Hour</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                        </select>
+                        <select id="time-minute" name="time-minute" required>
+                            <option value="">Min</option>
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                        <select id="time-ampm" name="time-ampm" required>
+                            <option value="">AM/PM</option>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
-        <div class="form-group">
-            <label for="submitter_link">Your Link</label>
-            <input type="url" id="submitter_link" name="submitter_link"
-                   placeholder="https://yoursite.com">
-            <small>Optional: Link to your website or social profile</small>
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" maxlength="200"
+                       placeholder="123 Main St, Washington, DC 20001">
+            </div>
+
+            <details class="optional-details">
+                <summary>Optional Details</summary>
+                <div class="optional-fields">
+                    <div class="form-group">
+                        <label for="end_date">End Date</label>
+                        <input type="date" id="end_date" name="end_date">
+                        <small>For multi-day events</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cost">Cost</label>
+                        <input type="text" id="cost" name="cost" maxlength="100"
+                               placeholder="e.g., Free, $10, $5-$15">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="submitter_link">Your Link</label>
+                        <input type="url" id="submitter_link" name="submitter_link"
+                               placeholder="https://yoursite.com">
+                        <small>Link to your website or social profile</small>
+                    </div>
+                </div>
+            </details>
         </div>
 
         <div id="status-message" class="status-message"></div>
@@ -87,8 +132,37 @@
 
 <style>
 .submit-container {
-    max-width: 600px;
+    max-width: 800px;
     margin: 0 auto;
+}
+
+.submit-container h2 {
+    margin-bottom: var(--spacing-lg);
+}
+
+.event-section {
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.event-section h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    font-size: 1.25rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+}
+
+@media (max-width: 640px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .form-group {
@@ -102,8 +176,14 @@
     color: var(--color-text);
 }
 
+.form-group label .required {
+    color: #dc2626;
+    font-weight: bold;
+}
+
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
     width: 100%;
     padding: var(--spacing-sm);
     border: 1px solid var(--color-border);
@@ -114,7 +194,8 @@
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -125,6 +206,37 @@
     margin-top: var(--spacing-xs);
     color: var(--color-text-light);
     font-size: 0.875rem;
+}
+
+.time-selector {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.time-selector select {
+    flex: 1;
+}
+
+.optional-details {
+    margin-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-lg);
+}
+
+.optional-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-primary);
+    padding: var(--spacing-sm) 0;
+    list-style-position: inside;
+}
+
+.optional-details summary:hover {
+    color: var(--color-primary-hover);
+}
+
+.optional-fields {
+    padding-top: var(--spacing-lg);
 }
 
 .btn {
