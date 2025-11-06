@@ -422,13 +422,27 @@ def generate_week_calendar_image(week_start, week_end, events):
     img = Image.new('RGB', (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
+    # Get bundled font paths
+    font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
+    dejavu_bold = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
+    dejavu_regular = os.path.join(font_dir, 'DejaVuSans.ttf')
+    noto_emoji = os.path.join(font_dir, 'NotoColorEmoji.ttf')
+
+    # Fallback to system fonts if bundled fonts not found
+    if not os.path.exists(dejavu_bold):
+        dejavu_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    if not os.path.exists(dejavu_regular):
+        dejavu_regular = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    if not os.path.exists(noto_emoji):
+        noto_emoji = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
+
     # Try to load fonts, fall back to default if not available
     try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
-        url_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-        day_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
-        event_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
-        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 19)
+        title_font = ImageFont.truetype(dejavu_bold, 58)
+        url_font = ImageFont.truetype(dejavu_regular, 22)
+        day_font = ImageFont.truetype(dejavu_bold, 26)
+        event_font = ImageFont.truetype(dejavu_regular, 24)
+        small_font = ImageFont.truetype(dejavu_regular, 20)
     except:
         title_font = ImageFont.load_default()
         url_font = ImageFont.load_default()
@@ -441,11 +455,9 @@ def generate_week_calendar_image(week_start, week_end, events):
     emoji_font_event = None
     emoji_font_day = None
     try:
-        # NotoColorEmoji doesn't work well with PIL's text rendering
-        # Try to use it but fall back gracefully
-        emoji_font = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 52)
-        emoji_font_event = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 22)
-        emoji_font_day = ImageFont.truetype("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", 24)
+        emoji_font = ImageFont.truetype(noto_emoji, 58)
+        emoji_font_event = ImageFont.truetype(noto_emoji, 24)
+        emoji_font_day = ImageFont.truetype(noto_emoji, 26)
     except:
         pass
 
@@ -477,19 +489,19 @@ def generate_week_calendar_image(week_start, week_end, events):
             suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
         return suffix
 
-    # Draw header background bar
-    header_height = 110
+    # Draw header background bar (smaller)
+    header_height = 95
     draw.rectangle([0, 0, width, header_height], fill=accent_bg)
 
     # Draw combined title
     day_num = int(week_start.strftime('%-d'))
     ordinal_suffix = get_ordinal_suffix(day_num)
     title_text = f"DC Tech Events for the week of {week_start.strftime('%B %-d')}{ordinal_suffix}, {week_start.strftime('%Y')}"
-    draw_text_with_emoji((30, 18), title_text, fill=brand_color, font=title_font, emoji_font_override=emoji_font)
+    draw_text_with_emoji((30, 12), title_text, fill=brand_color, font=title_font, emoji_font_override=emoji_font)
 
     # Draw URL below in smaller text
     url_text = "dctech.events"
-    draw_text_with_emoji((30, 78), url_text, fill=url_color, font=url_font)
+    draw_text_with_emoji((30, 72), url_text, fill=url_color, font=url_font)
 
     # Prepare events by day
     days_data = prepare_events_by_day(events)
@@ -499,7 +511,7 @@ def generate_week_calendar_image(week_start, week_end, events):
     margin_left = 30
     margin_right = 30
     y_position = header_height + 25
-    line_height = 28
+    line_height = 30
     day_spacing = 8
     max_events_per_day = 5
     max_text_width = width - margin_left - margin_right
