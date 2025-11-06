@@ -129,12 +129,17 @@ function handleGitHubLogin() {
         return;
     }
 
+    if (!CONFIG.callbackEndpoint) {
+        showAuthError('OAuth callback endpoint is not configured. Please see the documentation for setup instructions.');
+        return;
+    }
+
     const state = generateRandomState();
     sessionStorage.setItem('oauth_state', state);
 
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', CONFIG.clientId);
-    authUrl.searchParams.set('redirect_uri', CONFIG.redirectUri);
+    authUrl.searchParams.set('redirect_uri', CONFIG.callbackEndpoint);
     authUrl.searchParams.set('scope', CONFIG.scope);
     authUrl.searchParams.set('state', state);
 
