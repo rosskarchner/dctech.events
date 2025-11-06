@@ -224,7 +224,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/@octokit/core@5.0.0/dist/bundle.min.js"></script>
 <script>
     // Pass configuration from Flask to JavaScript
     window.GITHUB_CONFIG = {
@@ -232,5 +231,5 @@
         callbackEndpoint: '{{ oauth_callback_endpoint }}'
     };
 </script>
-<script src="/static/js/submit.js"></script>
+<script type="module" src="/static/js/submit.js"></script>
 {% endblock %}

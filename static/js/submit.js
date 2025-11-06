@@ -1,3 +1,6 @@
+// Import Octokit from CDN
+import { Octokit } from 'https://cdn.skypack.dev/octokit@3';
+
 // GitHub OAuth Configuration
 // These values are passed from the Flask template via window.GITHUB_CONFIG
 const CONFIG = {
@@ -60,7 +63,7 @@ function initializeAuth() {
  */
 async function initializeOctokit(token) {
     try {
-        octokit = new Octokit.Octokit({ auth: token });
+        octokit = new Octokit({ auth: token });
 
         // Get user data
         const { data } = await octokit.rest.users.getAuthenticated();
