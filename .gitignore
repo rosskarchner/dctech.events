@@ -33,6 +33,7 @@ _cache/
 _data/*.yaml
 _data/.updated
 _data
+tmp/
 
 # IDE
 .idea/
