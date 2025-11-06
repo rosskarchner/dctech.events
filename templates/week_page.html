@@ -11,16 +11,6 @@
 {% block twitter_description %}{{ stats.upcoming_events }} tech events in the DC area for the week of {{ week_start_formatted }}{% endblock %}
 
 {% block extra_head %}
-<!-- OG Image -->
-<meta property="og:image" content="{{ og_image_url }}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Calendar showing {{ stats.upcoming_events }} events for the week of {{ week_start_formatted }}">
-
-<!-- Twitter Card -->
-<meta name="twitter:image" content="{{ og_image_url }}">
-<meta name="twitter:image:alt" content="Calendar showing {{ stats.upcoming_events }} events for the week of {{ week_start_formatted }}">
-
 <!-- JSON-LD Structured Data -->
 <script type="application/ld+json">
 {

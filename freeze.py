@@ -46,12 +46,13 @@ def week_page():
     for week_id in get_upcoming_weeks(12):
         yield {'week_id': week_id}
 
-@freezer.register_generator
-def week_image():
-    """Generate URLs for week calendar images"""
-    # Generate images for 12 weeks ahead
-    for week_id in get_upcoming_weeks(12):
-        yield {'week_id': week_id}
+# Image generation temporarily disabled
+# @freezer.register_generator
+# def week_image():
+#     """Generate URLs for week calendar images"""
+#     # Generate images for 12 weeks ahead
+#     for week_id in get_upcoming_weeks(12):
+#         yield {'week_id': week_id}
 
 if __name__ == '__main__':
     freezer.freeze()

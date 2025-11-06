@@ -714,9 +714,6 @@ def week_page(week_id):
     # Get base URL
     base_url = config.get('base_url', 'https://dctech.events')
 
-    # Generate the OG image URL
-    og_image_url = f"{base_url}/week/{week_id}/image.png"
-
     return render_template('week_page.html',
                           days=days,
                           stats=stats,
@@ -726,31 +723,31 @@ def week_page(week_id):
                           week_start_formatted=week_start_formatted,
                           prev_week=prev_week,
                           next_week=next_week,
-                          og_image_url=og_image_url,
                           base_url=base_url)
 
-@app.route("/week/<week_id>/image.png")
-def week_image(week_id):
-    """Generate and serve the calendar image for a specific week"""
-    try:
-        year, week_num = parse_week_identifier(week_id)
-        week_start, week_end = get_iso_week_dates(year, week_num)
-    except:
-        return "Invalid week identifier", 404
-
-    # Get all events and filter by week
-    events = get_events()
-    week_events = filter_events_by_week(events, week_start, week_end)
-
-    # Generate the image
-    img = generate_week_calendar_image(week_start, week_end, week_events)
-
-    # Convert to bytes
-    img_io = io.BytesIO()
-    img.save(img_io, 'PNG')
-    img_io.seek(0)
-
-    return Response(img_io.getvalue(), mimetype='image/png')
+# Image generation temporarily disabled
+# @app.route("/week/<week_id>/image.png")
+# def week_image(week_id):
+#     """Generate and serve the calendar image for a specific week"""
+#     try:
+#         year, week_num = parse_week_identifier(week_id)
+#         week_start, week_end = get_iso_week_dates(year, week_num)
+#     except:
+#         return "Invalid week identifier", 404
+#
+#     # Get all events and filter by week
+#     events = get_events()
+#     week_events = filter_events_by_week(events, week_start, week_end)
+#
+#     # Generate the image
+#     img = generate_week_calendar_image(week_start, week_end, week_events)
+#
+#     # Convert to bytes
+#     img_io = io.BytesIO()
+#     img.save(img_io, 'PNG')
+#     img_io.seek(0)
+#
+#     return Response(img_io.getvalue(), mimetype='image/png')
 
 # Month view route removed - all events are now in upcoming.yaml
 
