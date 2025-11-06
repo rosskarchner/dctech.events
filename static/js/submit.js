@@ -161,6 +161,9 @@ function showAuthenticatedState() {
     document.getElementById('sign-out').addEventListener('click', handleSignOut);
     document.getElementById('event-form').style.display = 'block';
     document.getElementById('auth-section').querySelector('p').style.display = 'none';
+    
+    // Set default date and time
+    setDefaultDateTime();
 }
 
 /**
@@ -423,12 +426,38 @@ function showSuccess(prUrl) {
 }
 
 /**
+ * Set default date and time to 6:30 PM the next day
+ */
+function setDefaultDateTime() {
+    // Get tomorrow's date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Format date as YYYY-MM-DD for input field
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
+    // Set the date field
+    document.getElementById('date').value = dateString;
+    
+    // Set time to 6:30 PM
+    document.getElementById('time-hour').value = '6';
+    document.getElementById('time-minute').value = '30';
+    document.getElementById('time-ampm').value = 'PM';
+}
+
+/**
  * Reset form
  */
 function resetForm() {
     document.getElementById('event-form').reset();
     document.getElementById('status-message').style.display = 'none';
     document.getElementById('event-form').style.display = 'block';
+    
+    // Set default date and time after reset
+    setDefaultDateTime();
 }
 
 /**
