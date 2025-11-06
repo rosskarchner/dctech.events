@@ -1,5 +1,5 @@
 // Import Octokit from CDN
-import { Octokit } from 'https://cdn.skypack.dev/octokit@3';
+import { Octokit } from 'https://esm.sh/octokit@3';
 
 // GitHub OAuth Configuration
 // These values are passed from the Flask template via window.GITHUB_CONFIG
