@@ -705,6 +705,23 @@ def week_page(week_id):
     prev_week = get_week_identifier(prev_week_date)
     next_week = get_week_identifier(next_week_date)
 
+    # Get current week to check if we're in the past
+    current_week_id = get_week_identifier(date.today())
+
+    # Check if previous week is in the past (before current week)
+    show_prev_week = prev_week >= current_week_id
+
+    # Check if previous week has events (only if not in past)
+    if show_prev_week:
+        prev_week_start, prev_week_end = get_iso_week_dates(*parse_week_identifier(prev_week))
+        prev_week_events = filter_events_by_week(events, prev_week_start, prev_week_end)
+        show_prev_week = len(prev_week_events) > 0
+
+    # Check if next week has events
+    next_week_start, next_week_end = get_iso_week_dates(*parse_week_identifier(next_week))
+    next_week_events = filter_events_by_week(events, next_week_start, next_week_end)
+    show_next_week = len(next_week_events) > 0
+
     # Format week start for display
     week_start_formatted = week_start.strftime('%B %-d, %Y')
 
@@ -723,6 +740,8 @@ def week_page(week_id):
                           week_start_formatted=week_start_formatted,
                           prev_week=prev_week,
                           next_week=next_week,
+                          show_prev_week=show_prev_week,
+                          show_next_week=show_next_week,
                           base_url=base_url)
 
 # Image generation temporarily disabled
