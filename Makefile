@@ -1,7 +1,11 @@
-.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze validate validate-report
+.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze js-build validate validate-report
 
 # Default target
-all: refresh-calendars generate-month-data freeze
+all: js-build refresh-calendars generate-month-data freeze
+
+# Build JavaScript bundles
+js-build:
+	npm run build
 
 # Always run refresh-calendars by making it .PHONY and a prerequisite for generate-month-data
 refresh-calendars:
@@ -24,6 +28,7 @@ clean:
 	rm -rf build/
 	rm -rf _data/
 	rm -rf _cache/
+	rm -rf static/js/dist/
 
 clean-all: clean
 	rm -rf _cache/
