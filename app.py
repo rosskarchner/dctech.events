@@ -438,11 +438,11 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     # Try to load fonts, fall back to default if not available
     try:
-        title_font = ImageFont.truetype(dejavu_bold, 58)
-        url_font = ImageFont.truetype(dejavu_regular, 22)
-        day_font = ImageFont.truetype(dejavu_bold, 26)
-        event_font = ImageFont.truetype(dejavu_regular, 24)
-        small_font = ImageFont.truetype(dejavu_regular, 20)
+        title_font = ImageFont.truetype(dejavu_bold, 50)
+        url_font = ImageFont.truetype(dejavu_regular, 20)
+        day_font = ImageFont.truetype(dejavu_bold, 22)
+        event_font = ImageFont.truetype(dejavu_regular, 20)
+        small_font = ImageFont.truetype(dejavu_regular, 17)
     except:
         title_font = ImageFont.load_default()
         url_font = ImageFont.load_default()
@@ -455,9 +455,9 @@ def generate_week_calendar_image(week_start, week_end, events):
     emoji_font_event = None
     emoji_font_day = None
     try:
-        emoji_font = ImageFont.truetype(noto_emoji, 58)
-        emoji_font_event = ImageFont.truetype(noto_emoji, 24)
-        emoji_font_day = ImageFont.truetype(noto_emoji, 26)
+        emoji_font = ImageFont.truetype(noto_emoji, 50)
+        emoji_font_event = ImageFont.truetype(noto_emoji, 20)
+        emoji_font_day = ImageFont.truetype(noto_emoji, 22)
     except:
         pass
 
@@ -489,32 +489,70 @@ def generate_week_calendar_image(week_start, week_end, events):
             suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
         return suffix
 
-    # Draw header background bar (smaller)
-    header_height = 95
+    # Draw header background bar
+    header_height = 90
     draw.rectangle([0, 0, width, header_height], fill=accent_bg)
 
     # Draw combined title
     day_num = int(week_start.strftime('%-d'))
     ordinal_suffix = get_ordinal_suffix(day_num)
     title_text = f"DC Tech Events for the week of {week_start.strftime('%B %-d')}{ordinal_suffix}, {week_start.strftime('%Y')}"
-    draw_text_with_emoji((30, 12), title_text, fill=brand_color, font=title_font, emoji_font_override=emoji_font)
+    draw_text_with_emoji((30, 15), title_text, fill=brand_color, font=title_font, emoji_font_override=emoji_font)
 
     # Draw URL below in smaller text
     url_text = "dctech.events"
-    draw_text_with_emoji((30, 72), url_text, fill=url_color, font=url_font)
+    draw_text_with_emoji((30, 68), url_text, fill=url_color, font=url_font)
 
     # Prepare events by day
     days_data = prepare_events_by_day(events)
     events_by_date = {day['date']: day for day in days_data}
 
-    # Layout configuration - use space more efficiently
+    # Calculate how many events we have and determine layout
+    total_events = sum(
+        len([e for ts in day['time_slots'] for e in ts['events']])
+        for day in days_data if day.get('has_events', False)
+    )
+    days_with_events_count = sum(1 for day in days_data if day.get('has_events', False))
+
+    # Available vertical space
+    available_height = height - header_height - 40  # 40px margin at bottom
+
+    # Estimate space needed per event and day header
+    base_day_header_space = 32
+    base_event_space = 28
+    base_day_spacing = 10
+
+    # Calculate if we need two columns
+    estimated_space_needed = (days_with_events_count * (base_day_header_space + base_day_spacing)) + (total_events * base_event_space)
+    use_two_columns = estimated_space_needed > available_height
+
+    # Adjust spacing and max events based on layout
+    if use_two_columns:
+        max_events_per_day = 4
+        line_height = 26
+        day_spacing = 6
+    else:
+        # Calculate dynamic spacing for single column
+        if estimated_space_needed > available_height:
+            # Need to compress
+            scale_factor = available_height / estimated_space_needed
+            line_height = max(22, int(base_event_space * scale_factor))
+            day_spacing = max(4, int(base_day_spacing * scale_factor))
+            max_events_per_day = 3
+        else:
+            line_height = 28
+            day_spacing = 8
+            max_events_per_day = 5
+
+    # Layout configuration
     margin_left = 30
     margin_right = 30
-    y_position = header_height + 25
-    line_height = 30
-    day_spacing = 8
-    max_events_per_day = 5
+    y_position = header_height + 20
     max_text_width = width - margin_left - margin_right
+
+    if use_two_columns:
+        column_width = (width - 3 * margin_left) // 2
+        max_text_width = column_width
 
     # Helper function to truncate text
     def truncate_text(text, font, max_width):
@@ -534,11 +572,12 @@ def generate_week_calendar_image(week_start, week_end, events):
     current_date = week_start
     days_with_events = 0
 
-    # Use two columns if there are many events
-    column_width = (width - 3 * margin_left) // 2
-    left_column_x = margin_left
-    right_column_x = margin_left * 2 + column_width
-    max_left_column_y = header_height + 25
+    # Two-column setup if needed
+    if use_two_columns:
+        left_column_x = 30
+        right_column_x = 30 * 2 + column_width
+        initial_y = y_position
+        in_left_column = True
 
     for i in range(7):
         date_key = current_date.strftime('%Y-%m-%d')
@@ -548,15 +587,18 @@ def generate_week_calendar_image(week_start, week_end, events):
             days_with_events += 1
 
             # Check if we need to switch to right column or are out of space
-            if y_position > height - 60:
-                if left_column_x == margin_left:
+            bottom_threshold = height - 50
+            if y_position > bottom_threshold:
+                if use_two_columns and in_left_column:
                     # Switch to right column
-                    y_position = max_left_column_y
+                    y_position = initial_y
                     margin_left = right_column_x
                     max_text_width = column_width
+                    in_left_column = False
                 else:
-                    # Out of space in both columns
-                    draw.text((margin_left, y_position), "...", fill=event_color, font=event_font)
+                    # Out of space - truncate remaining
+                    if y_position < height - 30:
+                        draw_text_with_emoji((margin_left, y_position), "...", fill=event_color, font=small_font)
                     break
 
             # Draw day header
@@ -573,6 +615,16 @@ def generate_week_calendar_image(week_start, week_end, events):
             # Draw events (limit to max_events_per_day)
             events_shown = 0
             for event in all_events:
+                # Check if we have space for another event
+                if y_position + line_height > bottom_threshold:
+                    if events_shown < len(all_events):
+                        remaining = len(all_events) - events_shown
+                        if y_position < height - 30:
+                            draw_text_with_emoji((margin_left + 15, y_position),
+                                     f"+ {remaining} more",
+                                     fill=event_color, font=small_font)
+                    break
+
                 if events_shown >= max_events_per_day:
                     remaining = len(all_events) - events_shown
                     draw_text_with_emoji((margin_left + 15, y_position),
