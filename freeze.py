@@ -46,6 +46,11 @@ def week_page():
     for week_id in get_upcoming_weeks(12):
         yield {'week_id': week_id}
 
+@freezer.register_generator
+def submit():
+    """Generate the event submission page"""
+    yield {}
+
 # Image generation temporarily disabled
 # @freezer.register_generator
 # def week_image():

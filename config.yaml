@@ -6,8 +6,15 @@ tagline: Technology conferences and meetups in and around Washington, DC
 base_url: https://dctech.events
 add_events_link: https://add.dctech.events/dctech
 newsletter_signup_link: https://newsletter.dctech.events/
+
 # Timezone for event display and processing
 timezone: "US/Eastern"
 
 location: "Washington, DC"
 max_distance_miles: 50
+
+# GitHub OAuth Configuration (for event submission)
+# Set these values or use environment variables GITHUB_CLIENT_ID and OAUTH_CALLBACK_ENDPOINT
+# See OAUTH_SETUP.md for detailed setup instructions
+github_client_id: ""  # Your GitHub OAuth App Client ID
+oauth_callback_endpoint: ""  # e.g., https://add.dctech.events/oauth/callback
