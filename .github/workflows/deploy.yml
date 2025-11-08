@@ -70,7 +70,7 @@ jobs:
 
       - name: Run aggregator and build site
         env:
-          GITHUB_CLIENT_ID: ${{ vars.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
         run: |
           make all
 
