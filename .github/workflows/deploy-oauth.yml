@@ -46,13 +46,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Deploy GitHub OAuth secret to Secrets Manager
-        working-directory: oauth-endpoint
-        env:
-          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_OAUTH_CLIENT_SECRET }}
-        run: |
-          python deploy_secrets.py
-
       - name: Deploy Chalice application
         working-directory: oauth-endpoint
         run: |

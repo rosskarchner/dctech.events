@@ -70,7 +70,8 @@ See [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) for complete documentation on:
 Quick reference - Required GitHub Secrets:
 - `AWS_ACCESS_KEY_ID` - AWS access key for deployment
 - `AWS_SECRET_ACCESS_KEY` - AWS secret access key
-- `GITHUB_OAUTH_CLIENT_SECRET` - GitHub OAuth client secret
+
+**Note**: The GitHub OAuth client secret is stored in AWS Secrets Manager and is not managed via the GitHub Actions workflow.
 
 ## Local Development
 

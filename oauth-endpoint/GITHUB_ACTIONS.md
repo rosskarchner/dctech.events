@@ -37,13 +37,22 @@ Configure these secrets in your repository settings at `Settings > Secrets and v
   2. Copy the Secret Access Key (you can only see this once!)
   3. Store it securely - if lost, you'll need to create a new access key
 
-### 3. `GITHUB_OAUTH_CLIENT_SECRET`
-- **Description**: GitHub OAuth App client secret
-- **Usage**: Stored in AWS Secrets Manager and used by the Lambda function for OAuth token exchange
-- **How to obtain**:
-  1. Go to GitHub Settings > Developer Settings > OAuth Apps
-  2. Find your `dctech.events Event Submission` app
-  3. Copy the Client Secret (or generate a new one if needed)
+## GitHub OAuth Client Secret (Managed Separately)
+
+The GitHub OAuth client secret is **NOT** deployed via this workflow. It is stored in AWS Secrets Manager at `dctech-events/github-oauth-secret` and should be managed manually.
+
+To update the secret manually:
+```bash
+cd oauth-endpoint
+python deploy_secrets.py "your_github_client_secret_here"
+```
+
+Or use the AWS CLI:
+```bash
+aws secretsmanager update-secret \
+  --secret-id dctech-events/github-oauth-secret \
+  --secret-string "your_github_client_secret_here"
+```
 
 ## Required IAM Permissions
 
@@ -160,8 +169,8 @@ The deployment workflow performs the following steps:
 3. **Cache dependencies**: Caches pip dependencies for faster builds
 4. **Install dependencies**: Installs requirements and AWS CLI
 5. **Configure AWS credentials**: Sets up AWS authentication using secrets
-6. **Deploy secret**: Runs `deploy_secrets.py` to create/update the GitHub OAuth client secret in AWS Secrets Manager
-7. **Deploy Chalice app**: Runs `chalice deploy --stage PROD` to deploy the Lambda function and API Gateway
+6. **Deploy Chalice app**: Runs `chalice deploy --stage PROD` to deploy the Lambda function and API Gateway
+7. **Get deployment info**: Outputs the API Gateway endpoint URL
 
 ## Deployment Output
 
@@ -184,11 +193,6 @@ To verify the deployment was successful:
 ### "AccessDenied" errors during deployment
 - Check that the AWS IAM user has all required permissions listed above
 - Verify the AWS credentials in GitHub Secrets are correct and not expired
-
-### "Secret already exists" errors
-- This is normal - the deployment script updates existing secrets
-- If you see errors, the secret may be in a pending deletion state
-- Wait for the deletion to complete (7-30 days) or use a different secret name
 
 ### Deployment succeeds but OAuth doesn't work
 - Check that the GitHub OAuth client secret was deployed correctly:
@@ -216,12 +220,16 @@ export AWS_DEFAULT_REGION=us-east-1
 # 2. Navigate to oauth-endpoint directory
 cd oauth-endpoint
 
-# 3. Deploy the secret
+# 3. Deploy the Chalice app
+chalice deploy --stage PROD
+```
+
+**Note**: The GitHub OAuth secret is managed separately. If you need to update it:
+
+```bash
+# Only needed when initially setting up or rotating the secret
 export GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
 python deploy_secrets.py
-
-# 4. Deploy the Chalice app
-chalice deploy --stage PROD
 ```
 
 ## Security Best Practices
