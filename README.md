@@ -7,6 +7,7 @@ A static site generator for aggregating and displaying tech events in the DC are
 - `_groups/`: YAML files describing each tech group
 - `_single_events/`: YAML files for events that don't come from groups
 - `app.py`: Flask application for rendering the site
+- `oauth-endpoint/`: AWS Lambda function for GitHub OAuth callback (deployed separately)
 
 ## Local Development
 
@@ -85,3 +86,5 @@ location: Event location
 ## Deployment
 
 The site is automatically deployed to GitHub Pages when changes are pushed to the main branch.
+
+The OAuth endpoint (`oauth-endpoint/`) is deployed separately as an AWS Lambda function via GitHub Actions. See `oauth-endpoint/README.md` for details.

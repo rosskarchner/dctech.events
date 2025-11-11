@@ -56,175 +56,29 @@ The implementation uses **client-side JavaScript** (Octokit.js) for all GitHub A
 
 4. Save the **Client ID** and **Client Secret**
 
-### Part 2: Extend add.dctech.events
+### Part 2: OAuth Endpoint Implementation
 
-The existing `add.dctech.events` repository needs a new OAuth callback endpoint. Add the following to `app.py`:
+The OAuth callback endpoint is implemented in the `oauth-endpoint/` directory of the dctech.events repository. The implementation in `oauth-endpoint/app.py` includes:
 
-```python
-import os
-import requests
-from chalice import Response
+- OAuth callback route at `/oauth/callback`
+- Secure retrieval of GitHub client secret from AWS Secrets Manager
+- State parameter validation for CSRF protection
+- Error handling and redirect logic
 
-# Add this route to app.py
-@app.route('/oauth/callback', methods=['GET'])
-def oauth_callback():
-    """
-    Handle GitHub OAuth callback
-    Exchange authorization code for access token
-    """
-    # Get authorization code from query params
-    code = app.current_request.query_params.get('code')
-    state = app.current_request.query_params.get('state')
-    error = app.current_request.query_params.get('error')
+The complete implementation is in `oauth-endpoint/app.py` in this repository.
 
-    # Handle errors
-    if error:
-        return Response(
-            body='',
-            status_code=302,
-            headers={
-                'Location': f'https://dctech.events/submit/?error={error}'
-            }
-        )
+### Part 3: Deploy OAuth Client Secret to AWS Secrets Manager
 
-    if not code:
-        return Response(
-            body='',
-            status_code=302,
-            headers={
-                'Location': 'https://dctech.events/submit/?error=missing_code'
-            }
-        )
+The OAuth client secret is securely stored in AWS Secrets Manager and retrieved at runtime. To deploy the secret:
 
-    # Get OAuth credentials from environment
-    client_id = os.environ.get('GITHUB_CLIENT_ID')
-    client_secret = os.environ.get('GITHUB_CLIENT_SECRET')
-
-    if not client_id or not client_secret:
-        return Response(
-            body='',
-            status_code=302,
-            headers={
-                'Location': 'https://dctech.events/submit/?error=oauth_not_configured'
-            }
-        )
-
-    # Exchange code for access token
-    try:
-        token_response = requests.post(
-            'https://github.com/login/oauth/access_token',
-            headers={
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'client_id': client_id,
-                'client_secret': client_secret,
-                'code': code,
-                'state': state
-            }
-        )
-
-        token_data = token_response.json()
-
-        if 'error' in token_data:
-            return Response(
-                body='',
-                status_code=302,
-                headers={
-                    'Location': f'https://dctech.events/submit/?error={token_data["error"]}'
-                }
-            )
-
-        access_token = token_data.get('access_token')
-
-        if not access_token:
-            return Response(
-                body='',
-                status_code=302,
-                headers={
-                    'Location': 'https://dctech.events/submit/?error=no_token'
-                }
-            )
-
-        # Redirect back to dctech.events with the access token
-        return Response(
-            body='',
-            status_code=302,
-            headers={
-                'Location': f'https://dctech.events/submit/?access_token={access_token}'
-            }
-        )
-
-    except Exception as e:
-        print(f"OAuth error: {str(e)}")
-        return Response(
-            body='',
-            status_code=302,
-            headers={
-                'Location': 'https://dctech.events/submit/?error=exchange_failed'
-            }
-        )
+```bash
+cd oauth-endpoint
+python deploy_secrets.py "your_github_client_secret_here"
 ```
 
-### Part 3: Update add.dctech.events Configuration
+This will create a secret at `dctech-events/github-oauth-secret` in AWS Secrets Manager.
 
-Update `.chalice/config.json` to include the OAuth credentials:
-
-```json
-{
-  "version": "2.0",
-  "app_name": "add-dctech-events",
-  "stages": {
-    "dev": {
-      "api_gateway_stage": "api",
-      "environment_variables": {
-        "GITHUB_CLIENT_ID": "your_client_id_here",
-        "GITHUB_CLIENT_SECRET": "your_client_secret_here",
-        "GITHUB_TOKEN": "existing_token_for_pr_creation",
-        "SENDER_EMAIL": "existing_email",
-        "SITE_SLUG": "dctech"
-      }
-    }
-  }
-}
-```
-
-**Security Best Practice**: Instead of storing the client secret in config.json, use AWS Secrets Manager:
-
-```python
-import boto3
-import json
-
-def get_oauth_credentials():
-    """Get OAuth credentials from AWS Secrets Manager"""
-    secrets_client = boto3.client('secretsmanager')
-
-    try:
-        secret = secrets_client.get_secret_value(SecretId='github-oauth-credentials')
-        credentials = json.loads(secret['SecretString'])
-        return credentials.get('client_id'), credentials.get('client_secret')
-    except Exception as e:
-        print(f"Error retrieving secrets: {str(e)}")
-        return None, None
-```
-
-Then update the IAM policy to allow access to Secrets Manager:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:GetSecretValue"
-      ],
-      "Resource": "arn:aws:secretsmanager:region:account-id:secret:github-oauth-credentials-*"
-    }
-  ]
-}
-```
+The Lambda function is automatically configured with IAM permissions to access this secret. See `oauth-endpoint/.chalice/policy-prod.json` for the IAM policy.
 
 ### Part 4: Configure dctech.events
 
@@ -252,20 +106,15 @@ export OAUTH_CALLBACK_ENDPOINT=https://add.dctech.events/oauth/callback
 
 ### Part 5: Deploy
 
-1. Deploy the updated add.dctech.events:
+1. Deploy the OAuth endpoint (from the root of the dctech.events repository):
    ```bash
-   cd add.dctech.events
-   chalice deploy
+   cd oauth-endpoint
+   chalice deploy --stage PROD
    ```
 
-2. Rebuild and deploy dctech.events:
-   ```bash
-   cd dctech.events
-   make clean
-   make
-   python freeze.py
-   # Deploy the build/ directory to GitHub Pages
-   ```
+   Or, push your changes to the main branch and let GitHub Actions deploy automatically.
+
+2. The dctech.events site is automatically rebuilt and deployed to GitHub Pages when changes are pushed to the main branch.
 
 ## Testing
 
@@ -307,8 +156,9 @@ export OAUTH_CALLBACK_ENDPOINT=https://add.dctech.events/oauth/callback
 - Verify the access token has the correct scopes (public_repo)
 
 ### "No matching routes found"
-- Ensure the OAuth callback route is deployed in add.dctech.events
+- Ensure the OAuth callback route is deployed (check `oauth-endpoint/` directory)
 - Check API Gateway routes in AWS Console
+- Verify the Chalice deployment completed successfully
 
 ## Alternative: GitHub Device Flow
 
