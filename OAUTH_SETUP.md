@@ -77,13 +77,26 @@ def oauth_callback():
     state = app.current_request.query_params.get('state')
     error = app.current_request.query_params.get('error')
 
+    # Decode state to get return URL
+    # State is a base64-encoded JSON object with csrf token and returnUrl
+    return_url = '/submit/'  # Default return URL
+    try:
+        if state:
+            import base64
+            import json
+            state_data = json.loads(base64.b64decode(state))
+            return_url = state_data.get('returnUrl', '/submit/')
+    except Exception as e:
+        print(f"Failed to decode state: {str(e)}")
+        # Continue with default return URL
+
     # Handle errors
     if error:
         return Response(
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events/submit/?error={error}'
+                'Location': f'https://dctech.events{return_url}?error={error}'
             }
         )
 
@@ -92,7 +105,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': 'https://dctech.events/submit/?error=missing_code'
+                'Location': f'https://dctech.events{return_url}?error=missing_code'
             }
         )
 
@@ -105,7 +118,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': 'https://dctech.events/submit/?error=oauth_not_configured'
+                'Location': f'https://dctech.events{return_url}?error=oauth_not_configured'
             }
         )
 
@@ -132,7 +145,7 @@ def oauth_callback():
                 body='',
                 status_code=302,
                 headers={
-                    'Location': f'https://dctech.events/submit/?error={token_data["error"]}'
+                    'Location': f'https://dctech.events{return_url}?error={token_data["error"]}'
                 }
             )
 
@@ -143,7 +156,7 @@ def oauth_callback():
                 body='',
                 status_code=302,
                 headers={
-                    'Location': 'https://dctech.events/submit/?error=no_token'
+                    'Location': f'https://dctech.events{return_url}?error=no_token'
                 }
             )
 
@@ -152,7 +165,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events/submit/?access_token={access_token}'
+                'Location': f'https://dctech.events{return_url}?access_token={access_token}'
             }
         )
 
@@ -162,7 +175,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': 'https://dctech.events/submit/?error=exchange_failed'
+                'Location': f'https://dctech.events{return_url}?error=exchange_failed'
             }
         )
 ```
@@ -286,7 +299,7 @@ export OAUTH_CALLBACK_ENDPOINT=https://add.dctech.events/oauth/callback
    'Access-Control-Allow-Origin': 'https://dctech.events'
    ```
 
-4. **State Parameter**: The OAuth flow includes a state parameter to prevent CSRF attacks. The client generates a random state and verifies it on return.
+4. **State Parameter**: The OAuth flow includes a state parameter to prevent CSRF attacks. The client generates a random state and verifies it on return. The state parameter is now a base64-encoded JSON object containing both the CSRF token and the return URL (either `/submit/` or `/submit-group/`), allowing the OAuth callback to redirect users back to the correct page after authentication.
 
 5. **Rate Limiting**: Consider adding rate limiting to the OAuth callback endpoint to prevent abuse.
 
