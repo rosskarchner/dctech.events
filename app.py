@@ -935,9 +935,19 @@ def submit():
     oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
                                             config.get('oauth_callback_endpoint', ''))
 
+    # Get city context (already available from app initialization)
+    if args.homepage:
+        city_name = 'LocalTech'
+        city_slug = 'dc'  # Default
+    else:
+        city_name = city_config.get('name', 'DC')
+        city_slug = args.city
+
     return render_template('submit.html',
                           github_client_id=github_client_id,
-                          oauth_callback_endpoint=oauth_callback_endpoint)
+                          oauth_callback_endpoint=oauth_callback_endpoint,
+                          city_name=city_name,
+                          city_slug=city_slug)
 
 @app.route("/submit-group/")
 def submit_group():
@@ -947,9 +957,19 @@ def submit_group():
     oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
                                             config.get('oauth_callback_endpoint', ''))
 
+    # Get city context
+    if args.homepage:
+        city_name = 'LocalTech'
+        city_slug = 'dc'  # Default
+    else:
+        city_name = city_config.get('name', 'DC')
+        city_slug = args.city
+
     return render_template('submit-group.html',
                           github_client_id=github_client_id,
-                          oauth_callback_endpoint=oauth_callback_endpoint)
+                          oauth_callback_endpoint=oauth_callback_endpoint,
+                          city_name=city_name,
+                          city_slug=city_slug)
 
 @app.route("/sitemap.xml")
 def sitemap():

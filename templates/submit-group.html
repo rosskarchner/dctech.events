@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="submit-container">
-    <h2>Submit a Group to DC Tech Events</h2>
+    <h2>Submit a Group to {{ city_name }} Tech Events</h2>
 
     <div id="auth-section">
         <p>To submit a group, you'll need to sign in with your GitHub account. This allows us to create a pull request on your behalf to add your group to the calendar.</p>
@@ -297,6 +297,10 @@
         clientId: '{{ github_client_id }}',
         callbackEndpoint: '{{ oauth_callback_endpoint }}'
     };
+    // Store city slug for submission path
+    {% if city_slug %}
+    sessionStorage.setItem('city_slug', '{{ city_slug }}');
+    {% endif %}
 </script>
 <script type="module" src="/static/js/dist/submit-group.bundle.js"></script>
 {% endblock %}
