@@ -4,10 +4,18 @@ import os
 import yaml
 import pytz
 import calendar
+import argparse
+import json
 from pathlib import Path
 from location_utils import extract_location_info, get_region_name
 from PIL import Image, ImageDraw, ImageFont, __version__ as PIL_VERSION
 import io
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Run Flask app for a specific city or homepage')
+parser.add_argument('--city', default='dc', help='City slug (default: dc)')
+parser.add_argument('--homepage', action='store_true', help='Run as localtech.events homepage instead of city site')
+args, unknown = parser.parse_known_args()
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -16,32 +24,85 @@ if os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
 
-# Define timezone from config
-timezone_name = config.get('timezone', 'US/Eastern')
+# Get city-specific configuration (unless running as homepage)
+city_config = None
+if not args.homepage:
+    for city in config.get('cities', []):
+        if city['slug'] == args.city:
+            city_config = city
+            break
+
+    if not city_config:
+        print(f"Error: City '{args.city}' not found in config.yaml")
+        exit(1)
+
+# Define timezone from city config or fall back to root config
+if args.homepage:
+    timezone_name = config.get('timezone', 'US/Eastern')
+else:
+    timezone_name = city_config.get('timezone', config.get('timezone', 'US/Eastern'))
 local_tz = pytz.timezone(timezone_name)
 
-# Get site configuration
-SITE_NAME = config.get('site_name', 'DC Tech Events')
-TAGLINE = config.get('tagline', 'Technology events in the area')
-BASE_URL = config.get('base_url', 'https://dctech.events')
-ADD_EVENTS_LINK = config.get('add_events_link', 'https://add.dctech.events')
-NEWSLETTER_SIGNUP_LINK = config.get('newsletter_signup_link', 'https://newsletter.dctech.events')
+# Get site configuration (city-specific or homepage)
+if args.homepage:
+    SITE_NAME = "LocalTech Events"
+    TAGLINE = "Technology events in cities across the US"
+    BASE_URL = "https://localtech.events"
+    ADD_EVENTS_LINK = ""
+    NEWSLETTER_SIGNUP_LINK = ""
+else:
+    SITE_NAME = city_config.get('name', config.get('site_name', 'DC Tech Events'))
+    TAGLINE = city_config.get('tagline', config.get('tagline', 'Technology events in the area'))
+    BASE_URL = city_config.get('base_url', config.get('base_url', 'https://dctech.events'))
+    ADD_EVENTS_LINK = city_config.get('add_events_link', config.get('add_events_link', 'https://add.dctech.events'))
+    NEWSLETTER_SIGNUP_LINK = city_config.get('newsletter_signup_link', config.get('newsletter_signup_link', 'https://newsletter.dctech.events'))
 
-# Constants
-DATA_DIR = '_data'
-GROUPS_DIR = '_groups'
+# Constants - city-specific paths (only for city sites, not homepage)
+if args.homepage:
+    DATA_DIR = None
+    GROUPS_DIR = None
+    SPONSORS_FILE = None
+else:
+    CITY_DIR = os.path.join('cities', args.city)
+    DATA_DIR = os.path.join(CITY_DIR, '_data')
+    GROUPS_DIR = os.path.join(CITY_DIR, '_groups')
+    SPONSORS_FILE = os.path.join(DATA_DIR, 'sponsors.json')
 
 app = Flask(__name__, template_folder='templates')
 
+def load_sponsors():
+    """Load sponsors from sponsors.json file"""
+    if args.homepage or not SPONSORS_FILE or not os.path.exists(SPONSORS_FILE):
+        return []
+
+    try:
+        with open(SPONSORS_FILE, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading sponsors: {e}")
+        return []
+
 @app.context_processor
 def inject_config():
-    return {
+    """Inject configuration variables into all templates"""
+    context = {
         'site_name': SITE_NAME,
         'tagline': TAGLINE,
         'base_url': BASE_URL,
         'add_events_link': ADD_EVENTS_LINK,
-        'newsletter_signup_link': NEWSLETTER_SIGNUP_LINK
+        'newsletter_signup_link': NEWSLETTER_SIGNUP_LINK,
+        'is_homepage': args.homepage
     }
+
+    # Add city-specific context
+    if not args.homepage:
+        context['city_slug'] = args.city
+        context['city_name'] = city_config.get('name', 'DC')
+        context['sponsors'] = load_sponsors()
+    else:
+        context['cities'] = config.get('cities', [])
+
+    return context
 
 def load_yaml_data(file_path):
     """Load data from a YAML file"""
@@ -671,12 +732,22 @@ def generate_week_calendar_image(week_start, week_end, events):
 
 @app.route("/")
 def homepage():
+    # If running as localtech.events homepage, show city index
+    if args.homepage:
+        cities = config.get('cities', [])
+        # TODO: Calculate total events across all cities
+        total_events = 0
+        return render_template('city_index.html',
+                              cities=cities,
+                              total_events=total_events)
+
+    # Otherwise, show city-specific homepage
     # Get upcoming events
     events = get_events()
     days = prepare_events_by_day(events, add_week_links=True)
 
     # Get base URL from config or use a default
-    base_url = config.get('base_url', 'https://dctech.events')
+    base_url = BASE_URL
 
     # Get stats
     stats = get_stats()

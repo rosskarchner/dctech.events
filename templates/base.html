@@ -36,15 +36,19 @@
         <div class="container">
             <h1 class="logo"><a href="/">{{ site_name }}</a></h1>
             <div>{{ tagline }}</div>
+            {% if not is_homepage %}
             <nav aria-label="Main navigation">
                 {% if request.path == '/' %}<span aria-current="page">All Events</span>{% else %}<a href="/">All Events</a>{% endif %} |
-                {% if request.path == '/locations/' %}<span aria-current="page">Locations</span>{% else %}<a href="/locations/">Locations</a>{% endif %} |
-                {% if request.path == '/locations/dc/' %}<span aria-current="page">Washington DC</span>{% else %}<a href="/locations/dc/">Washington DC</a>{% endif %} |
-                {% if request.path == '/locations/va/' %}<span aria-current="page">Virginia</span>{% else %}<a href="/locations/va/">Virginia</a>{% endif %} |
-                {% if request.path == '/locations/md/' %}<span aria-current="page">Maryland</span>{% else %}<a href="/locations/md/">Maryland</a>{% endif %} |
+                {% if city_slug == 'dc' %}
+                    {% if request.path == '/locations/' %}<span aria-current="page">Locations</span>{% else %}<a href="/locations/">Locations</a>{% endif %} |
+                    {% if request.path == '/locations/dc/' %}<span aria-current="page">Washington DC</span>{% else %}<a href="/locations/dc/">Washington DC</a>{% endif %} |
+                    {% if request.path == '/locations/va/' %}<span aria-current="page">Virginia</span>{% else %}<a href="/locations/va/">Virginia</a>{% endif %} |
+                    {% if request.path == '/locations/md/' %}<span aria-current="page">Maryland</span>{% else %}<a href="/locations/md/">Maryland</a>{% endif %} |
+                {% endif %}
                 {% if request.path == '/groups/' %}<span aria-current="page">Groups</span>{% else %}<a href="/groups/">Groups</a>{% endif %} |
                 {% if request.path == '/submit/' %}<span aria-current="page">Submit Event</span>{% else %}<a href="/submit/">Submit Event</a>{% endif %}
             </nav>
+            {% endif %}
         </div>
     </header>
 
