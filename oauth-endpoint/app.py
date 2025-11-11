@@ -54,9 +54,10 @@ def decode_state_parameter(state):
     The state parameter is a base64-encoded JSON object containing:
     - csrf_token: Random token for CSRF protection
     - return_url: URL to redirect to after OAuth (e.g., '/submit/' or '/submit-group/')
+    - city: City slug (e.g., 'dc', 'sf') - OPTIONAL, defaults to 'dc'
 
     Returns:
-        dict: Decoded state data with 'csrf_token' and 'return_url' keys
+        dict: Decoded state data with 'csrf_token', 'return_url', and 'city' keys
         None: If state is invalid or cannot be decoded
     """
     if not state:
@@ -80,6 +81,15 @@ def decode_state_parameter(state):
         if state_data['return_url'] not in allowed_paths:
             print(f"Invalid return URL in state: {state_data['return_url']}")
             return None
+
+        # City is optional, defaults to 'dc'
+        if 'city' not in state_data:
+            state_data['city'] = 'dc'
+
+        # Validate city format (alphanumeric and dash only)
+        if not state_data['city'].replace('-', '').isalnum():
+            print(f"Invalid city format: {state_data['city']}")
+            state_data['city'] = 'dc'
 
         return state_data
 
@@ -106,6 +116,11 @@ def oauth_callback():
     # Default to /submit/ if state is invalid or missing (for backward compatibility)
     state_data = decode_state_parameter(state)
     return_url = state_data['return_url'] if state_data else '/submit/'
+    city = state_data['city'] if state_data else 'dc'
+
+    # Build base URL for redirect
+    # Use dc.localtech.events for dc, otherwise {city}.localtech.events
+    base_url = f'https://{city}.localtech.events'
 
     # Handle errors
     if error:
@@ -113,7 +128,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events{return_url}?error={error}'
+                'Location': f'{base_url}{return_url}?error={error}'
             }
         )
 
@@ -122,7 +137,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events{return_url}?error=missing_code'
+                'Location': f'{base_url}{return_url}?error=missing_code'
             }
         )
 
@@ -135,7 +150,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events{return_url}?error=oauth_not_configured'
+                'Location': f'{base_url}{return_url}?error=oauth_not_configured'
             }
         )
 
@@ -162,7 +177,7 @@ def oauth_callback():
                 body='',
                 status_code=302,
                 headers={
-                    'Location': f'https://dctech.events{return_url}?error={token_data["error"]}'
+                    'Location': f'{base_url}{return_url}?error={token_data["error"]}'
                 }
             )
 
@@ -173,16 +188,16 @@ def oauth_callback():
                 body='',
                 status_code=302,
                 headers={
-                    'Location': f'https://dctech.events{return_url}?error=no_token'
+                    'Location': f'{base_url}{return_url}?error=no_token'
                 }
             )
 
-        # Redirect back to dctech.events with the access token
+        # Redirect back to the city site with the access token
         return Response(
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events{return_url}?access_token={access_token}'
+                'Location': f'{base_url}{return_url}?access_token={access_token}'
             }
         )
 
@@ -192,7 +207,7 @@ def oauth_callback():
             body='',
             status_code=302,
             headers={
-                'Location': f'https://dctech.events{return_url}?error=exchange_failed'
+                'Location': f'{base_url}{return_url}?error=exchange_failed'
             }
         )
 

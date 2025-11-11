@@ -11,12 +11,38 @@ const CONFIG = {
     callbackEndpoint: window.GITHUB_CONFIG?.callbackEndpoint || ''
 };
 
+/**
+ * Get the selected city from hostname or session storage
+ */
+function getSelectedCity() {
+    // Parse city from hostname
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+
+    // Handle different deployment scenarios
+    if (parts.length >= 3 && parts[parts.length - 2] === 'localtech') {
+        // dc.localtech.events -> dc
+        return parts[0];
+    } else if (parts[0] === 'dctech') {
+        // dctech.events -> dc (default)
+        return 'dc';
+    } else if (parts[0] === 'add') {
+        // add.dctech.events -> check session or default
+        return sessionStorage.getItem('city_slug') || 'dc';
+    }
+
+    return 'dc';  // Fallback default
+}
+
 // Repository configuration
 const REPO_CONFIG = {
     owner: 'rosskarchner',
     repo: 'dctech.events',
     branch: 'main',
-    targetDir: '_groups'
+    getTargetDir: function() {
+        const city = getSelectedCity();
+        return `cities/${city}/_groups`;
+    }
 };
 
 // State management
@@ -134,10 +160,11 @@ function handleGitHubLogin() {
         return;
     }
 
-    // Create state object with CSRF token and return URL
+    // Create state object with CSRF token, return URL, and city
     const stateObj = {
         csrf: generateRandomState(),
-        returnUrl: window.location.pathname
+        returnUrl: window.location.pathname,
+        city: getSelectedCity()
     };
     const state = btoa(JSON.stringify(stateObj)); // Base64 encode the state object
     sessionStorage.setItem('oauth_state', stateObj.csrf);
@@ -288,7 +315,7 @@ async function createPullRequest(groupData) {
     // Step 4: Create YAML content
     const yamlContent = generateYAML(groupData);
     const fileName = `${slugify(groupData.name)}.yaml`;
-    const filePath = `${REPO_CONFIG.targetDir}/${fileName}`;
+    const filePath = `${REPO_CONFIG.getTargetDir()}/${fileName}`;
 
     // Step 5: Create file in the new branch of the fork
     await octokit.rest.repos.createOrUpdateFileContents({
