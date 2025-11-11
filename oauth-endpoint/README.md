@@ -71,6 +71,8 @@ Quick reference - Required GitHub Secrets:
 - `AWS_ACCESS_KEY_ID` - AWS access key for deployment
 - `AWS_SECRET_ACCESS_KEY` - AWS secret access key
 
+**Required IAM Policy**: Apply the least-privilege policy from [`iam-deployment-policy.json`](iam-deployment-policy.json) to the IAM user associated with the AWS credentials.
+
 **Note**: The GitHub OAuth client secret is stored in AWS Secrets Manager and is not managed via the GitHub Actions workflow.
 
 ## Local Development

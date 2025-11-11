@@ -56,109 +56,40 @@ aws secretsmanager update-secret \
 
 ## Required IAM Permissions
 
-The AWS user/role associated with `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` needs the following permissions:
+The AWS user/role associated with `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` needs the following permissions.
 
-### Lambda Permissions
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "lambda:CreateFunction",
-        "lambda:UpdateFunctionCode",
-        "lambda:UpdateFunctionConfiguration",
-        "lambda:GetFunction",
-        "lambda:GetFunctionConfiguration",
-        "lambda:DeleteFunction",
-        "lambda:AddPermission",
-        "lambda:RemovePermission"
-      ],
-      "Resource": "arn:aws:lambda:us-east-1:*:function:dctech-events-submit-*"
-    }
-  ]
-}
+### Quick Setup: Use the Consolidated Policy
+
+A complete least-privilege IAM policy is available in [`iam-deployment-policy.json`](iam-deployment-policy.json).
+
+**To apply this policy:**
+
+1. Go to AWS Console > IAM > Users > [your deployment user]
+2. Click "Add permissions" > "Create inline policy"
+3. Click the "JSON" tab
+4. Copy and paste the contents of `iam-deployment-policy.json`
+5. Review and create the policy
+
+**Or via AWS CLI:**
+```bash
+aws iam put-user-policy \
+  --user-name your-deployment-user \
+  --policy-name DCtechEventsOAuthDeployment \
+  --policy-document file://oauth-endpoint/iam-deployment-policy.json
 ```
 
-### API Gateway Permissions
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "apigateway:*"
-      ],
-      "Resource": "arn:aws:apigateway:us-east-1::/*"
-    }
-  ]
-}
-```
+### What's Included
 
-### IAM Permissions (for creating Lambda execution role)
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
-        "iam:PutRolePolicy",
-        "iam:DeleteRolePolicy",
-        "iam:GetRole",
-        "iam:PassRole",
-        "iam:GetRolePolicy",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy"
-      ],
-      "Resource": "arn:aws:iam::*:role/dctech-events-submit-*"
-    }
-  ]
-}
-```
+The policy grants the minimum permissions needed for Chalice deployment:
 
-### Secrets Manager Permissions
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:CreateSecret",
-        "secretsmanager:UpdateSecret",
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret"
-      ],
-      "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:dctech-events/*"
-    }
-  ]
-}
-```
+- **Lambda**: Create, update, and manage `dctech-events-submit-*` functions
+- **API Gateway**: Create and manage REST APIs for the OAuth endpoint
+- **IAM**: Create and manage the Lambda execution role (`dctech-events-submit-*`)
+- **Secrets Manager**: Read access to `dctech-events/*` secrets (for the OAuth client secret)
+- **CloudFormation**: Manage stacks created by Chalice (`dctech-events-submit-*`)
+- **CloudWatch Logs**: Read logs for debugging and verification
 
-### CloudFormation Permissions (used by Chalice)
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "cloudformation:CreateStack",
-        "cloudformation:UpdateStack",
-        "cloudformation:DeleteStack",
-        "cloudformation:DescribeStacks",
-        "cloudformation:DescribeStackEvents"
-      ],
-      "Resource": "arn:aws:cloudformation:us-east-1:*:stack/dctech-events-submit-*"
-    }
-  ]
-}
-```
+All permissions are scoped to resources with the `dctech-events-submit-` prefix where possible.
 
 ## Workflow Steps
 
