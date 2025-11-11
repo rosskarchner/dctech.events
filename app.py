@@ -867,6 +867,18 @@ def submit():
                           github_client_id=github_client_id,
                           oauth_callback_endpoint=oauth_callback_endpoint)
 
+@app.route("/submit-group/")
+def submit_group():
+    """Group submission page with GitHub OAuth"""
+    # Get OAuth configuration from environment or config
+    github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
+    oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
+                                            config.get('oauth_callback_endpoint', ''))
+
+    return render_template('submit-group.html',
+                          github_client_id=github_client_id,
+                          oauth_callback_endpoint=oauth_callback_endpoint)
+
 @app.route("/sitemap.xml")
 def sitemap():
     """Generate an XML sitemap of the site's main pages"""
