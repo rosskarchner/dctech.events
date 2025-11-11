@@ -51,7 +51,8 @@ if args.homepage:
     ADD_EVENTS_LINK = ""
     NEWSLETTER_SIGNUP_LINK = ""
 else:
-    SITE_NAME = city_config.get('name', config.get('site_name', 'DC Tech Events'))
+    city_name = city_config.get('name', config.get('site_name', 'DC'))
+    SITE_NAME = f"{city_name} Tech Events"
     TAGLINE = city_config.get('tagline', config.get('tagline', 'Technology events in the area'))
     BASE_URL = city_config.get('base_url', config.get('base_url', 'https://dctech.events'))
     ADD_EVENTS_LINK = city_config.get('add_events_link', config.get('add_events_link', 'https://add.dctech.events'))
