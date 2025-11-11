@@ -55,7 +55,7 @@ jobs:
         with:
           path: |
             _cache
-            _data
+            cities/dc/_data
           key: ${{ runner.os }}-data-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-data-

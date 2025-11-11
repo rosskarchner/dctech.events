@@ -24,6 +24,42 @@ cities:
     base_url: https://dc.localtech.events
     add_events_link: https://add.dctech.events/dctech
     newsletter_signup_link: https://newsletter.dctech.events/
+  - slug: baltimore
+    name: "Baltimore"
+    tagline: Technology conferences and meetups in and around Baltimore, MD
+    timezone: "US/Eastern"
+    location: "Baltimore, MD"
+    max_distance_miles: 50
+    base_url: https://baltimore.localtech.events
+    add_events_link: https://baltimore.localtech.events/submit/
+    newsletter_signup_link: ""
+  - slug: philadelphia
+    name: "Philadelphia"
+    tagline: Technology conferences and meetups in and around Philadelphia, PA
+    timezone: "US/Eastern"
+    location: "Philadelphia, PA"
+    max_distance_miles: 50
+    base_url: https://philadelphia.localtech.events
+    add_events_link: https://philadelphia.localtech.events/submit/
+    newsletter_signup_link: ""
+  - slug: pittsburgh
+    name: "Pittsburgh"
+    tagline: Technology conferences and meetups in and around Pittsburgh, PA
+    timezone: "US/Eastern"
+    location: "Pittsburgh, PA"
+    max_distance_miles: 50
+    base_url: https://pittsburgh.localtech.events
+    add_events_link: https://pittsburgh.localtech.events/submit/
+    newsletter_signup_link: ""
+  - slug: richmond
+    name: "Richmond"
+    tagline: Technology conferences and meetups in and around Richmond, VA
+    timezone: "US/Eastern"
+    location: "Richmond, VA"
+    max_distance_miles: 50
+    base_url: https://richmond.localtech.events
+    add_events_link: https://richmond.localtech.events/submit/
+    newsletter_signup_link: ""
 
 # GitHub OAuth Configuration (for event submission)
 # Client ID is set via GITHUB_CLIENT_ID environment variable from GitHub Repository Variable
