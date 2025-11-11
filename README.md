@@ -57,7 +57,9 @@ The generated site will be in the `build/` directory.
 
 ### Adding a Group
 
-Create a new YAML file in the `_groups/` directory with the following format:
+You can submit a group through the [/submit-group/](/submit-group/) page, which creates a pull request for you.
+
+Alternatively, you can manually create a new YAML file in the `_groups/` directory with the following format:
 
 ```yaml
 name: Group Name
