@@ -119,8 +119,12 @@ def oauth_callback():
     city = state_data['city'] if state_data else 'dc'
 
     # Build base URL for redirect
-    # Use dc.localtech.events for dc, otherwise {city}.localtech.events
-    base_url = f'https://{city}.localtech.events'
+    # Map city slugs to their actual domains
+    # DC uses dctech.events (legacy domain), other cities use {city}.localtech.events
+    if city == 'dc':
+        base_url = 'https://dctech.events'
+    else:
+        base_url = f'https://{city}.localtech.events'
 
     # Handle errors
     if error:
