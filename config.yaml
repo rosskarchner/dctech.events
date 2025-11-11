@@ -1,6 +1,6 @@
 # DC Tech Events Configuration
 
-# Site name
+# Site name (defaults for dctech.events)
 site_name: "DC Tech Events"
 tagline: Technology conferences and meetups in and around Washington, DC
 base_url: https://dctech.events
@@ -13,8 +13,25 @@ timezone: "US/Eastern"
 location: "Washington, DC"
 max_distance_miles: 50
 
+# Multi-city configuration for localtech.events
+cities:
+  - slug: dc
+    name: "Washington DC"
+    tagline: Technology conferences and meetups in and around Washington, DC
+    timezone: "US/Eastern"
+    location: "Washington, DC"
+    max_distance_miles: 50
+    base_url: https://dc.localtech.events
+    add_events_link: https://add.dctech.events/dctech
+    newsletter_signup_link: https://newsletter.dctech.events/
+
 # GitHub OAuth Configuration (for event submission)
 # Client ID is set via GITHUB_CLIENT_ID environment variable from GitHub Repository Variable
 # See OAUTH_SETUP.md for detailed setup instructions
 github_client_id: ""  # Set via GITHUB_CLIENT_ID environment variable
 oauth_callback_endpoint: "https://add.dctech.events/oauth/callback"
+
+# GitHub Sponsors Configuration
+# Token is set via GITHUB_SPONSORS_TOKEN environment variable
+# Used for sponsor verification during build
+github_sponsors_token: ""  # Set via GITHUB_SPONSORS_TOKEN environment variable

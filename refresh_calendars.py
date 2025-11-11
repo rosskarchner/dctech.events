@@ -10,10 +10,16 @@ import glob
 import re
 from pathlib import Path
 import sys
+import argparse
 import feedparser
 import extruct
 from w3lib.html import get_base_url
 from address_utils import normalize_address
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='Refresh calendars for a specific city')
+parser.add_argument('--city', default='dc', help='City slug (default: dc)')
+args = parser.parse_args()
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -22,14 +28,26 @@ if os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
 
-# Initialize timezone from config or use default
-timezone_name = config.get('timezone', 'US/Eastern')
+# Get city-specific configuration
+city_config = None
+for city in config.get('cities', []):
+    if city['slug'] == args.city:
+        city_config = city
+        break
+
+if not city_config:
+    print(f"Error: City '{args.city}' not found in config.yaml")
+    sys.exit(1)
+
+# Initialize timezone from city config or fall back to root config
+timezone_name = city_config.get('timezone', config.get('timezone', 'US/Eastern'))
 local_tz = pytz.timezone(timezone_name)
 
-# Constants
-GROUPS_DIR = '_groups'
-DATA_DIR = '_data'
-CACHE_DIR = '_cache'
+# Constants - city-specific paths
+CITY_DIR = os.path.join('cities', args.city)
+GROUPS_DIR = os.path.join(CITY_DIR, '_groups')
+DATA_DIR = os.path.join(CITY_DIR, '_data')
+CACHE_DIR = '_cache'  # Shared cache directory
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
 RSS_CACHE_DIR = os.path.join(CACHE_DIR, 'rss')
 CURRENT_DAY_FILE = os.path.join(DATA_DIR, 'current_day.txt')
