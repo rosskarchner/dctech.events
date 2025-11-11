@@ -12,7 +12,8 @@ if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
-const buildOptions = {
+// Build options for event submission
+const submitBuildOptions = {
   entryPoints: ['static/js/submit.js'],
   bundle: true,
   minify: true,
@@ -23,14 +24,33 @@ const buildOptions = {
   logLevel: 'info'
 };
 
+// Build options for group submission
+const submitGroupBuildOptions = {
+  entryPoints: ['static/js/submit-group.js'],
+  bundle: true,
+  minify: true,
+  sourcemap: true,
+  format: 'esm',
+  target: ['es2020'],
+  outfile: 'static/js/dist/submit-group.bundle.js',
+  logLevel: 'info'
+};
+
 async function build() {
   try {
     if (isWatch) {
-      const context = await esbuild.context(buildOptions);
-      await context.watch();
+      const submitContext = await esbuild.context(submitBuildOptions);
+      const submitGroupContext = await esbuild.context(submitGroupBuildOptions);
+      await Promise.all([
+        submitContext.watch(),
+        submitGroupContext.watch()
+      ]);
       console.log('Watching for changes...');
     } else {
-      await esbuild.build(buildOptions);
+      await Promise.all([
+        esbuild.build(submitBuildOptions),
+        esbuild.build(submitGroupBuildOptions)
+      ]);
       console.log('Build completed successfully!');
     }
   } catch (error) {

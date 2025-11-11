@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Submit a Group - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="submit-container">
+    <h2>Submit a Group to DC Tech Events</h2>
+
+    <div id="auth-section">
+        <p>To submit a group, you'll need to sign in with your GitHub account. This allows us to create a pull request on your behalf to add your group to the calendar.</p>
+
+        <div class="auth-status" id="auth-status">
+            <p>Not signed in</p>
+            <button id="github-login" class="btn btn-primary">
+                <svg height="16" width="16" viewBox="0 0 16 16" style="vertical-align: text-bottom; margin-right: 8px;">
+                    <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                Sign in with GitHub
+            </button>
+        </div>
+    </div>
+
+    <form id="group-form" style="display: none;">
+        <div class="group-section">
+            <h3>Group Details</h3>
+
+            <div class="form-group">
+                <label for="name">Group Name <span class="required">*</span></label>
+                <input type="text" id="name" name="name" required maxlength="200"
+                       placeholder="e.g., DC Python User Group">
+            </div>
+
+            <div class="form-group">
+                <label for="website">Group Website <span class="required">*</span></label>
+                <input type="url" id="website" name="website" required
+                       placeholder="https://example.com or https://meetup.com/your-group">
+                <small>Main website or Meetup.com page for your group</small>
+            </div>
+
+            <div class="form-group">
+                <label for="ical">iCal Feed URL</label>
+                <input type="url" id="ical" name="ical"
+                       placeholder="https://example.com/calendar.ics">
+                <small>Calendar feed URL (iCal format) - at least one feed type is recommended</small>
+            </div>
+
+            <div class="form-group">
+                <label for="rss">RSS Feed URL</label>
+                <input type="url" id="rss" name="rss"
+                       placeholder="https://example.com/events/rss or https://www.meetup.com/your-group/events/rss">
+                <small>RSS feed URL for events - at least one feed type is recommended</small>
+            </div>
+
+            <details class="optional-details">
+                <summary>Optional Details</summary>
+                <div class="optional-fields">
+                    <div class="form-group">
+                        <label for="fallback_url">Fallback URL</label>
+                        <input type="url" id="fallback_url" name="fallback_url"
+                               placeholder="https://example.com/events">
+                        <small>Alternative URL to find events if feeds are unavailable</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="submitter_link">Your Link</label>
+                        <input type="url" id="submitter_link" name="submitter_link"
+                               placeholder="https://yoursite.com">
+                        <small>Link to your website or social profile</small>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <div id="status-message" class="status-message"></div>
+
+        <div class="form-actions">
+            <button type="submit" id="submit-btn" class="btn btn-primary">
+                Submit Group
+            </button>
+            <button type="button" id="cancel-btn" class="btn btn-secondary">
+                Cancel
+            </button>
+        </div>
+    </form>
+
+    <div id="success-message" style="display: none;">
+        <div class="success-box">
+            <h3>✓ Pull Request Created!</h3>
+            <p>Your group has been submitted successfully. A pull request has been created:</p>
+            <p><a id="pr-link" target="_blank" rel="noopener noreferrer"></a></p>
+            <p>Once reviewed and merged, your group's events will appear on the calendar.</p>
+            <button id="submit-another" class="btn btn-primary">Submit Another Group</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.submit-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.submit-container h2 {
+    margin-bottom: var(--spacing-lg);
+}
+
+.group-section {
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.group-section h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    font-size: 1.25rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+}
+
+@media (max-width: 640px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text);
+}
+
+.form-group label .required {
+    color: #dc2626;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group small {
+    display: block;
+    margin-top: var(--spacing-xs);
+    color: var(--color-text-light);
+    font-size: 0.875rem;
+}
+
+.optional-details {
+    margin-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-lg);
+}
+
+.optional-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-primary);
+    padding: var(--spacing-sm) 0;
+    list-style-position: inside;
+}
+
+.optional-details summary:hover {
+    color: var(--color-primary-hover);
+}
+
+.optional-fields {
+    padding-top: var(--spacing-lg);
+}
+
+.btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-primary:disabled {
+    background-color: var(--color-text-lighter);
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--color-background-alt);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-border);
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+}
+
+.auth-status {
+    padding: var(--spacing-lg);
+    background-color: var(--color-background-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin: var(--spacing-lg) 0;
+}
+
+.auth-status.authenticated {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+}
+
+.status-message {
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+    display: none;
+}
+
+.status-message.error {
+    display: block;
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+}
+
+.status-message.info {
+    display: block;
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+.success-box {
+    padding: var(--spacing-xl);
+    background-color: #f0fdf4;
+    border: 2px solid #86efac;
+    border-radius: var(--border-radius);
+}
+
+.success-box h3 {
+    color: #166534;
+    margin-top: 0;
+}
+
+.success-box a {
+    color: var(--color-primary);
+    word-break: break-all;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pass configuration from Flask to JavaScript
+    window.GITHUB_CONFIG = {
+        clientId: '{{ github_client_id }}',
+        callbackEndpoint: '{{ oauth_callback_endpoint }}'
+    };
+</script>
+<script type="module" src="/static/js/dist/submit-group.bundle.js"></script>
+{% endblock %}
