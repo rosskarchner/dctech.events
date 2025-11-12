@@ -55,6 +55,18 @@ LocalTech.Events uses a serverless architecture on AWS to host multiple city sit
   - `A` + `AAAA` for apex domain → CloudFront
   - `A` + `AAAA` for wildcard `*.localtech.events` → CloudFront
 
+### 5. IAM Resources
+- **Deployment User**: `localtech-github-actions-deployer`
+  - Created automatically by CDK stack
+  - Used by GitHub Actions for automated deployments
+- **Managed Policy**: `LocalTechDeploymentPolicy`
+  - Attached to deployment user
+  - Permissions granted:
+    - **S3 Bucket**: `s3:ListBucket`, `s3:GetBucketLocation`
+    - **S3 Objects**: `s3:PutObject`, `s3:PutObjectAcl`, `s3:GetObject`, `s3:DeleteObject`
+    - **CloudFront**: `cloudfront:CreateInvalidation`, `cloudfront:GetInvalidation`, `cloudfront:ListInvalidations`
+  - Scoped to only the resources in this stack (least privilege)
+
 ## Prerequisites
 
 Before deploying infrastructure, you need:
@@ -107,6 +119,11 @@ The `LocalTechStack` creates:
    - A record (IPv4) for wildcard
    - AAAA record (IPv6) for wildcard
 
+5. **IAM User and Policy**
+   - IAM User: `localtech-github-actions-deployer`
+   - Managed Policy: `LocalTechDeploymentPolicy`
+   - Scoped permissions for S3 and CloudFront operations
+
 ## Deployment Instructions
 
 ### Initial Setup
@@ -143,15 +160,50 @@ The `LocalTechStack` creates:
 3. **Note the outputs**:
    ```
    Outputs:
-   LocalTechStack.CloudFrontDistributionId = E1234ABCDEFGH
-   LocalTechStack.S3BucketName = localtech-events-hosting
-   LocalTechStack.CloudFrontDomainName = d1234abcd.cloudfront.net
+   LocalTechStack.BucketName = localtech-events-hosting
+   LocalTechStack.DistributionId = E1234ABCDEFGH
+   LocalTechStack.DistributionDomain = d1234abcd.cloudfront.net
+   LocalTechStack.DeploymentUserName = localtech-github-actions-deployer
+   LocalTechStack.DeploymentUserArn = arn:aws:iam::123456789:user/localtech-github-actions-deployer
+   LocalTechStack.ApexDomain = https://localtech.events
    ```
 
-4. **Save outputs as GitHub Secrets**:
+4. **Create access keys for the deployment user**:
    ```bash
-   # Go to: https://github.com/YOUR_REPO/settings/secrets/actions
-   # Add these secrets:
+   # The CDK stack created an IAM user: localtech-github-actions-deployer
+   # Create access keys for this user:
+   aws iam create-access-key --user-name localtech-github-actions-deployer
+   ```
+
+   This will output:
+   ```json
+   {
+     "AccessKey": {
+       "UserName": "localtech-github-actions-deployer",
+       "AccessKeyId": "AKIAIOSFODNN7EXAMPLE",
+       "SecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+       "Status": "Active",
+       "CreateDate": "2025-01-01T00:00:00Z"
+     }
+   }
+   ```
+
+   **⚠️ Important**: Save the `SecretAccessKey` immediately! It will only be shown once.
+
+5. **Add GitHub Secrets**:
+
+   Go to: `https://github.com/YOUR_REPO/settings/secrets/actions`
+
+   Add these secrets:
+   - `AWS_ACCESS_KEY_ID` = The AccessKeyId from step 4
+   - `AWS_SECRET_ACCESS_KEY` = The SecretAccessKey from step 4
+   - `CLOUDFRONT_DISTRIBUTION_ID` = The DistributionId from step 3
+   - `S3_BUCKET_NAME` = The BucketName from step 3
+
+   Example:
+   ```
+   AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+   AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
    CLOUDFRONT_DISTRIBUTION_ID=E1234ABCDEFGH
    S3_BUCKET_NAME=localtech-events-hosting
    ```

@@ -149,6 +149,57 @@ export class LocalTechStack extends cdk.Stack {
       ),
     });
 
+    // IAM User for GitHub Actions deployment
+    const deploymentUser = new iam.User(this, 'DeploymentUser', {
+      userName: 'localtech-github-actions-deployer',
+    });
+
+    // IAM Policy for deployment permissions
+    const deploymentPolicy = new iam.ManagedPolicy(this, 'DeploymentPolicy', {
+      managedPolicyName: 'LocalTechDeploymentPolicy',
+      description: 'Permissions for GitHub Actions to deploy LocalTech Events sites',
+      statements: [
+        // S3 Bucket permissions
+        new iam.PolicyStatement({
+          sid: 'S3BucketAccess',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            's3:ListBucket',
+            's3:GetBucketLocation',
+          ],
+          resources: [hostingBucket.bucketArn],
+        }),
+        // S3 Object permissions
+        new iam.PolicyStatement({
+          sid: 'S3ObjectAccess',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            's3:PutObject',
+            's3:PutObjectAcl',
+            's3:GetObject',
+            's3:DeleteObject',
+          ],
+          resources: [hostingBucket.arnForObjects('*')],
+        }),
+        // CloudFront invalidation permissions
+        new iam.PolicyStatement({
+          sid: 'CloudFrontInvalidation',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'cloudfront:CreateInvalidation',
+            'cloudfront:GetInvalidation',
+            'cloudfront:ListInvalidations',
+          ],
+          resources: [
+            `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
+          ],
+        }),
+      ],
+    });
+
+    // Attach policy to user
+    deploymentUser.addManagedPolicy(deploymentPolicy);
+
     // Outputs
     new cdk.CfnOutput(this, 'BucketName', {
       value: hostingBucket.bucketName,
@@ -171,6 +222,17 @@ export class LocalTechStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApexDomain', {
       value: `https://${domainName}`,
       description: 'Apex domain URL',
+    });
+
+    new cdk.CfnOutput(this, 'DeploymentUserName', {
+      value: deploymentUser.userName,
+      description: 'IAM user for GitHub Actions deployment',
+      exportName: 'LocalTechDeploymentUserName',
+    });
+
+    new cdk.CfnOutput(this, 'DeploymentUserArn', {
+      value: deploymentUser.userArn,
+      description: 'IAM user ARN',
     });
   }
 }
