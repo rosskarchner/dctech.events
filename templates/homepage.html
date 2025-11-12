@@ -61,12 +61,26 @@
                   "url": "{{ event.url }}",
                   {% if event.time %}
                   "startDate": "{{ day.date }}T{{ event.time }}",
+                  {% else %}
+                  "startDate": "{{ day.date }}",
                   {% endif %}
-                  {% if event.location %}
+                  {% if event.end_date and event.end_time %}
+                  "endDate": "{{ event.end_date }}T{{ event.end_time }}",
+                  {% elif event.end_date %}
+                  "endDate": "{{ event.end_date }}",
+                  {% elif event.time %}
+                  "endDate": "{{ day.date }}T{{ event.time }}",
+                  {% else %}
+                  "endDate": "{{ day.date }}",
+                  {% endif %}
                   "location": {
                     "@type": "Place",
-                    "name": "{{ event.location | replace('"', '\\"') }}"
+                    "name": "{% if event.location %}{{ event.location | replace('"', '\\"') }}{% else %}{{ city_name }}{% endif %}"
                   },
+                  {% if event.description %}
+                  "description": "{{ event.description | replace('"', '\\"') | replace('\n', ' ') | truncate(200) }}",
+                  {% else %}
+                  "description": "{{ event.title | replace('"', '\\"') }}",
                   {% endif %}
                   {% if event.group %}
                   "organizer": {
@@ -76,8 +90,18 @@
                     ,"url": "{{ event.group_website }}"
                     {% endif %}
                   },
+                  "performer": {
+                    "@type": "Organization",
+                    "name": "{{ event.group | replace('"', '\\"') }}"
+                  },
                   {% endif %}
-                  "eventAttendanceMode": "https://schema.org/MixedEventAttendanceMode"
+                  "eventAttendanceMode": "https://schema.org/MixedEventAttendanceMode",
+                  "eventStatus": "https://schema.org/EventScheduled",
+                  "offers": {
+                    "@type": "Offer",
+                    "url": "{{ event.url }}",
+                    "availability": "https://schema.org/InStock"
+                  }
                 }
               }
               {% set event_count.value = event_count.value + 1 %}
