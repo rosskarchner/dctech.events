@@ -57,13 +57,13 @@ def extract_group_id(url):
     return path.rstrip('/')
 
 
-def create_yaml_entry(url, group_name):
+def create_yaml_entry(url, group_name, city='dc'):
     """Create a YAML file entry for the group."""
     group_id = extract_group_id(url)
 
     # Sanitize filename
     filename = group_id.replace('/', '-') + '.yaml'
-    filepath = Path('_groups') / filename
+    filepath = Path('cities') / city / '_groups' / filename
 
     # Check if file already exists
     if filepath.exists():
@@ -72,12 +72,10 @@ def create_yaml_entry(url, group_name):
             print("Skipped.")
             return False
 
-    yaml_content = f"""active: true
-name: {group_name}
-rss: {url}events/rss/
-submitted_by: anonymous
-submitter_link: ''
+    yaml_content = f"""name: {group_name}
 website: {url}
+rss: {url}events/rss/
+active: true
 """
 
     try:
@@ -93,7 +91,26 @@ def main():
     """Main loop for adding groups."""
     os.chdir(Path(__file__).parent)
 
-    print("Meetup Group Adder")
+    # Get city from command line or prompt
+    city = 'dc'  # default
+    if len(sys.argv) > 1:
+        city = sys.argv[1]
+    else:
+        city_input = input("Enter city (default: dc): ").strip().lower()
+        if city_input:
+            city = city_input
+
+    # Check if city directory exists
+    city_path = Path('cities') / city / '_groups'
+    if not city_path.exists():
+        print(f"Error: City directory '{city}' does not exist")
+        print("Available cities:")
+        for city_dir in Path('cities').iterdir():
+            if city_dir.is_dir():
+                print(f"  - {city_dir.name}")
+        return
+
+    print(f"Meetup Group Adder - {city.upper()}")
     print("=" * 50)
     print("Enter Meetup URLs one at a time.")
     print("(Type 'quit' or 'exit' to stop)\n")
@@ -127,7 +144,7 @@ def main():
                 continue
 
             print(f"Group name: {group_name}")
-            create_yaml_entry(url, group_name)
+            create_yaml_entry(url, group_name, city)
             print()
 
         except KeyboardInterrupt:
