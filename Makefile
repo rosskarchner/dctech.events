@@ -32,7 +32,7 @@ freeze: generate-month-data
 	python freeze.py --city $(CITY)
 
 # Build localtech.events homepage
-homepage:
+homepage: js-build
 	python freeze.py --homepage
 
 # Validation targets
