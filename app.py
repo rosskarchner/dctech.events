@@ -760,6 +760,9 @@ def homepage():
 @app.route("/week/<week_id>/")
 def week_page(week_id):
     """Show events for a specific ISO week"""
+    if args.homepage:
+        return "Not available on homepage", 404
+
     try:
         year, week_num = parse_week_identifier(week_id)
         week_start, week_end = get_iso_week_dates(year, week_num)
@@ -818,6 +821,9 @@ def week_page(week_id):
 @app.route("/locations/")
 def locations_index():
     """Show available locations with event counts"""
+    if args.homepage:
+        return "Not available on homepage", 404
+
     events = get_events()
     
     # Count events by location
@@ -850,6 +856,9 @@ def locations_index():
 
 @app.route("/groups/")
 def approved_groups_list():
+    if args.homepage:
+        return "Not available on homepage", 404
+
     # Get all groups
     groups = get_approved_groups()
     
@@ -860,6 +869,9 @@ def approved_groups_list():
 
 @app.route("/newsletter.html")
 def newsletter_html():
+    if args.homepage:
+        return "Not available on homepage", 404
+
     # Get upcoming events
     events = get_events()
     days = prepare_events_by_day(events)
@@ -873,6 +885,9 @@ def newsletter_html():
 
 @app.route("/newsletter.txt")
 def newsletter_text():
+    if args.homepage:
+        return "Not available on homepage", 404
+
     # Get upcoming events
     events = get_events()
     days = prepare_events_by_day(events)
@@ -888,10 +903,13 @@ def newsletter_text():
 @app.route("/locations/<state>/")
 def region_page(state):
     """Show events for a specific state/region"""
+    if args.homepage:
+        return "Not available on homepage", 404
+
     state = state.upper()
     if state not in ['DC', 'VA', 'MD']:
         return "Region not found", 404
-    
+
     events = get_events()
     filtered_events = filter_events_by_location(events, state=state)
     days = prepare_events_by_day(filtered_events)
@@ -908,10 +926,13 @@ def region_page(state):
 @app.route("/locations/<state>/<city>/")
 def city_page(state, city):
     """Show events for a specific city"""
+    if args.homepage:
+        return "Not available on homepage", 404
+
     state = state.upper()
     if state not in ['DC', 'VA', 'MD']:
         return "Region not found", 404
-    
+
     events = get_events()
     city_name = city.replace('-', ' ').title()
     filtered_events = filter_events_by_location(events, city=city_name, state=state)
