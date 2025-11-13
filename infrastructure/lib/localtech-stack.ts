@@ -312,7 +312,7 @@ export class LocalTechStack extends cdk.Stack {
             'logs:DescribeLogStreams',
             'logs:FilterLogEvents',
           ],
-          resources: [`arn:aws:logs:us-east-1:${this.account}:log-group:/aws/lambda/dctech-events-submit-*`],
+          resources: [`arn:aws:logs:us-east-1:${this.account}:log-group:/aws/lambda/dctech-events-submit-*:*`],
         }),
       ],
     });
