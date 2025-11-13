@@ -162,12 +162,12 @@ function handleGitHubLogin() {
 
     // Create state object with CSRF token, return URL, and city
     const stateObj = {
-        csrf: generateRandomState(),
-        returnUrl: window.location.pathname,
+        csrf_token: generateRandomState(),
+        return_url: window.location.pathname,
         city: getSelectedCity()
     };
     const state = btoa(JSON.stringify(stateObj)); // Base64 encode the state object
-    sessionStorage.setItem('oauth_state', stateObj.csrf);
+    sessionStorage.setItem('oauth_state', stateObj.csrf_token);
 
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', CONFIG.clientId);
