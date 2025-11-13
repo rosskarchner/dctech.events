@@ -25,12 +25,10 @@ if args.homepage:
     app.config['FREEZER_DESTINATION'] = 'build'
     # When building homepage, skip city-specific routes that return 404
     app.config['FREEZER_IGNORE_404_NOT_FOUND'] = True
-elif args.city == 'dc':
-    # DC goes to build/ for backward compatibility with GitHub Pages
-    app.config['FREEZER_DESTINATION'] = 'build'
 else:
-    # Other cities go to build/{city-slug}/
-    app.config['FREEZER_DESTINATION'] = os.path.join('build', args.city)
+    # All cities output directly to build/
+    # The deployment workflow handles placing them in build-all/{city}/
+    app.config['FREEZER_DESTINATION'] = 'build'
 
 app.config['FREEZER_RELATIVE_URLS'] = True
 

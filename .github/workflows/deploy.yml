@@ -72,7 +72,8 @@ jobs:
         env:
           GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
         run: |
-          make all
+          make js-build
+          CITY=dc make refresh-calendars generate-month-data freeze
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
