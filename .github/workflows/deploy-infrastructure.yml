@@ -59,8 +59,8 @@ jobs:
         working-directory: infrastructure
         run: |
           if [ -f outputs.json ]; then
-            DISTRIBUTION_ID=$(cat outputs.json | jq -r '.LocalTechStack.CloudFrontDistributionId // empty')
-            S3_BUCKET=$(cat outputs.json | jq -r '.LocalTechStack.S3BucketName // empty')
+            DISTRIBUTION_ID=$(cat outputs.json | jq -r '.LocalTechStack.DistributionId // empty')
+            S3_BUCKET=$(cat outputs.json | jq -r '.LocalTechStack.BucketName // empty')
 
             if [ -n "$DISTRIBUTION_ID" ]; then
               echo "CloudFront Distribution ID: $DISTRIBUTION_ID"
