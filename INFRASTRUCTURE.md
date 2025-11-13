@@ -58,14 +58,22 @@ LocalTech.Events uses a serverless architecture on AWS to host multiple city sit
 ### 5. IAM Resources
 - **Deployment User**: `localtech-github-actions-deployer`
   - Created automatically by CDK stack
-  - Used by GitHub Actions for automated deployments
+  - **Unified user for ALL GitHub Actions deployments** (static site + OAuth endpoint)
+  - Replaces need for separate AWS credentials
 - **Managed Policy**: `LocalTechDeploymentPolicy`
   - Attached to deployment user
-  - Permissions granted:
+  - **Static Site Deployment Permissions**:
     - **S3 Bucket**: `s3:ListBucket`, `s3:GetBucketLocation`
     - **S3 Objects**: `s3:PutObject`, `s3:PutObjectAcl`, `s3:GetObject`, `s3:DeleteObject`
     - **CloudFront**: `cloudfront:CreateInvalidation`, `cloudfront:GetInvalidation`, `cloudfront:ListInvalidations`
-  - Scoped to only the resources in this stack (least privilege)
+  - **OAuth Endpoint (Chalice) Deployment Permissions**:
+    - **Lambda**: Create, update, delete functions
+    - **API Gateway**: Full REST API management
+    - **IAM**: Create/manage Lambda execution roles
+    - **Secrets Manager**: Read GitHub OAuth secrets
+    - **CloudFormation**: Manage Chalice stacks
+    - **CloudWatch Logs**: Access Lambda logs
+  - All permissions scoped to specific resources (least privilege)
 
 ## Prerequisites
 
@@ -122,7 +130,8 @@ The `LocalTechStack` creates:
 5. **IAM User and Policy**
    - IAM User: `localtech-github-actions-deployer`
    - Managed Policy: `LocalTechDeploymentPolicy`
-   - Scoped permissions for S3 and CloudFront operations
+   - **Unified credentials** for both static site and OAuth endpoint deployments
+   - Scoped permissions for S3, CloudFront, Lambda, API Gateway, CloudFormation, and Secrets Manager
 
 ## Deployment Instructions
 
@@ -207,6 +216,13 @@ The `LocalTechStack` creates:
    CLOUDFRONT_DISTRIBUTION_ID=E1234ABCDEFGH
    S3_BUCKET_NAME=localtech-events-hosting
    ```
+
+   **Note**: These same credentials are used by **all GitHub Actions workflows**:
+   - `deploy-localtech.yml` - Static site deployment
+   - `deploy-oauth.yml` - OAuth endpoint deployment
+   - `deploy-infrastructure.yml` - Infrastructure updates
+
+   This unified approach means you only need one set of AWS credentials!
 
 ### Verify Deployment
 

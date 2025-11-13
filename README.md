@@ -269,11 +269,13 @@ Three GitHub Actions workflows handle deployments:
 
 ### Required GitHub Secrets
 
-For AWS deployment:
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `CLOUDFRONT_DISTRIBUTION_ID` (after first deployment)
-- `S3_BUCKET_NAME` (after first deployment)
+For AWS deployment (used by all workflows):
+- `AWS_ACCESS_KEY_ID` - From unified deployment user
+- `AWS_SECRET_ACCESS_KEY` - From unified deployment user
+- `CLOUDFRONT_DISTRIBUTION_ID` - After first infrastructure deployment
+- `S3_BUCKET_NAME` - After first infrastructure deployment
+
+**Note**: The CDK stack creates a unified IAM user (`localtech-github-actions-deployer`) with permissions for both static site deployment and OAuth endpoint deployment. You only need **one set of AWS credentials**!
 
 ### Manual Deployment
 

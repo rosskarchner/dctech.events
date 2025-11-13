@@ -149,7 +149,7 @@ export class LocalTechStack extends cdk.Stack {
       ),
     });
 
-    // IAM User for GitHub Actions deployment
+    // IAM User for GitHub Actions deployment (unified for both static site and OAuth endpoint)
     const deploymentUser = new iam.User(this, 'DeploymentUser', {
       userName: 'localtech-github-actions-deployer',
     });
@@ -157,8 +157,12 @@ export class LocalTechStack extends cdk.Stack {
     // IAM Policy for deployment permissions
     const deploymentPolicy = new iam.ManagedPolicy(this, 'DeploymentPolicy', {
       managedPolicyName: 'LocalTechDeploymentPolicy',
-      description: 'Permissions for GitHub Actions to deploy LocalTech Events sites',
+      description: 'Permissions for GitHub Actions to deploy LocalTech Events (static site + OAuth endpoint)',
       statements: [
+        // ============================================
+        // Static Site Deployment Permissions
+        // ============================================
+
         // S3 Bucket permissions
         new iam.PolicyStatement({
           sid: 'S3BucketAccess',
@@ -193,6 +197,115 @@ export class LocalTechStack extends cdk.Stack {
           resources: [
             `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
           ],
+        }),
+
+        // ============================================
+        // OAuth Endpoint (Chalice) Deployment Permissions
+        // ============================================
+
+        // Lambda function management
+        new iam.PolicyStatement({
+          sid: 'LambdaFunctionManagement',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'lambda:CreateFunction',
+            'lambda:UpdateFunctionCode',
+            'lambda:UpdateFunctionConfiguration',
+            'lambda:GetFunction',
+            'lambda:GetFunctionConfiguration',
+            'lambda:DeleteFunction',
+            'lambda:AddPermission',
+            'lambda:RemovePermission',
+            'lambda:ListVersionsByFunction',
+            'lambda:PublishVersion',
+            'lambda:GetPolicy',
+            'lambda:ListTags',
+            'lambda:TagResource',
+            'lambda:UntagResource',
+            'lambda:DeleteFunctionConcurrency',
+            'lambda:PutFunctionConcurrency',
+          ],
+          resources: [`arn:aws:lambda:us-east-1:${this.account}:function:dctech-events-submit-*`],
+        }),
+
+        // API Gateway management
+        new iam.PolicyStatement({
+          sid: 'APIGatewayManagement',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'apigateway:GET',
+            'apigateway:POST',
+            'apigateway:PUT',
+            'apigateway:DELETE',
+            'apigateway:PATCH',
+          ],
+          resources: [
+            `arn:aws:apigateway:us-east-1::/restapis`,
+            `arn:aws:apigateway:us-east-1::/restapis/*`,
+          ],
+        }),
+
+        // IAM role management (for Lambda execution role)
+        new iam.PolicyStatement({
+          sid: 'IAMRoleManagement',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:CreateRole',
+            'iam:DeleteRole',
+            'iam:PutRolePolicy',
+            'iam:DeleteRolePolicy',
+            'iam:GetRole',
+            'iam:GetRolePolicy',
+            'iam:PassRole',
+            'iam:AttachRolePolicy',
+            'iam:DetachRolePolicy',
+            'iam:ListRolePolicies',
+            'iam:ListAttachedRolePolicies',
+          ],
+          resources: [
+            `arn:aws:iam::${this.account}:role/dctech-events-submit-*`,
+          ],
+        }),
+
+        // Secrets Manager read access
+        new iam.PolicyStatement({
+          sid: 'SecretsManagerRead',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'secretsmanager:GetSecretValue',
+            'secretsmanager:DescribeSecret',
+          ],
+          resources: [`arn:aws:secretsmanager:us-east-1:${this.account}:secret:dctech-events/*`],
+        }),
+
+        // CloudFormation stack management (Chalice uses CloudFormation)
+        new iam.PolicyStatement({
+          sid: 'CloudFormationStackManagement',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'cloudformation:CreateStack',
+            'cloudformation:UpdateStack',
+            'cloudformation:DeleteStack',
+            'cloudformation:DescribeStacks',
+            'cloudformation:DescribeStackEvents',
+            'cloudformation:DescribeStackResource',
+            'cloudformation:DescribeStackResources',
+            'cloudformation:GetTemplate',
+            'cloudformation:ValidateTemplate',
+          ],
+          resources: [`arn:aws:cloudformation:us-east-1:${this.account}:stack/dctech-events-submit-*/*`],
+        }),
+
+        // CloudWatch Logs access
+        new iam.PolicyStatement({
+          sid: 'CloudWatchLogsAccess',
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'logs:DescribeLogGroups',
+            'logs:DescribeLogStreams',
+            'logs:FilterLogEvents',
+          ],
+          resources: [`arn:aws:logs:us-east-1:${this.account}:log-group:/aws/lambda/dctech-events-submit-*`],
         }),
       ],
     });
