@@ -62,6 +62,10 @@ jobs:
           GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
         run: |
           make homepage
+          # Move homepage to build-all root
+          mkdir -p build-all
+          mv build/* build-all/
+          rm -rf build
 
       - name: Build all cities
         env:
@@ -71,7 +75,7 @@ jobs:
           for city_dir in cities/*/; do
             city=$(basename "$city_dir")
             echo "Building city: $city"
-            CITY=$city make all
+            CITY=$city make refresh-calendars generate-month-data freeze
 
             # Move build output to city-specific directory
             if [ -d "build" ]; then
@@ -80,12 +84,6 @@ jobs:
               rm -rf build
             fi
           done
-
-          # Move homepage to root of build-all
-          if [ -f "build-all/homepage/index.html" ]; then
-            mv build-all/homepage/* build-all/
-            rm -rf build-all/homepage
-          fi
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
