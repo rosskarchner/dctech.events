@@ -1,10 +1,21 @@
-.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze js-build validate validate-report homepage
+.PHONY: all all-cities clean clean-all force refresh-calendars generate-month-data freeze js-build validate validate-report homepage
 
 # City configuration (defaults to DC for backward compatibility)
 CITY ?= dc
 
+# List of all cities
+CITIES = baltimore dc philadelphia pittsburgh richmond
+
 # Default target (builds DC for backward compatibility with dctech.events)
 all: js-build refresh-calendars generate-month-data freeze
+
+# Build all cities
+all-cities: js-build
+	@for city in $(CITIES); do \
+		echo "Building $$city..."; \
+		$(MAKE) CITY=$$city refresh-calendars generate-month-data freeze; \
+	done
+	@$(MAKE) homepage
 
 # Build JavaScript bundles
 js-build:
