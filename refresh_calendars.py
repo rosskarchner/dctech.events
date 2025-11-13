@@ -463,8 +463,9 @@ def main():
     # Run the refresh
     updated = refresh_calendars()
 
-    # Return exit code based on whether calendars were updated OR day file was updated
-    return 0 if (updated or day_file_updated) else 1
+    # Always return success (0) - "no updates needed" is a successful state
+    # Only errors (exceptions) should cause non-zero exit codes
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())
