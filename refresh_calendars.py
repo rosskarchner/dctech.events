@@ -452,17 +452,19 @@ def main():
     os.makedirs(CACHE_DIR, exist_ok=True)
     os.makedirs(ICAL_CACHE_DIR, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
-    
+
     # Always check and update the current day file
+    day_file_updated = False
     if not is_current_day_file_updated():
         print("Current day file is out of date, updating...")
         update_current_day_file()
-    
+        day_file_updated = True
+
     # Run the refresh
     updated = refresh_calendars()
-    
-    # Return exit code based on whether calendars were updated
-    return 0 if updated else 1
+
+    # Return exit code based on whether calendars were updated OR day file was updated
+    return 0 if (updated or day_file_updated) else 1
 
 if __name__ == "__main__":
     sys.exit(main())
