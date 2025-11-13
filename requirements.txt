@@ -1,13 +1,25 @@
+# Core web framework
 flask>=2.3.0
 Frozen-Flask
 flask-htmx>=0.2.0
+
+# Date/time handling
 pytz
+dateparser
+
+# Data formats
 pyyaml
 icalendar
 requests
-dateparser
-feedparser
+
+# Calendar aggregation (used by refresh_calendars.py)
+feedparser>=6.0.0
 extruct
 w3lib
-responses
+
+# Image generation
 Pillow>=10.0.0
+
+# Dev/testing only (not needed for CI build, but kept for local development)
+beautifulsoup4
+responses
