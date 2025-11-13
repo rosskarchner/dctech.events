@@ -23,6 +23,8 @@ if not args.homepage:
 if args.homepage:
     # Homepage goes to build/
     app.config['FREEZER_DESTINATION'] = 'build'
+    # When building homepage, skip city-specific routes that return 404
+    app.config['FREEZER_IGNORE_404_NOT_FOUND'] = True
 elif args.city == 'dc':
     # DC goes to build/ for backward compatibility with GitHub Pages
     app.config['FREEZER_DESTINATION'] = 'build'
