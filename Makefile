@@ -3,11 +3,11 @@
 # City configuration (defaults to DC for backward compatibility)
 CITY ?= dc
 
-# List of all cities
-CITIES = baltimore dc philadelphia pittsburgh richmond
+# Dynamically get list of cities from config.yaml
+CITIES = $(shell python -c "import yaml; print(' '.join([c['slug'] for c in yaml.safe_load(open('config.yaml'))['cities']]))")
 
-# Default target (builds DC for backward compatibility with dctech.events)
-all: js-build refresh-calendars generate-month-data freeze
+# Default target (builds all cities)
+all: all-cities
 
 # Build all cities
 all-cities: js-build
