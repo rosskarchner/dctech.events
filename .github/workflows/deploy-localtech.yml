@@ -6,8 +6,8 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    # Runs at 2 AM Eastern (UTC-4)
-    # Note: GitHub Actions uses UTC, so 2 AM Eastern is 6 AM UTC
+    # Runs at 6 AM UTC (2 AM EDT / 1 AM EST)
+    # Note: GitHub Actions uses UTC; 6 AM UTC is 2 AM Eastern during daylight saving time (EDT, UTC-4) and 1 AM Eastern during standard time (EST, UTC-5)
     - cron: '0 6 * * *'
 
 permissions:
