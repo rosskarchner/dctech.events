@@ -1,10 +1,21 @@
-.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze js-build validate validate-report homepage
+.PHONY: all all-cities clean clean-all force refresh-calendars generate-month-data freeze js-build validate validate-report homepage
 
 # City configuration (defaults to DC for backward compatibility)
 CITY ?= dc
 
-# Default target (builds DC for backward compatibility with dctech.events)
-all: js-build refresh-calendars generate-month-data freeze
+# Dynamically get list of cities from config.yaml
+CITIES = $(shell python -c "import yaml; print(' '.join([c['slug'] for c in yaml.safe_load(open('config.yaml'))['cities']]))")
+
+# Default target (builds all cities)
+all: all-cities
+
+# Build all cities
+all-cities: js-build
+	@for city in $(CITIES); do \
+		echo "Building $$city..."; \
+		$(MAKE) CITY=$$city refresh-calendars generate-month-data freeze; \
+	done
+	@$(MAKE) homepage
 
 # Build JavaScript bundles
 js-build:
