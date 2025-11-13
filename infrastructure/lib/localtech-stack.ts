@@ -238,11 +238,19 @@ export class LocalTechStack extends cdk.Stack {
             'apigateway:DELETE',
             'apigateway:PATCH',
           ],
+          // NOTE: The following permissions grant access to all REST APIs in the account.
+          // This is broader than necessary and violates the principle of least privilege.
+          // After the first deployment, replace the wildcard with the specific API ID:
+          //   const apiId = '<YOUR_API_ID>';
+          //   resources: [
+          //     `arn:aws:apigateway:us-east-1::/restapis/${apiId}`,
+          //     `arn:aws:apigateway:us-east-1::/restapis/${apiId}/*`,
+          //   ],
+          // For initial deployment, the wildcard is used. Update after API creation.
           resources: [
             `arn:aws:apigateway:us-east-1::/restapis`,
             `arn:aws:apigateway:us-east-1::/restapis/*`,
           ],
-        }),
 
         // IAM role management (for Lambda execution role)
         new iam.PolicyStatement({
