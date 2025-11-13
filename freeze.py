@@ -79,6 +79,38 @@ if not args.homepage:
         """Generate the event submission page"""
         yield {}
 
+    @freezer.register_generator
+    def locations_index():
+        """Generate the locations index page (DC only)"""
+        # Only generate for DC (multi-region support)
+        if args.city == 'dc':
+            yield {}
+
+    @freezer.register_generator
+    def approved_groups_list():
+        """Generate the groups page"""
+        yield {}
+
+    @freezer.register_generator
+    def submit_group():
+        """Generate the group submission page"""
+        yield {}
+
+    @freezer.register_generator
+    def newsletter_html():
+        """Generate the HTML newsletter page"""
+        yield {}
+
+    @freezer.register_generator
+    def newsletter_text():
+        """Generate the text newsletter page"""
+        yield {}
+
+    @freezer.register_generator
+    def sitemap():
+        """Generate the sitemap.xml page"""
+        yield {}
+
 # Image generation temporarily disabled
 # @freezer.register_generator
 # def week_image():
