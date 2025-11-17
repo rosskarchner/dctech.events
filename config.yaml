@@ -23,3 +23,8 @@ oauth_callback_endpoint: "https://add.dctech.events/oauth/callback"
 # Token is set via GITHUB_SPONSORS_TOKEN environment variable
 # Used for sponsor verification during build
 github_sponsors_token: ""  # Set via GITHUB_SPONSORS_TOKEN environment variable
+
+# Organize DC Tech Events Integration
+# URLs for fetching groups and events from organize.dctech.events
+organize_groups_url: "https://organize.dctech.events/groups.yaml"
+organize_events_url: "https://organize.dctech.events/events.yaml"
