@@ -8,16 +8,10 @@ import glob
 import re
 from pathlib import Path
 import sys
-import argparse
 import calendar as cal_module
 import dateparser
 import json
 from address_utils import normalize_address
-
-# Parse command line arguments
-parser = argparse.ArgumentParser(description='Generate month data for a specific city')
-parser.add_argument('--city', default='dc', help='City slug (default: dc)')
-args = parser.parse_args()
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -26,26 +20,14 @@ if os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
 
-# Get city-specific configuration
-city_config = None
-for city in config.get('cities', []):
-    if city['slug'] == args.city:
-        city_config = city
-        break
-
-if not city_config:
-    print(f"Error: City '{args.city}' not found in config.yaml")
-    sys.exit(1)
-
-# Initialize timezone from city config or fall back to root config
-timezone_name = city_config.get('timezone', config.get('timezone', 'US/Eastern'))
+# Initialize timezone from config
+timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
 
-# Constants - city-specific paths
-CITY_DIR = os.path.join('cities', args.city)
-GROUPS_DIR = os.path.join(CITY_DIR, '_groups')
-SINGLE_EVENTS_DIR = os.path.join(CITY_DIR, '_single_events')
-DATA_DIR = os.path.join(CITY_DIR, '_data')
+# Constants - data paths
+GROUPS_DIR = '_groups'
+SINGLE_EVENTS_DIR = '_single_events'
+DATA_DIR = '_data'
 CACHE_DIR = '_cache'  # Shared cache directory
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
 RSS_CACHE_DIR = os.path.join(CACHE_DIR, 'rss')

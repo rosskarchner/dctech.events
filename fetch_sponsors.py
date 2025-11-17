@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Fetch GitHub Sponsors for a specific city.
+Fetch GitHub Sponsors.
 
 This script queries the GitHub GraphQL API to verify sponsors and fetch their
-avatar URLs. It reads the sponsors list from cities/{slug}/sponsors.yaml and
-outputs to cities/{slug}/_data/sponsors.json.
+avatar URLs. It reads the sponsors list from sponsors.yaml and
+outputs to _data/sponsors.json.
 
 The sponsor data is cached for 4 hours to avoid rate limiting.
 """
@@ -13,21 +13,14 @@ import os
 import yaml
 import json
 import requests
-import argparse
 from datetime import datetime, timedelta, timezone
 
-# Parse command line arguments
-parser = argparse.ArgumentParser(description='Fetch GitHub Sponsors for a specific city')
-parser.add_argument('--city', default='dc', help='City slug (default: dc)')
-args = parser.parse_args()
-
 # Constants
-CITY_DIR = os.path.join('cities', args.city)
-SPONSORS_FILE = os.path.join(CITY_DIR, 'sponsors.yaml')
-OUTPUT_FILE = os.path.join(CITY_DIR, '_data', 'sponsors.json')
+SPONSORS_FILE = 'sponsors.yaml'
+OUTPUT_FILE = os.path.join('_data', 'sponsors.json')
 CACHE_DIR = '_cache'
-CACHE_FILE = os.path.join(CACHE_DIR, f'sponsors_{args.city}.json')
-CACHE_META_FILE = os.path.join(CACHE_DIR, f'sponsors_{args.city}.meta')
+CACHE_FILE = os.path.join(CACHE_DIR, 'sponsors.json')
+CACHE_META_FILE = os.path.join(CACHE_DIR, 'sponsors.meta')
 
 # GitHub GraphQL API endpoint
 GITHUB_API_URL = 'https://api.github.com/graphql'
@@ -172,7 +165,7 @@ def main():
     # Check if we should use cached data
     if not should_fetch_sponsors():
         if os.path.exists(CACHE_FILE):
-            print(f"Using cached sponsor data for {args.city}")
+            print("Using cached sponsor data")
             with open(CACHE_FILE, 'r') as f:
                 sponsors_data = json.load(f)
 
@@ -197,7 +190,7 @@ def main():
     # Load sponsors list
     sponsors_list = load_sponsors_list()
     if not sponsors_list:
-        print(f"No sponsors configured for {args.city}")
+        print("No sponsors configured")
 
         empty_data = []
         with open(OUTPUT_FILE, 'w') as f:

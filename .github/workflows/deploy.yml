@@ -55,7 +55,7 @@ jobs:
         with:
           path: |
             _cache
-            cities/dc/_data
+            _data
           key: ${{ runner.os }}-data-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-data-
@@ -71,9 +71,7 @@ jobs:
       - name: Run aggregator and build site
         env:
           GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
-        run: |
-          make js-build
-          CITY=dc make refresh-calendars generate-month-data freeze
+        run: make all
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
