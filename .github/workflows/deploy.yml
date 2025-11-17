@@ -56,9 +56,9 @@ jobs:
           path: |
             _cache
             _data
-          key: ${{ runner.os }}-data-${{ github.sha }}
+          key: ${{ runner.os }}-data-${{ hashFiles('refresh_calendars.py', 'generate_month_data.py') }}-${{ github.run_number }}
           restore-keys: |
-            ${{ runner.os }}-data-
+            ${{ runner.os }}-data-${{ hashFiles('refresh_calendars.py', 'generate_month_data.py') }}-
 
       - name: Install Python dependencies
         run: |
