@@ -231,7 +231,6 @@ async function handleFormSubmit(e) {
             name: document.getElementById('name').value.trim(),
             website: document.getElementById('website').value.trim(),
             ical: document.getElementById('ical').value.trim() || '',
-            rss: document.getElementById('rss').value.trim() || '',
             fallback_url: document.getElementById('fallback_url').value.trim() || '',
             submitter_link: document.getElementById('submitter_link').value.trim() || '',
             submitted_by: userData.login
@@ -338,7 +337,7 @@ async function createPullRequest(groupData) {
 
 **Name:** ${groupData.name}
 **Website:** ${groupData.website}
-${groupData.ical ? `**iCal Feed:** ${groupData.ical}\n` : ''}${groupData.rss ? `**RSS Feed:** ${groupData.rss}\n` : ''}${groupData.fallback_url ? `**Fallback URL:** ${groupData.fallback_url}\n` : ''}${groupData.submitter_link ? `**Submitted by:** ${groupData.submitter_link}\n` : ''}
+${groupData.ical ? `**iCal Feed:** ${groupData.ical}\n` : ''}${groupData.fallback_url ? `**Fallback URL:** ${groupData.fallback_url}\n` : ''}${groupData.submitter_link ? `**Submitted by:** ${groupData.submitter_link}\n` : ''}
 
 This group was submitted via the web form by @${groupData.submitted_by}.`
     });
@@ -354,9 +353,6 @@ function generateYAML(data) {
     yaml += `website: ${data.website}\n`;
     if (data.ical) {
         yaml += `ical: ${data.ical}\n`;
-    }
-    if (data.rss) {
-        yaml += `rss: ${data.rss}\n`;
     }
     if (data.fallback_url) {
         yaml += `fallback_url: ${data.fallback_url}\n`;
