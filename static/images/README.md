@@ -2,7 +2,9 @@
 
 This directory should contain the responsive header images for the site.
 
-See [HEADER_IMAGES.md](../../HEADER_IMAGES.md) in the root directory for:
+📄 **Quick Reference:** See `SIZES_QUICK_REFERENCE.txt` in this directory for a visual overview of all required sizes.
+
+📚 **Complete Guide:** See [HEADER_IMAGES.md](../../HEADER_IMAGES.md) in the root directory for:
 - Complete specifications for all required image sizes
 - Implementation examples
 - Design guidelines
