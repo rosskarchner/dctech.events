@@ -237,6 +237,7 @@ Check that required files exist:
 ## 📚 Additional Documentation
 
 - **[ADD_EVENTS.md](ADD_EVENTS.md)** - Detailed guide for adding events
+- **[HEADER_IMAGES.md](HEADER_IMAGES.md)** - Responsive header image specifications and sizes
 - **[OAUTH_SETUP.md](OAUTH_SETUP.md)** - OAuth endpoint setup
 - **[PR_VALIDATION.md](PR_VALIDATION.md)** - Pull request validation system
 - **[ADDRESS_NORMALIZATION.md](ADDRESS_NORMALIZATION.md)** - Address formatting
