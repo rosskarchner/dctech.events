@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Event - Organize DC Tech Events</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Organize DC Tech Events</h1>
+            <nav id="main-nav"></nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h2>Create a New Event</h2>
+            <div id="message"></div>
+
+            <form id="create-form" onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <label for="title">Event Title *</label>
+                    <input type="text" id="title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="date">Date *</label>
+                    <input type="date" id="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="time">Time</label>
+                    <input type="time" id="time">
+                </div>
+
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" placeholder="Address or venue name">
+                </div>
+
+                <div class="form-group">
+                    <label for="url">Event URL</label>
+                    <input type="url" id="url" placeholder="https://example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" placeholder="Tell people about your event..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="groupId">Group (optional)</label>
+                    <select id="groupId">
+                        <option value="">None (standalone event)</option>
+                    </select>
+                    <small>You can only add events to groups where you are a manager or owner</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Create Event</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        if (!window.auth.requireAuth()) {
+            // Will redirect to auth page
+        }
+
+        async function loadMyGroups() {
+            // For simplicity, we'll load all groups and filter on submission
+            // In a production app, you'd want an API endpoint to get only user's groups
+            try {
+                const data = await window.api.listGroups();
+                const groups = data.groups || [];
+                const select = document.getElementById('groupId');
+
+                groups.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.groupId;
+                    option.textContent = group.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading groups:', error);
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const messageDiv = document.getElementById('message');
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            try {
+                const data = {
+                    title: document.getElementById('title').value,
+                    date: document.getElementById('date').value,
+                    time: document.getElementById('time').value,
+                    location: document.getElementById('location').value,
+                    url: document.getElementById('url').value,
+                    description: document.getElementById('description').value,
+                    groupId: document.getElementById('groupId').value || null
+                };
+
+                const result = await window.api.createEvent(data);
+
+                messageDiv.innerHTML = '<div class="message success">Event created successfully!</div>';
+
+                setTimeout(() => {
+                    window.location.href = `/event.html?id=${result.eventId}`;
+                }, 1000);
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="message error">${error.message}</div>`;
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Event';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadMyGroups);
+    </script>
+</body>
+</html>

@@ -54,10 +54,19 @@ The infrastructure consists of:
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- Node.js 18+ and npm
+- Node.js 18+ and npm (for CDK and Lambda only)
 - AWS CDK CLI (\`npm install -g aws-cdk\`)
 - An AWS account
 - (Optional) A custom domain and ACM certificate
+
+## Technology Stack
+
+- **Frontend**: HTMX + Vanilla JavaScript (no build step required!)
+- **Authentication**: Amazon Cognito Identity SDK
+- **Styling**: Pure CSS
+- **Backend**: API Gateway + Lambda (Node.js)
+- **Database**: DynamoDB
+- **Hosting**: CloudFront + S3
 
 ## Deployment
 

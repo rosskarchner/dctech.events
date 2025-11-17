@@ -128,54 +128,33 @@ OrganizeDCTechStack.EventsYamlUrl = https://d1234567890abc.cloudfront.net/events
 
 ## Configure and Deploy Frontend
 
-### 1. Install Frontend Dependencies
+The frontend uses HTMX for dynamic interactions and vanilla JavaScript for authentication. No build step required!
 
-```bash
-cd frontend
-npm install
-```
+### 1. Configure Frontend
 
-### 2. Configure Frontend
-
-Create a `.env` file in the `frontend` directory:
-
-```bash
-REACT_APP_USER_POOL_ID=us-east-1_XXXXXXXXX
-REACT_APP_USER_POOL_CLIENT_ID=1234567890abcdefghij
-REACT_APP_USER_POOL_DOMAIN=organize-dctech-events
-REACT_APP_API_URL=https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/
-REACT_APP_REGION=us-east-1
-```
-
-Replace the values with your CDK outputs.
-
-Alternatively, edit `frontend/src/config.js` directly:
+Edit `frontend/public/js/config.js` with your CDK stack outputs:
 
 ```javascript
-export const config = {
-  userPoolId: 'us-east-1_XXXXXXXXX',
-  userPoolClientId: '1234567890abcdefghij',
-  userPoolDomain: 'organize-dctech-events',
-  apiUrl: 'https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/',
-  region: 'us-east-1',
+window.CONFIG = {
+    userPoolId: 'us-east-1_XXXXXXXXX',          // From UserPoolId output
+    userPoolClientId: '1234567890abcdefghij',    // From UserPoolClientId output
+    region: 'us-east-1',
+    apiUrl: 'https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/'  // From ApiUrl output
 };
 ```
 
-### 3. Build Frontend
+Replace the values with your CDK stack outputs.
+
+### 2. Deploy to S3
+
+No build step needed! Just sync the public directory directly to S3:
 
 ```bash
-npm run build
+cd frontend/public
+aws s3 sync . s3://organize-dctech-events --delete
 ```
 
-This creates an optimized production build in the `build/` directory.
-
-### 4. Deploy to S3
-
-```bash
-aws s3 sync build/ s3://organize-dctech-events --delete
-```
-
-### 5. Invalidate CloudFront Cache
+### 3. Invalidate CloudFront Cache
 
 Get your CloudFront distribution ID:
 
@@ -379,10 +358,9 @@ npx cdk deploy
 ### Update Frontend
 
 ```bash
-cd frontend
-# Make your changes
-npm run build
-aws s3 sync build/ s3://organize-dctech-events --delete
+cd frontend/public
+# Make your changes to HTML, CSS, or JS files
+aws s3 sync . s3://organize-dctech-events --delete
 aws cloudfront create-invalidation --distribution-id YOUR_DIST_ID --paths "/*"
 ```
 
