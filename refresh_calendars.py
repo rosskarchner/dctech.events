@@ -123,30 +123,34 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
             try:
                 # Get the event URL from the iCal event
                 event_url = str(component.get('url', '')) if component.get('url') else None
+                using_fallback = False
 
                 # If no URL in event, try fallback_url from group
                 if not event_url and group and group.get('fallback_url'):
                     event_url = group.get('fallback_url')
+                    using_fallback = True
 
                 # Skip if still no URL
                 if not event_url:
                     print(f"Skipping event without URL: {component.get('summary', 'Unknown')}")
                     continue
 
-                # Fetch the event page
-                event_response = requests.get(event_url)
-                event_response.raise_for_status()
-
-                # Extract JSON-LD data
-                base_url = get_base_url(event_response.text, event_response.url)
-                data = extruct.extract(event_response.text, base_url=base_url, syntaxes=['json-ld'])
-
-                # Find Event schema
+                # Only try JSON-LD extraction if we have an event-specific URL
                 event_data = None
-                for item in data.get('json-ld', []):
-                    if item.get('@type') == 'Event':
-                        event_data = item
-                        break
+                if not using_fallback:
+                    # Fetch the event page
+                    event_response = requests.get(event_url)
+                    event_response.raise_for_status()
+
+                    # Extract JSON-LD data
+                    base_url = get_base_url(event_response.text, event_response.url)
+                    data = extruct.extract(event_response.text, base_url=base_url, syntaxes=['json-ld'])
+
+                    # Find Event schema
+                    for item in data.get('json-ld', []):
+                        if item.get('@type') == 'Event':
+                            event_data = item
+                            break
 
                 # Create event from JSON-LD if available, otherwise from iCal data
                 if event_data:
