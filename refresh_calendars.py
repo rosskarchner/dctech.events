@@ -148,8 +148,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         event_data = item
                         break
 
+                # Create event from JSON-LD if available, otherwise from iCal data
                 if event_data:
-                    # Convert to our event format
+                    # Convert to our event format from JSON-LD
                     event = {
                         'title': event_data.get('name', str(component.get('summary', ''))),
                         'description': event_data.get('description', str(component.get('description', ''))),
@@ -221,7 +222,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                             if submitter.get('url'):
                                 event['submitter_link'] = submitter['url']
 
-                    # Parse start date/time
+                    # Parse start date/time from JSON-LD
                     start_date = event_data.get('startDate')
                     if start_date:
                         start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
@@ -231,7 +232,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         event['date'] = event['start_date']  # For sorting
                         event['time'] = event['start_time']  # For sorting
 
-                    # Parse end date/time
+                    # Parse end date/time from JSON-LD
                     end_date = event_data.get('endDate')
                     if end_date:
                         end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
@@ -242,7 +243,39 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         event['end_date'] = event['start_date']
                         event['end_time'] = event['start_time']
 
-                    events.append(event)
+                else:
+                    # Fallback: create event from iCal data if JSON-LD not available
+                    print(f"No JSON-LD found for event, using iCal data: {component.get('summary', 'Unknown')}")
+
+                    start = component.get('dtstart').dt
+                    end = component.get('dtend').dt if component.get('dtend') else start
+
+                    # Convert to UTC if datetime is naive
+                    if isinstance(start, datetime) and start.tzinfo is None:
+                        start = start.replace(tzinfo=timezone.utc)
+                    if isinstance(end, datetime) and end.tzinfo is None:
+                        end = end.replace(tzinfo=timezone.utc)
+
+                    # Convert to local timezone
+                    localstart = start.astimezone(local_tz)
+                    localend = end.astimezone(local_tz)
+
+                    event_location = str(component.get('location', ''))
+
+                    event = {
+                        'title': str(component.get('summary', '')),
+                        'description': str(component.get('description', '')),
+                        'location': normalize_address(event_location),
+                        'start_date': localstart.strftime('%Y-%m-%d'),
+                        'start_time': localstart.strftime('%H:%M'),
+                        'end_date': localend.strftime('%Y-%m-%d'),
+                        'end_time': localend.strftime('%H:%M'),
+                        'url': event_url,
+                        'date': localstart.strftime('%Y-%m-%d'),  # For sorting
+                        'time': localstart.strftime('%H:%M'),     # For sorting
+                    }
+
+                events.append(event)
 
             except Exception as e:
                 print(f"Error processing event {component.get('summary', 'Unknown')}: {str(e)}")
