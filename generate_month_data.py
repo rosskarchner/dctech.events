@@ -231,20 +231,29 @@ def load_groups():
         except Exception as e:
             print(f"Error loading group from {file_path}: {str(e)}")
 
-    # Fetch groups from organize.dctech.events
-    organize_groups_url = config.get('organize_groups_url',
-        'https://organize.dctech.events/groups.yaml')
+    # Fetch groups from organize.dctech.events (if enabled)
+    organize_enabled = config.get('organize_integration_enabled', False)
+    organize_groups_enabled = config.get('organize_groups_enabled', False)
 
-    print(f"Fetching groups from {organize_groups_url}...")
-    organize_groups = fetch_organize_yaml(organize_groups_url)
+    if organize_enabled and organize_groups_enabled:
+        organize_groups_url = config.get('organize_groups_url',
+            'https://organize.dctech.events/groups.yaml')
 
-    # Add groups from organize.dctech.events
-    for group_id, group_data in organize_groups.items():
-        if isinstance(group_data, dict):
-            group_data['id'] = group_id
-            group_data['source'] = 'organize'
-            groups.append(group_data)
-            print(f"Added group from organize.dctech.events: {group_data.get('name', group_id)}")
+        print(f"Fetching groups from {organize_groups_url}...")
+        organize_groups = fetch_organize_yaml(organize_groups_url)
+
+        # Add groups from organize.dctech.events
+        for group_id, group_data in organize_groups.items():
+            if isinstance(group_data, dict):
+                group_data['id'] = group_id
+                group_data['source'] = 'organize'
+                groups.append(group_data)
+                print(f"Added group from organize.dctech.events: {group_data.get('name', group_id)}")
+    else:
+        if not organize_enabled:
+            print("organize.dctech.events integration is disabled (organize_integration_enabled=false)")
+        elif not organize_groups_enabled:
+            print("organize.dctech.events groups are disabled (organize_groups_enabled=false)")
 
     return groups
 
@@ -393,32 +402,41 @@ def load_single_events():
         except Exception as e:
             print(f"Error loading event from {file_path}: {str(e)}")
 
-    # Fetch events from organize.dctech.events
-    organize_events_url = config.get('organize_events_url',
-        'https://organize.dctech.events/events.yaml')
+    # Fetch events from organize.dctech.events (if enabled)
+    organize_enabled = config.get('organize_integration_enabled', False)
+    organize_events_enabled = config.get('organize_events_enabled', False)
 
-    print(f"Fetching events from {organize_events_url}...")
-    organize_events = fetch_organize_yaml(organize_events_url)
+    if organize_enabled and organize_events_enabled:
+        organize_events_url = config.get('organize_events_url',
+            'https://organize.dctech.events/events.yaml')
 
-    # Add events from organize.dctech.events
-    for event_id, event_data in organize_events.items():
-        if isinstance(event_data, dict):
-            event_data['id'] = event_id
-            event_data['source'] = 'organize'
+        print(f"Fetching events from {organize_events_url}...")
+        organize_events = fetch_organize_yaml(organize_events_url)
 
-            # Normalize location if present
-            if 'location' in event_data:
-                event_data['location'] = normalize_address(event_data['location'])
+        # Add events from organize.dctech.events
+        for event_id, event_data in organize_events.items():
+            if isinstance(event_data, dict):
+                event_data['id'] = event_id
+                event_data['source'] = 'organize'
 
-            # Map submitted_by to submitter_name and submitter_link
-            if 'submitted_by' in event_data:
-                if event_data['submitted_by'].lower() != 'anonymous':
-                    event_data['submitter_name'] = event_data['submitted_by']
-                    if 'submitter_link' in event_data:
-                        event_data['submitter_link'] = event_data['submitter_link']
+                # Normalize location if present
+                if 'location' in event_data:
+                    event_data['location'] = normalize_address(event_data['location'])
 
-            events.append(event_data)
-            print(f"Added event from organize.dctech.events: {event_data.get('title', event_id)}")
+                # Map submitted_by to submitter_name and submitter_link
+                if 'submitted_by' in event_data:
+                    if event_data['submitted_by'].lower() != 'anonymous':
+                        event_data['submitter_name'] = event_data['submitted_by']
+                        if 'submitter_link' in event_data:
+                            event_data['submitter_link'] = event_data['submitter_link']
+
+                events.append(event_data)
+                print(f"Added event from organize.dctech.events: {event_data.get('title', event_id)}")
+    else:
+        if not organize_enabled:
+            print("organize.dctech.events integration is disabled (organize_integration_enabled=false)")
+        elif not organize_events_enabled:
+            print("organize.dctech.events events are disabled (organize_events_enabled=false)")
 
     return events
 
