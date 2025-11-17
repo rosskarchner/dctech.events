@@ -30,7 +30,6 @@ SINGLE_EVENTS_DIR = '_single_events'
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'  # Shared cache directory
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
-RSS_CACHE_DIR = os.path.join(CACHE_DIR, 'rss')
 REFRESH_FLAG_FILE = os.path.join(DATA_DIR, '.refreshed')
 UPDATED_FLAG_FILE = os.path.join(DATA_DIR, '.updated')
 
@@ -417,38 +416,10 @@ def generate_yaml():
     for group in groups:
         if not group.get('active', True):
             continue
-            
+
+        # Check for iCal with JSON-LD augmentation
         if 'ical' in group and group['ical']:
-            cache_file = os.path.join(ICAL_CACHE_DIR, f"{group['id']}.ics")
-            if os.path.exists(cache_file):
-                try:
-                    with open(cache_file, 'r') as f:
-                        calendar = icalendar.Calendar.from_ical(f.read())
-                        
-                        group_events = []
-                        for component in calendar.walk('VEVENT'):
-                            event_dict = event_to_dict(component, group)
-                            if event_dict:
-                                # Only include events from today or in the future and not in suppress_urls
-                                event_date = dateparser.parse(event_dict['date'], settings={
-                                    'TIMEZONE': timezone_name,
-                                    'DATE_ORDER': 'YMD'
-                                }).date()
-                                # Check if event URL is in suppress_urls list
-                                suppress_urls = group.get('suppress_urls', [])
-                                # For aggregated events (iCal/RSS), apply 90-day limit
-                                if today <= event_date <= max_future_date and event_dict['url'] not in suppress_urls:
-                                    group_events.append(event_dict)
-                        
-                        # Remove duplicates within this group's events
-                        group_events = remove_duplicates(group_events)
-                        all_events.extend(group_events)
-                except Exception as e:
-                    print(f"Error processing calendar for group {group['id']}: {str(e)}")
-        
-        # Process RSS events
-        elif 'rss' in group and group['rss']:
-            cache_file = os.path.join(RSS_CACHE_DIR, f"{group['id']}.json")
+            cache_file = os.path.join(ICAL_CACHE_DIR, f"{group['id']}.json")
             if os.path.exists(cache_file):
                 try:
                     with open(cache_file, 'r') as f:
@@ -461,19 +432,20 @@ def generate_yaml():
                                 # Add group information
                                 event['group'] = str(group.get('name', ''))
                                 event['group_website'] = str(group.get('website', ''))
-                                # For RSS events, apply 90-day limit
+                                # For iCal+JSON-LD events, apply 90-day limit
                                 event_date = dateparser.parse(event['date'], settings={
                                     'TIMEZONE': timezone_name,
                                     'DATE_ORDER': 'YMD'
                                 }).date()
                                 if today <= event_date <= max_future_date:
                                     group_events.append(event)
-                        
+
                         # Remove duplicates within this group's events
                         group_events = remove_duplicates(group_events)
                         all_events.extend(group_events)
                 except Exception as e:
-                    print(f"Error processing RSS events for group {group['id']}: {str(e)}")
+                    print(f"Error processing iCal+JSON-LD events for group {group['id']}: {str(e)}")
+
     
     # Add single events (include all future events regardless of date)
     for event in single_events:

@@ -13,7 +13,6 @@ icalendar
 requests
 
 # Calendar aggregation (used by refresh_calendars.py)
-feedparser>=6.0.0
 extruct
 w3lib
 
