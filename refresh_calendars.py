@@ -58,13 +58,14 @@ def should_fetch(meta_data, group_id):
     return True
 
 
-def fetch_ical_and_extract_events(url, group_id):
+def fetch_ical_and_extract_events(url, group_id, group=None):
     """
     Fetch an iCal file, visit each event link to extract JSON-LD event data, and cache it locally.
 
     Args:
         url: The URL of the iCal file
         group_id: The ID of the group (used for caching)
+        group: The group dictionary (optional, for fallback_url support)
 
     Returns:
         A list of event dictionaries if changed, None otherwise
@@ -123,7 +124,11 @@ def fetch_ical_and_extract_events(url, group_id):
                 # Get the event URL from the iCal event
                 event_url = str(component.get('url', '')) if component.get('url') else None
 
-                # Skip if no URL
+                # If no URL in event, try fallback_url from group
+                if not event_url and group and group.get('fallback_url'):
+                    event_url = group.get('fallback_url')
+
+                # Skip if still no URL
                 if not event_url:
                     print(f"Skipping event without URL: {component.get('summary', 'Unknown')}")
                     continue
@@ -342,7 +347,7 @@ def refresh_calendars():
 
         # Check if group has ical field (iCal with JSON-LD augmentation)
         if 'ical' in group and group['ical']:
-            events = fetch_ical_and_extract_events(group['ical'], group['id'])
+            events = fetch_ical_and_extract_events(group['ical'], group['id'], group)
             if events is not None:
                 updated = True
     
