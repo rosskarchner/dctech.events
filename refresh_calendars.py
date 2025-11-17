@@ -245,8 +245,6 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
 
                 else:
                     # Fallback: create event from iCal data if JSON-LD not available
-                    print(f"No JSON-LD found for event, using iCal data: {component.get('summary', 'Unknown')}")
-
                     start = component.get('dtstart').dt
                     end = component.get('dtend').dt if component.get('dtend') else start
 
