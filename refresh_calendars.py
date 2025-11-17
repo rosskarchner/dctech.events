@@ -174,13 +174,13 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                                 break
                         # If no physical location found, skip this event
                         if not physical_location:
-                            print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                            print(f"Skipping virtual-only event: {component.get('summary', 'Unknown')}")
                             continue
                         location = physical_location
 
                     # Skip virtual-only events
                     if isinstance(location, dict) and location.get('@type') == 'VirtualLocation':
-                        print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                        print(f"Skipping virtual-only event: {component.get('summary', 'Unknown')}")
                         continue
 
                     if isinstance(location, dict):
