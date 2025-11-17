@@ -21,46 +21,51 @@
             <h2>Create a New Event</h2>
             <div id="message"></div>
 
-            <form id="create-form" onsubmit="handleSubmit(event)">
+            <form hx-post="/api/events"
+                  hx-target="#message"
+                  hx-swap="innerHTML">
                 <div class="form-group">
                     <label for="title">Event Title *</label>
-                    <input type="text" id="title" required>
+                    <input type="text" name="title" id="title" required>
                 </div>
 
                 <div class="form-group">
                     <label for="date">Date *</label>
-                    <input type="date" id="date" required>
+                    <input type="date" name="date" id="date" required>
                 </div>
 
                 <div class="form-group">
                     <label for="time">Time</label>
-                    <input type="time" id="time">
+                    <input type="time" name="time" id="time">
                 </div>
 
                 <div class="form-group">
                     <label for="location">Location</label>
-                    <input type="text" id="location" placeholder="Address or venue name">
+                    <input type="text" name="location" id="location" placeholder="Address or venue name">
                 </div>
 
                 <div class="form-group">
                     <label for="url">Event URL</label>
-                    <input type="url" id="url" placeholder="https://example.com">
+                    <input type="url" name="url" id="url" placeholder="https://example.com">
                 </div>
 
                 <div class="form-group">
                     <label for="description">Description</label>
-                    <textarea id="description" placeholder="Tell people about your event..."></textarea>
+                    <textarea name="description" id="description" placeholder="Tell people about your event..."></textarea>
                 </div>
 
                 <div class="form-group">
                     <label for="groupId">Group (optional)</label>
-                    <select id="groupId">
+                    <select name="groupId" id="groupId">
                         <option value="">None (standalone event)</option>
                     </select>
                     <small>You can only add events to groups where you are a manager or owner</small>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Create Event</button>
+                <button type="submit" class="btn btn-primary">
+                    <span class="htmx-indicator">Creating...</span>
+                    <span>Create Event</span>
+                </button>
             </form>
         </div>
     </main>

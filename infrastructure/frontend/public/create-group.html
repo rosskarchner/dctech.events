@@ -21,64 +21,55 @@
             <h2>Create a New Group</h2>
             <div id="message"></div>
 
-            <form id="create-form" onsubmit="handleSubmit(event)">
+            <form hx-post="/api/groups"
+                  hx-target="#message"
+                  hx-swap="innerHTML">
                 <div class="form-group">
                     <label for="name">Group Name *</label>
-                    <input type="text" id="name" required>
+                    <input type="text" name="name" id="name" required>
                 </div>
 
                 <div class="form-group">
                     <label for="website">Website</label>
-                    <input type="url" id="website" placeholder="https://example.com">
+                    <input type="url" name="website" id="website" placeholder="https://example.com">
                 </div>
 
                 <div class="form-group">
                     <label for="description">Description</label>
-                    <textarea id="description" placeholder="Tell people about your group..."></textarea>
+                    <textarea name="description" id="description" placeholder="Tell people about your group..."></textarea>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Create Group</button>
+                <button type="submit" class="btn btn-primary">
+                    <span class="htmx-indicator">Creating...</span>
+                    <span>Create Group</span>
+                </button>
             </form>
         </div>
     </main>
 
     <script src="/js/config.js"></script>
     <script src="/js/auth.js"></script>
-    <script src="/js/api.js"></script>
+    <script src="/js/htmx-config.js"></script>
     <script>
         if (!window.auth.requireAuth()) {
             // Will redirect to auth page
         }
 
-        async function handleSubmit(event) {
-            event.preventDefault();
-
-            const messageDiv = document.getElementById('message');
-            const submitBtn = event.target.querySelector('button[type="submit"]');
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Creating...';
-
-            try {
-                const data = {
-                    name: document.getElementById('name').value,
-                    website: document.getElementById('website').value,
-                    description: document.getElementById('description').value
-                };
-
-                const result = await window.api.createGroup(data);
-
-                messageDiv.innerHTML = '<div class="message success">Group created successfully!</div>';
-
-                setTimeout(() => {
-                    window.location.href = `/group.html?id=${result.groupId}`;
-                }, 1000);
-            } catch (error) {
-                messageDiv.innerHTML = `<div class="message error">${error.message}</div>`;
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Create Group';
+        // Handle successful creation - redirect to group page
+        document.body.addEventListener('htmx:afterOnLoad', function(event) {
+            if (event.detail.successful && event.detail.xhr.status === 201) {
+                try {
+                    const response = JSON.parse(event.detail.xhr.responseText);
+                    if (response.groupId) {
+                        document.getElementById('message').innerHTML =
+                            '<div class="message success">Group created successfully! Redirecting...</div>';
+                        setTimeout(() => {
+                            window.location.href = `/group.html?id=${response.groupId}`;
+                        }, 1000);
+                    }
+                } catch(e) {}
             }
-        }
+        });
     </script>
 </body>
 </html>

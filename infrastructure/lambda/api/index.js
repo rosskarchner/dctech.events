@@ -9,28 +9,146 @@ const docClient = DynamoDBDocumentClient.from(client);
 function parseEvent(event) {
   const path = event.path || event.resource;
   const method = event.httpMethod;
-  const body = event.body ? JSON.parse(event.body) : null;
+  const headers = event.headers || {};
+  const isHtmx = headers['hx-request'] === 'true' || headers['HX-Request'] === 'true';
+
+  // Parse body - could be JSON or form data
+  let body = null;
+  if (event.body) {
+    const contentType = headers['content-type'] || headers['Content-Type'] || '';
+    if (contentType.includes('application/json')) {
+      body = JSON.parse(event.body);
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      // Parse form data
+      body = {};
+      const params = new URLSearchParams(event.body);
+      for (const [key, value] of params) {
+        body[key] = value;
+      }
+    } else {
+      try {
+        body = JSON.parse(event.body);
+      } catch {
+        body = event.body;
+      }
+    }
+  }
+
   const pathParams = event.pathParameters || {};
   const queryParams = event.queryStringParameters || {};
   const userId = event.requestContext?.authorizer?.claims?.sub || null;
   const userEmail = event.requestContext?.authorizer?.claims?.email || null;
 
-  return { path, method, body, pathParams, queryParams, userId, userEmail };
+  return { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx };
 }
 
 // Helper to create API response
-function createResponse(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    },
-    body: JSON.stringify(body),
+function createResponse(statusCode, body, isHtml = false) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,HX-Request,HX-Target,HX-Trigger',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
   };
+
+  if (isHtml) {
+    headers['Content-Type'] = 'text/html';
+    return {
+      statusCode,
+      headers,
+      body: body,
+    };
+  } else {
+    headers['Content-Type'] = 'application/json';
+    return {
+      statusCode,
+      headers,
+      body: JSON.stringify(body),
+    };
+  }
 }
+
+// HTML escape helper
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// HTML rendering helpers
+const html = {
+  groupCard: (group) => `
+    <div class="group-card">
+      <h3>${escapeHtml(group.name)}</h3>
+      ${group.description ? `<p>${escapeHtml(group.description)}</p>` : ''}
+      ${group.website ? `
+        <div class="group-website">
+          <a href="${escapeHtml(group.website)}" target="_blank" rel="noopener noreferrer">Website</a>
+        </div>
+      ` : ''}
+      <div style="margin-top: 15px;">
+        <a href="/group.html?id=${group.groupId}" class="btn btn-primary">View Details</a>
+      </div>
+    </div>
+  `,
+
+  eventCard: (event) => {
+    const date = new Date(event.eventDate);
+    const dateStr = date.toLocaleDateString();
+    return `
+      <div class="event-card">
+        <h3>${escapeHtml(event.title)}</h3>
+        <div class="event-date">${dateStr}${event.time ? ` at ${event.time}` : ''}</div>
+        ${event.location ? `<div class="event-location">${escapeHtml(event.location)}</div>` : ''}
+        ${event.description ? `<p style="margin-top: 10px;">${escapeHtml(event.description)}</p>` : ''}
+        <div style="margin-top: 15px;">
+          <a href="/event.html?id=${event.eventId}" class="btn btn-primary">View Details</a>
+        </div>
+      </div>
+    `;
+  },
+
+  memberItem: (member, currentUserId, isOwner) => `
+    <div class="member-item" id="member-${member.userId}">
+      <div class="member-info">
+        <strong>${escapeHtml(member.userId)}</strong>
+        <span style="margin-left: 10px; color: #7f8c8d;">(${member.role})</span>
+      </div>
+      ${isOwner && member.userId !== currentUserId ? `
+        <div class="member-actions">
+          <select hx-put="/api/groups/${member.groupId}/members/${member.userId}"
+                  hx-target="#member-${member.userId}"
+                  hx-swap="outerHTML"
+                  name="role">
+            <option value="member" ${member.role === 'member' ? 'selected' : ''}>Member</option>
+            <option value="manager" ${member.role === 'manager' ? 'selected' : ''}>Manager</option>
+            <option value="owner" ${member.role === 'owner' ? 'selected' : ''}>Owner</option>
+          </select>
+          <button class="btn btn-danger btn-small"
+                  hx-delete="/api/groups/${member.groupId}/members/${member.userId}"
+                  hx-target="#member-${member.userId}"
+                  hx-swap="outerHTML"
+                  hx-confirm="Remove this member?">
+            Remove
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `,
+
+  messageItem: (message) => `
+    <div class="message-item">
+      <div class="message-meta">${escapeHtml(message.userId)} • ${new Date(message.timestamp).toLocaleString()}</div>
+      <div>${escapeHtml(message.content)}</div>
+    </div>
+  `,
+
+  error: (message) => `<div class="message error">${escapeHtml(message)}</div>`,
+  success: (message) => `<div class="message success">${escapeHtml(message)}</div>`,
+};
 
 // Helper to check group permissions
 async function checkGroupPermission(groupId, userId, requiredRole = 'member') {
@@ -90,7 +208,7 @@ async function updateUser(userId, updates) {
 }
 
 // Group handlers
-async function listGroups() {
+async function listGroups(isHtmx) {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.GROUPS_TABLE,
     IndexName: 'activeGroupsIndex',
@@ -100,7 +218,17 @@ async function listGroups() {
     },
   }));
 
-  return createResponse(200, { groups: result.Items });
+  const groups = result.Items || [];
+
+  if (isHtmx) {
+    if (groups.length === 0) {
+      return createResponse(200, '<div class="card">No groups found. <a href="/create-group.html">Create the first one!</a></div>', true);
+    }
+    const htmlContent = groups.map(group => html.groupCard(group)).join('');
+    return createResponse(200, htmlContent, true);
+  }
+
+  return createResponse(200, { groups });
 }
 
 async function getGroup(groupId) {
@@ -199,7 +327,7 @@ async function deleteGroup(groupId, userId) {
 }
 
 // Group member handlers
-async function listGroupMembers(groupId) {
+async function listGroupMembers(groupId, isHtmx, currentUserId) {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.GROUP_MEMBERS_TABLE,
     KeyConditionExpression: 'groupId = :groupId',
@@ -208,7 +336,20 @@ async function listGroupMembers(groupId) {
     },
   }));
 
-  return createResponse(200, { members: result.Items });
+  const members = result.Items || [];
+
+  if (isHtmx && currentUserId) {
+    // Check if current user is owner
+    const currentMember = members.find(m => m.userId === currentUserId);
+    const isOwner = currentMember?.role === 'owner';
+
+    const htmlContent = members.map(member =>
+      html.memberItem({ ...member, groupId }, currentUserId, isOwner)
+    ).join('');
+    return createResponse(200, htmlContent, true);
+  }
+
+  return createResponse(200, { members });
 }
 
 async function joinGroup(groupId, userId) {
@@ -311,7 +452,7 @@ async function postMessage(groupId, userId, content) {
 }
 
 // Event handlers
-async function listEvents(queryParams) {
+async function listEvents(queryParams, isHtmx) {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.EVENTS_TABLE,
     IndexName: 'dateEventsIndex',
@@ -322,7 +463,22 @@ async function listEvents(queryParams) {
     ScanIndexForward: true,
   }));
 
-  return createResponse(200, { events: result.Items });
+  let events = result.Items || [];
+
+  // Filter to upcoming events
+  const now = new Date();
+  events = events.filter(e => new Date(e.eventDate) >= now);
+  events.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+
+  if (isHtmx) {
+    if (events.length === 0) {
+      return createResponse(200, '<div class="card">No upcoming events. <a href="/create-event.html">Create the first one!</a></div>', true);
+    }
+    const htmlContent = events.map(event => html.eventCard(event)).join('');
+    return createResponse(200, htmlContent, true);
+  }
+
+  return createResponse(200, { events });
 }
 
 async function getEvent(eventId) {
@@ -555,7 +711,7 @@ async function convertRSVPsToGroup(eventId, userId, groupName) {
 // Main handler
 exports.handler = async (event) => {
   try {
-    const { path, method, body, pathParams, queryParams, userId, userEmail } = parseEvent(event);
+    const { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx } = parseEvent(event);
 
     // User routes
     if (path === '/users' && method === 'GET') {
@@ -570,7 +726,7 @@ exports.handler = async (event) => {
 
     // Group routes
     if (path === '/groups' && method === 'GET') {
-      return await listGroups();
+      return await listGroups(isHtmx);
     }
     if (path === '/groups' && method === 'POST') {
       return await createGroup(userId, userEmail, body);
@@ -587,7 +743,7 @@ exports.handler = async (event) => {
 
     // Group member routes
     if (path.match(/^\/groups\/[^/]+\/members$/) && method === 'GET') {
-      return await listGroupMembers(pathParams.groupId);
+      return await listGroupMembers(pathParams.groupId, isHtmx, userId);
     }
     if (path.match(/^\/groups\/[^/]+\/members$/) && method === 'POST') {
       return await joinGroup(pathParams.groupId, userId);
@@ -609,7 +765,7 @@ exports.handler = async (event) => {
 
     // Event routes
     if (path === '/events' && method === 'GET') {
-      return await listEvents(queryParams);
+      return await listEvents(queryParams, isHtmx);
     }
     if (path === '/events' && method === 'POST') {
       return await createEvent(userId, body);
@@ -643,6 +799,9 @@ exports.handler = async (event) => {
     return createResponse(404, { error: 'Not found' });
   } catch (error) {
     console.error('Error:', error);
+    if (isHtmx) {
+      return createResponse(500, html.error(error.message), true);
+    }
     return createResponse(500, { error: error.message });
   }
 };
