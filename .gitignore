@@ -35,6 +35,7 @@ _data/*.yaml
 _data/.updated
 _data
 tmp/
+_groups/test_group.yaml
 
 # IDE
 .idea/
