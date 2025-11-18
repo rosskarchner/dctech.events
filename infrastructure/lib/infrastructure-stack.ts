@@ -12,6 +12,8 @@ import * as eventbridge from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 
 export interface OrganizeDCTechStackProps extends cdk.StackProps {
   domainName?: string;
@@ -220,6 +222,22 @@ export class InfrastructureStack extends cdk.Stack {
     websiteBucket.grantRead(originAccessIdentity);
 
     // ============================================
+    // Route 53 and SSL Certificate
+    // ============================================
+
+    // Look up the existing hosted zone for dctech.events
+    const hostedZone = route53.HostedZone.fromLookup(this, 'DcTechHostedZone', {
+      domainName: 'dctech.events',
+    });
+
+    // Create ACM certificate for organize.dctech.events
+    // Must be in us-east-1 for CloudFront
+    const certificate = new certificatemanager.Certificate(this, 'OrganizeCertificate', {
+      domainName: 'organize.dctech.events',
+      validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
+    });
+
+    // ============================================
     // CloudFront Distribution
     // ============================================
     const distribution = new cloudfront.Distribution(this, 'OrganizeDistribution', {
@@ -244,14 +262,30 @@ export class InfrastructureStack extends cdk.Stack {
           responsePagePath: '/index.html',
         },
       ],
-      domainNames: props?.domainName ? [props.domainName] : undefined,
-      certificate: props?.certificateArn
-        ? certificatemanager.Certificate.fromCertificateArn(
-            this,
-            'Certificate',
-            props.certificateArn
-          )
-        : undefined,
+      domainNames: ['organize.dctech.events'],
+      certificate: certificate,
+    });
+
+    // ============================================
+    // Route 53 DNS Records
+    // ============================================
+
+    // Create A record for organize.dctech.events pointing to CloudFront
+    new route53.ARecord(this, 'OrganizeARecord', {
+      zone: hostedZone,
+      recordName: 'organize',
+      target: route53.RecordTarget.fromAlias(
+        new route53targets.CloudFrontTarget(distribution)
+      ),
+    });
+
+    // Create AAAA record for IPv6 support
+    new route53.AaaaRecord(this, 'OrganizeAAAARecord', {
+      zone: hostedZone,
+      recordName: 'organize',
+      target: route53.RecordTarget.fromAlias(
+        new route53targets.CloudFrontTarget(distribution)
+      ),
     });
 
     // ============================================
