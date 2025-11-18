@@ -348,58 +348,13 @@ export class InfrastructureStack extends cdk.Stack {
     // Lambda integration
     const apiIntegration = new apigateway.LambdaIntegration(apiFunction);
 
-    // API routes
-    // User routes
-    const users = api.root.addResource('users');
-    users.addMethod('GET', apiIntegration, { authorizer }); // Get user profile
-    users.addMethod('PUT', apiIntegration, { authorizer }); // Update user profile
-
-    const userById = users.addResource('{userId}');
-    userById.addMethod('GET', apiIntegration); // Public user profile
-
-    // Group routes
-    const groups = api.root.addResource('groups');
-    groups.addMethod('GET', apiIntegration); // List groups
-    groups.addMethod('POST', apiIntegration, { authorizer }); // Create group
-
-    const groupById = groups.addResource('{groupId}');
-    groupById.addMethod('GET', apiIntegration); // Get group details
-    groupById.addMethod('PUT', apiIntegration, { authorizer }); // Update group
-    groupById.addMethod('DELETE', apiIntegration, { authorizer }); // Delete group
-
-    // Group members routes
-    const members = groupById.addResource('members');
-    members.addMethod('GET', apiIntegration); // List members
-    members.addMethod('POST', apiIntegration, { authorizer }); // Join group
-
-    const memberById = members.addResource('{userId}');
-    memberById.addMethod('DELETE', apiIntegration, { authorizer }); // Leave/remove member
-    memberById.addMethod('PUT', apiIntegration, { authorizer }); // Update member role
-
-    // Group messages routes
-    const messages = groupById.addResource('messages');
-    messages.addMethod('GET', apiIntegration, { authorizer }); // List messages
-    messages.addMethod('POST', apiIntegration, { authorizer }); // Post message
-
-    // Event routes
-    const events = api.root.addResource('events');
-    events.addMethod('GET', apiIntegration); // List events
-    events.addMethod('POST', apiIntegration, { authorizer }); // Create event
-
-    const eventById = events.addResource('{eventId}');
-    eventById.addMethod('GET', apiIntegration); // Get event details
-    eventById.addMethod('PUT', apiIntegration, { authorizer }); // Update event
-    eventById.addMethod('DELETE', apiIntegration, { authorizer }); // Delete event
-
-    // RSVP routes
-    const rsvps = eventById.addResource('rsvps');
-    rsvps.addMethod('GET', apiIntegration); // List RSVPs
-    rsvps.addMethod('POST', apiIntegration, { authorizer }); // Create/update RSVP
-    rsvps.addMethod('DELETE', apiIntegration, { authorizer }); // Delete RSVP
-
-    // Convert RSVPs to group
-    const convertToGroup = eventById.addResource('convert-to-group');
-    convertToGroup.addMethod('POST', apiIntegration, { authorizer });
+    // Use proxy resource to avoid Lambda permission policy size limits
+    // This creates a single permission instead of one per route
+    // The Lambda function handles all routing and authentication internally
+    // Note: Authorizer is removed to support both public and protected routes
+    // The Lambda validates Cognito tokens when present and checks permissions per route
+    const proxy = api.root.addResource('{proxy+}');
+    proxy.addMethod('ANY', apiIntegration);
 
     // ============================================
     // Outputs

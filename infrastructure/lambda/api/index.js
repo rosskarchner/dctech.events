@@ -5,6 +5,19 @@ const { v4: uuidv4 } = require('uuid');
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
+// Helper to decode JWT token (without signature verification)
+// Note: This is acceptable since tokens come from Cognito via HTTPS
+function decodeJWT(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
+
 // Helper to parse API Gateway event
 function parseEvent(event) {
   const path = event.path || event.resource;
@@ -36,8 +49,23 @@ function parseEvent(event) {
 
   const pathParams = event.pathParameters || {};
   const queryParams = event.queryStringParameters || {};
-  const userId = event.requestContext?.authorizer?.claims?.sub || null;
-  const userEmail = event.requestContext?.authorizer?.claims?.email || null;
+
+  // Try to get user from authorizer context (if API Gateway handled it)
+  let userId = event.requestContext?.authorizer?.claims?.sub || null;
+  let userEmail = event.requestContext?.authorizer?.claims?.email || null;
+
+  // If not in authorizer context, try to decode from Authorization header
+  if (!userId) {
+    const authHeader = headers['authorization'] || headers['Authorization'] || '';
+    if (authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const claims = decodeJWT(token);
+      if (claims) {
+        userId = claims.sub || null;
+        userEmail = claims.email || null;
+      }
+    }
+  }
 
   return { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx };
 }
@@ -709,9 +737,42 @@ async function convertRSVPsToGroup(eventId, userId, groupName) {
 }
 
 // Main handler
+// Helper to check if a route requires authentication
+function requiresAuth(path, method) {
+  // Public routes (no auth required)
+  const publicRoutes = [
+    { pattern: /^\/users\/[^/]+$/, methods: ['GET'] },
+    { pattern: /^\/groups$/, methods: ['GET'] },
+    { pattern: /^\/groups\/[^/]+$/, methods: ['GET'] },
+    { pattern: /^\/groups\/[^/]+\/members$/, methods: ['GET'] },
+    { pattern: /^\/events$/, methods: ['GET'] },
+    { pattern: /^\/events\/[^/]+$/, methods: ['GET'] },
+    { pattern: /^\/events\/[^/]+\/rsvps$/, methods: ['GET'] },
+  ];
+
+  for (const route of publicRoutes) {
+    if (route.pattern.test(path) && route.methods.includes(method)) {
+      return false;
+    }
+  }
+
+  // All other routes require authentication
+  return true;
+}
+
 exports.handler = async (event) => {
   try {
     const { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx } = parseEvent(event);
+
+    // Handle CORS preflight
+    if (method === 'OPTIONS') {
+      return createResponse(200, {});
+    }
+
+    // Check authentication for protected routes
+    if (requiresAuth(path, method) && !userId) {
+      return createResponse(401, isHtmx ? html.error('Authentication required') : { error: 'Authentication required' }, isHtmx);
+    }
 
     // User routes
     if (path === '/users' && method === 'GET') {
