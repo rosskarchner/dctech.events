@@ -336,15 +336,6 @@ export class InfrastructureStack extends cdk.Stack {
       },
     });
 
-    // Cognito authorizer
-    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(
-      this,
-      'CognitoAuthorizer',
-      {
-        cognitoUserPools: [userPool],
-      }
-    );
-
     // Lambda integration
     const apiIntegration = new apigateway.LambdaIntegration(apiFunction);
 
