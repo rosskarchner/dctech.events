@@ -270,13 +270,6 @@ export class InfrastructureStack extends cdk.Stack {
       WEBSITE_BUCKET: websiteBucket.bucketName,
     };
 
-    // Create Lambda layer for shared dependencies
-    const sharedLayer = new lambda.LayerVersion(this, 'SharedLayer', {
-      code: lambda.Code.fromAsset('lambda-layers/shared'),
-      compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
-      description: 'Shared dependencies for organize.dctech.events Lambda functions',
-    });
-
     // API Lambda function (handles all API routes)
     const apiFunction = new lambda.Function(this, 'ApiFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
