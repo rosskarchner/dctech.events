@@ -8,7 +8,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as events from 'aws-cdk-lib/aws-events';
+import * as eventbridge from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
@@ -319,8 +319,8 @@ export class InfrastructureStack extends cdk.Stack {
     websiteBucket.grantWrite(exportFunction);
 
     // Schedule export to run every 5 minutes
-    const exportRule = new events.Rule(this, 'ExportSchedule', {
-      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+    const exportRule = new eventbridge.Rule(this, 'ExportSchedule', {
+      schedule: eventbridge.Schedule.rate(cdk.Duration.minutes(5)),
     });
     exportRule.addTarget(new targets.LambdaFunction(exportFunction));
 
