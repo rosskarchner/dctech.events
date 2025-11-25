@@ -456,6 +456,9 @@ def generate_yaml():
         if today <= event_date:  # Only check that event is in the future
             all_events.append(event)
     
+    # Remove duplicates across all events (keeps first occurrence)
+    all_events = remove_duplicates(all_events)
+    
     # Sort events by date and time
     all_events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
     
