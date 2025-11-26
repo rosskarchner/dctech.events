@@ -232,6 +232,13 @@ nav [aria-current="page"] {
     margin-top: var(--spacing-xs);
 }
 
+.also-published-by {
+    margin-top: var(--spacing-xs);
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--color-text-lighter);
+}
+
 .dt-start {
     display: none;
 }

@@ -33,6 +33,14 @@
                                                 {{ event.group }}
                                             {% endif %}
                                         {% endif %}
+                                        {% if event.also_published_by %}
+                                            <div style="font-style: italic; font-size: 13px; color: #999; margin-top: 3px;">
+                                                Also published by 
+                                                {% for alt_group in event.also_published_by %}
+                                                    <a href="{{ alt_group.url }}" style="color: #0066cc; text-decoration: none;">{{ alt_group.group }}</a>{% if not loop.last %}{% if loop.revindex == 2 %} and {% else %}, {% endif %}{% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             {% endfor %}
