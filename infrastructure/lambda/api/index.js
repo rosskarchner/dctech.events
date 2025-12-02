@@ -397,7 +397,7 @@ async function joinGroup(groupId, userId) {
 }
 
 async function updateMemberRole(groupId, targetUserId, currentUserId, newRole) {
-  const { hasPermission, role } = await checkGroupPermission(groupId, currentUserId, 'owner');
+  const { hasPermission } = await checkGroupPermission(groupId, currentUserId, 'owner');
 
   if (!hasPermission) {
     return createResponse(403, { error: 'Only owners can manage member roles' });
