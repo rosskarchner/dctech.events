@@ -1,25 +1,32 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { CognitoJwtVerifier } = require('aws-jwt-verify');
 const { v4: uuidv4 } = require('uuid');
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-// Helper to decode JWT token (without signature verification)
-// Note: This is acceptable since tokens come from Cognito via HTTPS
-function decodeJWT(token) {
+// Create JWT verifier for Cognito tokens
+const jwtVerifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.USER_POOL_ID,
+  tokenUse: 'access',
+  clientId: null, // Accept tokens from any client in the user pool
+});
+
+// Helper to verify and decode JWT token with signature verification
+async function verifyJWT(token) {
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    // Verify the token signature and claims
+    const payload = await jwtVerifier.verify(token);
     return payload;
   } catch (error) {
+    console.error('JWT verification failed:', error.message);
     return null;
   }
 }
 
 // Helper to parse API Gateway event
-function parseEvent(event) {
+async function parseEvent(event) {
   const path = event.path || event.resource;
   const method = event.httpMethod;
   const headers = event.headers || {};
@@ -54,12 +61,12 @@ function parseEvent(event) {
   let userId = event.requestContext?.authorizer?.claims?.sub || null;
   let userEmail = event.requestContext?.authorizer?.claims?.email || null;
 
-  // If not in authorizer context, try to decode from Authorization header
+  // If not in authorizer context, verify token from Authorization header
   if (!userId) {
     const authHeader = headers['authorization'] || headers['Authorization'] || '';
     if (authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const claims = decodeJWT(token);
+      const claims = await verifyJWT(token);
       if (claims) {
         userId = claims.sub || null;
         userEmail = claims.email || null;
@@ -762,7 +769,7 @@ function requiresAuth(path, method) {
 
 exports.handler = async (event) => {
   try {
-    const { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx } = parseEvent(event);
+    const { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx } = await parseEvent(event);
 
     // Handle CORS preflight
     if (method === 'OPTIONS') {
