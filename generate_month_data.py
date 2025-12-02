@@ -98,13 +98,16 @@ def are_events_duplicates(event1, event2):
 
 def remove_duplicates(events):
     """
-    Remove duplicate events from a list
+    Remove duplicate events from a list, rolling up cross-posted events
+    
+    When the same event is posted to multiple groups, keep the first occurrence
+    and add an 'also_published_by' field with info about the other groups.
     
     Args:
         events: List of event dictionaries
         
     Returns:
-        List of events with duplicates removed
+        List of events with duplicates removed and cross-posting info added
     """
     unique_events = []
     
@@ -114,7 +117,22 @@ def remove_duplicates(events):
         for existing_event in unique_events:
             if are_events_duplicates(event, existing_event):
                 is_duplicate = True
-                print(f"Removing duplicate event: {event.get('title', 'Unknown')} on {event.get('date', 'Unknown')}")
+                
+                # Add cross-posting information to the existing event
+                if 'also_published_by' not in existing_event:
+                    existing_event['also_published_by'] = []
+                
+                # Add this group's info if it has group information
+                if event.get('group') and event.get('group_website'):
+                    existing_event['also_published_by'].append({
+                        'group': event['group'],
+                        'group_website': event['group_website'],
+                        'url': event.get('url', '')
+                    })
+                    print(f"Rolling up duplicate event: {event.get('title', 'Unknown')} on {event.get('date', 'Unknown')} (also by {event['group']})")
+                else:
+                    print(f"Removing duplicate event: {event.get('title', 'Unknown')} on {event.get('date', 'Unknown')}")
+                
                 break
         
         if not is_duplicate:
@@ -538,6 +556,9 @@ def generate_yaml():
         }).date()
         if today <= event_date:  # Only check that event is in the future
             all_events.append(event)
+    
+    # Remove duplicates across all events (keeps first occurrence)
+    all_events = remove_duplicates(all_events)
     
     # Sort events by date and time
     all_events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))

@@ -44,6 +44,14 @@
                                             {% endif %}
                                             </div>
                                         {% endif %}
+                                        {% if event.also_published_by %}
+                                            <div class="also-published-by">
+                                                Also published by 
+                                                {% for alt_group in event.also_published_by %}
+                                                    <a href="{{ alt_group.url }}" target="_blank" rel="noopener noreferrer">{{ alt_group.group }}</a>{% if not loop.last %}{% if loop.revindex == 2 %} and {% else %}, {% endif %}{% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             {% endfor %}
