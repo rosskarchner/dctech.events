@@ -11,7 +11,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as eventbridge from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
-import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 
@@ -232,7 +231,7 @@ export class InfrastructureStack extends cdk.Stack {
     // Create or reference ACM certificate for organize.dctech.events
     // Must be in us-east-1 for CloudFront
     let certificate: certificatemanager.ICertificate;
-    if (props.certificateArn) {
+    if (props?.certificateArn) {
       // Reference existing certificate in us-east-1
       certificate = certificatemanager.Certificate.fromCertificateArn(
         this,

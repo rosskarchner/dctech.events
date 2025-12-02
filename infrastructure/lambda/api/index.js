@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { CognitoJwtVerifier } = require('aws-jwt-verify');
 const { v4: uuidv4 } = require('uuid');
 
@@ -230,7 +230,7 @@ async function getUser(userId) {
 async function updateUser(userId, updates) {
   const timestamp = new Date().toISOString();
 
-  const result = await docClient.send(new PutCommand({
+  await docClient.send(new PutCommand({
     TableName: process.env.USERS_TABLE,
     Item: {
       userId,
@@ -342,7 +342,7 @@ async function updateGroup(groupId, userId, data) {
 }
 
 async function deleteGroup(groupId, userId) {
-  const { hasPermission, role } = await checkGroupPermission(groupId, userId, 'owner');
+  const { hasPermission } = await checkGroupPermission(groupId, userId, 'owner');
 
   if (!hasPermission) {
     return createResponse(403, { error: 'Only owners can delete groups' });
@@ -404,7 +404,7 @@ async function joinGroup(groupId, userId) {
 }
 
 async function updateMemberRole(groupId, targetUserId, currentUserId, newRole) {
-  const { hasPermission, role } = await checkGroupPermission(groupId, currentUserId, 'owner');
+  const { hasPermission } = await checkGroupPermission(groupId, currentUserId, 'owner');
 
   if (!hasPermission) {
     return createResponse(403, { error: 'Only owners can manage member roles' });
