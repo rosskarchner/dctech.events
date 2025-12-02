@@ -18,6 +18,7 @@ export interface OrganizeDCTechStackProps extends cdk.StackProps {
   domainName?: string;
   certificateArn?: string;
   hostedZoneId?: string;
+  cognitoDomainPrefix?: string;
 }
 
 export class InfrastructureStack extends cdk.Stack {
@@ -88,9 +89,14 @@ export class InfrastructureStack extends cdk.Stack {
       },
     });
 
+    // Use provided domain prefix or generate one with account ID for uniqueness
+    // Cognito domain prefixes must be globally unique across all AWS regions
+    const cognitoDomainPrefix = props?.cognitoDomainPrefix || 
+      `organize-dctech-${cdk.Stack.of(this).account}`;
+
     const userPoolDomain = userPool.addDomain('OrganizeUserPoolDomain', {
       cognitoDomain: {
-        domainPrefix: 'organize-dctech-events',
+        domainPrefix: cognitoDomainPrefix,
       },
     });
 
