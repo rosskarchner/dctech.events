@@ -230,12 +230,29 @@ export class InfrastructureStack extends cdk.Stack {
       domainName: 'dctech.events',
     });
 
-    // Create ACM certificate for organize.dctech.events
+    // Create or reference ACM certificate for organize.dctech.events
     // Must be in us-east-1 for CloudFront
-    const certificate = new certificatemanager.Certificate(this, 'OrganizeCertificate', {
-      domainName: 'organize.dctech.events',
-      validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
-    });
+    let certificate: certificatemanager.ICertificate;
+    if (props.certificateArn) {
+      // Reference existing certificate in us-east-1
+      certificate = certificatemanager.Certificate.fromCertificateArn(
+        this,
+        'OrganizeCertificate',
+        props.certificateArn
+      );
+    } else {
+      // Validate region is us-east-1 before creating certificate
+      if (cdk.Stack.of(this).region !== 'us-east-1') {
+        throw new Error(
+          'ACM certificates for CloudFront must be created in us-east-1. ' +
+          'Provide a certificateArn for a certificate in us-east-1, or deploy this stack to us-east-1.'
+        );
+      }
+      certificate = new certificatemanager.Certificate(this, 'OrganizeCertificate', {
+        domainName: 'organize.dctech.events',
+        validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
+      });
+    }
 
     // ============================================
     // CloudFront Distribution
