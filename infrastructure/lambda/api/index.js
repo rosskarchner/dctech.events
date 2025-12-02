@@ -335,7 +335,7 @@ async function updateGroup(groupId, userId, data) {
 }
 
 async function deleteGroup(groupId, userId) {
-  const { hasPermission, role } = await checkGroupPermission(groupId, userId, 'owner');
+  const { hasPermission } = await checkGroupPermission(groupId, userId, 'owner');
 
   if (!hasPermission) {
     return createResponse(403, { error: 'Only owners can delete groups' });
