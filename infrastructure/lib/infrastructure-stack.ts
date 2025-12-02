@@ -317,6 +317,7 @@ export class InfrastructureStack extends cdk.Stack {
       RSVPS_TABLE: rsvpsTable.tableName,
       MESSAGES_TABLE: messagesTable.tableName,
       USER_POOL_ID: userPool.userPoolId,
+      USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
       USER_POOL_REGION: cdk.Stack.of(this).region,
       WEBSITE_BUCKET: websiteBucket.bucketName,
     };

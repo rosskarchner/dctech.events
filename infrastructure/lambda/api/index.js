@@ -10,7 +10,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 const jwtVerifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL_ID,
   tokenUse: 'access',
-  clientId: null, // Accept tokens from any client in the user pool
+  clientId: process.env.USER_POOL_CLIENT_ID,
 });
 
 // Helper to verify and decode JWT token with signature verification
