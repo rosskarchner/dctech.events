@@ -13,6 +13,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 
 export interface OrganizeDCTechStackProps extends cdk.StackProps {
   domainName?: string;
@@ -335,6 +336,7 @@ export class InfrastructureStack extends cdk.Stack {
       environment: lambdaEnv,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
+      tracing: lambda.Tracing.ACTIVE, // Enable X-Ray tracing
     });
 
     // Grant permissions to Lambda
@@ -361,6 +363,7 @@ export class InfrastructureStack extends cdk.Stack {
       environment: lambdaEnv,
       timeout: cdk.Duration.minutes(5),
       memorySize: 1024,
+      tracing: lambda.Tracing.ACTIVE, // Enable X-Ray tracing
     });
 
     // Grant permissions to export Lambda
@@ -375,13 +378,71 @@ export class InfrastructureStack extends cdk.Stack {
     exportRule.addTarget(new targets.LambdaFunction(exportFunction));
 
     // ============================================
+    // CloudWatch Alarms for Monitoring
+    // ============================================
+
+    // API Lambda error alarm
+    const apiErrorAlarm = new cloudwatch.Alarm(this, 'ApiLambdaErrorAlarm', {
+      metric: apiFunction.metricErrors({
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 10,
+      evaluationPeriods: 1,
+      alarmDescription: 'Alert when API Lambda function has more than 10 errors in 5 minutes',
+      alarmName: 'organize-api-lambda-errors',
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Export Lambda error alarm
+    const exportErrorAlarm = new cloudwatch.Alarm(this, 'ExportLambdaErrorAlarm', {
+      metric: exportFunction.metricErrors({
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 3,
+      evaluationPeriods: 2,
+      alarmDescription: 'Alert when Export Lambda function has more than 3 errors in 10 minutes',
+      alarmName: 'organize-export-lambda-errors',
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // DynamoDB throttle alarms for critical tables
+    const groupsThrottleAlarm = new cloudwatch.Alarm(this, 'GroupsTableThrottleAlarm', {
+      metric: groupsTable.metricUserErrors({
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 5,
+      evaluationPeriods: 2,
+      alarmDescription: 'Alert when Groups table experiences throttling',
+      alarmName: 'organize-groups-table-throttle',
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    const eventsThrottleAlarm = new cloudwatch.Alarm(this, 'EventsTableThrottleAlarm', {
+      metric: eventsTable.metricUserErrors({
+        statistic: 'Sum',
+        period: cdk.Duration.minutes(5),
+      }),
+      threshold: 5,
+      evaluationPeriods: 2,
+      alarmDescription: 'Alert when Events table experiences throttling',
+      alarmName: 'organize-events-table-throttle',
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // ============================================
     // API Gateway
     // ============================================
     const api = new apigateway.RestApi(this, 'OrganizeApi', {
       restApiName: 'Organize DC Tech Events API',
       description: 'API for organize.dctech.events',
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowOrigins: [
+          'https://organize.dctech.events',
+          'http://localhost:3000', // For local development
+        ],
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: [
           'Content-Type',
@@ -389,6 +450,9 @@ export class InfrastructureStack extends cdk.Stack {
           'Authorization',
           'X-Api-Key',
           'X-Amz-Security-Token',
+          'HX-Request',
+          'HX-Target',
+          'HX-Trigger',
         ],
       },
     });
