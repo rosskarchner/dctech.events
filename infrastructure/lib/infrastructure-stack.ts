@@ -195,7 +195,6 @@ export class InfrastructureStack extends cdk.Stack {
     // S3 Bucket for Static Website and Exports
     // ============================================
     const websiteBucket = new s3.Bucket(this, 'OrganizeWebsiteBucket', {
-      bucketName: 'organize-dctech-events',
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'index.html',
       publicReadAccess: false,
