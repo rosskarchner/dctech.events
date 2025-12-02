@@ -231,7 +231,7 @@ export class InfrastructureStack extends cdk.Stack {
     // Create or reference ACM certificate for organize.dctech.events
     // Must be in us-east-1 for CloudFront
     let certificate: certificatemanager.ICertificate;
-    if (props.certificateArn) {
+    if (props?.certificateArn) {
       // Reference existing certificate in us-east-1
       certificate = certificatemanager.Certificate.fromCertificateArn(
         this,
