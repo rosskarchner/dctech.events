@@ -223,7 +223,7 @@ async function getUser(userId) {
 async function updateUser(userId, updates) {
   const timestamp = new Date().toISOString();
 
-  const result = await docClient.send(new PutCommand({
+  await docClient.send(new PutCommand({
     TableName: process.env.USERS_TABLE,
     Item: {
       userId,
