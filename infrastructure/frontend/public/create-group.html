@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Group - Organize DC Tech Events</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Organize DC Tech Events</h1>
+            <nav id="main-nav"></nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h2>Create a New Group</h2>
+            <div id="message"></div>
+
+            <form hx-post="/api/groups"
+                  hx-target="#message"
+                  hx-swap="innerHTML">
+                <div class="form-group">
+                    <label for="name">Group Name *</label>
+                    <input type="text" name="name" id="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="website">Website</label>
+                    <input type="url" name="website" id="website" placeholder="https://example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea name="description" id="description" placeholder="Tell people about your group..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <span class="htmx-indicator">Creating...</span>
+                    <span>Create Group</span>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/htmx-config.js"></script>
+    <script>
+        if (!window.auth.requireAuth()) {
+            // Will redirect to auth page
+        }
+
+        // Handle successful creation - redirect to group page
+        document.body.addEventListener('htmx:afterOnLoad', function(event) {
+            if (event.detail.successful && event.detail.xhr.status === 201) {
+                try {
+                    const response = JSON.parse(event.detail.xhr.responseText);
+                    if (response.groupId) {
+                        document.getElementById('message').innerHTML =
+                            '<div class="message success">Group created successfully! Redirecting...</div>';
+                        setTimeout(() => {
+                            window.location.href = `/group.html?id=${response.groupId}`;
+                        }, 1000);
+                    }
+                } catch(e) {}
+            }
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import sys
 import calendar as cal_module
 import dateparser
 import json
+import urllib.request
 from address_utils import normalize_address
 
 # Load configuration
@@ -210,14 +211,34 @@ def event_to_dict(event, group=None):
         print(f"Error converting event to dictionary: {str(e)}")
         return None
 
+def fetch_organize_yaml(url):
+    """
+    Fetch YAML data from a URL
+
+    Args:
+        url: URL to fetch YAML from
+
+    Returns:
+        Dictionary of data from YAML, or empty dict if error
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            data = response.read()
+            return yaml.safe_load(data) or {}
+    except Exception as e:
+        print(f"Warning: Could not fetch {url}: {str(e)}")
+        return {}
+
 def load_groups():
     """
-    Load all groups from the _groups directory
-    
+    Load all groups from the _groups directory AND organize.dctech.events
+
     Returns:
         A list of group dictionaries
     """
     groups = []
+
+    # Load groups from local _groups directory
     for file_path in glob.glob(os.path.join(GROUPS_DIR, '*.yaml')):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -227,35 +248,61 @@ def load_groups():
                 groups.append(group)
         except Exception as e:
             print(f"Error loading group from {file_path}: {str(e)}")
-    
+
+    # Fetch groups from organize.dctech.events (if enabled)
+    organize_enabled = config.get('organize_integration_enabled', False)
+    organize_groups_enabled = config.get('organize_groups_enabled', False)
+
+    if organize_enabled and organize_groups_enabled:
+        organize_groups_url = config.get('organize_groups_url',
+            'https://organize.dctech.events/groups.yaml')
+
+        print(f"Fetching groups from {organize_groups_url}...")
+        organize_groups = fetch_organize_yaml(organize_groups_url)
+
+        # Add groups from organize.dctech.events
+        for group_id, group_data in organize_groups.items():
+            if isinstance(group_data, dict):
+                group_data['id'] = group_id
+                group_data['source'] = 'organize'
+                groups.append(group_data)
+                print(f"Added group from organize.dctech.events: {group_data.get('name', group_id)}")
+    else:
+        if not organize_enabled:
+            print("organize.dctech.events integration is disabled (organize_integration_enabled=false)")
+        elif not organize_groups_enabled:
+            print("organize.dctech.events groups are disabled (organize_groups_enabled=false)")
+
     return groups
 
 def load_single_events():
     """
-    Load all single events from the _single_events directory
-    
+    Load all single events from the _single_events directory AND organize.dctech.events
+
     Returns:
         A list of event dictionaries
     """
     events = []
+
+    # Load events from local _single_events directory
     for file_path in glob.glob(os.path.join(SINGLE_EVENTS_DIR, '*.yaml')):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 event = yaml.safe_load(f)
                 # Add the event ID (filename without extension)
                 event['id'] = os.path.splitext(os.path.basename(file_path))[0]
-                
+
                 # Normalize location if present
                 if 'location' in event:
                     event['location'] = normalize_address(event['location'])
-                
+
                 # Map submitted_by to submitter_name and submitter_link
                 if 'submitted_by' in event:
                     if event['submitted_by'].lower() != 'anonymous':
                         event['submitter_name'] = event['submitted_by']
                         if 'submitter_link' in event:
                             event['submitter_link'] = event['submitter_link']
-                
+
                 # Parse date and time using dateparser
                 if 'date' in event and 'time' in event:
                     # First normalize the date to YYYY-MM-DD format
@@ -372,7 +419,43 @@ def load_single_events():
                 events.append(event)
         except Exception as e:
             print(f"Error loading event from {file_path}: {str(e)}")
-    
+
+    # Fetch events from organize.dctech.events (if enabled)
+    organize_enabled = config.get('organize_integration_enabled', False)
+    organize_events_enabled = config.get('organize_events_enabled', False)
+
+    if organize_enabled and organize_events_enabled:
+        organize_events_url = config.get('organize_events_url',
+            'https://organize.dctech.events/events.yaml')
+
+        print(f"Fetching events from {organize_events_url}...")
+        organize_events = fetch_organize_yaml(organize_events_url)
+
+        # Add events from organize.dctech.events
+        for event_id, event_data in organize_events.items():
+            if isinstance(event_data, dict):
+                event_data['id'] = event_id
+                event_data['source'] = 'organize'
+
+                # Normalize location if present
+                if 'location' in event_data:
+                    event_data['location'] = normalize_address(event_data['location'])
+
+                # Map submitted_by to submitter_name and submitter_link
+                if 'submitted_by' in event_data:
+                    if event_data['submitted_by'].lower() != 'anonymous':
+                        event_data['submitter_name'] = event_data['submitted_by']
+                        if 'submitter_link' in event_data:
+                            event_data['submitter_link'] = event_data['submitter_link']
+
+                events.append(event_data)
+                print(f"Added event from organize.dctech.events: {event_data.get('title', event_id)}")
+    else:
+        if not organize_enabled:
+            print("organize.dctech.events integration is disabled (organize_integration_enabled=false)")
+        elif not organize_events_enabled:
+            print("organize.dctech.events events are disabled (organize_events_enabled=false)")
+
     return events
 
 def calculate_stats(groups, all_events):

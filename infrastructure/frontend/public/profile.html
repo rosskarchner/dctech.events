@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Organize DC Tech Events</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Organize DC Tech Events</h1>
+            <nav id="main-nav"></nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h2>My Profile</h2>
+            <p>Manage your profile information</p>
+            <div id="message"></div>
+
+            <form id="profile-form" onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <label for="fullname">Full Name</label>
+                    <input type="text" id="fullname">
+                </div>
+
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <textarea id="bio" placeholder="Tell people a bit about yourself..." maxlength="500"></textarea>
+                    <small id="bio-count">0/500 characters</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="website">Website</label>
+                    <input type="url" id="website" placeholder="https://example.com">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Profile</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        if (!window.auth.requireAuth()) {
+            // Will redirect to auth page
+        }
+
+        async function loadProfile() {
+            try {
+                const profile = await window.api.getProfile();
+                document.getElementById('fullname').value = profile.fullname || '';
+                document.getElementById('bio').value = profile.bio || '';
+                document.getElementById('website').value = profile.website || '';
+                updateCharCount();
+            } catch (error) {
+                // Profile might not exist yet, that's okay
+                console.log('No profile found, using defaults');
+            }
+        }
+
+        function updateCharCount() {
+            const bio = document.getElementById('bio').value;
+            document.getElementById('bio-count').textContent = `${bio.length}/500 characters`;
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const messageDiv = document.getElementById('message');
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                const data = {
+                    fullname: document.getElementById('fullname').value,
+                    bio: document.getElementById('bio').value,
+                    website: document.getElementById('website').value
+                };
+
+                await window.api.updateProfile(data);
+
+                messageDiv.innerHTML = '<div class="message success">Profile updated successfully!</div>';
+
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="message error">${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Profile';
+            }
+        }
+
+        document.getElementById('bio').addEventListener('input', updateCharCount);
+        document.addEventListener('DOMContentLoaded', loadProfile);
+    </script>
+</body>
+</html>

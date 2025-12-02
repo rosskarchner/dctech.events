@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Organize DC Tech Events</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Organize DC Tech Events</h1>
+            <nav id="main-nav"></nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="auth-form">
+            <div class="card">
+                <h2>Sign In</h2>
+                <div id="message"></div>
+
+                <form id="signin-form" onsubmit="handleSignIn(event)">
+                    <div class="form-group">
+                        <label for="signin-username">Username or Email</label>
+                        <input type="text" id="signin-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signin-password">Password</label>
+                        <input type="password" id="signin-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sign In</button>
+                </form>
+
+                <p style="margin-top: 20px; text-align: center;">
+                    Don't have an account? <a href="#" onclick="showSignUp(); return false;">Sign Up</a>
+                </p>
+            </div>
+
+            <div class="card hidden" id="signup-card">
+                <h2>Sign Up</h2>
+                <div id="signup-message"></div>
+
+                <form id="signup-form" onsubmit="handleSignUp(event)">
+                    <div class="form-group">
+                        <label for="signup-username">Username</label>
+                        <input type="text" id="signup-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" required minlength="8">
+                        <small>Minimum 8 characters, must include uppercase, lowercase, and number</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sign Up</button>
+                </form>
+
+                <p style="margin-top: 20px; text-align: center;">
+                    Already have an account? <a href="#" onclick="showSignIn(); return false;">Sign In</a>
+                </p>
+            </div>
+
+            <div class="card hidden" id="confirm-card">
+                <h2>Confirm Registration</h2>
+                <div id="confirm-message"></div>
+                <p>Please check your email for a verification code.</p>
+
+                <form id="confirm-form" onsubmit="handleConfirm(event)">
+                    <div class="form-group">
+                        <label for="confirm-code">Verification Code</label>
+                        <input type="text" id="confirm-code" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Confirm</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        let pendingUsername = '';
+
+        function showSignUp() {
+            document.getElementById('signin-form').closest('.card').classList.add('hidden');
+            document.getElementById('signup-card').classList.remove('hidden');
+        }
+
+        function showSignIn() {
+            document.getElementById('signup-card').classList.add('hidden');
+            document.getElementById('signin-form').closest('.card').classList.remove('hidden');
+        }
+
+        function handleSignIn(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('signin-username').value;
+            const password = document.getElementById('signin-password').value;
+            const messageDiv = document.getElementById('message');
+
+            window.auth.signIn(username, password, (err, result) => {
+                if (err) {
+                    messageDiv.innerHTML = `<div class="message error">${err.message}</div>`;
+                    return;
+                }
+
+                messageDiv.innerHTML = '<div class="message success">Signed in successfully!</div>';
+
+                // Redirect to original page or home
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirect = urlParams.get('redirect') || '/index.html';
+                setTimeout(() => {
+                    window.location.href = redirect;
+                }, 1000);
+            });
+        }
+
+        function handleSignUp(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('signup-username').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const messageDiv = document.getElementById('signup-message');
+
+            pendingUsername = username;
+
+            window.auth.signUp(username, password, email, (err, result) => {
+                if (err) {
+                    messageDiv.innerHTML = `<div class="message error">${err.message}</div>`;
+                    return;
+                }
+
+                messageDiv.innerHTML = '<div class="message success">Account created! Please check your email for verification code.</div>';
+
+                // Show confirmation form
+                setTimeout(() => {
+                    document.getElementById('signup-card').classList.add('hidden');
+                    document.getElementById('confirm-card').classList.remove('hidden');
+                }, 2000);
+            });
+        }
+
+        function handleConfirm(event) {
+            event.preventDefault();
+
+            const code = document.getElementById('confirm-code').value;
+            const messageDiv = document.getElementById('confirm-message');
+
+            window.auth.confirmRegistration(pendingUsername, code, (err, result) => {
+                if (err) {
+                    messageDiv.innerHTML = `<div class="message error">${err.message}</div>`;
+                    return;
+                }
+
+                messageDiv.innerHTML = '<div class="message success">Email verified! You can now sign in.</div>';
+
+                // Show sign in form
+                setTimeout(() => {
+                    document.getElementById('confirm-card').classList.add('hidden');
+                    document.getElementById('signin-form').closest('.card').classList.remove('hidden');
+                }, 2000);
+            });
+        }
+
+        // If already authenticated, redirect
+        if (window.auth && window.auth.isAuthenticated()) {
+            window.location.href = '/index.html';
+        }
+    </script>
+</body>
+</html>
