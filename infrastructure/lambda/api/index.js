@@ -1121,10 +1121,34 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
     // Calculate prev/next week
     const [year, week] = weekId.split('-W');
     const weekNum = parseInt(week);
-    const prevWeekNum = weekNum > 1 ? weekNum - 1 : 52;
-    const prevYear = weekNum > 1 ? year : parseInt(year) - 1;
-    const nextWeekNum = weekNum < 52 ? weekNum + 1 : 1;
-    const nextYear = weekNum < 52 ? year : parseInt(year) + 1;
+    const yearNum = parseInt(year);
+    
+    // Calculate previous week
+    let prevWeekNum, prevYear;
+    if (weekNum > 1) {
+      prevWeekNum = weekNum - 1;
+      prevYear = yearNum;
+    } else {
+      // Get last week of previous year (could be 52 or 53)
+      const lastDayOfPrevYear = new Date(yearNum - 1, 11, 31);
+      prevWeekNum = getWeekNumber(lastDayOfPrevYear);
+      prevYear = yearNum - 1;
+    }
+    
+    // Calculate next week
+    let nextWeekNum, nextYear;
+    // Get last week of current year to handle 52/53 week years
+    const lastDayOfYear = new Date(yearNum, 11, 31);
+    const maxWeeksInYear = getWeekNumber(lastDayOfYear);
+    
+    if (weekNum < maxWeeksInYear) {
+      nextWeekNum = weekNum + 1;
+      nextYear = yearNum;
+    } else {
+      nextWeekNum = 1;
+      nextYear = yearNum + 1;
+    }
+    
     const prevWeek = `${prevYear}-W${String(prevWeekNum).padStart(2, '0')}`;
     const nextWeek = `${nextYear}-W${String(nextWeekNum).padStart(2, '0')}`;
 
@@ -1253,7 +1277,8 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
       return createResponse(403, { error: 'Authentication required' });
     }
 
-    // Use parsedBody parameter instead of parsing event.body again
+    // Use parsedBody parameter (already parsed by parseEvent in main handler)
+    // parseEvent handles both JSON and form-encoded content types
     const body = parsedBody || {};
     
     // Validate required fields
@@ -1318,7 +1343,8 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
       return createResponse(403, { error: 'Authentication required' });
     }
 
-    // Use parsedBody parameter instead of parsing event.body again
+    // Use parsedBody parameter (already parsed by parseEvent in main handler)
+    // parseEvent handles both JSON and form-encoded content types
     const body = parsedBody || {};
     
     // Validate required fields

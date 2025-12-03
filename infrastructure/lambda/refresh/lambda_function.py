@@ -229,8 +229,9 @@ def sync_ical_feeds():
                 # Store events in DynamoDB
                 for event in events:
                     # Generate unique event ID based on group and event data
+                    # Using 32 characters (128 bits) for adequate collision resistance
                     event_hash = f"{group['groupId']}-{event.get('title', '')}-{event.get('eventDate', '')}"
-                    event_id = hashlib.sha256(event_hash.encode()).hexdigest()[:16]
+                    event_id = hashlib.sha256(event_hash.encode()).hexdigest()[:32]
 
                     event_item = {
                         'eventId': event_id,
