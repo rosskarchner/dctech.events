@@ -1,0 +1,11 @@
+<nav class="breadcrumb">
+  {{#if breadcrumbs}}
+    {{#each breadcrumbs}}
+      {{#if @last}}
+        <span>{{this.name}}</span>
+      {{else}}
+        <a href="{{this.url}}">{{this.name}}</a> /
+      {{/if}}
+    {{/each}}
+  {{/if}}
+</nav>

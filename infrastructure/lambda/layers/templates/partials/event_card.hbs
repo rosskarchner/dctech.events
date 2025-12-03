@@ -1,0 +1,17 @@
+<div class="event-card">
+  <h3>{{title}}</h3>
+  <div class="event-meta">
+    {{#if time}}
+      <span class="event-time">{{formatTime time}}</span>
+    {{/if}}
+    {{#if location}}
+      <span class="event-location">{{location}}</span>
+    {{/if}}
+  </div>
+  {{#if description}}
+    <p class="event-description">{{description}}</p>
+  {{/if}}
+  {{#if url}}
+    <a href="{{url}}" target="_blank" rel="noopener noreferrer" class="event-link">More Info →</a>
+  {{/if}}
+</div>

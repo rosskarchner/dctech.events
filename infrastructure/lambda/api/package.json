@@ -1,12 +1,13 @@
 {
   "name": "organize-api",
   "version": "1.0.0",
-  "description": "API for organize.dctech.events",
+  "description": "API for organize.dctech.events and next.dctech.events",
   "main": "index.js",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.400.0",
     "@aws-sdk/lib-dynamodb": "^3.400.0",
     "aws-jwt-verify": "^4.0.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "handlebars": "^4.7.8"
   }
 }
