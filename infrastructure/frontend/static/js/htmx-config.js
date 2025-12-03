@@ -12,12 +12,26 @@
             }
 
             // Add auth token if user is authenticated
+            // Note: This attempts to get a cached token synchronously
+            // If no cached token is available, the request proceeds without auth
             if (window.auth && window.auth.isAuthenticated()) {
-                window.auth.getIdToken((err, token) => {
-                    if (!err && token) {
-                        event.detail.headers['Authorization'] = `Bearer ${token}`;
-                    }
-                });
+                // Try to get cached token if available (synchronous)
+                let token = null;
+                if (typeof window.auth.getCachedIdToken === 'function') {
+                    token = window.auth.getCachedIdToken();
+                }
+                
+                if (token) {
+                    event.detail.headers['Authorization'] = `Bearer ${token}`;
+                } else {
+                    // Get token asynchronously for next request
+                    window.auth.getIdToken((err, asyncToken) => {
+                        // Token will be available for subsequent requests
+                        if (err) {
+                            console.error('Failed to refresh auth token:', err);
+                        }
+                    });
+                }
             }
         });
 
