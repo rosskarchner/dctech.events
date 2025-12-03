@@ -5,7 +5,7 @@
  * static assets (CSS, JS, images) to the S3 bucket.
  */
 
-const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
 const { CloudFrontClient, CreateInvalidationCommand } = require('@aws-sdk/client-cloudfront');
 const fs = require('fs');
 const path = require('path');
@@ -89,25 +89,43 @@ async function uploadFile(filePath, bucketName) {
 async function cleanupOldAssets(bucketName) {
   console.log('Cleaning up old static assets...');
 
-  const listResponse = await s3Client.send(new ListObjectsV2Command({
-    Bucket: bucketName,
-    Prefix: 'static/',
-  }));
+  let continuationToken = undefined;
+  let totalDeleted = 0;
 
-  if (!listResponse.Contents || listResponse.Contents.length === 0) {
-    console.log('No old assets to clean up');
-    return;
-  }
-
-  console.log(`Deleting ${listResponse.Contents.length} old files...`);
-
-  for (const object of listResponse.Contents) {
-    await s3Client.send(new DeleteObjectCommand({
+  do {
+    const listResponse = await s3Client.send(new ListObjectsV2Command({
       Bucket: bucketName,
-      Key: object.Key,
+      Prefix: 'static/',
+      ContinuationToken: continuationToken,
     }));
-    console.log(`Deleted ${object.Key}`);
-  }
+
+    if (!listResponse.Contents || listResponse.Contents.length === 0) {
+      if (!continuationToken) {
+        console.log('No old assets to clean up');
+      }
+      break;
+    }
+
+    console.log(`Deleting batch of ${listResponse.Contents.length} files...`);
+
+    // Batch delete in chunks of 1000
+    const deleteObjects = listResponse.Contents.map(obj => ({ Key: obj.Key }));
+    for (let i = 0; i < deleteObjects.length; i += 1000) {
+      const batch = deleteObjects.slice(i, i + 1000);
+      await s3Client.send(new DeleteObjectsCommand({
+        Bucket: bucketName,
+        Delete: {
+          Objects: batch,
+        },
+      }));
+      console.log(`Deleted batch of ${batch.length} files`);
+      totalDeleted += batch.length;
+    }
+
+    continuationToken = listResponse.IsTruncated ? listResponse.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  console.log(`Cleanup complete: deleted ${totalDeleted} files`);
 }
 
 /**
@@ -150,7 +168,15 @@ async function invalidateCache(paths) {
     return;
   }
 
+  if (paths.length === 0) {
+    console.log('No paths to invalidate');
+    return;
+  }
+
   console.log(`Invalidating CloudFront cache for ${paths.length} paths`);
+
+  // Use wildcard if too many paths or just invalidate /static/*
+  const pathsToInvalidate = paths.length > 3000 ? ['/static/*'] : paths.map(p => `/${p}`);
 
   const invalidationId = crypto.randomBytes(16).toString('hex');
 
@@ -159,8 +185,8 @@ async function invalidateCache(paths) {
     InvalidationBatch: {
       CallerReference: invalidationId,
       Paths: {
-        Quantity: paths.length,
-        Items: paths.map(p => `/${p}`),
+        Quantity: pathsToInvalidate.length,
+        Items: pathsToInvalidate,
       },
     },
   }));
@@ -250,9 +276,13 @@ exports.handler = async (event, context) => {
     throw new Error(`Unknown request type: ${requestType}`);
   } catch (error) {
     console.error('Error:', error);
-    await sendResponse(event, context, 'FAILED', {
-      Error: error.message,
-    });
-    throw error;
+    try {
+      await sendResponse(event, context, 'FAILED', {
+        Error: error.message,
+      });
+    } catch (sendError) {
+      console.error('Failed to send error response to CloudFormation:', sendError);
+    }
+    // Do not rethrow - response has been sent to CloudFormation
   }
 };
