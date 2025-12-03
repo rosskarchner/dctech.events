@@ -1083,7 +1083,7 @@ const cognitoLoginUrl = (redirectPath) => {
 // Route Handlers for next.dctech.events
 // ============================================
 
-const handleNextRequest = async (path, method, userId, isHtmx, event) => {
+const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody) => {
   // PUBLIC ROUTES
 
   // GET / - Homepage with upcoming events
@@ -1253,7 +1253,8 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
       return createResponse(403, { error: 'Authentication required' });
     }
 
-    const body = event.body ? JSON.parse(event.body) : {};
+    // Use parsedBody parameter instead of parsing event.body again
+    const body = parsedBody || {};
     
     // Validate required fields
     if (!body.title || !body.title.trim()) {
@@ -1317,7 +1318,8 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
       return createResponse(403, { error: 'Authentication required' });
     }
 
-    const body = event.body ? JSON.parse(event.body) : {};
+    // Use parsedBody parameter instead of parsing event.body again
+    const body = parsedBody || {};
     
     // Validate required fields
     if (!body.name || !body.name.trim()) {
@@ -1390,7 +1392,7 @@ exports.handler = async (event) => {
 
     // Route to appropriate site handler
     if (site === 'next') {
-      return await handleNextRequest(path, method, userId, isHtmx, event);
+      return await handleNextRequest(path, method, userId, isHtmx, event, body);
     }
 
     // Original organize.dctech.events routes below
