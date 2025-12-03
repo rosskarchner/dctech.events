@@ -72,7 +72,7 @@ def sync_groups_from_repo(github_client):
                     'active': 'true' if group_data.get('active', True) else 'false',
                     'description': group_data.get('description', ''),
                     'fallback_url': group_data.get('fallback_url', ''),
-                    'createdAt': str(int(time.time())),
+                    'createdAt': int(time.time()),
                     'createdBy': 'repo_sync',
                     'sourceFile': item.name,
                     'lastSyncedAt': int(time.time()),
