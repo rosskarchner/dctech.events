@@ -164,13 +164,7 @@ body {
   font-size: 0.9rem;
 }
 
-.event-time::before {
-  content: "🕒 ";
-}
-
-.event-location::before {
-  content: "📍 ";
-}
+/* Removed emoji content for accessibility - icons should be in HTML with aria-labels */
 
 .event-description {
   margin: 1rem 0;

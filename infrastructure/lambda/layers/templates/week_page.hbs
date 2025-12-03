@@ -14,13 +14,13 @@
   <main class="container">
     <div class="page-header">
       <h1>Events for Week {{weekId}}</h1>
-      {{#if currentWeek}}
       <nav class="week-nav">
         <a href="/week/{{prevWeek}}/" class="btn btn-secondary">← Previous Week</a>
+        {{#unless (eq weekId currentWeek)}}
         <a href="/" class="btn btn-primary">Current Week</a>
+        {{/unless}}
         <a href="/week/{{nextWeek}}/" class="btn btn-secondary">Next Week →</a>
       </nav>
-      {{/if}}
     </div>
 
     <section class="events-section">

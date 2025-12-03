@@ -92,11 +92,20 @@ Handlebars.registerHelper('formatShortDate', (date) => {
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('contains', (arr, item) => arr?.includes(item) || false);
+Handlebars.registerHelper('year', () => new Date().getFullYear());
+Handlebars.registerHelper('getState', (location) => {
+  if (!location) return '';
+  const parts = location.split(',').map(p => p.trim());
+  return parts.length >= 2 ? parts[1] : '';
+});
 
 // Initialize partials on Lambda cold start
 registerPartials();
 
 // Template rendering helper
+// Note: Templates use {{}} for automatic HTML escaping. The {{{content}}} in base.hbs
+// is intentional for rendering pre-rendered page content, not user input directly.
+// User inputs must be escaped before passing to templates or use {{}} syntax.
 const renderTemplate = (name, data) => {
   const template = loadTemplate(name);
   if (!template) {
@@ -891,22 +900,7 @@ const prepareEventsByDay = (events) => {
     }));
 };
 
-const formatShortDate = (date) => {
-  if (!date) return '';
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric'
-  });
-};
-
-const formatTime = (time) => {
-  if (!time) return '';
-  const [h, m] = time.split(':');
-  const hour = parseInt(h);
-  const meridiem = hour >= 12 ? 'pm' : 'am';
-  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-  return `${displayHour}:${m} ${meridiem}`;
-};
+// formatShortDate and formatTime are already defined as Handlebars helpers above
 
 const formatDate = (date) => {
   return date.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -957,7 +951,7 @@ const getUpcomingEvents = async (daysAhead = 90) => {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.EVENTS_TABLE,
     IndexName: 'dateEventsIndex',
-    KeyConditionExpression: 'eventType = :type AND eventDate BETWEEN :start AND :end',
+    KeyConditionExpression: 'eventType = :type AND eventDate >= :start AND eventDate <= :end',
     ExpressionAttributeValues: {
       ':type': 'all',
       ':start': formatDate(new Date()),
@@ -977,7 +971,7 @@ const getEventsByWeek = async (weekId) => {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.EVENTS_TABLE,
     IndexName: 'dateEventsIndex',
-    KeyConditionExpression: 'eventType = :type AND eventDate BETWEEN :start AND :end',
+    KeyConditionExpression: 'eventType = :type AND eventDate >= :start AND eventDate <= :end',
     ExpressionAttributeValues: {
       ':type': 'all',
       ':start': formatDate(start),
@@ -1111,14 +1105,36 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
   // GET /week/:weekId - Week view
   if (path.match(/^\/week\/[\d]{4}-W\d{2}\/?$/)) {
     const weekId = path.match(/\/week\/([\d]{4}-W\d{2})/)[1];
+    
+    // Validate week number (should be 1-53)
+    const weekMatch = weekId.match(/^(\d{4})-W(\d{2})$/);
+    if (weekMatch) {
+      const weekNum = parseInt(weekMatch[2], 10);
+      if (weekNum < 1 || weekNum > 53) {
+        return createResponse(400, 'Invalid week number', false);
+      }
+    }
+    
     const events = await getEventsByWeek(weekId);
     const eventsByDay = prepareEventsByDay(events);
+    
+    // Calculate prev/next week
+    const [year, week] = weekId.split('-W');
+    const weekNum = parseInt(week);
+    const prevWeekNum = weekNum > 1 ? weekNum - 1 : 52;
+    const prevYear = weekNum > 1 ? year : parseInt(year) - 1;
+    const nextWeekNum = weekNum < 52 ? weekNum + 1 : 1;
+    const nextYear = weekNum < 52 ? year : parseInt(year) + 1;
+    const prevWeek = `${prevYear}-W${String(prevWeekNum).padStart(2, '0')}`;
+    const nextWeek = `${nextYear}-W${String(nextWeekNum).padStart(2, '0')}`;
 
     const html = renderTemplate('week_page', {
       weekId,
       eventsByDay,
       isAuthenticated: !!userId,
       currentWeek: getCurrentWeekId(),
+      prevWeek,
+      nextWeek,
     });
 
     return createResponse(200, html, true);
@@ -1238,6 +1254,15 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
     }
 
     const body = event.body ? JSON.parse(event.body) : {};
+    
+    // Validate required fields
+    if (!body.title || !body.title.trim()) {
+      return createResponse(400, html.error('Event title is required'), true);
+    }
+    if (!body.date || !body.date.trim()) {
+      return createResponse(400, html.error('Event date is required'), true);
+    }
+    
     const eventId = uuidv4();
     const timestamp = new Date().toISOString();
 
@@ -1245,7 +1270,7 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
       TableName: process.env.EVENTS_TABLE,
       Item: {
         eventId,
-        title: body.title,
+        title: body.title.trim(),
         eventDate: body.date,
         time: body.time || '',
         location: body.location || '',
@@ -1293,6 +1318,12 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
     }
 
     const body = event.body ? JSON.parse(event.body) : {};
+    
+    // Validate required fields
+    if (!body.name || !body.name.trim()) {
+      return createResponse(400, html.error('Group name is required'), true);
+    }
+    
     const groupId = uuidv4();
     const timestamp = new Date().toISOString();
 
@@ -1300,7 +1331,7 @@ const handleNextRequest = async (path, method, userId, isHtmx, event) => {
       TableName: process.env.GROUPS_TABLE,
       Item: {
         groupId,
-        name: body.name,
+        name: body.name.trim(),
         website: body.website || '',
         ical: body.ical || '',
         description: body.description || '',
