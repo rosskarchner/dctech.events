@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DC Tech Events - Discover Tech Meetups & Conferences</title>
+  <meta name="description" content="Discover tech events, meetups, and conferences in the Washington DC area">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+  {{> header}}
+
+  <main class="container">
+    <section class="hero">
+      <h1>DC Tech Events</h1>
+      <p class="tagline">Discover tech meetups, conferences, and community events in the Washington DC area</p>
+
+      {{#if stats}}
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">{{stats.upcomingCount}}</span>
+          <span class="stat-label">Upcoming Events</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">{{stats.groupCount}}</span>
+          <span class="stat-label">Active Groups</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">{{stats.locationCount}}</span>
+          <span class="stat-label">Locations</span>
+        </div>
+      </div>
+      {{/if}}
+    </section>
+
+    <section class="events-section">
+      <h2>Upcoming Events</h2>
+      {{> events_by_day}}
+    </section>
+  </main>
+
+  {{> footer}}
+</body>
+</html>

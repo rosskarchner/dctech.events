@@ -1,0 +1,18 @@
+<header class="site-header">
+  <div class="container">
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="/" class="logo">DC Tech Events</a>
+      <ul class="nav-menu" role="menubar">
+        <li role="menuitem"><a href="/">Events</a></li>
+        <li role="menuitem"><a href="/locations/">Locations</a></li>
+        <li role="menuitem"><a href="/groups/">Groups</a></li>
+        {{#if isAuthenticated}}
+          <li role="menuitem"><a href="/submit/">Submit Event</a></li>
+          <li role="menuitem"><a href="/submit-group/">Submit Group</a></li>
+        {{else}}
+          <li role="menuitem"><a href="/login" class="btn-login">Sign In</a></li>
+        {{/if}}
+      </ul>
+    </nav>
+  </div>
+</header>

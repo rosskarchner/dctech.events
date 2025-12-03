@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit a Group - DC Tech Events</title>
+  <meta name="description" content="Submit a tech group or community to DC Tech Events">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+  {{> header}}
+
+  <main class="container">
+    <div class="page-header">
+      <h1 id="submit-group-heading">Submit a Group</h1>
+      <p>Note: Group submissions require admin approval before appearing on the site.</p>
+    </div>
+
+    <section class="form-section">
+      <form hx-post="/submit-group/"
+            hx-target="#result"
+            hx-swap="innerHTML"
+            class="group-form"
+            aria-labelledby="submit-group-heading">
+
+        <div class="form-group">
+          <label for="name">Group Name *</label>
+          <input type="text" id="name" name="name" required autocomplete="organization">
+        </div>
+
+        <div class="form-group">
+          <label for="website">Website</label>
+          <input type="url" id="website" name="website" placeholder="https://..." autocomplete="url">
+        </div>
+
+        <div class="form-group">
+          <label for="ical">iCal Feed URL</label>
+          <input type="url" id="ical" name="ical" placeholder="https://..." autocomplete="off">
+          <small>If your group has an iCal feed, we can automatically import events</small>
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="4" autocomplete="off"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Submit Group</button>
+      </form>
+
+      <div id="result"></div>
+    </section>
+  </main>
+
+  {{> footer}}
+</body>
+</html>

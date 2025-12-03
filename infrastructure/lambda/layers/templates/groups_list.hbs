@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Groups - DC Tech Events</title>
+  <meta name="description" content="Browse tech groups and communities in the Washington DC area">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+  {{> header}}
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Tech Groups & Communities</h1>
+      {{#if isAuthenticated}}
+        <a href="/submit-group/" class="btn btn-primary">Submit a Group</a>
+      {{/if}}
+    </div>
+
+    <section class="groups-list">
+      {{#if groups}}
+        <div class="groups-grid">
+          {{#each groups}}
+            <div class="group-card">
+              <h3>{{name}}</h3>
+              {{#if description}}
+                <p>{{description}}</p>
+              {{/if}}
+              {{#if website}}
+                <a href="{{website}}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Visit Website →</a>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <p>No groups found.</p>
+      {{/if}}
+    </section>
+  </main>
+
+  {{> footer}}
+</body>
+</html>

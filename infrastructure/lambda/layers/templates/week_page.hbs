@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Week {{weekId}} - DC Tech Events</title>
+  <meta name="description" content="Tech events for week {{weekId}} in the Washington DC area">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+  {{> header}}
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Events for Week {{weekId}}</h1>
+      <nav class="week-nav">
+        <a href="/week/{{prevWeek}}/" class="btn btn-secondary">← Previous Week</a>
+        {{#unless (eq weekId currentWeek)}}
+        <a href="/" class="btn btn-primary">Current Week</a>
+        {{/unless}}
+        <a href="/week/{{nextWeek}}/" class="btn btn-secondary">Next Week →</a>
+      </nav>
+    </div>
+
+    <section class="events-section">
+      {{> events_by_day}}
+    </section>
+  </main>
+
+  {{> footer}}
+</body>
+</html>

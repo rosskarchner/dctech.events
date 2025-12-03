@@ -1,0 +1,23 @@
+{{#each eventsByDay}}
+<div class="day-section">
+  <h2 class="day-header">{{formatDate date}}</h2>
+  {{#each timeSlots}}
+    <div class="time-slot">
+      {{#each events}}
+        {{> event_card}}
+      {{/each}}
+    </div>
+  {{/each}}
+</div>
+{{/each}}
+
+{{#unless eventsByDay}}
+  <div class="no-events">
+    <p>No events found for this period.</p>
+    {{#if isAuthenticated}}
+      <a href="/submit/" class="btn btn-primary">Submit an Event</a>
+    {{else}}
+      <p><a href="/login">Sign in</a> to submit events.</p>
+    {{/if}}
+  </div>
+{{/unless}}

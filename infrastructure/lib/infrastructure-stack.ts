@@ -82,10 +82,18 @@ export class InfrastructureStack extends cdk.Stack {
           cognito.OAuthScope.PROFILE,
         ],
         callbackUrls: props?.domainName
-          ? [`https://${props.domainName}/callback`, 'http://localhost:3000/callback']
+          ? [
+              `https://${props.domainName}/callback`,
+              'https://next.dctech.events/callback',
+              'http://localhost:3000/callback'
+            ]
           : ['http://localhost:3000/callback'],
         logoutUrls: props?.domainName
-          ? [`https://${props.domainName}`, 'http://localhost:3000']
+          ? [
+              `https://${props.domainName}`,
+              'https://next.dctech.events',
+              'http://localhost:3000'
+            ]
           : ['http://localhost:3000'],
       },
     });
@@ -215,16 +223,14 @@ export class InfrastructureStack extends cdk.Stack {
       ],
     });
 
-    // OAI for CloudFront to access S3
-    const originAccessIdentity = new cloudfront.OriginAccessIdentity(
-      this,
-      'OrganizeOAI',
-      {
-        comment: 'OAI for organize.dctech.events',
-      }
-    );
-
-    websiteBucket.grantRead(originAccessIdentity);
+    // Origin Access Control for CloudFront to access S3
+    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'OrganizeOAC', {
+      description: 'OAC for organize.dctech.events',
+    });
+    
+    const nextOriginAccessControl = new cloudfront.S3OriginAccessControl(this, 'NextOAC', {
+      description: 'OAC for next.dctech.events static assets',
+    });
 
     // ============================================
     // Route 53 and SSL Certificate
@@ -259,13 +265,26 @@ export class InfrastructureStack extends cdk.Stack {
       });
     }
 
+    // Create ACM certificate for next.dctech.events (must be in us-east-1 for CloudFront)
+    let nextCertificate: certificatemanager.ICertificate;
+    if (cdk.Stack.of(this).region !== 'us-east-1') {
+      throw new Error(
+        'ACM certificates for CloudFront must be created in us-east-1. ' +
+        'Deploy this stack to us-east-1.'
+      );
+    }
+    nextCertificate = new certificatemanager.Certificate(this, 'NextDcTechCertificate', {
+      domainName: 'next.dctech.events',
+      validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
+    });
+
     // ============================================
     // CloudFront Distribution
     // ============================================
     const distribution = new cloudfront.Distribution(this, 'OrganizeDistribution', {
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
-          originAccessIdentity,
+        origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
+          originAccessControl,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
@@ -287,6 +306,19 @@ export class InfrastructureStack extends cdk.Stack {
       domainNames: ['organize.dctech.events'],
       certificate: certificate,
     });
+
+    // Grant CloudFront OAC read access to S3 bucket
+    websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [websiteBucket.arnForObjects('*')],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
+        },
+      },
+    }));
 
     // ============================================
     // Route 53 DNS Records
@@ -311,6 +343,10 @@ export class InfrastructureStack extends cdk.Stack {
     });
 
     // ============================================
+    // CloudFront Distribution for next.dctech.events
+    // ============================================
+
+    // ============================================
     // Lambda Functions for API
     // ============================================
 
@@ -326,7 +362,17 @@ export class InfrastructureStack extends cdk.Stack {
       USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
       USER_POOL_REGION: cdk.Stack.of(this).region,
       WEBSITE_BUCKET: websiteBucket.bucketName,
+      NEXT_DCTECH_DOMAIN: this.node.tryGetContext('nextDomain') || 'next.dctech.events',
+      ORGANIZE_DOMAIN: this.node.tryGetContext('organizeDomain') || 'organize.dctech.events',
+      GITHUB_REPO: this.node.tryGetContext('githubRepo') || 'rosskarchner/dctech.events',
     };
+
+    // Lambda Layer for Handlebars templates
+    const templatesLayer = new lambda.LayerVersion(this, 'TemplatesLayer', {
+      code: lambda.Code.fromAsset('infrastructure/lambda/layers/templates'),
+      compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
+      description: 'Handlebars templates for both organize and next.dctech.events',
+    });
 
     // API Lambda function (handles all API routes)
     const apiFunction = new lambda.Function(this, 'ApiFunction', {
@@ -337,6 +383,7 @@ export class InfrastructureStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       tracing: lambda.Tracing.ACTIVE, // Enable X-Ray tracing
+      layers: [templatesLayer],
     });
 
     // Grant permissions to Lambda
@@ -376,6 +423,40 @@ export class InfrastructureStack extends cdk.Stack {
       schedule: eventbridge.Schedule.rate(cdk.Duration.minutes(5)),
     });
     exportRule.addTarget(new targets.LambdaFunction(exportFunction));
+
+    // Refresh Lambda function (syncs groups/events from GitHub and fetches iCal feeds)
+    const refreshFunction = new lambda.Function(this, 'RefreshFunction', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'lambda_function.lambda_handler',
+      code: lambda.Code.fromAsset('infrastructure/lambda/refresh'),
+      environment: {
+        ...lambdaEnv,
+        GITHUB_TOKEN_SECRET: 'dctech-events/github-token',
+      },
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 1024,
+      description: 'Fetches iCal feeds and syncs from GitHub repo',
+      tracing: lambda.Tracing.ACTIVE,
+    });
+
+    // Grant permissions to refresh Lambda
+    groupsTable.grantReadWriteData(refreshFunction);
+    eventsTable.grantReadWriteData(refreshFunction);
+
+    // Grant permission to read GitHub token from Secrets Manager
+    refreshFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:dctech-events/github-token-*`],
+      })
+    );
+
+    // Schedule refresh to run every 4 hours
+    const refreshRule = new eventbridge.Rule(this, 'RefreshSchedule', {
+      schedule: eventbridge.Schedule.rate(cdk.Duration.hours(4)),
+      description: 'Refresh iCal feeds from 110+ groups and sync from GitHub',
+    });
+    refreshRule.addTarget(new targets.LambdaFunction(refreshFunction));
 
     // ============================================
     // CloudWatch Alarms for Monitoring
@@ -467,6 +548,65 @@ export class InfrastructureStack extends cdk.Stack {
     // The Lambda validates Cognito tokens when present and checks permissions per route
     const proxy = api.root.addResource('{proxy+}');
     proxy.addMethod('ANY', apiIntegration);
+
+    // ============================================
+    // CloudFront Distribution for next.dctech.events
+    // ============================================
+
+    const nextDistribution = new cloudfront.Distribution(this, 'NextDcTechDistribution', {
+      defaultBehavior: {
+        origin: new origins.HttpOrigin(`${api.restApiId}.execute-api.${this.region}.amazonaws.com`, {
+          originPath: '/prod',
+          customHeaders: {
+            'X-Site': 'next',
+          },
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // Disable caching for dynamic content
+      },
+      additionalBehaviors: {
+        '/static/*': {
+          origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
+            originAccessControl: nextOriginAccessControl,
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        },
+      },
+      domainNames: ['next.dctech.events'],
+      certificate: nextCertificate,
+    });
+
+    // Grant CloudFront OAC read access to S3 bucket for next distribution static assets
+    websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [websiteBucket.arnForObjects('*')],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${nextDistribution.distributionId}`,
+        },
+      },
+    }));
+
+    // Add Route 53 A & AAAA records for next.dctech.events
+    new route53.ARecord(this, 'NextDcTechARecord', {
+      zone: hostedZone,
+      recordName: 'next',
+      target: route53.RecordTarget.fromAlias(
+        new route53targets.CloudFrontTarget(nextDistribution)
+      ),
+    });
+
+    new route53.AaaaRecord(this, 'NextDcTechAaaaRecord', {
+      zone: hostedZone,
+      recordName: 'next',
+      target: route53.RecordTarget.fromAlias(
+        new route53targets.CloudFrontTarget(nextDistribution)
+      ),
+    });
 
     // ============================================
     // Outputs

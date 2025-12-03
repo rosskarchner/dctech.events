@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DC Tech Events Newsletter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #34495e;
+      margin-top: 30px;
+    }
+    .event {
+      background: #f8f9fa;
+      border-left: 4px solid #3498db;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .event-time {
+      color: #7f8c8d;
+      font-weight: bold;
+    }
+    .event-location {
+      color: #95a5a6;
+    }
+    a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>DC Tech Events Newsletter</h1>
+  <p>Upcoming tech events, meetups, and conferences in the Washington DC area</p>
+
+  {{#if eventsByDay}}
+    {{#each eventsByDay}}
+      <h2>{{formatDate date}}</h2>
+      {{#each timeSlots}}
+        {{#each events}}
+          <div class="event">
+            <h3>{{title}}</h3>
+            {{#if time}}
+              <div class="event-time">{{formatTime time}}</div>
+            {{/if}}
+            {{#if location}}
+              <div class="event-location">{{location}}</div>
+            {{/if}}
+            {{#if description}}
+              <p>{{description}}</p>
+            {{/if}}
+            {{#if url}}
+              <p><a href="{{url}}">More Info →</a></p>
+            {{/if}}
+          </div>
+        {{/each}}
+      {{/each}}
+    {{/each}}
+  {{else}}
+    <p>No upcoming events at this time.</p>
+  {{/if}}
+
+  <hr>
+  <p style="text-align: center; color: #7f8c8d;">
+    <a href="https://next.dctech.events">Visit DC Tech Events</a>
+  </p>
+</body>
+</html>
