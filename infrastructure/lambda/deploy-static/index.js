@@ -18,6 +18,10 @@ const BUCKET_NAME = process.env.BUCKET_NAME;
 const DISTRIBUTION_ID = process.env.DISTRIBUTION_ID;
 const STATIC_ASSETS_PATH = '/var/task/static'; // Path where static assets are bundled
 
+// AWS API limits
+const MAX_S3_DELETE_BATCH_SIZE = 1000; // Maximum objects per S3 DeleteObjects request
+const MAX_CLOUDFRONT_INVALIDATION_PATHS = 3000; // Maximum paths per CloudFront invalidation
+
 /**
  * Get MIME type from file extension
  */
@@ -108,10 +112,10 @@ async function cleanupOldAssets(bucketName) {
 
     console.log(`Deleting batch of ${listResponse.Contents.length} files...`);
 
-    // Batch delete in chunks of 1000
+    // Batch delete in chunks
     const deleteObjects = listResponse.Contents.map(obj => ({ Key: obj.Key }));
-    for (let i = 0; i < deleteObjects.length; i += 1000) {
-      const batch = deleteObjects.slice(i, i + 1000);
+    for (let i = 0; i < deleteObjects.length; i += MAX_S3_DELETE_BATCH_SIZE) {
+      const batch = deleteObjects.slice(i, i + MAX_S3_DELETE_BATCH_SIZE);
       await s3Client.send(new DeleteObjectsCommand({
         Bucket: bucketName,
         Delete: {
@@ -176,7 +180,7 @@ async function invalidateCache(paths) {
   console.log(`Invalidating CloudFront cache for ${paths.length} paths`);
 
   // Use wildcard if too many paths or just invalidate /static/*
-  const pathsToInvalidate = paths.length > 3000 ? ['/static/*'] : paths.map(p => `/${p}`);
+  const pathsToInvalidate = paths.length > MAX_CLOUDFRONT_INVALIDATION_PATHS ? ['/static/*'] : paths.map(p => `/${p}`);
 
   const invalidationId = crypto.randomBytes(16).toString('hex');
 

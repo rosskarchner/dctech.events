@@ -657,6 +657,10 @@ export class InfrastructureStack extends cdk.Stack {
 
     new cdk.CustomResource(this, 'DeployStaticResource', {
       serviceToken: deployStaticProvider.serviceToken,
+      properties: {
+        // Static asset changes are detected via Lambda function code hash
+        // No version property needed to avoid unnecessary redeployments
+      },
     });
 
     // ============================================
