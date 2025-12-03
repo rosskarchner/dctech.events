@@ -9,8 +9,34 @@ const Handlebars = require('handlebars');
 const fs = require('fs');
 const path = require('path');
 
+const { extractLocationInfo, normalizeAddress, getRegionName } = require('./location_utils');
+
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
+
+// Check if event is online-only based on location
+const isOnlineOnlyEvent = (location) => {
+  if (!location || typeof location !== 'string') {
+    return true; // No location = online only
+  }
+
+  const locationLower = location.toLowerCase();
+  const onlineIndicators = [
+    'online',
+    'virtual',
+    'zoom',
+    'webinar',
+    'remote',
+    'teams',
+    'meet.google.com',
+    'whereby.com',
+    'hopin.com',
+    'discord',
+    'twitch'
+  ];
+
+  return onlineIndicators.some(indicator => locationLower.includes(indicator));
+};
 
 // Create JWT verifier for Cognito tokens
 const jwtVerifier = CognitoJwtVerifier.create({
@@ -97,6 +123,20 @@ Handlebars.registerHelper('getState', (location) => {
   if (!location) return '';
   const parts = location.split(',').map(p => p.trim());
   return parts.length >= 2 ? parts[1] : '';
+});
+
+// Helper to get state abbreviation from "City, STATE" format
+Handlebars.registerHelper('getStateAbbrev', (cityState) => {
+  if (!cityState) return '';
+  const parts = cityState.split(',').map(p => p.trim());
+  return parts.length >= 2 ? parts[1].toLowerCase() : '';
+});
+
+// Helper to get city slug from "City, STATE" format
+Handlebars.registerHelper('getCitySlug', (cityState) => {
+  if (!cityState) return '';
+  const parts = cityState.split(',').map(p => p.trim());
+  return parts.length >= 1 ? parts[0].toLowerCase().replace(/\s+/g, '-') : '';
 });
 
 // Initialize partials on Lambda cold start
@@ -865,39 +905,180 @@ const determineSite = (event) => {
 // ============================================
 
 // Format events by day (mirrors Flask's prepare_events_by_day)
-const prepareEventsByDay = (events) => {
+const prepareEventsByDay = (events, addWeekLinks = false) => {
   const eventsByDay = {};
 
-  events.forEach(event => {
-    const date = event.eventDate;
-    if (!eventsByDay[date]) {
-      eventsByDay[date] = {
-        date,
-        shortDate: formatShortDate(date),
-        timeSlots: {},
-      };
+  // Filter out online-only events and normalize locations
+  const filteredEvents = events.filter(event => !isOnlineOnlyEvent(event.location));
+  
+  filteredEvents.forEach(event => {
+    if (event.location) {
+      event.location = normalizeAddress(event.location);
+      const { city, state } = extractLocationInfo(event.location);
+      event.city = city;
+      event.state = state;
+    }
+  });
+
+  // Group duplicates by title + date + time
+  const eventGroups = {};
+  filteredEvents.forEach(event => {
+    const key = `${event.title}|||${event.eventDate}|||${event.time || 'TBD'}`;
+    if (!eventGroups[key]) {
+      eventGroups[key] = [];
+    }
+    eventGroups[key].push(event);
+  });
+
+  // Merge duplicates
+  const mergedEvents = Object.values(eventGroups).map(group => {
+    if (group.length === 1) {
+      return group[0];
     }
 
-    const time = event.time || '00:00';
-    if (!eventsByDay[date].timeSlots[time]) {
-      eventsByDay[date].timeSlots[time] = [];
+    // Multiple events with same title/date/time - merge them
+    const primary = group[0];
+    const alsoPublishedBy = [];
+    
+    for (let i = 1; i < group.length; i++) {
+      if (group[i].groupId && group[i].groupId !== primary.groupId) {
+        alsoPublishedBy.push({
+          group: group[i].group || group[i].groupId,
+          url: group[i].group_website || group[i].url
+        });
+      }
     }
 
-    eventsByDay[date].timeSlots[time].push({
-      ...event,
-      formattedTime: formatTime(time),
+    if (alsoPublishedBy.length > 0) {
+      primary.also_published_by = alsoPublishedBy;
+    }
+
+    return primary;
+  });
+
+  // Add events to their respective days
+  mergedEvents.forEach(event => {
+    const startDate = new Date(event.eventDate + 'T00:00:00Z');
+    let endDate = null;
+    if (event.endDate) {
+      try {
+        endDate = new Date(event.endDate + 'T00:00:00Z');
+      } catch (e) {
+        // Invalid end date
+      }
+    }
+
+    // Generate list of dates for this event
+    const eventDates = [];
+    if (endDate && endDate > startDate) {
+      let currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        eventDates.push(new Date(currentDate));
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
+    } else {
+      eventDates.push(startDate);
+    }
+
+    // Add event to each day
+    eventDates.forEach((eventDate, i) => {
+      const dayKey = eventDate.toISOString().split('T')[0];
+      const shortDate = formatShortDate(dayKey);
+
+      if (!eventsByDay[dayKey]) {
+        let weekUrl = null;
+        if (addWeekLinks) {
+          const weekId = getCurrentWeekId(); // Would need to implement week calculation
+          weekUrl = `/week/${weekId}/#${dayKey}`;
+        }
+
+        eventsByDay[dayKey] = {
+          date: dayKey,
+          short_date: shortDate,
+          week_url: weekUrl,
+          time_slots: {},
+          has_events: false
+        };
+      }
+
+      // Format time
+      let timeKey = 'TBD';
+      let formattedTime = 'TBD';
+      const originalTime = event.time || '';
+
+      if (originalTime && typeof originalTime === 'string' && originalTime.includes(':')) {
+        try {
+          timeKey = originalTime.trim();
+          formattedTime = formatTime(timeKey);
+        } catch (e) {
+          // Keep TBD
+        }
+      }
+
+      // Create event copy for this day
+      const eventCopy = { ...event };
+      eventCopy.time = timeKey !== 'TBD' ? timeKey : '';
+      eventCopy.formatted_time = formattedTime;
+      
+      // Add (continuing) for multi-day events
+      if (i > 0) {
+        eventCopy.display_title = `${event.title} (continuing)`;
+      } else {
+        eventCopy.display_title = event.title;
+      }
+
+      // Create time slot if it doesn't exist
+      if (!eventsByDay[dayKey].time_slots[timeKey]) {
+        eventsByDay[dayKey].time_slots[timeKey] = [];
+      }
+
+      eventsByDay[dayKey].time_slots[timeKey].push(eventCopy);
+      eventsByDay[dayKey].has_events = true;
     });
   });
 
-  // Convert to array and sort
-  return Object.values(eventsByDay)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map(day => ({
-      ...day,
-      timeSlots: Object.entries(day.timeSlots)
-        .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
-        .map(([time, events]) => ({ time, events })),
+  // Convert to sorted array
+  const sortedDays = Object.keys(eventsByDay).sort();
+  const daysData = [];
+
+  sortedDays.forEach(dayKey => {
+    const dayData = eventsByDay[dayKey];
+    
+    // Sort time slots
+    const timeSortKey = (timeStr) => {
+      if (timeStr === 'TBD') return [24, 0];
+      try {
+        const [hour, minute] = timeStr.split(':').map(Number);
+        return [hour, minute];
+      } catch (e) {
+        return [0, 0];
+      }
+    };
+
+    const sortedTimes = Object.keys(dayData.time_slots).sort((a, b) => {
+      const [hourA, minA] = timeSortKey(a);
+      const [hourB, minB] = timeSortKey(b);
+      if (hourA !== hourB) return hourA - hourB;
+      return minA - minB;
+    });
+
+    const timeSlots = sortedTimes.map(time => ({
+      time,
+      events: dayData.time_slots[time].sort((a, b) => 
+        (a.title || '').localeCompare(b.title || '')
+      )
     }));
+
+    daysData.push({
+      date: dayData.date,
+      short_date: dayData.short_date,
+      week_url: dayData.week_url,
+      time_slots: timeSlots,
+      has_events: dayData.has_events
+    });
+  });
+
+  return daysData;
 };
 
 // JavaScript utility functions (also registered as Handlebars helpers above)
@@ -954,11 +1135,8 @@ const getDateFromISOWeek = (year, week, day) => {
 
 const extractCityState = (location) => {
   if (!location) return ['', ''];
-  const parts = location.split(',').map(p => p.trim());
-  if (parts.length >= 2) {
-    return [parts[0], parts[1]];
-  }
-  return [location, ''];
+  const { city, state } = extractLocationInfo(location);
+  return [city || '', state || ''];
 };
 
 // Get upcoming events (next N days)
@@ -1035,21 +1213,48 @@ const getActiveGroups = async () => {
 // Get locations with event counts
 const getLocationsWithEventCounts = async () => {
   const events = await getUpcomingEvents();
-  const locationCounts = {};
+  const locationStats = {};
+  const citySet = new Set();
 
+  // Count events by region and collect cities
   events.forEach(event => {
-    if (event.location) {
-      const [city, state] = extractCityState(event.location);
-      if (state) {
-        const key = `${city}, ${state}`;
-        locationCounts[key] = (locationCounts[key] || 0) + 1;
+    const { city, state } = extractLocationInfo(event.location || '');
+    if (['DC', 'VA', 'MD'].includes(state)) {
+      // Add to region count
+      const region = getRegionName(state);
+      locationStats[region] = (locationStats[region] || 0) + 1;
+
+      // Add to city set (skip Washington, DC since it's same as DC region)
+      if (city && !(city === 'Washington' && state === 'DC')) {
+        citySet.add(`${city}, ${state}`);
       }
     }
   });
 
-  return Object.entries(locationCounts)
-    .map(([location, count]) => ({ location, count }))
-    .sort((a, b) => b.count - a.count);
+  // Get city counts
+  const cityStats = {};
+  for (const cityState of citySet) {
+    const [city, state] = cityState.split(', ');
+    const cityEvents = events.filter(event => {
+      const { city: eventCity, state: eventState } = extractLocationInfo(event.location || '');
+      return eventCity === city && eventState === state;
+    });
+
+    if (cityEvents.length > 0) {
+      const displayCity = state === 'DC' ? 'Washington' : city;
+      cityStats[`${displayCity}, ${state}`] = cityEvents.length;
+    }
+  }
+
+  return {
+    locationStats,
+    cityStats: Object.entries(cityStats)
+      .sort((a, b) => b[1] - a[1])
+      .reduce((obj, [key, value]) => {
+        obj[key] = value;
+        return obj;
+      }, {})
+  };
 };
 
 // Generate stats for homepage
@@ -1091,10 +1296,15 @@ ${urls.map(url => `  <url>
 
 // Cognito login URL helper
 const cognitoLoginUrl = (redirectPath) => {
-  const domain = process.env.COGNITO_DOMAIN || `${process.env.USER_POOL_ID}.auth.${process.env.USER_POOL_REGION}.amazoncognito.com`;
+  const domain = process.env.COGNITO_DOMAIN;
+  const region = process.env.USER_POOL_REGION || 'us-east-1';
   const clientId = process.env.USER_POOL_CLIENT_ID;
+  
+  // Construct full Cognito URL
+  const cognitoUrl = `https://${domain}.auth.${region}.amazoncognito.com`;
   const redirectUri = encodeURIComponent(`https://next.dctech.events/callback`);
-  return `https://${domain}/login?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&state=${encodeURIComponent(redirectPath)}`;
+  
+  return `${cognitoUrl}/login?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&state=${encodeURIComponent(redirectPath)}`;
 };
 
 // ============================================
@@ -1184,10 +1394,11 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
 
   // GET /locations/ - Location index
   if (path === '/locations/' && method === 'GET') {
-    const locations = await getLocationsWithEventCounts();
+    const { locationStats, cityStats } = await getLocationsWithEventCounts();
 
     const html = renderTemplate('locations_index', {
-      locations,
+      locationStats,
+      cityStats,
       isAuthenticated: !!userId,
     });
 
@@ -1195,8 +1406,8 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
   }
 
   // GET /locations/:state - State-filtered events
-  if (path.match(/^\/locations\/[A-Z]{2}\/?$/)) {
-    const state = path.match(/\/locations\/([A-Z]{2})/)[1];
+  if (path.match(/^\/locations\/[A-Za-z]{2}\/?$/i)) {
+    const state = path.match(/\/locations\/([A-Za-z]{2})/i)[1].toUpperCase();
     const events = await getEventsByState(state);
     const eventsByDay = prepareEventsByDay(events);
     const cities = [...new Set(events.map(e => extractCityState(e.location)[0]).filter(Boolean))];
@@ -1212,10 +1423,15 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
   }
 
   // GET /locations/:state/:city - City-filtered events
-  if (path.match(/^\/locations\/[A-Z]{2}\/[\w-]+\/?$/)) {
-    const match = path.match(/\/locations\/([A-Z]{2})\/([^/]+)/);
-    const state = match[1];
-    const city = match[2];
+  if (path.match(/^\/locations\/[A-Za-z]{2}\/[\w-]+\/?$/i)) {
+    const match = path.match(/\/locations\/([A-Za-z]{2})\/([^/]+)/i);
+    const state = match[1].toUpperCase();
+    const citySlug = match[2];
+    // Convert slug back to city name (e.g., "mc-lean" -> "McLean")
+    const city = citySlug.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+    
     const events = await getEventsByCity(state, city);
     const eventsByDay = prepareEventsByDay(events);
 
@@ -1265,6 +1481,57 @@ const handleNextRequest = async (path, method, userId, isHtmx, event, parsedBody
       },
       body: sitemap,
     };
+  }
+
+  // GET /callback - OAuth callback handler
+  if (path === '/callback' && method === 'GET') {
+    const code = event.queryStringParameters?.code;
+    const state = event.queryStringParameters?.state || '/';
+    
+    if (!code) {
+      return createResponse(400, 'Missing authorization code', false);
+    }
+
+    // Exchange code for tokens with Cognito
+    try {
+      const domain = process.env.COGNITO_DOMAIN;
+      const region = process.env.USER_POOL_REGION || 'us-east-1';
+      const clientId = process.env.USER_POOL_CLIENT_ID;
+      const tokenUrl = `https://${domain}.auth.${region}.amazoncognito.com/oauth2/token`;
+      
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          code: code,
+          redirect_uri: 'https://next.dctech.events/callback',
+        }).toString(),
+      });
+
+      const tokens = await response.json();
+      
+      if (!response.ok) {
+        console.error('Token exchange failed:', tokens);
+        return createResponse(400, 'Failed to authenticate', false);
+      }
+
+      // Set cookie with ID token and redirect to original destination
+      return {
+        statusCode: 302,
+        headers: {
+          'Location': state,
+          'Set-Cookie': `idToken=${tokens.id_token}; Path=/; Secure; HttpOnly; Max-Age=3600`,
+        },
+        body: '',
+      };
+    } catch (error) {
+      console.error('Callback error:', error);
+      return createResponse(500, 'Authentication error', false);
+    }
   }
 
   // PROTECTED ROUTES (require authentication)

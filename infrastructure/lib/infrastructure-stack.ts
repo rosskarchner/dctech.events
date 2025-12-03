@@ -82,20 +82,16 @@ export class InfrastructureStack extends cdk.Stack {
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: props?.domainName
-          ? [
-              `https://${props.domainName}/callback`,
-              'https://next.dctech.events/callback',
-              'http://localhost:3000/callback'
-            ]
-          : ['http://localhost:3000/callback'],
-        logoutUrls: props?.domainName
-          ? [
-              `https://${props.domainName}`,
-              'https://next.dctech.events',
-              'http://localhost:3000'
-            ]
-          : ['http://localhost:3000'],
+        callbackUrls: [
+          'https://next.dctech.events/callback',
+          'http://localhost:3000/callback',
+          ...(props?.domainName ? [`https://${props.domainName}/callback`] : [])
+        ],
+        logoutUrls: [
+          'https://next.dctech.events',
+          'http://localhost:3000',
+          ...(props?.domainName ? [`https://${props.domainName}`] : [])
+        ],
       },
     });
 
@@ -270,6 +266,7 @@ export class InfrastructureStack extends cdk.Stack {
       USER_POOL_ID: userPool.userPoolId,
       USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
       USER_POOL_REGION: cdk.Stack.of(this).region,
+      COGNITO_DOMAIN: userPoolDomain.domainName,
       WEBSITE_BUCKET: websiteBucket.bucketName,
       NEXT_DCTECH_DOMAIN: this.node.tryGetContext('nextDomain') || 'next.dctech.events',
       GITHUB_REPO: this.node.tryGetContext('githubRepo') || 'rosskarchner/dctech.events',

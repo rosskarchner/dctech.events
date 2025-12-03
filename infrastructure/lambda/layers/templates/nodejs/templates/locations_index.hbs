@@ -6,32 +6,53 @@
   <title>Locations - DC Tech Events</title>
   <meta name="description" content="Browse tech events by location in the Washington DC area">
   <link rel="stylesheet" href="/static/css/main.css">
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body>
-  {{> header}}
-
-  <main class="container">
-    <div class="page-header">
-      <h1>Events by Location</h1>
+  <header>
+    <h1 class="logo"><a href="/">DC Tech Events</a></h1>
+    <div>
+      <div>Technology conferences and meetups in and around Washington, DC</div>
+      <nav>
+        <a href="/locations/">locations</a> |
+        <a href="/groups/">groups</a> |
+        <a href="/submit/">add an event</a>
+      </nav>
     </div>
+  </header>
 
-    <section class="locations-list">
-      {{#if locations}}
-        <div class="location-grid">
-          {{#each locations}}
-            <a href="/locations/{{getState this.location}}/" class="location-card">
-              <h3>{{this.location}}</h3>
-              <span class="event-count">{{this.count}} events</span>
-            </a>
-          {{/each}}
-        </div>
-      {{else}}
-        <p>No locations found.</p>
+  <div class="home-container">
+    <section class="events-section">
+      <h2>Events by Location</h2>
+      
+      <h3>Regions</h3>
+      <ul>
+        {{#each locationStats}}
+          <li>
+            <a href="/locations/{{#if (eq @key 'Washington DC')}}DC{{else}}{{#if (eq @key 'Virginia')}}VA{{else}}{{#if (eq @key 'Maryland')}}MD{{/if}}{{/if}}{{/if}}/">
+              {{@key}}
+            </a> ({{this}} events)
+          </li>
+        {{/each}}
+      </ul>
+      
+      {{#if cityStats}}
+      <h3>Cities</h3>
+      <ul>
+        {{#each cityStats}}
+          <li>
+            <a href="/locations/{{getStateAbbrev @key}}/{{getCitySlug @key}}/">
+              {{@key}}
+            </a> ({{this}} events)
+          </li>
+        {{/each}}
+      </ul>
       {{/if}}
     </section>
-  </main>
+  </div>
 
-  {{> footer}}
+  <footer>
+    <p>&copy; {{year}} DC Tech Events</p>
+  </footer>
 </body>
 </html>

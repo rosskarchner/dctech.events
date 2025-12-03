@@ -15,6 +15,7 @@ import os
 import time
 import boto3
 import hashlib
+import re
 from datetime import datetime, timedelta
 from github import Github
 from icalendar import Calendar
@@ -157,7 +158,118 @@ def sync_single_events_from_repo(github_client):
     return events_synced
 
 
-def fetch_ical_feed(url):
+def is_online_only_event(location_str):
+    """Check if event is online-only based on location string"""
+    if not location_str:
+        return False  # No location doesn't mean online-only, might need JSON-LD fetch
+    
+    location_lower = location_str.lower()
+    online_indicators = [
+        'online',
+        'virtual',
+        'zoom',
+        'webinar',
+        'remote',
+        'teams',
+        'meet.google.com',
+        'whereby.com',
+        'hopin.com'
+    ]
+    
+    return any(indicator in location_lower for indicator in online_indicators)
+
+
+def extract_jsonld_from_url(event_url):
+    """Extract JSON-LD location data from an event URL"""
+    try:
+        response = requests.get(event_url, timeout=10)
+        if response.status_code != 200:
+            return None
+        
+        # Look for JSON-LD script tags
+        import re
+        jsonld_pattern = r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>'
+        matches = re.findall(jsonld_pattern, response.text, re.DOTALL | re.IGNORECASE)
+        
+        for match in matches:
+            try:
+                import json
+                data = json.loads(match)
+                
+                # Handle array of JSON-LD objects
+                if isinstance(data, list):
+                    for item in data:
+                        if item.get('@type') == 'Event':
+                            data = item
+                            break
+                
+                if data.get('@type') == 'Event':
+                    location = data.get('location')
+                    
+                    if not location:
+                        return None
+                    
+                    # Handle array of locations (look for Place, not VirtualLocation)
+                    if isinstance(location, list):
+                        physical_location = None
+                        for loc in location:
+                            if isinstance(loc, dict) and loc.get('@type') == 'Place':
+                                physical_location = loc
+                                break
+                        if not physical_location:
+                            # Only virtual locations
+                            return {'skip': True}
+                        location = physical_location
+                    
+                    # Skip virtual-only events
+                    if isinstance(location, dict) and location.get('@type') == 'VirtualLocation':
+                        return {'skip': True}
+                    
+                    if isinstance(location, dict):
+                        place_name = location.get('name', '')
+                        address = location.get('address', {})
+                        
+                        # Build formatted address
+                        if isinstance(address, dict):
+                            street = address.get('streetAddress', '')
+                            locality = address.get('addressLocality', '')
+                            region = address.get('addressRegion', '')
+                            
+                            address_parts = []
+                            if street:
+                                address_parts.append(street)
+                            if locality:
+                                address_parts.append(locality)
+                            if region:
+                                address_parts.append(region)
+                            formatted_address = ', '.join(address_parts)
+                            
+                            if place_name and formatted_address:
+                                return {'location': f"{place_name}, {formatted_address}"}
+                            elif place_name:
+                                return {'location': place_name}
+                            elif formatted_address:
+                                return {'location': formatted_address}
+                        else:
+                            # String address
+                            if place_name and address:
+                                return {'location': f"{place_name}, {address}"}
+                            elif place_name:
+                                return {'location': place_name}
+                            elif address:
+                                return {'location': address}
+                    elif isinstance(location, str):
+                        return {'location': location}
+            except (json.JSONDecodeError, KeyError):
+                continue
+        
+        return None
+    except Exception as e:
+        print(f"Error fetching JSON-LD from {event_url}: {str(e)}")
+        return None
+
+
+def fetch_ical_feed(url, group=None):
     """Fetch and parse an iCal feed"""
     try:
         response = requests.get(url, timeout=30)
@@ -186,17 +298,56 @@ def fetch_ical_feed(url):
                 if 'DESCRIPTION' in component:
                     event['description'] = str(component.get('DESCRIPTION'))
 
-                if 'LOCATION' in component:
-                    event['location'] = str(component.get('LOCATION'))
-
+                # Get URL first (needed for JSON-LD augmentation)
+                event_url = None
                 if 'URL' in component:
-                    event['url'] = str(component.get('URL'))
+                    event_url = str(component.get('URL'))
+                    event['url'] = event_url
+                
+                # If no URL in event, try fallback_url from group
+                if not event_url and group and group.get('fallback_url'):
+                    event_url = group.get('fallback_url')
+                    event['url'] = event_url
 
-                # Only add future events
+                # Try to get location from iCal
+                ical_location = None
+                if 'LOCATION' in component:
+                    ical_location = str(component.get('LOCATION'))
+                    if ical_location:
+                        event['location'] = ical_location
+
+                # Augment with JSON-LD if we have an event URL
+                if event_url:
+                    jsonld_data = extract_jsonld_from_url(event_url)
+                    if jsonld_data:
+                        if jsonld_data.get('skip'):
+                            # JSON-LD indicates this is virtual-only
+                            print(f"Skipping virtual-only event: {event.get('title', 'Unknown')}")
+                            continue
+                        if jsonld_data.get('location'):
+                            # Use JSON-LD location (overrides iCal if present)
+                            event['location'] = jsonld_data['location']
+
+                # Now check if we should skip based on location
+                final_location = event.get('location', '')
+                if final_location and is_online_only_event(final_location):
+                    print(f"Skipping online-only event: {event.get('title', 'Unknown')}")
+                    continue
+
+                # Skip events without URL (can't verify location)
+                if not event_url:
+                    print(f"Skipping event without URL: {event.get('title', 'Unknown')}")
+                    continue
+
+                # Only add future events with location data
                 if 'eventDate' in event:
                     event_date = datetime.strptime(event['eventDate'], '%Y-%m-%d')
                     if event_date >= datetime.now() - timedelta(days=1):
-                        events.append(event)
+                        # Only include if we have location or it's from iCal with location
+                        if event.get('location'):
+                            events.append(event)
+                        else:
+                            print(f"Skipping event without location: {event.get('title', 'Unknown')}")
 
         return events
 
@@ -226,7 +377,7 @@ def sync_ical_feeds():
 
             try:
                 print(f"Fetching iCal for {group.get('name')}...")
-                events = fetch_ical_feed(group['ical'])
+                events = fetch_ical_feed(group['ical'], group)
 
                 # Store events in DynamoDB
                 for event in events:
@@ -239,6 +390,8 @@ def sync_ical_feeds():
                     event_item = {
                         'eventId': event_id,
                         'groupId': group['groupId'],
+                        'group': group.get('name', ''),
+                        'group_website': group.get('website', ''),
                         'eventType': 'all',
                         'createdAt': timestamp,
                         'createdBy': 'ical_sync',
