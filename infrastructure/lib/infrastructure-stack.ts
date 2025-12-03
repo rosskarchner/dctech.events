@@ -14,6 +14,7 @@ import * as certificatemanager from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cr from 'aws-cdk-lib/custom-resources';
 
 export interface OrganizeDCTechStackProps extends cdk.StackProps {
   domainName?: string;
@@ -606,6 +607,60 @@ export class InfrastructureStack extends cdk.Stack {
       target: route53.RecordTarget.fromAlias(
         new route53targets.CloudFrontTarget(nextDistribution)
       ),
+    });
+
+    // ============================================
+    // Static Assets Deployment Lambda
+    // ============================================
+
+    // Lambda function to deploy static assets to S3
+    const deployStaticFunction = new lambda.Function(this, 'DeployStaticFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('infrastructure/lambda/deploy-static', {
+        bundling: {
+          image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+          command: [
+            'bash', '-c', [
+              'cp -r /asset-input/* /asset-output/',
+              'cd /asset-output',
+              'npm install --omit=dev',
+              // Copy static assets into the Lambda bundle
+              'mkdir -p /asset-output/static',
+              'cp -r /asset-input/../../frontend/static/* /asset-output/static/ || true',
+            ].join(' && '),
+          ],
+        },
+      }),
+      environment: {
+        BUCKET_NAME: websiteBucket.bucketName,
+        DISTRIBUTION_ID: nextDistribution.distributionId,
+      },
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      description: 'Deploys static assets to S3 on stack updates',
+    });
+
+    // Grant permissions to deployment Lambda
+    websiteBucket.grantReadWrite(deployStaticFunction);
+    deployStaticFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudfront:CreateInvalidation'],
+        resources: [`arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${nextDistribution.distributionId}`],
+      })
+    );
+
+    // Custom resource to trigger deployment on stack updates
+    const deployStaticProvider = new cr.Provider(this, 'DeployStaticProvider', {
+      onEventHandler: deployStaticFunction,
+    });
+
+    new cdk.CustomResource(this, 'DeployStaticResource', {
+      serviceToken: deployStaticProvider.serviceToken,
+      properties: {
+        // Static asset changes are detected via Lambda function code hash
+        // No version property needed to avoid unnecessary redeployments
+      },
     });
 
     // ============================================

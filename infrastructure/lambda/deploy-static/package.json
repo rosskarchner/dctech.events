@@ -1,0 +1,10 @@
+{
+  "name": "deploy-static-assets",
+  "version": "1.0.0",
+  "description": "Lambda function to deploy static assets to S3",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.400.0",
+    "@aws-sdk/client-cloudfront": "^3.400.0"
+  }
+}
