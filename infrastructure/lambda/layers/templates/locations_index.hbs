@@ -20,7 +20,7 @@
       {{#if locations}}
         <div class="location-grid">
           {{#each locations}}
-            <a href="/locations/{{this.state}}/" class="location-card">
+            <a href="/locations/{{getState this.location}}/" class="location-card">
               <h3>{{this.location}}</h3>
               <span class="event-count">{{this.count}} events</span>
             </a>

@@ -13,7 +13,7 @@
 
   <main class="container">
     <div class="page-header">
-      <h1>Submit a Group</h1>
+      <h1 id="submit-group-heading">Submit a Group</h1>
       <p>Note: Group submissions require admin approval before appearing on the site.</p>
     </div>
 
@@ -21,27 +21,28 @@
       <form hx-post="/submit-group/"
             hx-target="#result"
             hx-swap="innerHTML"
-            class="group-form">
+            class="group-form"
+            aria-labelledby="submit-group-heading">
 
         <div class="form-group">
           <label for="name">Group Name *</label>
-          <input type="text" id="name" name="name" required>
+          <input type="text" id="name" name="name" required autocomplete="organization">
         </div>
 
         <div class="form-group">
           <label for="website">Website</label>
-          <input type="url" id="website" name="website" placeholder="https://...">
+          <input type="url" id="website" name="website" placeholder="https://..." autocomplete="url">
         </div>
 
         <div class="form-group">
           <label for="ical">iCal Feed URL</label>
-          <input type="url" id="ical" name="ical" placeholder="https://...">
+          <input type="url" id="ical" name="ical" placeholder="https://..." autocomplete="off">
           <small>If your group has an iCal feed, we can automatically import events</small>
         </div>
 
         <div class="form-group">
           <label for="description">Description</label>
-          <textarea id="description" name="description" rows="4"></textarea>
+          <textarea id="description" name="description" rows="4" autocomplete="off"></textarea>
         </div>
 
         <button type="submit" class="btn btn-primary">Submit Group</button>

@@ -14,11 +14,11 @@ import yaml
 import os
 import time
 import boto3
+import hashlib
 from datetime import datetime, timedelta
 from github import Github
 from icalendar import Calendar
 import requests
-from urllib.parse import urlparse
 
 # AWS clients
 dynamodb = boto3.resource('dynamodb')
@@ -102,8 +102,8 @@ def sync_single_events_from_repo(github_client):
         # Fetch all files in _single_events/ directory
         try:
             contents = repo.get_contents('_single_events')
-        except:
-            print("No _single_events directory found, skipping...")
+        except Exception as e:
+            print(f"Error fetching _single_events directory: {str(e)}. Skipping single events sync.")
             return 0
 
         for item in contents:
@@ -128,7 +128,7 @@ def sync_single_events_from_repo(github_client):
                     'time': event_data.get('time', '00:00'),
                     'url': event_data.get('url', ''),
                     'eventType': 'all',
-                    'createdAt': str(int(time.time())),
+                    'createdAt': int(time.time()),
                     'createdBy': 'repo_sync',
                     'sourceFile': item.name,
                     'lastSyncedAt': int(time.time()),
@@ -229,8 +229,9 @@ def sync_ical_feeds():
                 # Store events in DynamoDB
                 for event in events:
                     # Generate unique event ID based on group and event data
+                    # Using 32 characters (128 bits) for adequate collision resistance
                     event_hash = f"{group['groupId']}-{event.get('title', '')}-{event.get('eventDate', '')}"
-                    event_id = str(hash(event_hash))
+                    event_id = hashlib.sha256(event_hash.encode()).hexdigest()[:32]
 
                     event_item = {
                         'eventId': event_id,

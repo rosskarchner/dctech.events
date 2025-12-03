@@ -223,16 +223,14 @@ export class InfrastructureStack extends cdk.Stack {
       ],
     });
 
-    // OAI for CloudFront to access S3
-    const originAccessIdentity = new cloudfront.OriginAccessIdentity(
-      this,
-      'OrganizeOAI',
-      {
-        comment: 'OAI for organize.dctech.events',
-      }
-    );
-
-    websiteBucket.grantRead(originAccessIdentity);
+    // Origin Access Control for CloudFront to access S3
+    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'OrganizeOAC', {
+      description: 'OAC for organize.dctech.events',
+    });
+    
+    const nextOriginAccessControl = new cloudfront.S3OriginAccessControl(this, 'NextOAC', {
+      description: 'OAC for next.dctech.events static assets',
+    });
 
     // ============================================
     // Route 53 and SSL Certificate
@@ -285,8 +283,8 @@ export class InfrastructureStack extends cdk.Stack {
     // ============================================
     const distribution = new cloudfront.Distribution(this, 'OrganizeDistribution', {
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
-          originAccessIdentity,
+        origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
+          originAccessControl,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
@@ -308,6 +306,19 @@ export class InfrastructureStack extends cdk.Stack {
       domainNames: ['organize.dctech.events'],
       certificate: certificate,
     });
+
+    // Grant CloudFront OAC read access to S3 bucket
+    websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [websiteBucket.arnForObjects('*')],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
+        },
+      },
+    }));
 
     // ============================================
     // Route 53 DNS Records
@@ -351,9 +362,9 @@ export class InfrastructureStack extends cdk.Stack {
       USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
       USER_POOL_REGION: cdk.Stack.of(this).region,
       WEBSITE_BUCKET: websiteBucket.bucketName,
-      NEXT_DCTECH_DOMAIN: 'next.dctech.events',
-      ORGANIZE_DOMAIN: 'organize.dctech.events',
-      GITHUB_REPO: 'rosskarchner/dctech.events',
+      NEXT_DCTECH_DOMAIN: this.node.tryGetContext('nextDomain') || 'next.dctech.events',
+      ORGANIZE_DOMAIN: this.node.tryGetContext('organizeDomain') || 'organize.dctech.events',
+      GITHUB_REPO: this.node.tryGetContext('githubRepo') || 'rosskarchner/dctech.events',
     };
 
     // Lambda Layer for Handlebars templates
@@ -556,8 +567,8 @@ export class InfrastructureStack extends cdk.Stack {
       },
       additionalBehaviors: {
         '/static/*': {
-          origin: origins.S3BucketOrigin.withOriginAccessIdentity(websiteBucket, {
-            originAccessIdentity,
+          origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
+            originAccessControl: nextOriginAccessControl,
           }),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
@@ -566,6 +577,19 @@ export class InfrastructureStack extends cdk.Stack {
       domainNames: ['next.dctech.events'],
       certificate: nextCertificate,
     });
+
+    // Grant CloudFront OAC read access to S3 bucket for next distribution static assets
+    websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [websiteBucket.arnForObjects('*')],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${nextDistribution.distributionId}`,
+        },
+      },
+    }));
 
     // Add Route 53 A & AAAA records for next.dctech.events
     new route53.ARecord(this, 'NextDcTechARecord', {
