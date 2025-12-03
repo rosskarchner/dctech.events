@@ -55,3 +55,11 @@ yarn-error.log*
 
 # Built JavaScript
 static/js/dist/
+
+# Lambda dependencies (installed during deployment)
+# Ignore everything in lambda function directories except source files
+infrastructure/lambda/api/node_modules/
+infrastructure/lambda/refresh/*
+!infrastructure/lambda/refresh/lambda_function.py
+!infrastructure/lambda/refresh/requirements.txt
+!infrastructure/lambda/refresh/README.md

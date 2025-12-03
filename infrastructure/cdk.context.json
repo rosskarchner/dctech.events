@@ -1,0 +1,9 @@
+{
+  "hosted-zone:account=797438674243:domainName=dctech.events:region=us-east-1": {
+    "Id": "/hostedzone/Z078066931R85FQDWCM3P",
+    "Name": "dctech.events."
+  },
+  "acknowledged-issue-numbers": [
+    34892
+  ]
+}

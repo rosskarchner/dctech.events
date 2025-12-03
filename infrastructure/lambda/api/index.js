@@ -900,7 +900,25 @@ const prepareEventsByDay = (events) => {
     }));
 };
 
-// formatShortDate and formatTime are already defined as Handlebars helpers above
+// JavaScript utility functions (also registered as Handlebars helpers above)
+const formatShortDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr + 'T00:00:00Z');
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC'
+  });
+};
+
+const formatTime = (time) => {
+  if (!time) return '';
+  const [h, m] = time.split(':');
+  const hour = parseInt(h);
+  const meridiem = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+  return `${displayHour}:${m} ${meridiem}`;
+};
 
 const formatDate = (date) => {
   return date.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -951,7 +969,7 @@ const getUpcomingEvents = async (daysAhead = 90) => {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.EVENTS_TABLE,
     IndexName: 'dateEventsIndex',
-    KeyConditionExpression: 'eventType = :type AND eventDate >= :start AND eventDate <= :end',
+    KeyConditionExpression: 'eventType = :type AND eventDate BETWEEN :start AND :end',
     ExpressionAttributeValues: {
       ':type': 'all',
       ':start': formatDate(new Date()),
@@ -971,7 +989,7 @@ const getEventsByWeek = async (weekId) => {
   const result = await docClient.send(new QueryCommand({
     TableName: process.env.EVENTS_TABLE,
     IndexName: 'dateEventsIndex',
-    KeyConditionExpression: 'eventType = :type AND eventDate >= :start AND eventDate <= :end',
+    KeyConditionExpression: 'eventType = :type AND eventDate BETWEEN :start AND :end',
     ExpressionAttributeValues: {
       ':type': 'all',
       ':start': formatDate(start),
@@ -1407,9 +1425,11 @@ function requiresAuth(path, method) {
 }
 
 exports.handler = async (event) => {
+  let isHtmx = false;
   try {
     const site = determineSite(event);
-    const { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx } = await parseEvent(event);
+    const { path, method, body, pathParams, queryParams, userId, userEmail, isHtmx: isHtmxRequest } = await parseEvent(event);
+    isHtmx = isHtmxRequest;
 
     // Handle CORS preflight
     if (method === 'OPTIONS') {

@@ -64,6 +64,7 @@ def sync_groups_from_repo(github_client):
                 group_id = item.name.replace('.yaml', '')
 
                 # Create group record
+                timestamp = datetime.utcnow().isoformat() + 'Z'
                 group = {
                     'groupId': group_id,
                     'name': group_data.get('name', ''),
@@ -72,10 +73,10 @@ def sync_groups_from_repo(github_client):
                     'active': 'true' if group_data.get('active', True) else 'false',
                     'description': group_data.get('description', ''),
                     'fallback_url': group_data.get('fallback_url', ''),
-                    'createdAt': int(time.time()),
+                    'createdAt': timestamp,
                     'createdBy': 'repo_sync',
                     'sourceFile': item.name,
-                    'lastSyncedAt': int(time.time()),
+                    'lastSyncedAt': timestamp,
                 }
 
                 groups_table.put_item(Item=group)
@@ -119,6 +120,7 @@ def sync_single_events_from_repo(github_client):
                 event_id = item.name.replace('.yaml', '')
 
                 # Create event record
+                timestamp = datetime.utcnow().isoformat() + 'Z'
                 event = {
                     'eventId': event_id,
                     'title': event_data.get('title', ''),
@@ -128,10 +130,10 @@ def sync_single_events_from_repo(github_client):
                     'time': event_data.get('time', '00:00'),
                     'url': event_data.get('url', ''),
                     'eventType': 'all',
-                    'createdAt': int(time.time()),
+                    'createdAt': timestamp,
                     'createdBy': 'repo_sync',
                     'sourceFile': item.name,
-                    'lastSyncedAt': int(time.time()),
+                    'lastSyncedAt': timestamp,
                 }
 
                 # Add optional fields
@@ -233,12 +235,14 @@ def sync_ical_feeds():
                     event_hash = f"{group['groupId']}-{event.get('title', '')}-{event.get('eventDate', '')}"
                     event_id = hashlib.sha256(event_hash.encode()).hexdigest()[:32]
 
+                    timestamp = datetime.utcnow().isoformat() + 'Z'
                     event_item = {
                         'eventId': event_id,
                         'groupId': group['groupId'],
                         'eventType': 'all',
+                        'createdAt': timestamp,
                         'createdBy': 'ical_sync',
-                        'lastSyncedAt': int(time.time()),
+                        'lastSyncedAt': timestamp,
                         **event
                     }
 

@@ -225,11 +225,7 @@ export class InfrastructureStack extends cdk.Stack {
     });
 
     // Origin Access Control for CloudFront to access S3
-    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'OrganizeOAC', {
-      description: 'OAC for organize.dctech.events',
-    });
-    
-    const nextOriginAccessControl = new cloudfront.S3OriginAccessControl(this, 'NextOAC', {
+    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'NextOAC', {
       description: 'OAC for next.dctech.events static assets',
     });
 
@@ -242,105 +238,17 @@ export class InfrastructureStack extends cdk.Stack {
       domainName: 'dctech.events',
     });
 
-    // Create or reference ACM certificate for organize.dctech.events
-    // Must be in us-east-1 for CloudFront
-    let certificate: certificatemanager.ICertificate;
-    if (props?.certificateArn) {
-      // Reference existing certificate in us-east-1
-      certificate = certificatemanager.Certificate.fromCertificateArn(
-        this,
-        'OrganizeCertificate',
-        props.certificateArn
-      );
-    } else {
-      // Validate region is us-east-1 before creating certificate
-      if (cdk.Stack.of(this).region !== 'us-east-1') {
-        throw new Error(
-          'ACM certificates for CloudFront must be created in us-east-1. ' +
-          'Provide a certificateArn for a certificate in us-east-1, or deploy this stack to us-east-1.'
-        );
-      }
-      certificate = new certificatemanager.Certificate(this, 'OrganizeCertificate', {
-        domainName: 'organize.dctech.events',
-        validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
-      });
-    }
-
     // Create ACM certificate for next.dctech.events (must be in us-east-1 for CloudFront)
-    let nextCertificate: certificatemanager.ICertificate;
+    let certificate: certificatemanager.ICertificate;
     if (cdk.Stack.of(this).region !== 'us-east-1') {
       throw new Error(
         'ACM certificates for CloudFront must be created in us-east-1. ' +
         'Deploy this stack to us-east-1.'
       );
     }
-    nextCertificate = new certificatemanager.Certificate(this, 'NextDcTechCertificate', {
+    certificate = new certificatemanager.Certificate(this, 'NextDcTechCertificate', {
       domainName: 'next.dctech.events',
       validation: certificatemanager.CertificateValidation.fromDns(hostedZone),
-    });
-
-    // ============================================
-    // CloudFront Distribution
-    // ============================================
-    const distribution = new cloudfront.Distribution(this, 'OrganizeDistribution', {
-      defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
-          originAccessControl,
-        }),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
-        cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
-      },
-      defaultRootObject: 'index.html',
-      errorResponses: [
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-        },
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-        },
-      ],
-      domainNames: ['organize.dctech.events'],
-      certificate: certificate,
-    });
-
-    // Grant CloudFront OAC read access to S3 bucket
-    websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
-      actions: ['s3:GetObject'],
-      resources: [websiteBucket.arnForObjects('*')],
-      conditions: {
-        StringEquals: {
-          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
-        },
-      },
-    }));
-
-    // ============================================
-    // Route 53 DNS Records
-    // ============================================
-
-    // Create A record for organize.dctech.events pointing to CloudFront
-    new route53.ARecord(this, 'OrganizeARecord', {
-      zone: hostedZone,
-      recordName: 'organize',
-      target: route53.RecordTarget.fromAlias(
-        new route53targets.CloudFrontTarget(distribution)
-      ),
-    });
-
-    // Create AAAA record for IPv6 support
-    new route53.AaaaRecord(this, 'OrganizeAAAARecord', {
-      zone: hostedZone,
-      recordName: 'organize',
-      target: route53.RecordTarget.fromAlias(
-        new route53targets.CloudFrontTarget(distribution)
-      ),
     });
 
     // ============================================
@@ -364,13 +272,12 @@ export class InfrastructureStack extends cdk.Stack {
       USER_POOL_REGION: cdk.Stack.of(this).region,
       WEBSITE_BUCKET: websiteBucket.bucketName,
       NEXT_DCTECH_DOMAIN: this.node.tryGetContext('nextDomain') || 'next.dctech.events',
-      ORGANIZE_DOMAIN: this.node.tryGetContext('organizeDomain') || 'organize.dctech.events',
       GITHUB_REPO: this.node.tryGetContext('githubRepo') || 'rosskarchner/dctech.events',
     };
 
     // Lambda Layer for Handlebars templates
     const templatesLayer = new lambda.LayerVersion(this, 'TemplatesLayer', {
-      code: lambda.Code.fromAsset('infrastructure/lambda/layers/templates'),
+      code: lambda.Code.fromAsset('lambda/layers/templates'),
       compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
       description: 'Handlebars templates for both organize and next.dctech.events',
     });
@@ -429,7 +336,7 @@ export class InfrastructureStack extends cdk.Stack {
     const refreshFunction = new lambda.Function(this, 'RefreshFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'lambda_function.lambda_handler',
-      code: lambda.Code.fromAsset('infrastructure/lambda/refresh'),
+      code: lambda.Code.fromAsset('lambda/refresh'),
       environment: {
         ...lambdaEnv,
         GITHUB_TOKEN_SECRET: 'dctech-events/github-token',
@@ -522,7 +429,7 @@ export class InfrastructureStack extends cdk.Stack {
       description: 'API for organize.dctech.events',
       defaultCorsPreflightOptions: {
         allowOrigins: [
-          'https://organize.dctech.events',
+          'https://next.dctech.events',
           'http://localhost:3000', // For local development
         ],
         allowMethods: apigateway.Cors.ALL_METHODS,
@@ -547,6 +454,11 @@ export class InfrastructureStack extends cdk.Stack {
     // The Lambda function handles all routing and authentication internally
     // Note: Authorizer is removed to support both public and protected routes
     // The Lambda validates Cognito tokens when present and checks permissions per route
+    
+    // Add root path handler
+    api.root.addMethod('ANY', apiIntegration);
+    
+    // Add proxy resource for all other paths
     const proxy = api.root.addResource('{proxy+}');
     proxy.addMethod('ANY', apiIntegration);
 
@@ -554,7 +466,7 @@ export class InfrastructureStack extends cdk.Stack {
     // CloudFront Distribution for next.dctech.events
     // ============================================
 
-    const nextDistribution = new cloudfront.Distribution(this, 'NextDcTechDistribution', {
+    const distribution = new cloudfront.Distribution(this, 'NextDcTechDistribution', {
       defaultBehavior: {
         origin: new origins.HttpOrigin(`${api.restApiId}.execute-api.${this.region}.amazonaws.com`, {
           originPath: '/prod',
@@ -569,17 +481,17 @@ export class InfrastructureStack extends cdk.Stack {
       additionalBehaviors: {
         '/static/*': {
           origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
-            originAccessControl: nextOriginAccessControl,
+            originAccessControl,
           }),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         },
       },
       domainNames: ['next.dctech.events'],
-      certificate: nextCertificate,
+      certificate,
     });
 
-    // Grant CloudFront OAC read access to S3 bucket for next distribution static assets
+    // Grant CloudFront OAC read access to S3 bucket for static assets
     websiteBucket.addToResourcePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
@@ -587,7 +499,7 @@ export class InfrastructureStack extends cdk.Stack {
       resources: [websiteBucket.arnForObjects('*')],
       conditions: {
         StringEquals: {
-          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${nextDistribution.distributionId}`,
+          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
         },
       },
     }));
@@ -597,7 +509,7 @@ export class InfrastructureStack extends cdk.Stack {
       zone: hostedZone,
       recordName: 'next',
       target: route53.RecordTarget.fromAlias(
-        new route53targets.CloudFrontTarget(nextDistribution)
+        new route53targets.CloudFrontTarget(distribution)
       ),
     });
 
@@ -605,7 +517,7 @@ export class InfrastructureStack extends cdk.Stack {
       zone: hostedZone,
       recordName: 'next',
       target: route53.RecordTarget.fromAlias(
-        new route53targets.CloudFrontTarget(nextDistribution)
+        new route53targets.CloudFrontTarget(distribution)
       ),
     });
 
@@ -617,7 +529,7 @@ export class InfrastructureStack extends cdk.Stack {
     const deployStaticFunction = new lambda.Function(this, 'DeployStaticFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('infrastructure/lambda/deploy-static', {
+      code: lambda.Code.fromAsset('lambda/deploy-static', {
         bundling: {
           image: lambda.Runtime.NODEJS_20_X.bundlingImage,
           command: [
@@ -634,7 +546,7 @@ export class InfrastructureStack extends cdk.Stack {
       }),
       environment: {
         BUCKET_NAME: websiteBucket.bucketName,
-        DISTRIBUTION_ID: nextDistribution.distributionId,
+        DISTRIBUTION_ID: distribution.distributionId,
       },
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
@@ -646,7 +558,7 @@ export class InfrastructureStack extends cdk.Stack {
     deployStaticFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cloudfront:CreateInvalidation'],
-        resources: [`arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${nextDistribution.distributionId}`],
+        resources: [`arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${distribution.distributionId}`],
       })
     );
 
@@ -688,22 +600,12 @@ export class InfrastructureStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'CloudFrontUrl', {
       value: distribution.distributionDomainName,
-      description: 'CloudFront Distribution URL',
+      description: 'CloudFront Distribution URL for next.dctech.events',
     });
 
     new cdk.CfnOutput(this, 'WebsiteBucketName', {
       value: websiteBucket.bucketName,
       description: 'S3 Website Bucket Name',
-    });
-
-    new cdk.CfnOutput(this, 'GroupsYamlUrl', {
-      value: `https://${distribution.distributionDomainName}/groups.yaml`,
-      description: 'URL for groups.yaml export',
-    });
-
-    new cdk.CfnOutput(this, 'EventsYamlUrl', {
-      value: `https://${distribution.distributionDomainName}/events.yaml`,
-      description: 'URL for events.yaml export',
     });
   }
 }
