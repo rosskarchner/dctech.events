@@ -38,10 +38,16 @@ const isOnlineOnlyEvent = (location) => {
   return onlineIndicators.some(indicator => locationLower.includes(indicator));
 };
 
-// Create JWT verifier for Cognito tokens
-const jwtVerifier = CognitoJwtVerifier.create({
+// Create JWT verifiers for Cognito tokens
+const accessTokenVerifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL_ID,
   tokenUse: 'access',
+  clientId: process.env.USER_POOL_CLIENT_ID,
+});
+
+const idTokenVerifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.USER_POOL_ID,
+  tokenUse: 'id',
   clientId: process.env.USER_POOL_CLIENT_ID,
 });
 
@@ -156,13 +162,19 @@ const renderTemplate = (name, data) => {
 
 // Helper to verify and decode JWT token with signature verification
 async function verifyJWT(token) {
+  // Try access token first
   try {
-    // Verify the token signature and claims
-    const payload = await jwtVerifier.verify(token);
+    const payload = await accessTokenVerifier.verify(token);
     return payload;
   } catch (error) {
-    console.error('JWT verification failed:', error.message);
-    return null;
+    // If access token verification fails, try ID token
+    try {
+      const payload = await idTokenVerifier.verify(token);
+      return payload;
+    } catch (idError) {
+      console.error('JWT verification failed:', idError.message);
+      return null;
+    }
   }
 }
 
@@ -208,6 +220,26 @@ async function parseEvent(event) {
     if (authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const claims = await verifyJWT(token);
+      if (claims) {
+        userId = claims.sub || null;
+        userEmail = claims.email || null;
+      }
+    }
+  }
+
+  // If still no userId, check for idToken cookie
+  if (!userId) {
+    const cookieHeader = headers['cookie'] || headers['Cookie'] || '';
+    const cookies = {};
+    cookieHeader.split(';').forEach(cookie => {
+      const [name, ...rest] = cookie.split('=');
+      if (name && rest.length > 0) {
+        cookies[name.trim()] = rest.join('=').trim();
+      }
+    });
+
+    if (cookies.idToken) {
+      const claims = await verifyJWT(cookies.idToken);
       if (claims) {
         userId = claims.sub || null;
         userEmail = claims.email || null;

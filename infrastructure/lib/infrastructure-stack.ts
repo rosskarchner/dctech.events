@@ -15,6 +15,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cr from 'aws-cdk-lib/custom-resources';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 export interface OrganizeDCTechStackProps extends cdk.StackProps {
   domainName?: string;
@@ -65,6 +66,25 @@ export class InfrastructureStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // Social Identity Providers (Google, GitHub, etc.)
+    // These are managed MANUALLY via AWS Console or CLI - not by CDK!
+    // This allows you to add/update OAuth credentials without redeploying the stack.
+    //
+    // To add a provider:
+    // 1. Go to AWS Cognito Console → User Pools → organize-dctech-events-users
+    // 2. Click "Sign-in experience" → "Add identity provider"
+    // 3. Or use AWS CLI (see SOCIAL_LOGIN.md for examples)
+    //
+    // The UserPoolClient below supports all identity providers - you just need to
+    // tell it which ones are available by updating the list here when you add them.
+    
+    const identityProviders = [
+      cognito.UserPoolClientIdentityProvider.COGNITO,  // Username/password
+      // Add more as you create them manually:
+      // cognito.UserPoolClientIdentityProvider.GOOGLE,
+      // cognito.UserPoolClientIdentityProvider.custom('GitHub'),
+    ];
+
     const userPoolClient = new cognito.UserPoolClient(this, 'OrganizeUserPoolClient', {
       userPool,
       authFlows: {
@@ -72,6 +92,9 @@ export class InfrastructureStack extends cdk.Stack {
         userSrp: true,
       },
       generateSecret: false,
+      // supportedIdentityProviders is intentionally commented out
+      // This allows ALL configured providers (manual + CDK-managed) to work
+      // supportedIdentityProviders: identityProviders,
       oAuth: {
         flows: {
           authorizationCodeGrant: true,
@@ -463,7 +486,11 @@ export class InfrastructureStack extends cdk.Stack {
     // CloudFront Distribution for next.dctech.events
     // ============================================
 
+    // Import existing Web ACL (created by CloudFront pricing plan subscription)
+    const webAclArn = 'arn:aws:wafv2:us-east-1:797438674243:global/webacl/CreatedByCloudFront-08f900a2/598f35c6-3323-4a6b-9ae9-9cd73d9e7ca0';
+
     const distribution = new cloudfront.Distribution(this, 'NextDcTechDistribution', {
+      webAclId: webAclArn,
       defaultBehavior: {
         origin: new origins.HttpOrigin(`${api.restApiId}.execute-api.${this.region}.amazonaws.com`, {
           originPath: '/prod',
@@ -474,6 +501,7 @@ export class InfrastructureStack extends cdk.Stack {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED, // Disable caching for dynamic content
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER, // Forward query strings for OAuth callback
       },
       additionalBehaviors: {
         '/static/*': {
