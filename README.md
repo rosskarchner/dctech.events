@@ -6,8 +6,8 @@ A platform for aggregating and displaying technology conferences and meetups in 
 
 ### Prerequisites
 
-- Python 3.10+
-- Node.js 20+
+- Python 3.10+ with pip
+- Node.js 20+ with npm
 
 ### Local Development
 
