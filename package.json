@@ -5,12 +5,14 @@
   "private": true,
   "scripts": {
     "build": "node build.js",
-    "watch": "node build.js --watch"
+    "watch": "node build.js --watch",
+    "pagefind": "npx pagefind --site build --output-path build/pagefind"
   },
   "dependencies": {
     "octokit": "^3.2.1"
   },
   "devDependencies": {
-    "esbuild": "^0.20.0"
+    "esbuild": "^0.20.0",
+    "pagefind": "^1.4.0"
   }
 }
