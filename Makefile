@@ -1,7 +1,7 @@
-.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze js-build pagefind-index validate validate-report
+.PHONY: all clean clean-all force refresh-calendars generate-month-data freeze js-build validate validate-report
 
 # Default target
-all: js-build refresh-calendars generate-month-data freeze pagefind-index
+all: js-build refresh-calendars generate-month-data freeze
 
 # Build JavaScript bundles
 js-build:
@@ -16,11 +16,6 @@ generate-month-data: refresh-calendars
 
 freeze: generate-month-data
 	python freeze.py
-	cp search.html build/search.html
-
-# Build Pagefind search index
-pagefind-index: freeze
-	npm run pagefind
 
 # Validation targets
 validate:

@@ -21,9 +21,6 @@ var/
 .installed.cfg
 *.egg
 
-# Pagefind search index
-pagefind/
-
 # Flask
 instance/
 .webassets-cache
