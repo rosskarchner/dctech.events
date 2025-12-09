@@ -21,8 +21,8 @@ var/
 .installed.cfg
 *.egg
 
-# Pagefind search index
-pagefind/
+# Pagefind search index (in build directory)
+build/pagefind/
 
 # Flask
 instance/
