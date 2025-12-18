@@ -37,6 +37,22 @@ Visit `/submit-group/` or create a YAML file in `_groups/` with your group's RSS
 
 Visit `/submit/` or create a YAML file in `_single_events/` (format: `YYYY-MM-DD-event-title.yaml`).
 
+## 🧹 Event Maintenance
+
+### Automatic Pruning
+
+Old events (more than 7 days past their date) are automatically removed on the 1st of each month via GitHub Actions.
+
+### Manual Pruning
+
+To manually prune old events:
+
+```bash
+python prune_old_events.py           # Delete old events
+python prune_old_events.py --dry-run # Preview what would be deleted
+python prune_old_events.py --days 14 # Keep events for 14 days instead
+```
+
 ## 🤝 Contributing
 
 - **Add events/groups**: Use the web forms (`/submit/` or `/submit-group/`) or submit a pull request with YAML files
