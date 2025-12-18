@@ -221,19 +221,8 @@ def prepare_events_by_day(events, add_week_links=False):
             if time_str == 'TBD':
                 return (-1, 0)  # Put TBD (events without time) at the beginning
             try:
-                # Parse time like "1:30 pm" or "10:00 am"
-                parts = time_str.split()
-                time_part = parts[0]
-                am_pm = parts[1] if len(parts) > 1 else 'am'
-
-                hour, minute = map(int, time_part.split(':'))
-
-                # Convert to 24-hour format for sorting
-                if am_pm.lower() == 'pm' and hour < 12:
-                    hour += 12
-                elif am_pm.lower() == 'am' and hour == 12:
-                    hour = 0
-
+                # Parse time in HH:MM format (24-hour)
+                hour, minute = map(int, time_str.split(':'))
                 return (hour, minute)
             except:
                 return (0, 0)  # Default case
