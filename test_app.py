@@ -32,10 +32,10 @@ class TestApp(unittest.TestCase):
         
         # Verify time slots
         time_slots = day['time_slots']
-        self.assertEqual(len(time_slots), 3)  # TBD, 9am, and 2:30pm
+        self.assertEqual(len(time_slots), 3)  # All Day, 9am, and 2:30pm
         
-        # Verify time slot order - TBD should be first now (events without time appear first)
-        self.assertEqual(time_slots[0]['time'], 'TBD')
+        # Verify time slot order - All Day should be first now (events without time appear first)
+        self.assertEqual(time_slots[0]['time'], 'All Day')
         self.assertEqual(len(time_slots[0]['events']), 1)
         self.assertEqual(time_slots[1]['time'], '09:00')
         self.assertEqual(len(time_slots[1]['events']), 2)
@@ -268,7 +268,7 @@ class TestApp(unittest.TestCase):
                 pass
 
     def test_time_format_handling(self):
-        """Test handling of various time formats including 08:00 and TBD cases"""
+        """Test handling of various time formats including 08:00 and All Day cases"""
         from app import prepare_events_by_day
         
         today_str = self.today.strftime('%Y-%m-%d')
@@ -299,9 +299,9 @@ class TestApp(unittest.TestCase):
         # Verify time formatting
         self.assertEqual(early_event['formatted_time'], '8:00 am')
         self.assertEqual(another_early['formatted_time'], '8:00 am')
-        self.assertEqual(empty_time['formatted_time'], 'TBD')
-        self.assertEqual(invalid_time['formatted_time'], 'TBD')
-        self.assertEqual(no_time['formatted_time'], 'TBD')
+        self.assertEqual(empty_time['formatted_time'], 'All Day')
+        self.assertEqual(invalid_time['formatted_time'], 'All Day')
+        self.assertEqual(no_time['formatted_time'], 'All Day')
         
         # Verify machine-readable time field (used for datetime attribute)
         self.assertEqual(early_event['time'], '08:00')
@@ -328,7 +328,7 @@ class TestApp(unittest.TestCase):
             {
                 'date': today_str,
                 'time': '',
-                'title': 'Multi Day TBD Event',
+                'title': 'Multi Day All Day Event',
                 'end_date': tomorrow_str
             }
         ]
@@ -353,12 +353,12 @@ class TestApp(unittest.TestCase):
         self.assertEqual(second_day_events['Multi Day Event']['formatted_time'], '8:00 am')
         self.assertEqual(second_day_events['Multi Day Event']['time'], '08:00')
         
-        # Verify time consistency for the TBD event
-        self.assertEqual(first_day_events['Multi Day TBD Event']['formatted_time'], 'TBD')
-        self.assertEqual(first_day_events['Multi Day TBD Event']['time'], '')
-        self.assertEqual(second_day_events['Multi Day TBD Event']['display_title'], 'Multi Day TBD Event (continuing)')
-        self.assertEqual(second_day_events['Multi Day TBD Event']['formatted_time'], 'TBD')
-        self.assertEqual(second_day_events['Multi Day TBD Event']['time'], '')
+        # Verify time consistency for the All Day event
+        self.assertEqual(first_day_events['Multi Day All Day Event']['formatted_time'], 'All Day')
+        self.assertEqual(first_day_events['Multi Day All Day Event']['time'], '')
+        self.assertEqual(second_day_events['Multi Day All Day Event']['display_title'], 'Multi Day All Day Event (continuing)')
+        self.assertEqual(second_day_events['Multi Day All Day Event']['formatted_time'], 'All Day')
+        self.assertEqual(second_day_events['Multi Day All Day Event']['time'], '')
 
     def test_microformats_h_event(self):
         """Test that event listings contain valid microformats2 h-event markup"""
