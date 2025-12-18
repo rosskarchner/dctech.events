@@ -8,9 +8,10 @@ on:
   # Allow manual triggering
   workflow_dispatch:
 
-# Permissions needed to commit and push changes
+# Permissions needed to create pull requests
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   prune-events:
@@ -32,30 +33,17 @@ jobs:
         run: |
           python prune_old_events.py
       
-      - name: Check for changes
-        id: changes
-        run: |
-          if [[ -n $(git status --porcelain) ]]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Commit and push changes
-        if: steps.changes.outputs.has_changes == 'true'
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Automated: Prune events older than 7 days"
-          git push
-      
-      - name: Report results
-        if: steps.changes.outputs.has_changes == 'true'
-        run: |
-          echo "✓ Old events were pruned and changes pushed to repository"
-      
-      - name: No changes
-        if: steps.changes.outputs.has_changes == 'false'
-        run: |
-          echo "ℹ No old events to prune"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: 'Automated: Prune events older than 7 days'
+          title: 'Automated: Prune old events'
+          body: |
+            This automated PR removes events that are more than 7 days old from the `_single_events/` directory.
+            
+            This PR was automatically created by the monthly event pruning workflow.
+            
+            Please review the changes and merge if everything looks correct.
+          branch: automated/prune-old-events
+          delete-branch: true
+          labels: automated, maintenance
