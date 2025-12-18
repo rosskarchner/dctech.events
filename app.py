@@ -219,7 +219,7 @@ def prepare_events_by_day(events, add_week_links=False):
         # Custom sort function for time values
         def time_sort_key(time_str):
             if time_str == 'TBD':
-                return (24, 0)  # Put TBD at the end
+                return (-1, 0)  # Put TBD (events without time) at the beginning
             try:
                 # Parse time like "1:30 pm" or "10:00 am"
                 parts = time_str.split()

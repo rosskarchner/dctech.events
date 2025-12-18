@@ -2,7 +2,7 @@
 import unittest
 from datetime import datetime, date, timedelta
 import pytz
-from app import get_next_week_and_month_dates
+# from app import get_next_week_and_month_dates  # Function no longer exists
 
 class TestApp(unittest.TestCase):
     def setUp(self):
@@ -10,56 +10,21 @@ class TestApp(unittest.TestCase):
         self.local_tz = pytz.timezone(self.timezone_name)
         self.today = datetime.now(self.local_tz).date()
     
+    @unittest.skip("get_next_week_and_month_dates function no longer exists")
     def test_get_next_week_and_month_dates_with_events(self):
         """Test that get_next_week_and_month_dates returns correct dates when events exist"""
-        # Create test events
-        next_week = self.today + timedelta(days=7)
-        next_month = date(self.today.year if self.today.month < 12 else self.today.year + 1,
-                         self.today.month + 1 if self.today.month < 12 else 1,
-                         1)
-        
-        events = [
-            {'date': (self.today + timedelta(days=5)).strftime('%Y-%m-%d')},
-            {'date': (self.today + timedelta(days=8)).strftime('%Y-%m-%d')},
-            {'date': next_month.strftime('%Y-%m-%d')},
-            {'date': (next_month + timedelta(days=5)).strftime('%Y-%m-%d')}
-        ]
-        
-        next_week_date, next_month_date = get_next_week_and_month_dates(events)
-        
-        # The function should return the closest future dates to next week and next month
-        self.assertEqual(next_week_date, (self.today + timedelta(days=8)).strftime('%Y-%m-%d'))
-        self.assertEqual(next_month_date, next_month.strftime('%Y-%m-%d'))
+        pass
     
+    @unittest.skip("get_next_week_and_month_dates function no longer exists")
     def test_get_next_week_and_month_dates_no_events(self):
         """Test that get_next_week_and_month_dates returns target dates when no events exist"""
-        events = []
-        
-        next_week_date, next_month_date = get_next_week_and_month_dates(events)
-        
-        # Should return the target dates
-        expected_next_week = (self.today + timedelta(days=7)).strftime('%Y-%m-%d')
-        expected_next_month = date(
-            self.today.year if self.today.month < 12 else self.today.year + 1,
-            self.today.month + 1 if self.today.month < 12 else 1,
-            1
-        ).strftime('%Y-%m-%d')
-        
-        self.assertEqual(next_week_date, expected_next_week)
-        self.assertEqual(next_month_date, expected_next_month)
+        pass
     
+    @unittest.skip("get_next_week_and_month_dates function no longer exists")
     def test_get_next_week_and_month_dates_invalid_dates(self):
         """Test that get_next_week_and_month_dates handles invalid dates gracefully"""
-        events = [
-            {'date': 'invalid-date'},
-            {'date': (self.today + timedelta(days=8)).strftime('%Y-%m-%d')},
-            {'date': 'not-a-date'}
-        ]
-        
-        next_week_date, next_month_date = get_next_week_and_month_dates(events)
-        
-        # Should still work with the one valid date
-        self.assertEqual(next_week_date, (self.today + timedelta(days=8)).strftime('%Y-%m-%d'))
+        pass
+    
     def test_prepare_events_by_day_time_grouping(self):
         """Test that prepare_events_by_day correctly groups events by time within each day"""
         from app import prepare_events_by_day
@@ -83,18 +48,18 @@ class TestApp(unittest.TestCase):
         
         # Verify time slots
         time_slots = day['time_slots']
-        self.assertEqual(len(time_slots), 3)  # 9am, 2:30pm, and TBD
+        self.assertEqual(len(time_slots), 3)  # TBD, 9am, and 2:30pm
         
-        # Verify time slot order and content
-        self.assertEqual(time_slots[0]['time'], '9:00 am')
-        self.assertEqual(len(time_slots[0]['events']), 2)
-        self.assertEqual(time_slots[1]['time'], '2:30 pm')
-        self.assertEqual(len(time_slots[1]['events']), 1)
-        self.assertEqual(time_slots[2]['time'], 'TBD')
+        # Verify time slot order - TBD should be first now (events without time appear first)
+        self.assertEqual(time_slots[0]['time'], 'TBD')
+        self.assertEqual(len(time_slots[0]['events']), 1)
+        self.assertEqual(time_slots[1]['time'], '09:00')
+        self.assertEqual(len(time_slots[1]['events']), 2)
+        self.assertEqual(time_slots[2]['time'], '14:30')
         self.assertEqual(len(time_slots[2]['events']), 1)
         
         # Verify events are sorted by title within time slots
-        morning_events = time_slots[0]['events']
+        morning_events = time_slots[1]['events']
         self.assertEqual(morning_events[0]['title'], 'Morning Event 1')
         self.assertEqual(morning_events[1]['title'], 'Morning Event 2')
 
@@ -348,11 +313,18 @@ class TestApp(unittest.TestCase):
         no_time = next(e for e in all_events if e['title'] == 'No Time Event')
         
         # Verify time formatting
-        self.assertEqual(early_event['time'], '8:00 am')
-        self.assertEqual(another_early['time'], '8:00 am')
-        self.assertEqual(empty_time['time'], 'TBD')
-        self.assertEqual(invalid_time['time'], 'TBD')
-        self.assertEqual(no_time['time'], 'TBD')
+        self.assertEqual(early_event['formatted_time'], '8:00 am')
+        self.assertEqual(another_early['formatted_time'], '8:00 am')
+        self.assertEqual(empty_time['formatted_time'], 'TBD')
+        self.assertEqual(invalid_time['formatted_time'], 'TBD')
+        self.assertEqual(no_time['formatted_time'], 'TBD')
+        
+        # Verify machine-readable time field (used for datetime attribute)
+        self.assertEqual(early_event['time'], '08:00')
+        self.assertEqual(another_early['time'], '08:00')
+        self.assertEqual(empty_time['time'], '')
+        self.assertEqual(invalid_time['time'], '')
+        self.assertEqual(no_time['time'], '')
         
     def test_multi_day_event_time_consistency(self):
         """Test that multi-day events maintain consistent time formatting across days"""
@@ -391,14 +363,18 @@ class TestApp(unittest.TestCase):
         second_day_events = {e['title']: e for slot in second_day['time_slots'] for e in slot['events']}
         
         # Verify time consistency for the 08:00 event
-        self.assertEqual(first_day_events['Multi Day Event']['time'], '8:00 am')
+        self.assertEqual(first_day_events['Multi Day Event']['formatted_time'], '8:00 am')
+        self.assertEqual(first_day_events['Multi Day Event']['time'], '08:00')
         self.assertEqual(second_day_events['Multi Day Event']['display_title'], 'Multi Day Event (continuing)')
-        self.assertEqual(second_day_events['Multi Day Event']['time'], '8:00 am')
+        self.assertEqual(second_day_events['Multi Day Event']['formatted_time'], '8:00 am')
+        self.assertEqual(second_day_events['Multi Day Event']['time'], '08:00')
         
         # Verify time consistency for the TBD event
-        self.assertEqual(first_day_events['Multi Day TBD Event']['time'], 'TBD')
+        self.assertEqual(first_day_events['Multi Day TBD Event']['formatted_time'], 'TBD')
+        self.assertEqual(first_day_events['Multi Day TBD Event']['time'], '')
         self.assertEqual(second_day_events['Multi Day TBD Event']['display_title'], 'Multi Day TBD Event (continuing)')
-        self.assertEqual(second_day_events['Multi Day TBD Event']['time'], 'TBD')
+        self.assertEqual(second_day_events['Multi Day TBD Event']['formatted_time'], 'TBD')
+        self.assertEqual(second_day_events['Multi Day TBD Event']['time'], '')
 
     def test_microformats_h_event(self):
         """Test that event listings contain valid microformats2 h-event markup"""
@@ -505,10 +481,10 @@ class TestApp(unittest.TestCase):
         second_day_time = next(e['time'] for slot in second_day['time_slots'] for e in slot['events'] if e['title'] == 'Multi Day Event')
         third_day_time = next(e['time'] for slot in third_day['time_slots'] for e in slot['events'] if e['title'] == 'Multi Day Event')
         
-        # All days should have the same time
+        # All days should have the same time in HH:MM format
         self.assertEqual(first_day_time, second_day_time)
         self.assertEqual(second_day_time, third_day_time)
-        self.assertEqual(first_day_time, '10:00 am')
+        self.assertEqual(first_day_time, '10:00')
 
 if __name__ == '__main__':
     unittest.main()
