@@ -2,28 +2,12 @@
 import unittest
 from datetime import datetime, date, timedelta
 import pytz
-# from app import get_next_week_and_month_dates  # Function no longer exists
 
 class TestApp(unittest.TestCase):
     def setUp(self):
         self.timezone_name = 'US/Eastern'
         self.local_tz = pytz.timezone(self.timezone_name)
         self.today = datetime.now(self.local_tz).date()
-    
-    @unittest.skip("get_next_week_and_month_dates function no longer exists")
-    def test_get_next_week_and_month_dates_with_events(self):
-        """Test that get_next_week_and_month_dates returns correct dates when events exist"""
-        pass
-    
-    @unittest.skip("get_next_week_and_month_dates function no longer exists")
-    def test_get_next_week_and_month_dates_no_events(self):
-        """Test that get_next_week_and_month_dates returns target dates when no events exist"""
-        pass
-    
-    @unittest.skip("get_next_week_and_month_dates function no longer exists")
-    def test_get_next_week_and_month_dates_invalid_dates(self):
-        """Test that get_next_week_and_month_dates handles invalid dates gracefully"""
-        pass
     
     def test_prepare_events_by_day_time_grouping(self):
         """Test that prepare_events_by_day correctly groups events by time within each day"""
