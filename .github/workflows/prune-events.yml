@@ -1,0 +1,49 @@
+name: Prune Old Events
+
+on:
+  # Run on the 1st of every month at 2 AM UTC
+  schedule:
+    - cron: '0 2 1 * *'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+
+# Permissions needed to create pull requests
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prune-events:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use a token that can trigger workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Run event pruning utility
+        run: |
+          python prune_old_events.py
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: 'Automated: Prune events older than 7 days'
+          title: 'Automated: Prune old events'
+          body: |
+            This automated PR removes events that are more than 7 days old from the `_single_events/` directory.
+            
+            This PR was automatically created by the monthly event pruning workflow.
+            
+            Please review the changes and merge if everything looks correct.
+          branch: automated/prune-old-events
+          delete-branch: true
+          labels: automated, maintenance
