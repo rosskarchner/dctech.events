@@ -262,10 +262,6 @@ async function handleFormSubmit(e) {
             throw new Error('Please fill in all required fields');
         }
 
-        if (!time24) {
-            throw new Error('Please select a time for the event');
-        }
-
         // Create the PR
         const prUrl = await createPullRequest(formData);
 

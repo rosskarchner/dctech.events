@@ -166,8 +166,8 @@ def prepare_events_by_day(events, add_week_links=False):
                 }
 
             # Format time once for all days
-            time_key = 'TBD'
-            formatted_time = 'TBD'
+            time_key = 'All Day'
+            formatted_time = 'All Day'
             original_time = event.get('time', '')
 
             # Only try to parse time if it exists and hasn't been formatted yet
@@ -181,7 +181,7 @@ def prepare_events_by_day(events, add_week_links=False):
                         # For display, use am/pm format
                         formatted_time = time_obj.strftime('%-I:%M %p').lower()  # Format as "1:30 pm"
                 except ValueError:
-                    # If time parsing fails, keep TBD
+                    # If time parsing fails, keep All Day
                     pass
 
             # Store both the original and formatted time
@@ -191,7 +191,7 @@ def prepare_events_by_day(events, add_week_links=False):
             # Create a copy of the event for this day
             event_copy = event.copy()
             # Store the machine-readable time (HH:MM format) for datetime attribute
-            event_copy['time'] = time_key if time_key != 'TBD' else ''
+            event_copy['time'] = time_key if time_key != 'All Day' else ''
             # Store the formatted time for display
             event_copy['formatted_time'] = formatted_time
 
@@ -218,22 +218,11 @@ def prepare_events_by_day(events, add_week_links=False):
 
         # Custom sort function for time values
         def time_sort_key(time_str):
-            if time_str == 'TBD':
-                return (24, 0)  # Put TBD at the end
+            if time_str == 'All Day':
+                return (-1, 0)  # Put All Day (events without time) at the beginning
             try:
-                # Parse time like "1:30 pm" or "10:00 am"
-                parts = time_str.split()
-                time_part = parts[0]
-                am_pm = parts[1] if len(parts) > 1 else 'am'
-
-                hour, minute = map(int, time_part.split(':'))
-
-                # Convert to 24-hour format for sorting
-                if am_pm.lower() == 'pm' and hour < 12:
-                    hour += 12
-                elif am_pm.lower() == 'am' and hour == 12:
-                    hour = 0
-
+                # Parse time in HH:MM format (24-hour)
+                hour, minute = map(int, time_str.split(':'))
                 return (hour, minute)
             except:
                 return (0, 0)  # Default case
