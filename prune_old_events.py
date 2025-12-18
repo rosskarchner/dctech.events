@@ -3,7 +3,6 @@
 Utility to prune old events from the _single_events directory.
 Removes events that occurred more than a week ago.
 """
-import os
 import re
 import sys
 from datetime import datetime, timedelta
