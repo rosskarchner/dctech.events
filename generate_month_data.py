@@ -12,6 +12,7 @@ import calendar as cal_module
 import dateparser
 import json
 from address_utils import normalize_address
+from location_utils import extract_location_info
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -24,6 +25,9 @@ if os.path.exists(CONFIG_FILE):
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
 
+# Get site-wide only_states filter (applies to iCal feeds only)
+ALLOWED_STATES = config.get('only_states', [])
+
 # Constants - data paths
 GROUPS_DIR = '_groups'
 SINGLE_EVENTS_DIR = '_single_events'
@@ -35,6 +39,18 @@ UPDATED_FLAG_FILE = os.path.join(DATA_DIR, '.updated')
 
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
+
+# Constants for location filtering
+US_STATE_CODES = [
+    'DC', 'MD', 'VA', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 
+    'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MA', 'MI', 
+    'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 
+    'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'WA', 
+    'WV', 'WI', 'WY'
+]
+
+# Compile state matching regex pattern once
+STATE_PATTERN = re.compile(r'\b(' + '|'.join(US_STATE_CODES) + r')\b', re.IGNORECASE)
 
 # Custom YAML representer for icalendar.prop.vText objects
 def represent_vtext(dumper, data):
@@ -70,6 +86,46 @@ def sanitize_text(text):
         text = str(text)
     
     return text
+
+def is_event_in_allowed_states(event, allowed_states):
+    """
+    Check if an event's location is in one of the allowed states
+    
+    Args:
+        event: Event dictionary with location field
+        allowed_states: List of allowed state codes (e.g., ['DC', 'MD', 'VA'])
+        
+    Returns:
+        True if event is in an allowed state or state is unclear, False if clearly in a different state
+    """
+    if not allowed_states:
+        return True  # No filter applied
+    
+    location = event.get('location', '')
+    if not location:
+        return True  # Allow events with no location
+    
+    # First try the structured extraction
+    city, state = extract_location_info(location)
+    
+    if state:
+        # If we successfully extracted a state, check if it's in allowed list
+        return state in allowed_states
+    
+    # If structured extraction didn't work, try regex to find state codes
+    matches = STATE_PATTERN.findall(location)
+    
+    if matches:
+        # Convert to uppercase and check against allowed states
+        found_states = [s.upper() for s in matches]
+        for found_state in found_states:
+            if found_state in allowed_states:
+                return True
+        # If we found states but none are in allowed list, reject
+        return False
+    
+    # If no state found, allow it (state is unclear - could be virtual, international, or unparseable)
+    return True
 
 def are_events_duplicates(event1, event2):
     """
@@ -451,16 +507,20 @@ def generate_yaml():
                             # Check if event URL is in suppress_urls list
                             suppress_urls = group.get('suppress_urls', [])
                             if event.get('url') not in suppress_urls:
-                                # Add group information
-                                event['group'] = str(group.get('name', ''))
-                                event['group_website'] = str(group.get('website', ''))
-                                # For iCal+JSON-LD events, apply 90-day limit
-                                event_date = dateparser.parse(event['date'], settings={
-                                    'TIMEZONE': timezone_name,
-                                    'DATE_ORDER': 'YMD'
-                                }).date()
-                                if today <= event_date <= max_future_date:
-                                    group_events.append(event)
+                                # Apply site-wide state filter for iCal events
+                                if is_event_in_allowed_states(event, ALLOWED_STATES):
+                                    # Add group information
+                                    event['group'] = str(group.get('name', ''))
+                                    event['group_website'] = str(group.get('website', ''))
+                                    # For iCal+JSON-LD events, apply 90-day limit
+                                    event_date = dateparser.parse(event['date'], settings={
+                                        'TIMEZONE': timezone_name,
+                                        'DATE_ORDER': 'YMD'
+                                    }).date()
+                                    if today <= event_date <= max_future_date:
+                                        group_events.append(event)
+                                else:
+                                    print(f"Filtering out event '{event.get('title', 'Unknown')}' - location '{event.get('location', 'Unknown')}' not in allowed states {ALLOWED_STATES}")
 
                         # Remove duplicates within this group's events
                         group_events = remove_duplicates(group_events)
