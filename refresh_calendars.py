@@ -76,6 +76,15 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
         cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.json")
         cache_meta_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.meta")
 
+        # Load existing events for 'memory' of today's events
+        existing_events = []
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    existing_events = json.load(f)
+            except Exception:
+                pass
+
         # Prepare headers for conditional GET
         headers = {}
         meta_data = {}
@@ -280,8 +289,27 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 events.append(event)
 
             except Exception as e:
-                print(f"Error processing event {component.get('summary', 'Unknown')}: {str(e)}")
+                print(f'Error processing event {component.get("summary", "Unknown")}: {str(e)}')
                 continue
+
+        # Give the calendar 'memory' for today's events that might have dropped off the feed
+        today_str = datetime.now(local_tz).strftime('%Y-%m-%d')
+        remembered_events = [e for e in existing_events if e.get('start_date') == today_str]
+        
+        if remembered_events:
+            # Deduplicate: use a map to prefer newer data for the same event
+            # Key is (url, title, start_date, start_time)
+            events_map = {}
+            for e in remembered_events:
+                key = (e.get('url'), e.get('title'), e.get('start_date'), e.get('start_time'))
+                events_map[key] = e
+            for e in events:
+                key = (e.get('url'), e.get('title'), e.get('start_date'), e.get('start_time'))
+                events_map[key] = e
+            events = list(events_map.values())
+            
+        # Sort events by date and time
+        events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
 
         # Save the events
         with open(cache_file, 'w') as f:
@@ -415,7 +443,7 @@ def main():
     # Run the refresh
     updated = refresh_calendars()
 
-    # Always return success (0) - "no updates needed" is a successful state
+    # Always return success (0) - 'no updates needed' is a successful state
     # Only errors (exceptions) should cause non-zero exit codes
     return 0
 
