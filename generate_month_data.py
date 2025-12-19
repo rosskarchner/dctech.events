@@ -52,6 +52,9 @@ OUT_OF_AREA_CITIES = [
     'san diego', 'portland', 'dallas', 'houston', 'philadelphia'
 ]
 
+# Compile state matching regex pattern once
+STATE_PATTERN = re.compile(r'\b(' + '|'.join(US_STATE_CODES) + r')\b', re.IGNORECASE)
+
 # Custom YAML representer for icalendar.prop.vText objects
 def represent_vtext(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
@@ -114,8 +117,7 @@ def is_event_in_allowed_states(event, allowed_states):
     
     # If structured extraction didn't work, try a simpler approach: look for state codes
     # Match state codes that are standalone (preceded/followed by comma, space, or end of string)
-    state_pattern = r'\b(' + '|'.join(US_STATE_CODES) + r')\b'
-    matches = re.findall(state_pattern, location, re.IGNORECASE)
+    matches = STATE_PATTERN.findall(location)
     
     if matches:
         # Convert to uppercase and check against allowed states
