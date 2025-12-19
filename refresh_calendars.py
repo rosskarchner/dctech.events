@@ -164,9 +164,12 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     print(f"Skipping event without URL: {component.get('summary', 'Unknown')}")
                     continue
 
-                # Only try JSON-LD extraction if we have an event-specific URL
+                # Check if group wants to scan for metadata (default: True)
+                scan_for_metadata = group.get('scan_for_metadata', True) if group else True
+
+                # Only try JSON-LD extraction if we have an event-specific URL and scanning is enabled
                 event_data = None
-                if not using_fallback:
+                if not using_fallback and scan_for_metadata:
                     # Fetch the event page
                     event_response = requests.get(event_url)
                     event_response.raise_for_status()
@@ -183,11 +186,14 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
 
                 # Create event from JSON-LD if available, otherwise from iCal data
                 if event_data:
+                    # Check if group has a URL override
+                    final_url = group.get('url_override') if group and group.get('url_override') else event_url
+                    
                     # Convert to our event format from JSON-LD
                     event = {
                         'title': event_data.get('name', str(component.get('summary', ''))),
                         'description': event_data.get('description', str(component.get('description', ''))),
-                        'url': event_url,
+                        'url': final_url,
                     }
 
                     # Handle location with both place name and address
@@ -293,6 +299,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
 
                     event_location = str(component.get('location', ''))
 
+                    # Check if group has a URL override
+                    final_url = group.get('url_override') if group and group.get('url_override') else event_url
+
                     event = {
                         'title': str(component.get('summary', '')),
                         'description': str(component.get('description', '')),
@@ -301,7 +310,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         'start_time': localstart.strftime('%H:%M'),
                         'end_date': localend.strftime('%Y-%m-%d'),
                         'end_time': localend.strftime('%H:%M'),
-                        'url': event_url,
+                        'url': final_url,
                         'date': localstart.strftime('%Y-%m-%d'),  # For sorting
                         'time': localstart.strftime('%H:%M'),     # For sorting
                     }
