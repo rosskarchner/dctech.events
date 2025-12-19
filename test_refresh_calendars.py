@@ -4,10 +4,11 @@ Tests for refresh_calendars.py to ensure event processing doesn't crash
 """
 import unittest
 import icalendar
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pytz
 import re
 from urllib.parse import urlparse
+import recurring_ical_events
 
 class TestRefreshCalendars(unittest.TestCase):
     def test_event_component_has_summary(self):
@@ -193,6 +194,57 @@ class TestRefreshCalendars(unittest.TestCase):
         
         self.assertEqual(final_url, 'https://example.com/event1',
                         "original event URL should be used when group is None")
+
+    def test_recurring_event_expansion(self):
+        """Test that recurring events are expanded correctly"""
+        # Create a sample iCal calendar with a recurring event
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'Weekly Meeting')
+        event.add('dtstart', datetime.now(timezone.utc))
+        event.add('dtend', datetime.now(timezone.utc) + timedelta(hours=1))
+        event.add('rrule', {'freq': 'weekly', 'count': 5})
+        cal.add_component(event)
+        
+        # Expand recurring events for 60 days
+        start_date = datetime.now(timezone.utc)
+        end_date = start_date + timedelta(days=60)
+        
+        event_instances = list(recurring_ical_events.of(cal).between(start_date, end_date))
+        
+        # Should get at least 5 instances (the count specified in RRULE)
+        # Note: the library may include the base event and recurrences
+        self.assertGreaterEqual(len(event_instances), 5,
+                        "Should expand to at least 5 instances based on RRULE count")
+        
+        # All instances should have the same summary
+        for instance in event_instances:
+            self.assertEqual(instance.get('summary'), 'Weekly Meeting',
+                           "All instances should have the same summary")
+
+    def test_non_recurring_event_handling(self):
+        """Test that non-recurring events are still handled correctly"""
+        # Create a sample iCal calendar with a non-recurring event
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'One-time Event')
+        event.add('dtstart', datetime.now(timezone.utc))
+        event.add('dtend', datetime.now(timezone.utc) + timedelta(hours=1))
+        cal.add_component(event)
+        
+        # Expand events for 60 days
+        start_date = datetime.now(timezone.utc)
+        end_date = start_date + timedelta(days=60)
+        
+        event_instances = list(recurring_ical_events.of(cal).between(start_date, end_date))
+        
+        # Should get exactly 1 instance for a non-recurring event
+        self.assertEqual(len(event_instances), 1,
+                        "Non-recurring event should have exactly 1 instance")
+        
+        # Verify it's the correct event
+        self.assertEqual(event_instances[0].get('summary'), 'One-time Event',
+                       "Event should have the correct summary")
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,6 +15,7 @@ requests
 # Calendar aggregation (used by refresh_calendars.py)
 extruct
 w3lib
+recurring-ical-events
 
 # Image generation
 Pillow>=10.0.0
