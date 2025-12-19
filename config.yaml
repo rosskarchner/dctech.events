@@ -13,6 +13,10 @@ timezone: "US/Eastern"
 location: "Washington, DC"
 max_distance_miles: 50
 
+# Geographic filtering for events (applies to iCal feeds only)
+# Only events in these states will be included
+only_states: [DC, MD, VA]
+
 # GitHub OAuth Configuration (for event submission)
 # Client ID is set via GITHUB_CLIENT_ID environment variable from GitHub Repository Variable
 # See OAUTH_SETUP.md for detailed setup instructions

@@ -25,6 +25,9 @@ if os.path.exists(CONFIG_FILE):
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
 
+# Get site-wide only_states filter (applies to iCal feeds only)
+ALLOWED_STATES = config.get('only_states', [])
+
 # Constants - data paths
 GROUPS_DIR = '_groups'
 SINGLE_EVENTS_DIR = '_single_events'
@@ -44,12 +47,6 @@ US_STATE_CODES = [
     'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 
     'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'WA', 
     'WV', 'WI', 'WY'
-]
-
-OUT_OF_AREA_CITIES = [
-    'las vegas', 'los angeles', 'san francisco', 'san jose', 'seattle', 'new york',
-    'boston', 'chicago', 'austin', 'miami', 'atlanta', 'denver', 'phoenix',
-    'san diego', 'portland', 'dallas', 'houston', 'philadelphia'
 ]
 
 # Compile state matching regex pattern once
@@ -99,7 +96,7 @@ def is_event_in_allowed_states(event, allowed_states):
         allowed_states: List of allowed state codes (e.g., ['DC', 'MD', 'VA'])
         
     Returns:
-        True if event is in an allowed state or has no location, False otherwise
+        True if event is in an allowed state or state is unclear, False if clearly in a different state
     """
     if not allowed_states:
         return True  # No filter applied
@@ -115,8 +112,7 @@ def is_event_in_allowed_states(event, allowed_states):
         # If we successfully extracted a state, check if it's in allowed list
         return state in allowed_states
     
-    # If structured extraction didn't work, try a simpler approach: look for state codes
-    # Match state codes that are standalone (preceded/followed by comma, space, or end of string)
+    # If structured extraction didn't work, try regex to find state codes
     matches = STATE_PATTERN.findall(location)
     
     if matches:
@@ -128,14 +124,7 @@ def is_event_in_allowed_states(event, allowed_states):
         # If we found states but none are in allowed list, reject
         return False
     
-    # Check for well-known cities outside the DMV area
-    location_lower = location.lower()
-    for city in OUT_OF_AREA_CITIES:
-        if city in location_lower:
-            return False
-    
-    # If no state found and not a known out-of-area city, allow it 
-    # (could be virtual, international, or unparseable DMV location)
+    # If no state found, allow it (state is unclear - could be virtual, international, or unparseable)
     return True
 
 def are_events_duplicates(event1, event2):
@@ -514,13 +503,12 @@ def generate_yaml():
                     with open(cache_file, 'r') as f:
                         events = json.load(f)
                         group_events = []
-                        only_states = group.get('only_states', [])
                         for event in events:
                             # Check if event URL is in suppress_urls list
                             suppress_urls = group.get('suppress_urls', [])
                             if event.get('url') not in suppress_urls:
-                                # Check if event is in allowed states (if filter is set)
-                                if is_event_in_allowed_states(event, only_states):
+                                # Apply site-wide state filter for iCal events
+                                if is_event_in_allowed_states(event, ALLOWED_STATES):
                                     # Add group information
                                     event['group'] = str(group.get('name', ''))
                                     event['group_website'] = str(group.get('website', ''))
@@ -532,7 +520,7 @@ def generate_yaml():
                                     if today <= event_date <= max_future_date:
                                         group_events.append(event)
                                 else:
-                                    print(f"Filtering out event '{event.get('title', 'Unknown')}' - location '{event.get('location', 'Unknown')}' not in allowed states {only_states}")
+                                    print(f"Filtering out event '{event.get('title', 'Unknown')}' - location '{event.get('location', 'Unknown')}' not in allowed states {ALLOWED_STATES}")
 
                         # Remove duplicates within this group's events
                         group_events = remove_duplicates(group_events)
