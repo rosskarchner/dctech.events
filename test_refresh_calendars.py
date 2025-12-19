@@ -194,5 +194,35 @@ class TestRefreshCalendars(unittest.TestCase):
         self.assertEqual(final_url, 'https://example.com/event1',
                         "original event URL should be used when group is None")
 
+    def test_recurring_event_expansion(self):
+        """Test that recurring events are expanded correctly"""
+        import recurring_ical_events
+        from datetime import timedelta, timezone
+        
+        # Create a sample iCal calendar with a recurring event
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'Weekly Meeting')
+        event.add('dtstart', datetime.now(timezone.utc))
+        event.add('dtend', datetime.now(timezone.utc) + timedelta(hours=1))
+        event.add('rrule', {'freq': 'weekly', 'count': 5})
+        cal.add_component(event)
+        
+        # Expand recurring events for 60 days
+        start_date = datetime.now(timezone.utc)
+        end_date = start_date + timedelta(days=60)
+        
+        event_instances = list(recurring_ical_events.of(cal).between(start_date, end_date))
+        
+        # Should get at least 5 instances (the count specified in RRULE)
+        # Note: the library may include the base event and recurrences
+        self.assertGreaterEqual(len(event_instances), 5,
+                        "Should expand to at least 5 instances based on RRULE count")
+        
+        # All instances should have the same summary
+        for instance in event_instances:
+            self.assertEqual(instance.get('summary'), 'Weekly Meeting',
+                           "All instances should have the same summary")
+
 if __name__ == '__main__':
     unittest.main()

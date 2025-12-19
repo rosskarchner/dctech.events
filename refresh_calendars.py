@@ -14,6 +14,7 @@ import extruct
 from w3lib.html import get_base_url
 from address_utils import normalize_address
 from urllib.parse import urlparse
+import recurring_ical_events
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -134,9 +135,18 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                        hostname == 'api2.luma.com' or 
                        (hostname == 'luma.com' and '/ics' in parsed_url.path))
 
-        # Process each event and extract event data
+        # Set up date range for recurring event expansion
+        # Start from now and expand 60 days into the future
+        start_date = datetime.now(timezone.utc)
+        end_date = start_date + timedelta(days=60)
+        
+        # Use recurring_ical_events to expand recurring events within the date range
+        # This will return all event instances (including recurrences) between start and end dates
+        event_instances = recurring_ical_events.of(calendar).between(start_date, end_date)
+
+        # Process each event instance and extract event data
         events = []
-        for component in calendar.walk('VEVENT'):
+        for component in event_instances:
             try:
                 # Get the event URL from the iCal event
                 event_url = str(component.get('url', '')) if component.get('url') else None
