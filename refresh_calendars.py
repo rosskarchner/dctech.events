@@ -126,6 +126,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
         # Parse the iCal feed
         calendar = icalendar.Calendar.from_ical(response.text)
 
+        # Check if this is a lu.ma feed
+        is_luma_feed = 'api.lu.ma' in url or 'api2.luma.com' in url or 'luma.com/ics' in url
+
         # Process each event and extract event data
         events = []
         for component in calendar.walk('VEVENT'):
@@ -133,6 +136,18 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 # Get the event URL from the iCal event
                 event_url = str(component.get('url', '')) if component.get('url') else None
                 using_fallback = False
+
+                # Special handling for lu.ma feeds: check if location field contains a URL
+                if is_luma_feed and not event_url:
+                    event_location = str(component.get('location', ''))
+                    # Check if location looks like a URL
+                    if event_location and ('http://' in event_location or 'https://' in event_location):
+                        # Extract the URL from the location field
+                        # The location might be just a URL or might have other text
+                        url_match = re.search(r'https?://[^\s]+', event_location)
+                        if url_match:
+                            event_url = url_match.group(0)
+                            print(f"Using URL from location field for lu.ma event: {event_url}")
 
                 # If no URL in event, try fallback_url from group
                 if not event_url and group and group.get('fallback_url'):
