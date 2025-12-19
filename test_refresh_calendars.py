@@ -7,6 +7,7 @@ import icalendar
 from datetime import datetime
 import pytz
 import re
+from urllib.parse import urlparse
 
 class TestRefreshCalendars(unittest.TestCase):
     def test_event_component_has_summary(self):
@@ -48,17 +49,26 @@ class TestRefreshCalendars(unittest.TestCase):
         ]
         
         for url in luma_urls:
-            is_luma = 'api.lu.ma' in url or 'api2.luma.com' in url or 'luma.com/ics' in url
+            parsed_url = urlparse(url)
+            hostname = parsed_url.hostname or ''
+            is_luma = (hostname == 'api.lu.ma' or 
+                      hostname == 'api2.luma.com' or 
+                      (hostname == 'luma.com' and '/ics' in parsed_url.path))
             self.assertTrue(is_luma, f"URL should be detected as lu.ma feed: {url}")
         
         # Test non-luma URLs
         non_luma_urls = [
             'https://example.com/calendar.ics',
             'https://meetup.com/events.ics',
+            'https://evilapi2.luma.com.example.com/ics/get',  # Test malicious URL
         ]
         
         for url in non_luma_urls:
-            is_luma = 'api.lu.ma' in url or 'api2.luma.com' in url or 'luma.com/ics' in url
+            parsed_url = urlparse(url)
+            hostname = parsed_url.hostname or ''
+            is_luma = (hostname == 'api.lu.ma' or 
+                      hostname == 'api2.luma.com' or 
+                      (hostname == 'luma.com' and '/ics' in parsed_url.path))
             self.assertFalse(is_luma, f"URL should NOT be detected as lu.ma feed: {url}")
 
     def test_url_extraction_from_location(self):

@@ -13,6 +13,7 @@ import sys
 import extruct
 from w3lib.html import get_base_url
 from address_utils import normalize_address
+from urllib.parse import urlparse
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -126,8 +127,12 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
         # Parse the iCal feed
         calendar = icalendar.Calendar.from_ical(response.text)
 
-        # Check if this is a lu.ma feed
-        is_luma_feed = 'api.lu.ma' in url or 'api2.luma.com' in url or 'luma.com/ics' in url
+        # Check if this is a lu.ma feed by parsing the URL hostname
+        parsed_url = urlparse(url)
+        hostname = parsed_url.hostname or ''
+        is_luma_feed = (hostname == 'api.lu.ma' or 
+                       hostname == 'api2.luma.com' or 
+                       (hostname == 'luma.com' and '/ics' in parsed_url.path))
 
         # Process each event and extract event data
         events = []
