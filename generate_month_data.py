@@ -12,6 +12,7 @@ import calendar as cal_module
 import dateparser
 import json
 from address_utils import normalize_address
+from location_utils import extract_location_info
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -70,6 +71,61 @@ def sanitize_text(text):
         text = str(text)
     
     return text
+
+def is_event_in_allowed_states(event, allowed_states):
+    """
+    Check if an event's location is in one of the allowed states
+    
+    Args:
+        event: Event dictionary with location field
+        allowed_states: List of allowed state codes (e.g., ['DC', 'MD', 'VA'])
+        
+    Returns:
+        True if event is in an allowed state or has no location, False otherwise
+    """
+    if not allowed_states:
+        return True  # No filter applied
+    
+    location = event.get('location', '')
+    if not location:
+        return True  # Allow events with no location
+    
+    # First try the structured extraction
+    city, state = extract_location_info(location)
+    
+    if state:
+        # If we successfully extracted a state, check if it's in allowed list
+        return state in allowed_states
+    
+    # If structured extraction didn't work, try a simpler approach: look for state codes
+    # Match state codes that are standalone (preceded/followed by comma, space, or end of string)
+    state_pattern = r'\b(DC|MD|VA|AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|WA|WV|WI|WY)\b'
+    matches = re.findall(state_pattern, location, re.IGNORECASE)
+    
+    if matches:
+        # Convert to uppercase and check against allowed states
+        found_states = [s.upper() for s in matches]
+        for found_state in found_states:
+            if found_state in allowed_states:
+                return True
+        # If we found states but none are in allowed list, reject
+        return False
+    
+    # Check for well-known cities outside the DMV area
+    out_of_area_cities = [
+        'las vegas', 'los angeles', 'san francisco', 'seattle', 'new york', 
+        'boston', 'chicago', 'austin', 'miami', 'atlanta', 'denver', 'phoenix',
+        'san diego', 'portland', 'dallas', 'houston', 'philadelphia'
+    ]
+    
+    location_lower = location.lower()
+    for city in out_of_area_cities:
+        if city in location_lower:
+            return False
+    
+    # If no state found and not a known out-of-area city, allow it 
+    # (could be virtual, international, or unparseable DMV location)
+    return True
 
 def are_events_duplicates(event1, event2):
     """
@@ -447,20 +503,25 @@ def generate_yaml():
                     with open(cache_file, 'r') as f:
                         events = json.load(f)
                         group_events = []
+                        only_states = group.get('only_states', [])
                         for event in events:
                             # Check if event URL is in suppress_urls list
                             suppress_urls = group.get('suppress_urls', [])
                             if event.get('url') not in suppress_urls:
-                                # Add group information
-                                event['group'] = str(group.get('name', ''))
-                                event['group_website'] = str(group.get('website', ''))
-                                # For iCal+JSON-LD events, apply 90-day limit
-                                event_date = dateparser.parse(event['date'], settings={
-                                    'TIMEZONE': timezone_name,
-                                    'DATE_ORDER': 'YMD'
-                                }).date()
-                                if today <= event_date <= max_future_date:
-                                    group_events.append(event)
+                                # Check if event is in allowed states (if filter is set)
+                                if is_event_in_allowed_states(event, only_states):
+                                    # Add group information
+                                    event['group'] = str(group.get('name', ''))
+                                    event['group_website'] = str(group.get('website', ''))
+                                    # For iCal+JSON-LD events, apply 90-day limit
+                                    event_date = dateparser.parse(event['date'], settings={
+                                        'TIMEZONE': timezone_name,
+                                        'DATE_ORDER': 'YMD'
+                                    }).date()
+                                    if today <= event_date <= max_future_date:
+                                        group_events.append(event)
+                                else:
+                                    print(f"Filtering out event '{event.get('title', 'Unknown')}' - location '{event.get('location', 'Unknown')}' not in allowed states {only_states}")
 
                         # Remove duplicates within this group's events
                         group_events = remove_duplicates(group_events)

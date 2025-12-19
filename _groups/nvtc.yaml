@@ -3,3 +3,4 @@ website: https://www.nvtc.org/events/
 ical: https://www.nvtc.org/events/?ical=1
 active: true
 scan_for_metadata: false
+only_states: [DC, MD, VA]
