@@ -47,7 +47,7 @@ US_STATE_CODES = [
 ]
 
 OUT_OF_AREA_CITIES = [
-    'las vegas', 'los angeles', 'san francisco', 'seattle', 'new york',
+    'las vegas', 'los angeles', 'san francisco', 'san jose', 'seattle', 'new york',
     'boston', 'chicago', 'austin', 'miami', 'atlanta', 'denver', 'phoenix',
     'san diego', 'portland', 'dallas', 'houston', 'philadelphia'
 ]
