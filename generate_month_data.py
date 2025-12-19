@@ -37,6 +37,21 @@ UPDATED_FLAG_FILE = os.path.join(DATA_DIR, '.updated')
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Constants for location filtering
+US_STATE_CODES = [
+    'DC', 'MD', 'VA', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 
+    'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MA', 'MI', 
+    'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 
+    'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'WA', 
+    'WV', 'WI', 'WY'
+]
+
+OUT_OF_AREA_CITIES = [
+    'las vegas', 'los angeles', 'san francisco', 'seattle', 'new york',
+    'boston', 'chicago', 'austin', 'miami', 'atlanta', 'denver', 'phoenix',
+    'san diego', 'portland', 'dallas', 'houston', 'philadelphia'
+]
+
 # Custom YAML representer for icalendar.prop.vText objects
 def represent_vtext(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
@@ -99,7 +114,7 @@ def is_event_in_allowed_states(event, allowed_states):
     
     # If structured extraction didn't work, try a simpler approach: look for state codes
     # Match state codes that are standalone (preceded/followed by comma, space, or end of string)
-    state_pattern = r'\b(DC|MD|VA|AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|WA|WV|WI|WY)\b'
+    state_pattern = r'\b(' + '|'.join(US_STATE_CODES) + r')\b'
     matches = re.findall(state_pattern, location, re.IGNORECASE)
     
     if matches:
@@ -112,14 +127,8 @@ def is_event_in_allowed_states(event, allowed_states):
         return False
     
     # Check for well-known cities outside the DMV area
-    out_of_area_cities = [
-        'las vegas', 'los angeles', 'san francisco', 'seattle', 'new york', 
-        'boston', 'chicago', 'austin', 'miami', 'atlanta', 'denver', 'phoenix',
-        'san diego', 'portland', 'dallas', 'houston', 'philadelphia'
-    ]
-    
     location_lower = location.lower()
-    for city in out_of_area_cities:
+    for city in OUT_OF_AREA_CITIES:
         if city in location_lower:
             return False
     
