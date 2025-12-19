@@ -4,10 +4,11 @@ Tests for refresh_calendars.py to ensure event processing doesn't crash
 """
 import unittest
 import icalendar
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pytz
 import re
 from urllib.parse import urlparse
+import recurring_ical_events
 
 class TestRefreshCalendars(unittest.TestCase):
     def test_event_component_has_summary(self):
@@ -196,9 +197,6 @@ class TestRefreshCalendars(unittest.TestCase):
 
     def test_recurring_event_expansion(self):
         """Test that recurring events are expanded correctly"""
-        import recurring_ical_events
-        from datetime import timedelta, timezone
-        
         # Create a sample iCal calendar with a recurring event
         cal = icalendar.Calendar()
         event = icalendar.Event()
