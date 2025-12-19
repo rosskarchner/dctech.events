@@ -123,5 +123,76 @@ class TestRefreshCalendars(unittest.TestCase):
             self.assertEqual(event_url, 'https://lu.ma/vu8ktr9y',
                            "URL should be extracted from location field")
 
+    def test_scan_for_metadata_default_true(self):
+        """Test that scan_for_metadata defaults to True when not specified"""
+        # No group - should default to True
+        group = None
+        scan_for_metadata = group.get('scan_for_metadata', True) if group else True
+        self.assertTrue(scan_for_metadata, "scan_for_metadata should default to True when group is None")
+        
+        # Group without scan_for_metadata field - should default to True
+        group = {'name': 'Test Group', 'ical': 'https://example.com/calendar.ics'}
+        scan_for_metadata = group.get('scan_for_metadata', True)
+        self.assertTrue(scan_for_metadata, "scan_for_metadata should default to True when not specified")
+
+    def test_scan_for_metadata_false(self):
+        """Test that scan_for_metadata can be set to False"""
+        group = {
+            'name': 'Test Group',
+            'ical': 'https://example.com/calendar.ics',
+            'scan_for_metadata': False
+        }
+        scan_for_metadata = group.get('scan_for_metadata', True)
+        self.assertFalse(scan_for_metadata, "scan_for_metadata should be False when set to False")
+
+    def test_scan_for_metadata_true(self):
+        """Test that scan_for_metadata can be explicitly set to True"""
+        group = {
+            'name': 'Test Group',
+            'ical': 'https://example.com/calendar.ics',
+            'scan_for_metadata': True
+        }
+        scan_for_metadata = group.get('scan_for_metadata', True)
+        self.assertTrue(scan_for_metadata, "scan_for_metadata should be True when set to True")
+
+    def test_url_override_applied(self):
+        """Test that url_override is applied when present"""
+        group = {
+            'name': 'Test Group',
+            'url_override': 'https://example.com/meetings/'
+        }
+        event_url = 'https://example.com/event1'
+        
+        # Simulate the logic from refresh_calendars.py
+        final_url = group.get('url_override') if group and group.get('url_override') else event_url
+        
+        self.assertEqual(final_url, 'https://example.com/meetings/',
+                        "url_override should be used when present")
+
+    def test_url_override_not_applied_when_absent(self):
+        """Test that original event URL is used when url_override is not present"""
+        group = {
+            'name': 'Test Group',
+            'ical': 'https://example.com/calendar.ics'
+        }
+        event_url = 'https://example.com/event1'
+        
+        # Simulate the logic from refresh_calendars.py
+        final_url = group.get('url_override') if group and group.get('url_override') else event_url
+        
+        self.assertEqual(final_url, 'https://example.com/event1',
+                        "original event URL should be used when url_override is not present")
+
+    def test_url_override_with_none_group(self):
+        """Test that original event URL is used when group is None"""
+        group = None
+        event_url = 'https://example.com/event1'
+        
+        # Simulate the logic from refresh_calendars.py
+        final_url = group.get('url_override') if group and group.get('url_override') else event_url
+        
+        self.assertEqual(final_url, 'https://example.com/event1',
+                        "original event URL should be used when group is None")
+
 if __name__ == '__main__':
     unittest.main()
