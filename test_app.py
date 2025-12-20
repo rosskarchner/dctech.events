@@ -470,5 +470,109 @@ class TestApp(unittest.TestCase):
         self.assertEqual(second_day_time, third_day_time)
         self.assertEqual(first_day_time, '10:00')
 
+    def test_get_upcoming_weeks_includes_event_weeks(self):
+        """Test that get_upcoming_weeks includes weeks with events far in the future"""
+        from app import get_upcoming_weeks, get_week_identifier
+        import os
+        import yaml
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create test events:
+        # 1. Event within the next 12 weeks
+        # 2. Event far in the future (6 months ahead)
+        # 3. Multi-day event spanning multiple weeks
+        near_future = self.today + timedelta(weeks=5)
+        far_future = self.today + timedelta(weeks=30)  # About 7 months ahead
+        multi_day_start = self.today + timedelta(weeks=20)
+        multi_day_end = multi_day_start + timedelta(days=10)  # Spans ~2 weeks
+        
+        test_events = [
+            {
+                'date': near_future.strftime('%Y-%m-%d'),
+                'time': '09:00',
+                'title': 'Near Future Event'
+            },
+            {
+                'date': far_future.strftime('%Y-%m-%d'),
+                'time': '10:00',
+                'title': 'Far Future Event'
+            },
+            {
+                'date': multi_day_start.strftime('%Y-%m-%d'),
+                'end_date': multi_day_end.strftime('%Y-%m-%d'),
+                'time': '08:00',
+                'title': 'Multi-day Event'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Get upcoming weeks (default 12 weeks)
+            weeks = get_upcoming_weeks(12)
+            
+            # Verify we have at least 12 weeks (the rolling window)
+            self.assertGreaterEqual(len(weeks), 12)
+            
+            # Verify the near future event's week is included
+            near_week_id = get_week_identifier(near_future)
+            self.assertIn(near_week_id, weeks)
+            
+            # Verify the far future event's week is included
+            far_week_id = get_week_identifier(far_future)
+            self.assertIn(far_week_id, weeks)
+            
+            # Verify multi-day event weeks are included
+            multi_day_week_start = get_week_identifier(multi_day_start)
+            multi_day_week_end = get_week_identifier(multi_day_end)
+            self.assertIn(multi_day_week_start, weeks)
+            self.assertIn(multi_day_week_end, weeks)
+            
+            # Verify the list is sorted
+            self.assertEqual(weeks, sorted(weeks))
+            
+            # Verify no duplicates
+            self.assertEqual(len(weeks), len(set(weeks)))
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except OSError:
+                # Directory not empty or doesn't exist
+                pass
+
+    def test_get_upcoming_weeks_without_events(self):
+        """Test that get_upcoming_weeks works when there are no events"""
+        from app import get_upcoming_weeks
+        import os
+        
+        # Ensure no events file exists
+        data_dir = '_data'
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        
+        # Get upcoming weeks (should just return the rolling window)
+        weeks = get_upcoming_weeks(12)
+        
+        # Should have exactly 12 weeks (or slightly more if current week overlaps)
+        self.assertGreaterEqual(len(weeks), 12)
+        self.assertLessEqual(len(weeks), 13)  # At most one extra due to partial weeks
+        
+        # Verify the list is sorted
+        self.assertEqual(weeks, sorted(weeks))
+        
+        # Verify no duplicates
+        self.assertEqual(len(weeks), len(set(weeks)))
+
 if __name__ == '__main__':
     unittest.main()

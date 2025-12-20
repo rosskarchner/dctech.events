@@ -382,23 +382,61 @@ def filter_events_by_week(events, week_start, week_end):
 def get_upcoming_weeks(num_weeks=12):
     """
     Get a list of upcoming ISO week identifiers.
+    
+    Returns week identifiers for:
+    1. The next num_weeks from today (rolling window)
+    2. All weeks containing events from get_events()
+    
+    This ensures all weeks with events are included, regardless of how far
+    in the future they are, while also providing a rolling window of weeks
+    even if they have no events yet.
 
     Args:
-        num_weeks: Number of weeks to generate (default 12)
+        num_weeks: Number of weeks from today to include (default 12)
 
     Returns:
-        List of week identifier strings
+        Sorted list of unique week identifier strings
     """
-    weeks = []
+    weeks = set()
     current_date = date.today()
 
+    # Add the next num_weeks from today (rolling window)
     for i in range(num_weeks):
         week_date = current_date + timedelta(weeks=i)
         week_id = get_week_identifier(week_date)
-        if week_id not in weeks:  # Avoid duplicates
-            weeks.append(week_id)
+        weeks.add(week_id)
 
-    return weeks
+    # Add weeks for all events
+    events = get_events()
+    for event in events:
+        # Get start date
+        event_date_str = event.get('date')
+        if event_date_str:
+            try:
+                event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+                week_id = get_week_identifier(event_date)
+                weeks.add(week_id)
+                
+                # Get end date if it exists (for multi-day events)
+                end_date_str = event.get('end_date')
+                if end_date_str:
+                    try:
+                        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                        # Add all weeks between start and end date (inclusive)
+                        current = event_date
+                        while current <= end_date:
+                            week_id = get_week_identifier(current)
+                            weeks.add(week_id)
+                            current += timedelta(days=1)
+                    except (ValueError, TypeError):
+                        # Skip invalid end_date
+                        pass
+            except (ValueError, TypeError):
+                # Skip invalid date
+                pass
+
+    # Return sorted list
+    return sorted(list(weeks))
 
 def generate_week_calendar_image(week_start, week_end, events):
     """
