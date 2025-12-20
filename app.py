@@ -428,9 +428,11 @@ def get_upcoming_weeks(num_weeks=12):
                             week_id = get_week_identifier(current)
                             weeks.add(week_id)
                             current += timedelta(days=1)
-                    except:
+                    except (ValueError, TypeError):
+                        # Skip invalid end_date
                         pass
-            except:
+            except (ValueError, TypeError):
+                # Skip invalid date
                 pass
 
     # Return sorted list

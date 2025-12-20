@@ -546,7 +546,8 @@ class TestApp(unittest.TestCase):
                 os.remove(test_file)
             try:
                 os.rmdir(data_dir)
-            except:
+            except OSError:
+                # Directory not empty or doesn't exist
                 pass
 
     def test_get_upcoming_weeks_without_events(self):
