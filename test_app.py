@@ -509,5 +509,193 @@ class TestApp(unittest.TestCase):
         # Verify no duplicates
         self.assertEqual(len(weeks), len(set(weeks)))
 
+    def test_microformats2_h_event_markup(self):
+        """Test that event listings contain valid microformats2 h-event markup"""
+        from app import app
+        import os
+        import yaml
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create test event data
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Test Microformats Event',
+                'location': 'Test Location DC',
+                'url': 'http://test-event.example.com',
+                'group': 'Test Tech Group',
+                'group_website': 'http://testgroup.example.com'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Get homepage
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            
+            # Convert response to string
+            html = response.data.decode()
+            
+            # Check for required microformat2 h-event class
+            self.assertIn('class="h-event event"', html)
+            
+            # Check for event name with u-url and p-name classes
+            self.assertIn('class="u-url p-name"', html)
+            self.assertIn('Test Microformats Event', html)
+            self.assertIn('http://test-event.example.com', html)
+            
+            # Check for dt-start (datetime) class with proper datetime attribute
+            self.assertIn('class="dt-start"', html)
+            self.assertIn(f'datetime="{today_str}T09:00"', html)
+            
+            # Check for p-location class
+            self.assertIn('class="p-location event-location"', html)
+            self.assertIn('Test Location DC', html)
+            
+            # Check for p-organizer with h-card
+            self.assertIn('class="p-organizer h-card"', html)
+            self.assertIn('Test Tech Group', html)
+            self.assertIn('http://testgroup.example.com', html)
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_microformats2_with_submitter(self):
+        """Test microformats2 markup with event submitter instead of organizer"""
+        from app import app
+        import os
+        import yaml
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create test event with submitter
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '14:30',
+                'title': 'Community Submitted Event',
+                'location': 'Arlington VA',
+                'url': 'http://community-event.example.com',
+                'submitter_name': 'Jane Doe',
+                'submitter_link': 'http://janedoe.example.com'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Get homepage
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            
+            # Convert response to string
+            html = response.data.decode()
+            
+            # Check for h-event class
+            self.assertIn('class="h-event event"', html)
+            
+            # Check for p-author with h-card (for submitter)
+            self.assertIn('class="p-author h-card"', html)
+            self.assertIn('Jane Doe', html)
+            self.assertIn('http://janedoe.example.com', html)
+            
+            # Verify event details
+            self.assertIn('Community Submitted Event', html)
+            self.assertIn('Arlington VA', html)
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_microformats2_all_day_event(self):
+        """Test microformats2 markup for all-day events (no time specified)"""
+        from app import app
+        import os
+        import yaml
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create test event without time
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'title': 'All Day Conference',
+                'location': 'Washington DC',
+                'url': 'http://all-day-conf.example.com',
+                'group': 'DC Conference Organizers'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Get homepage
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            
+            # Convert response to string
+            html = response.data.decode()
+            
+            # Check for h-event class
+            self.assertIn('class="h-event event"', html)
+            
+            # Check event is displayed
+            self.assertIn('All Day Conference', html)
+            self.assertIn('Washington DC', html)
+            
+            # Note: dt-start should not be present for all-day events without time
+            # The template only renders <time class="dt-start"> if event.time is present
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
 if __name__ == '__main__':
     unittest.main()
