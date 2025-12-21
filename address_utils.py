@@ -66,13 +66,14 @@ def normalize_address(address):
             final_parts = final_parts[:-1]
     
     # Remove country names (United States, USA, US)
-    final_parts = [part for part in final_parts 
-                   if part.lower() not in COUNTRY_NAMES]
+    final_parts = [
+        part for part in final_parts if part.lower() not in COUNTRY_NAMES
+    ]
     
     # Remove zip codes from the last part (where they typically appear)
     # This optimization avoids unnecessarily processing all parts
     if final_parts:
-        final_parts[-1] = re.sub(ZIP_CODE_PATTERN, '', final_parts[-1])
+        final_parts[-1] = re.sub(ZIP_CODE_PATTERN, '', final_parts[-1]).strip()
     
     # Remove any parts that became empty after zip code removal
     final_parts = [part.strip() for part in final_parts if part.strip()]
