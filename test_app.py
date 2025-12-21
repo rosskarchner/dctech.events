@@ -697,5 +697,190 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
+    def test_ical_feed_basic(self):
+        """Test that iCal feed is generated with basic event data"""
+        from app import app
+        import os
+        import yaml
+        from icalendar import Calendar
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create test event data
+        today_str = self.today.strftime('%Y-%m-%d')
+        tomorrow = self.today + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Morning Tech Meetup',
+                'location': 'Washington DC',
+                'url': 'http://test-event.example.com',
+                'group': 'Test Tech Group',
+                'cost': 'Free'
+            },
+            {
+                'date': tomorrow_str,
+                'title': 'All Day Conference',
+                'location': 'Arlington VA',
+                'url': 'http://conference.example.com'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Get iCal feed
+            response = client.get('/events.ics')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('text/calendar', response.content_type)
+            
+            # Parse the iCal data
+            cal = Calendar.from_ical(response.data)
+            
+            # Check calendar properties
+            self.assertEqual(cal.get('version'), '2.0')
+            self.assertIn('DC Tech Events', str(cal.get('x-wr-calname')))
+            
+            # Get events from calendar
+            events = [component for component in cal.walk() if component.name == 'VEVENT']
+            self.assertEqual(len(events), 2)
+            
+            # Check first event (with time)
+            event1 = next(e for e in events if str(e.get('summary')) == 'Morning Tech Meetup')
+            self.assertEqual(str(event1.get('location')), 'Washington DC')
+            self.assertIn('http://test-event.example.com', str(event1.get('url')))
+            self.assertIn('Test Tech Group', str(event1.get('organizer')))
+            
+            # Check that dtstart and dtend exist
+            self.assertIsNotNone(event1.get('dtstart'))
+            self.assertIsNotNone(event1.get('dtend'))
+            
+            # Check second event (all day)
+            event2 = next(e for e in events if str(e.get('summary')) == 'All Day Conference')
+            self.assertEqual(str(event2.get('location')), 'Arlington VA')
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_ical_feed_multi_day_event(self):
+        """Test that multi-day events are handled correctly in iCal feed"""
+        from app import app
+        import os
+        import yaml
+        from icalendar import Calendar
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create multi-day event
+        today_str = self.today.strftime('%Y-%m-%d')
+        three_days_later = self.today + timedelta(days=3)
+        three_days_later_str = three_days_later.strftime('%Y-%m-%d')
+        
+        test_events = [
+            {
+                'date': today_str,
+                'end_date': three_days_later_str,
+                'time': '10:00',
+                'title': 'Multi-Day Conference',
+                'location': 'Convention Center DC',
+                'url': 'http://multi-day-conf.example.com'
+            }
+        ]
+        
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            # Get iCal feed
+            response = client.get('/events.ics')
+            self.assertEqual(response.status_code, 200)
+            
+            # Parse the iCal data
+            cal = Calendar.from_ical(response.data)
+            
+            # Get events from calendar
+            events = [component for component in cal.walk() if component.name == 'VEVENT']
+            self.assertEqual(len(events), 1)
+            
+            # Check event has correct start and end dates
+            event = events[0]
+            self.assertEqual(str(event.get('summary')), 'Multi-Day Conference')
+            
+            # Verify dtstart and dtend exist
+            dtstart = event.get('dtstart').dt
+            dtend = event.get('dtend').dt
+            self.assertIsNotNone(dtstart)
+            self.assertIsNotNone(dtend)
+            
+            # Verify that end is after start
+            self.assertGreater(dtend, dtstart)
+            
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_ical_feed_empty_events(self):
+        """Test that iCal feed works with no events"""
+        from app import app
+        import os
+        from icalendar import Calendar
+        
+        # Create test client
+        client = app.test_client()
+        
+        # Ensure no events file exists
+        data_dir = '_data'
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        
+        try:
+            # Get iCal feed
+            response = client.get('/events.ics')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('text/calendar', response.content_type)
+            
+            # Parse the iCal data
+            cal = Calendar.from_ical(response.data)
+            
+            # Check calendar properties exist
+            self.assertEqual(cal.get('version'), '2.0')
+            
+            # Get events from calendar (should be empty)
+            events = [component for component in cal.walk() if component.name == 'VEVENT']
+            self.assertEqual(len(events), 0)
+            
+        finally:
+            pass
+
 if __name__ == '__main__':
     unittest.main()

@@ -84,6 +84,11 @@ def sitemap():
     """Generate the sitemap.xml page"""
     yield {}
 
+@freezer.register_generator
+def ical_feed():
+    """Generate the iCal feed"""
+    yield {}
+
 # Image generation temporarily disabled
 # @freezer.register_generator
 # def week_image():

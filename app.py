@@ -9,6 +9,7 @@ from pathlib import Path
 from location_utils import extract_location_info, get_region_name
 from PIL import Image, ImageDraw, ImageFont, __version__ as PIL_VERSION
 import io
+from icalendar import Calendar, Event as ICalEvent
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -964,6 +965,108 @@ def sitemap():
     xml.append('</urlset>')
 
     return Response('\n'.join(xml), mimetype='text/xml')
+
+@app.route("/events.ics")
+def ical_feed():
+    """Generate an iCal feed of upcoming events"""
+    # Get upcoming events
+    events = get_events()
+    
+    # Create calendar
+    cal = Calendar()
+    cal.add('prodid', f'-//{SITE_NAME}//dctech.events//')
+    cal.add('version', '2.0')
+    cal.add('x-wr-calname', SITE_NAME)
+    cal.add('x-wr-caldesc', TAGLINE)
+    cal.add('x-wr-timezone', timezone_name)
+    
+    # Add events to calendar
+    for event in events:
+        # Parse event date
+        event_date_str = event.get('date')
+        if not event_date_str:
+            continue
+        
+        try:
+            event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            continue
+        
+        # Parse event time, default to 00:00 if not provided or "All Day"
+        event_time_str = event.get('time', '')
+        if event_time_str and isinstance(event_time_str, str) and ':' in event_time_str:
+            try:
+                event_time = datetime.strptime(event_time_str.strip(), '%H:%M').time()
+            except ValueError:
+                event_time = datetime.min.time()  # Default to 00:00
+        else:
+            event_time = datetime.min.time()  # Default to 00:00 for All Day events
+        
+        # Combine date and time, then localize to timezone
+        event_datetime = datetime.combine(event_date, event_time)
+        event_datetime = local_tz.localize(event_datetime)
+        
+        # Handle end date/time
+        end_date_str = event.get('end_date')
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                # For multi-day events, use 23:59 on the end date
+                end_time = datetime.strptime('23:59', '%H:%M').time()
+                end_datetime = datetime.combine(end_date, end_time)
+                end_datetime = local_tz.localize(end_datetime)
+            except (ValueError, TypeError):
+                # If end_date is invalid, default to 1 hour duration
+                end_datetime = event_datetime + timedelta(hours=1)
+        else:
+            # Default to 1 hour duration for single-day events
+            end_datetime = event_datetime + timedelta(hours=1)
+        
+        # Create iCal event
+        ical_event = ICalEvent()
+        ical_event.add('summary', event.get('title', 'Untitled Event'))
+        ical_event.add('dtstart', event_datetime)
+        ical_event.add('dtend', end_datetime)
+        
+        # Add location if available
+        if event.get('location'):
+            ical_event.add('location', event['location'])
+        
+        # Add description with URL and other details
+        description_parts = []
+        if event.get('url'):
+            description_parts.append(f"Event URL: {event['url']}")
+        if event.get('group'):
+            description_parts.append(f"Organized by: {event['group']}")
+        if event.get('cost'):
+            description_parts.append(f"Cost: {event['cost']}")
+        if description_parts:
+            ical_event.add('description', '\n'.join(description_parts))
+        
+        # Add URL if available
+        if event.get('url'):
+            ical_event.add('url', event['url'])
+        
+        # Add organizer if available
+        if event.get('group'):
+            ical_event.add('organizer', event['group'])
+        
+        # Generate a unique ID for the event
+        # Use URL if available, otherwise use title + date
+        if event.get('url'):
+            uid = f"{event['url']}@dctech.events"
+        else:
+            uid = f"{event_date_str}-{event.get('title', 'event')}@dctech.events"
+        ical_event.add('uid', uid)
+        
+        # Add creation timestamp
+        ical_event.add('dtstamp', datetime.now(pytz.UTC))
+        
+        # Add event to calendar
+        cal.add_component(ical_event)
+    
+    # Return calendar as text/calendar
+    return Response(cal.to_ical(), mimetype='text/calendar')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
