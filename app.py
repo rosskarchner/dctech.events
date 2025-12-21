@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, Response
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 import os
 import yaml
 import pytz
@@ -10,6 +10,7 @@ from location_utils import extract_location_info, get_region_name
 from PIL import Image, ImageDraw, ImageFont, __version__ as PIL_VERSION
 import io
 from icalendar import Calendar, Event as ICalEvent
+import hashlib
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -998,9 +999,9 @@ def ical_feed():
             try:
                 event_time = datetime.strptime(event_time_str.strip(), '%H:%M').time()
             except ValueError:
-                event_time = datetime.min.time()  # Default to 00:00
+                event_time = time(0, 0)  # Default to midnight
         else:
-            event_time = datetime.min.time()  # Default to 00:00 for All Day events
+            event_time = time(0, 0)  # Default to midnight for All Day events
         
         # Combine date and time, then localize to timezone
         event_datetime = datetime.combine(event_date, event_time)
@@ -1052,11 +1053,14 @@ def ical_feed():
             ical_event.add('organizer', event['group'])
         
         # Generate a unique ID for the event
-        # Use URL if available, otherwise use title + date
+        # Use URL if available, otherwise create a hash-based UID
         if event.get('url'):
             uid = f"{event['url']}@dctech.events"
         else:
-            uid = f"{event_date_str}-{event.get('title', 'event')}@dctech.events"
+            # Create a stable hash from date and title for consistent UIDs
+            uid_base = f"{event_date_str}-{event.get('title', 'event')}"
+            uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+            uid = f"{uid_hash}@dctech.events"
         ical_event.add('uid', uid)
         
         # Add creation timestamp

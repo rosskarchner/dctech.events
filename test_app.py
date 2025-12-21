@@ -776,7 +776,7 @@ class TestApp(unittest.TestCase):
                 os.remove(test_file)
             try:
                 os.rmdir(data_dir)
-            except:
+            except (OSError, FileNotFoundError):
                 pass
 
     def test_ical_feed_multi_day_event(self):
@@ -845,7 +845,7 @@ class TestApp(unittest.TestCase):
                 os.remove(test_file)
             try:
                 os.rmdir(data_dir)
-            except:
+            except (OSError, FileNotFoundError):
                 pass
 
     def test_ical_feed_empty_events(self):
