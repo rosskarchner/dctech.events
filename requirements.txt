@@ -17,6 +17,9 @@ extruct
 w3lib
 recurring-ical-events
 
+# AWS services (optional - for address normalization)
+boto3
+
 # Image generation
 Pillow>=10.0.0
 
