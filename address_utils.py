@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import re
 
+# Regex pattern for matching zip codes (5-digit or ZIP+4 format)
+ZIP_CODE_PATTERN = r'\s*\d{5}(-\d{4})?$'
+
+# Country name variations to remove (case-insensitive comparison)
+COUNTRY_NAMES = {'united states', 'usa', 'us'}
+
 def normalize_address(address):
     """
     Normalize addresses by removing redundant information.
@@ -58,5 +64,20 @@ def normalize_address(address):
         if (last_part in states and 
             (last_part in second_last or second_last.endswith(f' {last_part}'))):
             final_parts = final_parts[:-1]
+    
+    # Remove country names (United States, USA, US)
+    final_parts = [
+        part for part in final_parts if part.lower() not in COUNTRY_NAMES
+    ]
+    
+    # Remove zip codes from the last part (where they typically appear)
+    # This optimization avoids unnecessarily processing all parts
+    if final_parts:
+        final_parts[-1] = re.sub(ZIP_CODE_PATTERN, '', final_parts[-1]).strip()
+    
+    # Remove any parts that became empty after zip code removal
+    final_parts = [
+        stripped for part in final_parts if (stripped := part.strip())
+    ]
     
     return ', '.join(final_parts)
