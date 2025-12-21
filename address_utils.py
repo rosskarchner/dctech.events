@@ -59,4 +59,14 @@ def normalize_address(address):
             (last_part in second_last or second_last.endswith(f' {last_part}'))):
             final_parts = final_parts[:-1]
     
+    # Remove country names (United States, USA)
+    final_parts = [part for part in final_parts 
+                   if part.lower() not in ['united states', 'usa', 'us']]
+    
+    # Remove zip codes (5-digit postal codes)
+    final_parts = [re.sub(r'\s*\d{5}(-\d{4})?$', '', part) for part in final_parts]
+    
+    # Remove any parts that became empty after zip code removal
+    final_parts = [part.strip() for part in final_parts if part.strip()]
+    
     return ', '.join(final_parts)
