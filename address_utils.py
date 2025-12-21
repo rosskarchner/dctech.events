@@ -76,6 +76,8 @@ def normalize_address(address):
         final_parts[-1] = re.sub(ZIP_CODE_PATTERN, '', final_parts[-1]).strip()
     
     # Remove any parts that became empty after zip code removal
-    final_parts = [part.strip() for part in final_parts if part.strip()]
+    final_parts = [
+        stripped for part in final_parts if (stripped := part.strip())
+    ]
     
     return ', '.join(final_parts)
