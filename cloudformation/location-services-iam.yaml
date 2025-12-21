@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IAM User and Policy for DC Tech Events - AWS Location Services'
+
+Resources:
+  # IAM User for DC Tech Events Location Services
+  LocationServicesUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: dctech-events-location-services
+      Tags:
+        - Key: Application
+          Value: dctech.events
+        - Key: Purpose
+          Value: Location Services Geocoding
+
+  # IAM Policy for Location Services
+  LocationServicesPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: dctech-events-location-services-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowLocationServicesGeocoding
+            Effect: Allow
+            Action:
+              - geo:SearchPlaceIndexForText
+              - geo:SearchPlaceIndexForPosition
+              - geo:GetPlace
+            Resource:
+              - !Sub 'arn:aws:geo:*:${AWS::AccountId}:place-index/*'
+      Users:
+        - !Ref LocationServicesUser
+
+  # Access Key for the User
+  LocationServicesAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref LocationServicesUser
+
+Outputs:
+  UserName:
+    Description: IAM User Name for Location Services
+    Value: !Ref LocationServicesUser
+    Export:
+      Name: !Sub '${AWS::StackName}-UserName'
+
+  AccessKeyId:
+    Description: Access Key ID (Store in GitHub Secrets as AWS_ACCESS_KEY_ID)
+    Value: !Ref LocationServicesAccessKey
+
+  SecretAccessKey:
+    Description: Secret Access Key (Store in GitHub Secrets as AWS_SECRET_ACCESS_KEY)
+    Value: !GetAtt LocationServicesAccessKey.SecretAccessKey
+
+  PolicyArn:
+    Description: ARN of the IAM Policy
+    Value: !Ref LocationServicesPolicy

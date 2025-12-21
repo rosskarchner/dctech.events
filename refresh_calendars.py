@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 import extruct
 from w3lib.html import get_base_url
-from address_utils import normalize_address
+from aws_location_utils import normalize_address_with_aws
 from urllib.parse import urlparse
 import recurring_ical_events
 
@@ -246,21 +246,21 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                             formatted_address = ', '.join(address_parts)
 
                             if place_name and formatted_address:
-                                event['location'] = normalize_address(f"{place_name}, {formatted_address}")
+                                event['location'] = normalize_address_with_aws(f"{place_name}, {formatted_address}")
                             elif place_name:
-                                event['location'] = normalize_address(place_name)
+                                event['location'] = normalize_address_with_aws(place_name)
                             elif formatted_address:
-                                event['location'] = normalize_address(formatted_address)
+                                event['location'] = normalize_address_with_aws(formatted_address)
                         else:
                             # Handle string address
                             if place_name and address:
-                                event['location'] = normalize_address(f"{place_name}, {address}")
+                                event['location'] = normalize_address_with_aws(f"{place_name}, {address}")
                             elif place_name:
-                                event['location'] = normalize_address(place_name)
+                                event['location'] = normalize_address_with_aws(place_name)
                             elif address:
-                                event['location'] = normalize_address(address)
+                                event['location'] = normalize_address_with_aws(address)
                     else:
-                        event['location'] = normalize_address(str(location)) if location else ''
+                        event['location'] = normalize_address_with_aws(str(location)) if location else ''
 
                     # Handle submitter information if present
                     submitter = event_data.get('submitter', {})
@@ -315,7 +315,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     event = {
                         'title': str(component.get('summary', '')),
                         'description': str(component.get('description', '')),
-                        'location': normalize_address(event_location),
+                        'location': normalize_address_with_aws(event_location),
                         'start_date': localstart.strftime('%Y-%m-%d'),
                         'start_time': localstart.strftime('%H:%M'),
                         'end_date': localend.strftime('%Y-%m-%d'),
