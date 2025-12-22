@@ -94,6 +94,11 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 
 **Note**: `AWS_LOCATION_INDEX_NAME` is no longer required or used.
 
+## Requirements
+
+- **boto3 >= 1.40.0**: The geo-places client was introduced in boto3 1.40.0 (July 2024)
+- Earlier versions of boto3 will fall back to local normalization with a clear warning message
+
 ## Testing
 
 ### Test Coverage

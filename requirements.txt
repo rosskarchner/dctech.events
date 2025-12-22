@@ -18,7 +18,8 @@ w3lib
 recurring-ical-events
 
 # AWS services (optional - for address normalization)
-boto3
+# Note: boto3 >= 1.40.0 required for AWS Places API v2 (geo-places client)
+boto3>=1.40.0
 
 # Image generation
 Pillow>=10.0.0

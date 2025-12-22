@@ -110,7 +110,10 @@ def _normalize_with_aws(address, places_client):
             print(f"AWS Places API error: {e}")
         return None
     except Exception as e:
-        print(f"Unexpected error in AWS Places API: {e}")
+        # Don't print error for credential-related issues
+        error_message = str(e)
+        if 'credentials' not in error_message.lower():
+            print(f"Unexpected error in AWS Places API: {e}")
         return None
 
 
