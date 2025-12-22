@@ -1,18 +1,19 @@
-# AWS Location Services Integration - Implementation Summary
+# AWS Places API v2 Integration - Implementation Summary
 
-This document summarizes the implementation of AWS Location Services integration for DC Tech Events.
+This document summarizes the implementation of AWS Places API v2 integration for DC Tech Events.
 
 ## Overview
 
-The refresh calendars script now uses AWS Location Services to normalize event addresses, with intelligent caching and fallback to local normalization when AWS is unavailable.
+The refresh calendars script now uses AWS Places API v2 (geo-places) to normalize event addresses, with intelligent caching and fallback to local normalization when AWS is unavailable. The new API does not require managing place index resources, simplifying deployment and maintenance.
 
 ## Files Created
 
-1. **`aws_location_utils.py`** - Core AWS Location Services integration module
+1. **`aws_location_utils.py`** - Core AWS Places API v2 integration module
    - Implements `normalize_address_with_aws()` function
    - Handles AWS API calls with error handling
    - Manages location cache in `_cache/locations.json`
    - Falls back to local normalization when AWS is unavailable
+   - Provides clear logging to indicate whether AWS API or fallback is being used
 
 2. **`test_aws_location_utils.py`** - Comprehensive test suite (14 tests)
    - Tests AWS integration, caching, and fallback behavior
@@ -20,9 +21,10 @@ The refresh calendars script now uses AWS Location Services to normalize event a
    - Validates error handling for various AWS failures
 
 3. **`cloudformation/location-services-iam.yaml`** - CloudFormation template
-   - Creates IAM user for Location Services
-   - Defines minimal required permissions
+   - Creates IAM user for Places API v2
+   - Defines minimal required permissions for geo-places actions
    - Outputs access keys for GitHub Secrets
+   - No longer requires place index resources
 
 4. **`cloudformation/README.md`** - Deployment documentation
    - Step-by-step setup instructions
@@ -49,33 +51,48 @@ The refresh calendars script now uses AWS Location Services to normalize event a
    - Documented address normalization behavior
    - Added testing guidelines
 
+## Migration from v1 to v2
+
+The Places API v2 brings several improvements over the deprecated v1 API:
+
+### Key Changes
+- **No Place Index Required**: The new API uses the `geo-places` client and does not require creating or managing a place index resource
+- **Simplified API Calls**: Uses `search_text()` instead of `search_place_index_for_text()`
+- **Updated Response Format**: Results are in `ResultItems` instead of `Results`, with address in `Address.Label` instead of `Place.Label`
+- **Resource Wildcard**: IAM permissions use `Resource: '*'` instead of specific place index ARNs
+- **Environment Variables**: Removed `AWS_LOCATION_INDEX_NAME` - only `AWS_REGION` is needed
+
 ## How It Works
 
 ### Address Normalization Flow
 
 1. **Check Cache**: First checks if the address exists in the cache
-2. **Try AWS**: If not cached, attempts AWS Location Services geocoding
+2. **Try AWS**: If not cached, attempts AWS Places API v2 geocoding
 3. **Cache AWS Results**: Successful AWS results are cached for future use
 4. **Fallback**: If AWS fails or is unavailable, uses local normalization
 5. **No Cache for Fallback**: Fallback results are never cached
+6. **Status Logging**: Clearly indicates whether AWS API or fallback is being used
 
 ### Benefits
 
-- **Improved Accuracy**: AWS Location Services provides professional geocoding
+- **No Infrastructure Management**: No need to create or maintain place index resources
+- **Improved Accuracy**: AWS Places API v2 provides professional geocoding
 - **Cost Optimization**: Results are cached to minimize API calls
 - **Resilience**: Automatic fallback ensures the script always works
 - **No Breaking Changes**: Works with or without AWS credentials
+- **Clear Visibility**: Logging shows which normalization method is active
 
 ## Environment Variables
 
-To enable AWS Location Services, set these environment variables:
+To enable AWS Places API v2, set these environment variables:
 
 ```bash
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_LOCATION_INDEX_NAME=your_place_index_name
 ```
+
+**Note**: `AWS_LOCATION_INDEX_NAME` is no longer required or used.
 
 ## Testing
 
