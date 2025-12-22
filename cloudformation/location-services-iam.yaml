@@ -1,58 +1,58 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'IAM User and Policy for DC Tech Events - AWS Location Services'
+Description: 'IAM User and Policy for DC Tech Events - AWS Places API v2'
 
 Resources:
-  # IAM User for DC Tech Events Location Services
-  LocationServicesUser:
+  # IAM User for DC Tech Events Places API
+  PlacesAPIUser:
     Type: AWS::IAM::User
     Properties:
-      UserName: dctech-events-location-services
+      UserName: dctech-events-places-api
       Tags:
         - Key: Application
           Value: dctech.events
         - Key: Purpose
-          Value: Location Services Geocoding
+          Value: Places API v2 Geocoding
 
-  # IAM Policy for Location Services
-  LocationServicesPolicy:
+  # IAM Policy for Places API v2
+  PlacesAPIPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: dctech-events-location-services-policy
+      PolicyName: dctech-events-places-api-policy
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: AllowLocationServicesGeocoding
+          - Sid: AllowPlacesAPIv2Geocoding
             Effect: Allow
             Action:
-              - geo:SearchPlaceIndexForText
-              - geo:SearchPlaceIndexForPosition
-              - geo:GetPlace
-            Resource:
-              - !Sub 'arn:aws:geo:*:${AWS::AccountId}:place-index/*'
+              - geo-places:SearchText
+              - geo-places:Geocode
+              - geo-places:ReverseGeocode
+              - geo-places:GetPlace
+            Resource: '*'
       Users:
-        - !Ref LocationServicesUser
+        - !Ref PlacesAPIUser
 
   # Access Key for the User
-  LocationServicesAccessKey:
+  PlacesAPIAccessKey:
     Type: AWS::IAM::AccessKey
     Properties:
-      UserName: !Ref LocationServicesUser
+      UserName: !Ref PlacesAPIUser
 
 Outputs:
   UserName:
-    Description: IAM User Name for Location Services
-    Value: !Ref LocationServicesUser
+    Description: IAM User Name for Places API v2
+    Value: !Ref PlacesAPIUser
     Export:
       Name: !Sub '${AWS::StackName}-UserName'
 
   AccessKeyId:
     Description: Access Key ID (Store in GitHub Secrets as AWS_ACCESS_KEY_ID)
-    Value: !Ref LocationServicesAccessKey
+    Value: !Ref PlacesAPIAccessKey
 
   SecretAccessKey:
     Description: Secret Access Key (Store in GitHub Secrets as AWS_SECRET_ACCESS_KEY)
-    Value: !GetAtt LocationServicesAccessKey.SecretAccessKey
+    Value: !GetAtt PlacesAPIAccessKey.SecretAccessKey
 
   PolicyArn:
     Description: ARN of the IAM Policy
-    Value: !Ref LocationServicesPolicy
+    Value: !Ref PlacesAPIPolicy

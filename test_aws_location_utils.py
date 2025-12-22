@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tests for AWS Location Services integration in aws_location_utils.py
+Tests for AWS Places API v2 integration in aws_location_utils.py
 """
 import unittest
 import os
@@ -19,7 +19,7 @@ from aws_location_utils import (
 
 
 class TestAWSLocationUtils(unittest.TestCase):
-    """Tests for AWS Location Services address normalization."""
+    """Tests for AWS Places API v2 address normalization."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -70,62 +70,58 @@ class TestAWSLocationUtils(unittest.TestCase):
     @patch('aws_location_utils._normalize_with_aws')
     @patch('aws_location_utils.boto3.client')
     def test_normalize_with_aws_successful_call(self, mock_boto_client, mock_normalize):
-        """Test successful AWS Location Services call."""
-        # Set up environment variables
-        with patch.dict(os.environ, {'AWS_LOCATION_INDEX_NAME': 'test-index'}):
-            # Mock the AWS normalization to return a normalized address
-            mock_normalize.return_value = '1600 Pennsylvania Avenue NW, Washington, DC'
-            
-            # Call the function
-            result = normalize_address_with_aws('The White House')
-            
-            # Verify the result
-            self.assertEqual(result, '1600 Pennsylvania Avenue NW, Washington, DC')
-            
-            # Verify _normalize_with_aws was called
-            mock_normalize.assert_called_once()
+        """Test successful AWS Places API v2 call."""
+        # Mock the AWS normalization to return a normalized address
+        mock_normalize.return_value = '1600 Pennsylvania Avenue NW, Washington, DC'
+        
+        # Call the function
+        result = normalize_address_with_aws('The White House')
+        
+        # Verify the result
+        self.assertEqual(result, '1600 Pennsylvania Avenue NW, Washington, DC')
+        
+        # Verify _normalize_with_aws was called
+        mock_normalize.assert_called_once()
 
     @patch('aws_location_utils._normalize_with_aws')
     @patch('aws_location_utils.boto3.client')
     def test_normalize_with_aws_caches_result(self, mock_boto_client, mock_normalize):
         """Test that AWS results are cached."""
-        with patch.dict(os.environ, {'AWS_LOCATION_INDEX_NAME': 'test-index'}):
-            # Mock the AWS normalization
-            mock_normalize.return_value = 'Arlington, VA'
-            
-            # First call
-            result1 = normalize_address_with_aws('Arlington VA')
-            
-            # Reset the mock to track calls
-            mock_normalize.reset_mock()
-            
-            # Second call with same address
-            result2 = normalize_address_with_aws('Arlington VA')
-            
-            # Should be the same result
-            self.assertEqual(result1, result2)
-            
-            # AWS should not be called on second call (uses cache)
-            mock_normalize.assert_not_called()
+        # Mock the AWS normalization
+        mock_normalize.return_value = 'Arlington, VA'
+        
+        # First call
+        result1 = normalize_address_with_aws('Arlington VA')
+        
+        # Reset the mock to track calls
+        mock_normalize.reset_mock()
+        
+        # Second call with same address
+        result2 = normalize_address_with_aws('Arlington VA')
+        
+        # Should be the same result
+        self.assertEqual(result1, result2)
+        
+        # AWS should not be called on second call (uses cache)
+        mock_normalize.assert_not_called()
 
     @patch('aws_location_utils.boto3.client')
     def test_fallback_to_local_when_aws_fails(self, mock_boto_client):
         """Test fallback to local normalization when AWS fails."""
-        with patch.dict(os.environ, {'AWS_LOCATION_INDEX_NAME': 'test-index'}):
-            # Mock AWS to raise an error
-            mock_client = MagicMock()
-            mock_boto_client.return_value = mock_client
-            mock_client.search_place_index_for_text.side_effect = ClientError(
-                {'Error': {'Code': 'ServiceUnavailable', 'Message': 'Service unavailable'}},
-                'search_place_index_for_text'
-            )
-            
-            # Call with an address
-            result = normalize_address_with_aws('Arlington, VA 22201, USA')
-            
-            # Should fall back to local normalization
-            # Local normalizer removes zip codes and country names
-            self.assertEqual(result, 'Arlington, VA')
+        # Mock AWS to raise an error
+        mock_client = MagicMock()
+        mock_boto_client.return_value = mock_client
+        mock_client.search_text.side_effect = ClientError(
+            {'Error': {'Code': 'ServiceUnavailable', 'Message': 'Service unavailable'}},
+            'search_text'
+        )
+        
+        # Call with an address
+        result = normalize_address_with_aws('Arlington, VA 22201, USA')
+        
+        # Should fall back to local normalization
+        # Local normalizer removes zip codes and country names
+        self.assertEqual(result, 'Arlington, VA')
 
     @patch('aws_location_utils.boto3.client')
     def test_fallback_when_no_credentials(self, mock_boto_client):
@@ -161,28 +157,30 @@ class TestAWSLocationUtils(unittest.TestCase):
     @patch('aws_location_utils.boto3.client')
     def test_aws_no_results_falls_back(self, mock_boto_client):
         """Test fallback when AWS returns no results."""
-        with patch.dict(os.environ, {'AWS_LOCATION_INDEX_NAME': 'test-index'}):
-            # Mock AWS to return empty results
-            mock_client = MagicMock()
-            mock_boto_client.return_value = mock_client
-            mock_client.search_place_index_for_text.return_value = {
-                'Results': []
-            }
-            
-            # Call with an address
-            result = normalize_address_with_aws('Nonexistent Place, VA')
-            
-            # Should fall back to local normalization
-            self.assertEqual(result, 'Nonexistent Place, VA')
+        # Mock AWS to return empty results
+        mock_client = MagicMock()
+        mock_boto_client.return_value = mock_client
+        mock_client.search_text.return_value = {
+            'ResultItems': []
+        }
+        
+        # Call with an address
+        result = normalize_address_with_aws('Nonexistent Place, VA')
+        
+        # Should fall back to local normalization
+        self.assertEqual(result, 'Nonexistent Place, VA')
 
-    def test_missing_index_name_uses_fallback(self):
-        """Test that missing AWS_LOCATION_INDEX_NAME environment variable uses fallback."""
-        with patch.dict(os.environ, {'AWS_LOCATION_INDEX_NAME': ''}, clear=False):
-            # Call with an address
-            result = normalize_address_with_aws('Arlington, VA 22201, USA')
-            
-            # Should fall back to local normalization
-            self.assertEqual(result, 'Arlington, VA')
+    @patch('aws_location_utils.boto3.client')
+    def test_handles_aws_client_creation_error(self, mock_boto_client):
+        """Test that AWS client creation errors are handled gracefully."""
+        # Mock boto3 to raise an error when creating the client
+        mock_boto_client.side_effect = Exception("Client creation failed")
+        
+        # Call with an address
+        result = normalize_address_with_aws('Arlington, VA 22201, USA')
+        
+        # Should fall back to local normalization
+        self.assertEqual(result, 'Arlington, VA')
 
     @patch('aws_location_utils._normalize_with_aws')
     @patch('aws_location_utils._save_location_cache')
@@ -203,33 +201,32 @@ class TestAWSLocationUtils(unittest.TestCase):
         """Test _normalize_with_aws with None input."""
         from aws_location_utils import _normalize_with_aws
         mock_client = MagicMock()
-        result = _normalize_with_aws(None, mock_client, 'test-index')
+        result = _normalize_with_aws(None, mock_client)
         self.assertIsNone(result)
 
     def test_normalize_with_aws_non_string_input(self):
         """Test _normalize_with_aws with non-string input."""
         from aws_location_utils import _normalize_with_aws
         mock_client = MagicMock()
-        result = _normalize_with_aws(123, mock_client, 'test-index')
+        result = _normalize_with_aws(123, mock_client)
         self.assertIsNone(result)
 
     @patch('aws_location_utils.boto3.client')
     def test_handles_resource_not_found_error(self, mock_boto_client):
         """Test that ResourceNotFoundException is handled gracefully."""
-        with patch.dict(os.environ, {'AWS_LOCATION_INDEX_NAME': 'test-index'}):
-            # Mock AWS to raise ResourceNotFoundException
-            mock_client = MagicMock()
-            mock_boto_client.return_value = mock_client
-            mock_client.search_place_index_for_text.side_effect = ClientError(
-                {'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Index not found'}},
-                'search_place_index_for_text'
-            )
-            
-            # Call should not raise an exception
-            result = normalize_address_with_aws('Test Address')
-            
-            # Should fall back to local normalization
-            self.assertEqual(result, 'Test Address')
+        # Mock AWS to raise ResourceNotFoundException
+        mock_client = MagicMock()
+        mock_boto_client.return_value = mock_client
+        mock_client.search_text.side_effect = ClientError(
+            {'Error': {'Code': 'ResourceNotFoundException', 'Message': 'Resource not found'}},
+            'search_text'
+        )
+        
+        # Call should not raise an exception
+        result = normalize_address_with_aws('Test Address')
+        
+        # Should fall back to local normalization
+        self.assertEqual(result, 'Test Address')
 
 
 if __name__ == '__main__':

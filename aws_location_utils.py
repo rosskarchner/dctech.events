@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-AWS Location Services integration for address normalization.
+AWS Places API v2 integration for address normalization.
 
-This module provides address normalization using AWS Location Services with caching.
+This module provides address normalization using AWS Places API v2 (geo-places) with caching.
 Falls back to the local normalize_address function when AWS credentials are not available.
 """
 
 import os
 import json
 import boto3
-from botocore.exceptions import NoCredentialsError, ClientError
+from botocore.exceptions import NoCredentialsError, ClientError, PartialCredentialsError
 from address_utils import normalize_address
 
 # Cache file for location normalization results
@@ -23,8 +23,7 @@ _location_cache = None
 def _get_aws_config():
     """Get AWS configuration from environment variables."""
     return {
-        'region': os.environ.get('AWS_REGION', 'us-east-1'),
-        'index_name': os.environ.get('AWS_LOCATION_INDEX_NAME', '')
+        'region': os.environ.get('AWS_REGION', 'us-east-1')
     }
 
 
@@ -63,14 +62,13 @@ def _save_location_cache():
         print(f"Warning: Failed to save location cache: {e}")
 
 
-def _normalize_with_aws(address, location_client, index_name):
+def _normalize_with_aws(address, places_client):
     """
-    Normalize an address using AWS Location Services.
+    Normalize an address using AWS Places API v2.
     
     Args:
         address: The address string to normalize
-        location_client: Boto3 Location Services client
-        index_name: Name of the AWS Location Services place index
+        places_client: Boto3 geo-places client
         
     Returns:
         Normalized address string or None if the service fails
@@ -78,27 +76,24 @@ def _normalize_with_aws(address, location_client, index_name):
     if not address or not isinstance(address, str):
         return None
     
-    if not index_name:
-        return None
-    
     try:
-        # Search for the place using AWS Location Services
-        response = location_client.search_place_index_for_text(
-            IndexName=index_name,
-            Text=address,
+        # Search for the place using AWS Places API v2
+        response = places_client.search_text(
+            QueryText=address,
             MaxResults=1
         )
         
         # Check if we got results
-        if not response.get('Results'):
+        if not response.get('ResultItems'):
             return None
         
         # Get the first (best) result
-        result = response['Results'][0]
-        place = result.get('Place', {})
+        result = response['ResultItems'][0]
         
-        # Extract the label (formatted address)
-        label = place.get('Label', '')
+        # Extract the formatted address label
+        # In the new API, the address is in the 'Address' object with a 'Label' field
+        address_obj = result.get('Address', {})
+        label = address_obj.get('Label', '')
         
         if label:
             # Apply basic normalization to AWS result
@@ -112,21 +107,27 @@ def _normalize_with_aws(address, location_client, index_name):
         error_code = e.response.get('Error', {}).get('Code', '')
         # Don't print error for common expected cases
         if error_code not in ['ResourceNotFoundException', 'AccessDeniedException']:
-            print(f"AWS Location Services error: {e}")
+            print(f"AWS Places API error: {e}")
+        return None
+    except (NoCredentialsError, PartialCredentialsError):
+        # Silently handle credential errors - these are logged at the higher level
         return None
     except Exception as e:
-        print(f"Unexpected error in AWS Location Services: {e}")
+        print(f"Unexpected error in AWS Places API: {e}")
         return None
 
+
+# Track whether we've logged AWS status to avoid spamming logs
+_aws_status_logged = False
 
 def normalize_address_with_aws(address):
     """
-    Normalize an address using AWS Location Services with caching.
+    Normalize an address using AWS Places API v2 with caching.
     Falls back to local normalization if AWS is not available.
     
     This function:
     1. Checks the cache for the exact address string
-    2. If not cached, tries AWS Location Services
+    2. If not cached, tries AWS Places API v2 (geo-places)
     3. Caches the AWS result (but never the fallback result)
     4. Falls back to local normalize_address if AWS is unavailable
     
@@ -136,6 +137,8 @@ def normalize_address_with_aws(address):
     Returns:
         Normalized address string
     """
+    global _aws_status_logged
+    
     if not address or not isinstance(address, str):
         return address
     
@@ -149,17 +152,29 @@ def normalize_address_with_aws(address):
     # Get AWS configuration
     aws_config = _get_aws_config()
     
-    # Try to use AWS Location Services
+    # Try to use AWS Places API v2
     aws_result = None
+    aws_available = False
     try:
-        location_client = boto3.client('location', region_name=aws_config['region'])
-        aws_result = _normalize_with_aws(address, location_client, aws_config['index_name'])
+        places_client = boto3.client('geo-places', region_name=aws_config['region'])
+        aws_result = _normalize_with_aws(address, places_client)
+        aws_available = True
+        
+        # Log AWS API usage status (only once)
+        if not _aws_status_logged:
+            print("✓ Using AWS Places API v2 for address normalization")
+            _aws_status_logged = True
+            
     except NoCredentialsError:
         # AWS credentials not available, use fallback
-        pass
-    except Exception:
+        if not _aws_status_logged:
+            print("⚠ AWS credentials not available - using local address normalization")
+            _aws_status_logged = True
+    except Exception as e:
         # Any other AWS setup error, use fallback
-        pass
+        if not _aws_status_logged:
+            print(f"⚠ AWS Places API not available ({type(e).__name__}) - using local address normalization")
+            _aws_status_logged = True
     
     # If AWS worked, cache and return the result
     if aws_result:
@@ -168,4 +183,9 @@ def normalize_address_with_aws(address):
         return aws_result
     
     # Fall back to local normalization (don't cache fallback results)
+    if aws_available and not aws_result:
+        # AWS was available but didn't find a result - log it (truncate long addresses)
+        truncated = address[:50] + '...' if len(address) > 50 else address
+        print(f"  → AWS Places API: no result for '{truncated}' - using local normalization")
+    
     return normalize_address(address)
