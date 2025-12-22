@@ -703,6 +703,7 @@ class TestApp(unittest.TestCase):
         import os
         import yaml
         from icalendar import Calendar
+        from datetime import datetime as dt
         
         # Create test client
         client = app.test_client()
@@ -711,6 +712,11 @@ class TestApp(unittest.TestCase):
         data_dir = '_data'
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        # Create test group directory and files
+        groups_dir = '_groups'
+        os.makedirs(groups_dir, exist_ok=True)
+        group_file = os.path.join(groups_dir, 'test-tech-group.yaml')
         
         # Create test event data
         today_str = self.today.strftime('%Y-%m-%d')
@@ -735,10 +741,20 @@ class TestApp(unittest.TestCase):
             }
         ]
         
+        test_group = {
+            'name': 'Test Tech Group',
+            'website': 'https://testgroup.example.com',
+            'active': True
+        }
+        
         try:
             # Write test data
             with open(test_file, 'w') as f:
                 yaml.dump(test_events, f)
+            
+            # Write test group
+            with open(group_file, 'w') as f:
+                yaml.dump(test_group, f)
             
             # Get iCal feed
             response = client.get('/events.ics')
@@ -752,6 +768,9 @@ class TestApp(unittest.TestCase):
             self.assertEqual(cal.get('version'), '2.0')
             self.assertIn('DC Tech Events', str(cal.get('x-wr-calname')))
             
+            # Verify x-wr-timezone is NOT present
+            self.assertIsNone(cal.get('x-wr-timezone'))
+            
             # Get events from calendar
             events = [component for component in cal.walk() if component.name == 'VEVENT']
             self.assertEqual(len(events), 2)
@@ -760,22 +779,50 @@ class TestApp(unittest.TestCase):
             event1 = next(e for e in events if str(e.get('summary')) == 'Morning Tech Meetup')
             self.assertEqual(str(event1.get('location')), 'Washington DC')
             self.assertIn('http://test-event.example.com', str(event1.get('url')))
-            self.assertIn('Test Tech Group', str(event1.get('organizer')))
             
-            # Check that dtstart and dtend exist
-            self.assertIsNotNone(event1.get('dtstart'))
-            self.assertIsNotNone(event1.get('dtend'))
+            # Check organizer uses website URL with CN parameter
+            organizer = event1.get('organizer')
+            self.assertIsNotNone(organizer)
+            self.assertIn('https://testgroup.example.com', str(organizer))
+            # Check CN parameter
+            self.assertEqual(organizer.params.get('CN'), 'Test Tech Group')
             
-            # Check second event (all day)
+            # Check that dtstart and dtend are in UTC (datetime objects with tzinfo)
+            dtstart1 = event1.get('dtstart').dt
+            dtend1 = event1.get('dtend').dt
+            self.assertIsNotNone(dtstart1)
+            self.assertIsNotNone(dtend1)
+            # Verify they are datetime objects (not date) and have timezone info
+            self.assertIsInstance(dtstart1, dt)
+            self.assertIsNotNone(dtstart1.tzinfo)
+            
+            # Check second event (all day) - should use date objects
             event2 = next(e for e in events if str(e.get('summary')) == 'All Day Conference')
             self.assertEqual(str(event2.get('location')), 'Arlington VA')
+            
+            # Check that dtstart and dtend are date objects (not datetime) for all-day events
+            dtstart2 = event2.get('dtstart').dt
+            dtend2 = event2.get('dtend').dt
+            self.assertIsNotNone(dtstart2)
+            self.assertIsNotNone(dtend2)
+            # Verify they are date objects (not datetime)
+            self.assertIsInstance(dtstart2, date)
+            self.assertNotIsInstance(dtstart2, dt)
+            # Verify dtend is the day after dtstart (exclusive)
+            self.assertEqual(dtend2, dtstart2 + timedelta(days=1))
             
         finally:
             # Cleanup
             if os.path.exists(test_file):
                 os.remove(test_file)
+            if os.path.exists(group_file):
+                os.remove(group_file)
             try:
                 os.rmdir(data_dir)
+            except (OSError, FileNotFoundError):
+                pass
+            try:
+                os.rmdir(groups_dir)
             except (OSError, FileNotFoundError):
                 pass
 
@@ -785,6 +832,7 @@ class TestApp(unittest.TestCase):
         import os
         import yaml
         from icalendar import Calendar
+        from datetime import datetime as dt
         
         # Create test client
         client = app.test_client()
@@ -794,11 +842,12 @@ class TestApp(unittest.TestCase):
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'upcoming.yaml')
         
-        # Create multi-day event
+        # Create multi-day event with time
         today_str = self.today.strftime('%Y-%m-%d')
         three_days_later = self.today + timedelta(days=3)
         three_days_later_str = three_days_later.strftime('%Y-%m-%d')
         
+        # Also create an all-day multi-day event
         test_events = [
             {
                 'date': today_str,
@@ -807,6 +856,13 @@ class TestApp(unittest.TestCase):
                 'title': 'Multi-Day Conference',
                 'location': 'Convention Center DC',
                 'url': 'http://multi-day-conf.example.com'
+            },
+            {
+                'date': today_str,
+                'end_date': three_days_later_str,
+                'title': 'All-Day Multi-Day Event',
+                'location': 'Various Locations',
+                'url': 'http://all-day-multi.example.com'
             }
         ]
         
@@ -824,20 +880,37 @@ class TestApp(unittest.TestCase):
             
             # Get events from calendar
             events = [component for component in cal.walk() if component.name == 'VEVENT']
-            self.assertEqual(len(events), 1)
+            self.assertEqual(len(events), 2)
             
-            # Check event has correct start and end dates
-            event = events[0]
-            self.assertEqual(str(event.get('summary')), 'Multi-Day Conference')
+            # Check timed multi-day event
+            event1 = next(e for e in events if str(e.get('summary')) == 'Multi-Day Conference')
             
-            # Verify dtstart and dtend exist
-            dtstart = event.get('dtstart').dt
-            dtend = event.get('dtend').dt
-            self.assertIsNotNone(dtstart)
-            self.assertIsNotNone(dtend)
+            # Verify dtstart and dtend exist and are datetime objects with timezone
+            dtstart1 = event1.get('dtstart').dt
+            dtend1 = event1.get('dtend').dt
+            self.assertIsNotNone(dtstart1)
+            self.assertIsNotNone(dtend1)
+            self.assertIsInstance(dtstart1, dt)
+            self.assertIsNotNone(dtstart1.tzinfo)
             
             # Verify that end is after start
-            self.assertGreater(dtend, dtstart)
+            self.assertGreater(dtend1, dtstart1)
+            
+            # Check all-day multi-day event
+            event2 = next(e for e in events if str(e.get('summary')) == 'All-Day Multi-Day Event')
+            
+            # Verify dtstart and dtend are date objects
+            dtstart2 = event2.get('dtstart').dt
+            dtend2 = event2.get('dtend').dt
+            self.assertIsNotNone(dtstart2)
+            self.assertIsNotNone(dtend2)
+            self.assertIsInstance(dtstart2, date)
+            self.assertNotIsInstance(dtstart2, dt)
+            
+            # For all-day events, dtend should be the day after the last day (exclusive)
+            # So if event is from today to three_days_later, dtend should be three_days_later + 1
+            expected_dtend = three_days_later + timedelta(days=1)
+            self.assertEqual(dtend2, expected_dtend)
             
         finally:
             # Cleanup
