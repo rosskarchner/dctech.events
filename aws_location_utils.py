@@ -185,7 +185,6 @@ def normalize_address_with_aws(address):
     # Fall back to local normalization (don't cache fallback results)
     if aws_available and not aws_result:
         # AWS was available but didn't find a result - log it (truncate long addresses)
-        truncated = address[:50] + '...' if len(address) > 50 else address
-        print(f"  → AWS Places API: no result for '{truncated}' - using local normalization")
+        print(f"  → AWS Places API: no result for '{address}' - using local normalization")
     
     return normalize_address(address)
