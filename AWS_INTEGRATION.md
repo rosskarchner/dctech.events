@@ -67,16 +67,18 @@ The Places API v2 brings several improvements over the deprecated v1 API:
 ### Address Normalization Flow
 
 1. **Check Cache**: First checks if the address exists in the cache
-2. **Try AWS**: If not cached, attempts AWS Places API v2 geocoding
-3. **Cache AWS Results**: Successful AWS results are cached for future use
-4. **Fallback**: If AWS fails or is unavailable, uses local normalization
-5. **No Cache for Fallback**: Fallback results are never cached
-6. **Status Logging**: Clearly indicates whether AWS API or fallback is being used
+2. **Try AWS Search**: If not cached, attempts AWS Places API v2 search_text
+3. **Fallback to Suggest**: If search_text fails or returns no results, tries the Suggest API (more robust for malformed/duplicate addresses)
+4. **Cache AWS Results**: Successful AWS results are cached for future use
+5. **Fallback to Local**: If both AWS APIs fail or are unavailable, uses local normalization
+6. **No Cache for Fallback**: Local fallback results are never cached
+7. **Status Logging**: Clearly indicates whether AWS API or fallback is being used
 
 ### Benefits
 
 - **No Infrastructure Management**: No need to create or maintain place index resources
 - **Improved Accuracy**: AWS Places API v2 provides professional geocoding
+- **Robust Handling**: Suggest API handles malformed or duplicate addresses that search_text might miss
 - **Cost Optimization**: Results are cached to minimize API calls
 - **Resilience**: Automatic fallback ensures the script always works
 - **No Breaking Changes**: Works with or without AWS credentials
@@ -103,10 +105,10 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 
 ### Test Coverage
 
-- **Total Tests**: 63 (14 new AWS tests + 49 existing)
-- **All Pass**: Except 2 pre-existing failures in `test_app.py`
+- **Total Tests**: 37 address-related tests (23 AWS tests + 14 address utils tests)
 - **Test Categories**:
-  - AWS API integration
+  - AWS API integration (search_text and suggest)
+  - Suggest API fallback behavior
   - Cache behavior
   - Fallback mechanisms
   - Error handling
@@ -115,11 +117,14 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 ### Running Tests
 
 ```bash
-# Run all tests
-python -m unittest discover -s . -p "test_*.py"
+# Run all address-related tests
+python -m unittest test_address_utils test_aws_location_utils
 
 # Run only AWS tests
 python -m unittest test_aws_location_utils
+
+# Run only address utils tests
+python -m unittest test_address_utils
 ```
 
 ## Security

@@ -62,9 +62,12 @@ def _save_location_cache():
         print(f"Warning: Failed to save location cache: {e}")
 
 
-def _normalize_with_aws(address, places_client):
+def _normalize_with_aws_suggest(address, places_client):
     """
-    Normalize an address using AWS Places API v2.
+    Normalize an address using AWS Places API v2 Suggest endpoint.
+    
+    The Suggest API is more robust for handling malformed or duplicate addresses.
+    It's designed for autocomplete scenarios and can handle partial or messy input.
     
     Args:
         address: The address string to normalize
@@ -77,8 +80,8 @@ def _normalize_with_aws(address, places_client):
         return None
     
     try:
-        # Search for the place using AWS Places API v2
-        response = places_client.search_text(
+        # Use the Suggest API for more robust address handling
+        response = places_client.suggest(
             QueryText=address,
             MaxResults=1
         )
@@ -91,7 +94,7 @@ def _normalize_with_aws(address, places_client):
         result = response['ResultItems'][0]
         
         # Extract the formatted address label
-        # In the new API, the address is in the 'Address' object with a 'Label' field
+        # Suggest API returns address in the 'Address' object with a 'Label' field
         address_obj = result.get('Address', {})
         label = address_obj.get('Label', '')
         
@@ -107,14 +110,77 @@ def _normalize_with_aws(address, places_client):
         error_code = e.response.get('Error', {}).get('Code', '')
         # Don't print error for common expected cases
         if error_code not in ['ResourceNotFoundException', 'AccessDeniedException']:
-            print(f"AWS Places API error: {e}")
+            print(f"AWS Places API Suggest error: {e}")
         return None
     except (NoCredentialsError, PartialCredentialsError):
         # Silently handle credential errors - these are logged at the higher level
         return None
     except Exception as e:
-        print(f"Unexpected error in AWS Places API: {e}")
+        print(f"Unexpected error in AWS Places API Suggest: {e}")
         return None
+
+
+def _normalize_with_aws(address, places_client):
+    """
+    Normalize an address using AWS Places API v2.
+    
+    This function tries two approaches:
+    1. First tries search_text (standard search)
+    2. If that fails, falls back to suggest (more robust for malformed input)
+    
+    Args:
+        address: The address string to normalize
+        places_client: Boto3 geo-places client
+        
+    Returns:
+        Normalized address string or None if the service fails
+    """
+    if not address or not isinstance(address, str):
+        return None
+    
+    try:
+        # Try search_text first (standard approach)
+        response = places_client.search_text(
+            QueryText=address,
+            MaxResults=1
+        )
+        
+        # Check if we got results
+        if response.get('ResultItems'):
+            # Get the first (best) result
+            result = response['ResultItems'][0]
+            
+            # Extract the formatted address label
+            # In the new API, the address is in the 'Address' object with a 'Label' field
+            address_obj = result.get('Address', {})
+            label = address_obj.get('Label', '')
+            
+            if label:
+                # Apply basic normalization to AWS result
+                # Remove zip codes and country names like the local normalizer does
+                normalized = normalize_address(label)
+                return normalized
+        
+        # If search_text didn't return results, try suggest API
+        # Suggest is more robust for handling malformed or duplicate addresses
+        return _normalize_with_aws_suggest(address, places_client)
+        
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', '')
+        # Don't print error for common expected cases
+        if error_code not in ['ResourceNotFoundException', 'AccessDeniedException']:
+            print(f"AWS Places API error: {e}")
+        # Try suggest API as fallback
+        return _normalize_with_aws_suggest(address, places_client)
+    except (NoCredentialsError, PartialCredentialsError):
+        # Silently handle credential errors - these are logged at the higher level
+        return None
+    except Exception as e:
+        print(f"Unexpected error in AWS Places API: {e}")
+        # Try suggest API as fallback
+        return _normalize_with_aws_suggest(address, places_client)
+    
+    return None
 
 
 # Track whether we've logged AWS status to avoid spamming logs
