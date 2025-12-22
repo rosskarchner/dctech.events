@@ -9,7 +9,7 @@ Falls back to the local normalize_address function when AWS credentials are not 
 import os
 import json
 import boto3
-from botocore.exceptions import NoCredentialsError, ClientError
+from botocore.exceptions import NoCredentialsError, ClientError, PartialCredentialsError
 from address_utils import normalize_address
 
 # Cache file for location normalization results
@@ -109,11 +109,11 @@ def _normalize_with_aws(address, places_client):
         if error_code not in ['ResourceNotFoundException', 'AccessDeniedException']:
             print(f"AWS Places API error: {e}")
         return None
+    except (NoCredentialsError, PartialCredentialsError):
+        # Silently handle credential errors - these are logged at the higher level
+        return None
     except Exception as e:
-        # Don't print error for credential-related issues
-        error_message = str(e)
-        if 'credentials' not in error_message.lower():
-            print(f"Unexpected error in AWS Places API: {e}")
+        print(f"Unexpected error in AWS Places API: {e}")
         return None
 
 
@@ -184,7 +184,8 @@ def normalize_address_with_aws(address):
     
     # Fall back to local normalization (don't cache fallback results)
     if aws_available and not aws_result:
-        # AWS was available but didn't find a result - log it
-        print(f"  → AWS Places API: no result for '{address}' - using local normalization")
+        # AWS was available but didn't find a result - log it (truncate long addresses)
+        truncated = address[:50] + '...' if len(address) > 50 else address
+        print(f"  → AWS Places API: no result for '{truncated}' - using local normalization")
     
     return normalize_address(address)
