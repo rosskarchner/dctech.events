@@ -249,8 +249,12 @@ class TestAWSLocationUtils(unittest.TestCase):
         mock_client = MagicMock()
         mock_client.suggest.return_value = {
             'ResultItems': [{
-                'Address': {
-                    'Label': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, United States'
+                'Title': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, United States',
+                'Place': {
+                    'PlaceType': 'PointAddress',
+                    'Address': {
+                        'Label': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, United States'
+                    }
                 }
             }]
         }
@@ -311,8 +315,12 @@ class TestAWSLocationUtils(unittest.TestCase):
         # suggest returns a result
         mock_client.suggest.return_value = {
             'ResultItems': [{
-                'Address': {
-                    'Label': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, USA'
+                'Title': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, USA',
+                'Place': {
+                    'PlaceType': 'PointAddress',
+                    'Address': {
+                        'Label': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, USA'
+                    }
                 }
             }]
         }
@@ -341,8 +349,12 @@ class TestAWSLocationUtils(unittest.TestCase):
         # suggest returns a result
         mock_client.suggest.return_value = {
             'ResultItems': [{
-                'Address': {
-                    'Label': 'Test Location, Washington, DC 20001, United States'
+                'Title': 'Test Location, Washington, DC 20001, United States',
+                'Place': {
+                    'PlaceType': 'PointAddress',
+                    'Address': {
+                        'Label': 'Test Location, Washington, DC 20001, United States'
+                    }
                 }
             }]
         }
@@ -372,8 +384,12 @@ class TestAWSLocationUtils(unittest.TestCase):
         # suggest returns a result
         mock_client.suggest.return_value = {
             'ResultItems': [{
-                'Address': {
-                    'Label': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, USA'
+                'Title': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, USA',
+                'Place': {
+                    'PlaceType': 'PointAddress',
+                    'Address': {
+                        'Label': '4100 Fairfax Dr Ste 500, Arlington, VA 22203, USA'
+                    }
                 }
             }]
         }

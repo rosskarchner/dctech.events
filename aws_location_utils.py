@@ -22,8 +22,15 @@ _location_cache = None
 
 def _get_aws_config():
     """Get AWS configuration from environment variables."""
+    # Default to DC/Northern Virginia area if no location bias specified
+    # This improves results for local event addresses
+    default_lat = 38.8951  # Washington, DC latitude
+    default_lon = -77.0369  # Washington, DC longitude
+    
     return {
-        'region': os.environ.get('AWS_REGION', 'us-east-1')
+        'region': os.environ.get('AWS_REGION', 'us-east-1'),
+        'bias_latitude': float(os.environ.get('AWS_BIAS_LAT', default_lat)),
+        'bias_longitude': float(os.environ.get('AWS_BIAS_LON', default_lon))
     }
 
 
@@ -62,7 +69,7 @@ def _save_location_cache():
         print(f"Warning: Failed to save location cache: {e}")
 
 
-def _normalize_with_aws_suggest(address, places_client):
+def _normalize_with_aws_suggest(address, places_client, bias_position=None):
     """
     Normalize an address using AWS Places API v2 Suggest endpoint.
     
@@ -72,6 +79,7 @@ def _normalize_with_aws_suggest(address, places_client):
     Args:
         address: The address string to normalize
         places_client: Boto3 geo-places client
+        bias_position: Optional [latitude, longitude] to bias results toward a region
         
     Returns:
         Normalized address string or None if the service fails
@@ -80,11 +88,18 @@ def _normalize_with_aws_suggest(address, places_client):
         return None
     
     try:
+        # Build the suggest request with required parameters
+        suggest_params = {
+            'QueryText': address,
+            'MaxResults': 1
+        }
+        
+        # BiasPosition is required for the Suggest API
+        if bias_position:
+            suggest_params['BiasPosition'] = bias_position
+        
         # Use the Suggest API for more robust address handling
-        response = places_client.suggest(
-            QueryText=address,
-            MaxResults=1
-        )
+        response = places_client.suggest(**suggest_params)
         
         # Check if we got results
         if not response.get('ResultItems'):
@@ -93,15 +108,23 @@ def _normalize_with_aws_suggest(address, places_client):
         # Get the first (best) result
         result = response['ResultItems'][0]
         
-        # Extract the formatted address label
-        # Suggest API returns address in the 'Address' object with a 'Label' field
-        address_obj = result.get('Address', {})
-        label = address_obj.get('Label', '')
+        # For Places (PlaceType available via nested Place object), use Title to preserve POI name
+        # Otherwise use the Address Label field
+        place_info = result.get('Place', {})
+        place_type = place_info.get('PlaceType', '')
         
-        if label:
+        if place_type == 'PointOfInterest':
+            # Use Title which includes the POI name
+            address_text = result.get('Title', '')
+        else:
+            # Use the Label field for regular addresses
+            address_obj = place_info.get('Address', {})
+            address_text = address_obj.get('Label', '')
+        
+        if address_text:
             # Apply basic normalization to AWS result
             # Remove zip codes and country names like the local normalizer does
-            normalized = normalize_address(label)
+            normalized = normalize_address(address_text)
             return normalized
         
         return None
@@ -120,7 +143,47 @@ def _normalize_with_aws_suggest(address, places_client):
         return None
 
 
-def _normalize_with_aws(address, places_client):
+def _extract_place_name(original_address):
+    """
+    Extract a potential place/venue name from the original address string.
+    
+    Many event sources include venue names before the actual street address.
+    If the address starts with something that's not a number or directional prefix,
+    treat it as a potential place name.
+    
+    Args:
+        original_address: The full location string potentially containing venue name
+        
+    Returns:
+        Tuple of (place_name, remaining_address) or (None, original_address)
+    """
+    if not original_address or not isinstance(original_address, str):
+        return None, original_address
+    
+    parts = [p.strip() for p in original_address.split(',')]
+    
+    if len(parts) <= 1:
+        return None, original_address
+    
+    first_part = parts[0].strip()
+    
+    # Check if first part looks like a street address (starts with number or directional)
+    if first_part and (first_part[0].isdigit() or 
+                       first_part.startswith(('N ', 'S ', 'E ', 'W ', 
+                                             'NE ', 'NW ', 'SE ', 'SW '))):
+        # First part is already an address, no place name
+        return None, original_address
+    
+    # First part doesn't look like a street address, treat it as potential place name
+    # But avoid common noise like "Register to See Address"
+    noise_phrases = {'register to see address'}
+    if first_part.lower() in noise_phrases:
+        return None, original_address
+    
+    return first_part, original_address
+
+
+def _normalize_with_aws(address, places_client, bias_position=None):
     """
     Normalize an address using AWS Places API v2.
     
@@ -131,6 +194,7 @@ def _normalize_with_aws(address, places_client):
     Args:
         address: The address string to normalize
         places_client: Boto3 geo-places client
+        bias_position: Optional [latitude, longitude] to bias results toward a region
         
     Returns:
         Normalized address string or None if the service fails
@@ -138,32 +202,52 @@ def _normalize_with_aws(address, places_client):
     if not address or not isinstance(address, str):
         return None
     
+    # Extract potential place name from original address
+    place_name, _ = _extract_place_name(address)
+    
     try:
+        # Build the search_text request with required parameters
+        search_params = {
+            'QueryText': address,
+            'MaxResults': 1
+        }
+        
+        # BiasPosition is required for the Search API
+        if bias_position:
+            search_params['BiasPosition'] = bias_position
+        
         # Try search_text first (standard approach)
-        response = places_client.search_text(
-            QueryText=address,
-            MaxResults=1
-        )
+        response = places_client.search_text(**search_params)
         
         # Check if we got results
         if response.get('ResultItems'):
             # Get the first (best) result
             result = response['ResultItems'][0]
             
-            # Extract the formatted address label
-            # In the new API, the address is in the 'Address' object with a 'Label' field
-            address_obj = result.get('Address', {})
-            label = address_obj.get('Label', '')
+            # For Points of Interest, use Title to preserve the place name
+            # For other address types, use the Label field
+            place_type = result.get('PlaceType', '')
+            if place_type == 'PointOfInterest':
+                # Title includes the POI name, e.g., "Open City (Open City at the National Cathedral)"
+                address_text = result.get('Title', '')
+            else:
+                # For regular addresses, use Label which is already well-formatted
+                address_obj = result.get('Address', {})
+                address_text = address_obj.get('Label', '')
+                
+                # If we extracted a place name from the input, prepend it to the address
+                if place_name and address_text:
+                    address_text = f"{place_name}, {address_text}"
             
-            if label:
+            if address_text:
                 # Apply basic normalization to AWS result
                 # Remove zip codes and country names like the local normalizer does
-                normalized = normalize_address(label)
+                normalized = normalize_address(address_text)
                 return normalized
         
         # If search_text didn't return results, try suggest API
         # Suggest is more robust for handling malformed or duplicate addresses
-        return _normalize_with_aws_suggest(address, places_client)
+        return _normalize_with_aws_suggest(address, places_client, bias_position)
         
     except ClientError as e:
         error_code = e.response.get('Error', {}).get('Code', '')
@@ -171,15 +255,15 @@ def _normalize_with_aws(address, places_client):
         if error_code not in ['ResourceNotFoundException', 'AccessDeniedException']:
             print(f"AWS Places API error: {e}")
         # Try suggest API as fallback
-        return _normalize_with_aws_suggest(address, places_client)
+        return _normalize_with_aws_suggest(address, places_client, bias_position)
     except (NoCredentialsError, PartialCredentialsError):
         # Credentials are typically checked at client creation, but handle here for completeness
         # Try suggest API in case it can somehow work (though unlikely)
-        return _normalize_with_aws_suggest(address, places_client)
+        return _normalize_with_aws_suggest(address, places_client, bias_position)
     except Exception as e:
         print(f"Unexpected error in AWS Places API: {e}")
         # Try suggest API as fallback
-        return _normalize_with_aws_suggest(address, places_client)
+        return _normalize_with_aws_suggest(address, places_client, bias_position)
     
     return None
 
@@ -218,13 +302,14 @@ def normalize_address_with_aws(address):
     
     # Get AWS configuration
     aws_config = _get_aws_config()
+    bias_position = [aws_config['bias_latitude'], aws_config['bias_longitude']]
     
     # Try to use AWS Places API v2
     aws_result = None
     aws_available = False
     try:
         places_client = boto3.client('geo-places', region_name=aws_config['region'])
-        aws_result = _normalize_with_aws(address, places_client)
+        aws_result = _normalize_with_aws(address, places_client, bias_position)
         aws_available = True
         
         # Log AWS API usage status (only once)
