@@ -973,13 +973,16 @@ def ical_feed():
     # Get upcoming events
     events = get_events()
     
+    # Build group name to website mapping
+    groups = get_approved_groups()
+    group_websites = {group.get('name'): group.get('website') for group in groups if group.get('website')}
+    
     # Create calendar
     cal = Calendar()
     cal.add('prodid', f'-//{SITE_NAME}//dctech.events//')
     cal.add('version', '2.0')
     cal.add('x-wr-calname', SITE_NAME)
     cal.add('x-wr-caldesc', TAGLINE)
-    cal.add('x-wr-timezone', timezone_name)
     
     # Add events to calendar
     for event in events:
@@ -993,35 +996,59 @@ def ical_feed():
         except (ValueError, TypeError):
             continue
         
-        # Parse event time, default to 00:00 if not provided or "All Day"
+        # Parse event time to determine if this is an all-day event
         event_time_str = event.get('time', '')
-        if event_time_str and isinstance(event_time_str, str) and ':' in event_time_str:
+        is_all_day = not (event_time_str and isinstance(event_time_str, str) and ':' in event_time_str)
+        
+        if is_all_day:
+            # All-day event: use date objects (VALUE=DATE)
+            event_datetime = event_date
+            
+            # Handle end date for all-day events
+            end_date_str = event.get('end_date')
+            if end_date_str:
+                try:
+                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                    # For all-day events, dtend must be the day after the last day (exclusive)
+                    end_datetime = end_date + timedelta(days=1)
+                except (ValueError, TypeError):
+                    # If end_date is invalid, default to next day
+                    end_datetime = event_date + timedelta(days=1)
+            else:
+                # Single all-day event: end is next day
+                end_datetime = event_date + timedelta(days=1)
+        else:
+            # Timed event: use datetime objects with UTC
             try:
                 event_time = datetime.strptime(event_time_str.strip(), '%H:%M').time()
             except ValueError:
-                event_time = time(0, 0)  # Default to midnight
-        else:
-            event_time = time(0, 0)  # Default to midnight for All Day events
-        
-        # Combine date and time, then localize to timezone
-        event_datetime = datetime.combine(event_date, event_time)
-        event_datetime = local_tz.localize(event_datetime)
-        
-        # Handle end date/time
-        end_date_str = event.get('end_date')
-        if end_date_str:
-            try:
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                # For multi-day events, use 23:59 on the end date
-                end_time = datetime.strptime('23:59', '%H:%M').time()
-                end_datetime = datetime.combine(end_date, end_time)
-                end_datetime = local_tz.localize(end_datetime)
-            except (ValueError, TypeError):
-                # If end_date is invalid, default to 1 hour duration
-                end_datetime = event_datetime + timedelta(hours=1)
-        else:
-            # Default to 1 hour duration for single-day events
-            end_datetime = event_datetime + timedelta(hours=1)
+                # If time parsing fails, treat as all-day
+                event_datetime = event_date
+                end_datetime = event_date + timedelta(days=1)
+                is_all_day = True
+            
+            if not is_all_day:
+                # Combine date and time, localize to Eastern, then convert to UTC
+                event_datetime_local = datetime.combine(event_date, event_time)
+                event_datetime_local = local_tz.localize(event_datetime_local)
+                event_datetime = event_datetime_local.astimezone(pytz.UTC)
+                
+                # Handle end date/time
+                end_date_str = event.get('end_date')
+                if end_date_str:
+                    try:
+                        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                        # For multi-day events, use 23:59 on the end date
+                        end_time = datetime.strptime('23:59', '%H:%M').time()
+                        end_datetime_local = datetime.combine(end_date, end_time)
+                        end_datetime_local = local_tz.localize(end_datetime_local)
+                        end_datetime = end_datetime_local.astimezone(pytz.UTC)
+                    except (ValueError, TypeError):
+                        # If end_date is invalid, default to 1 hour duration
+                        end_datetime = event_datetime + timedelta(hours=1)
+                else:
+                    # Default to 1 hour duration for single-day events
+                    end_datetime = event_datetime + timedelta(hours=1)
         
         # Create iCal event
         ical_event = ICalEvent()
@@ -1048,17 +1075,21 @@ def ical_feed():
         if event.get('url'):
             ical_event.add('url', event['url'])
         
-        # Add organizer if available
+        # Add organizer if available (must be a URI)
         if event.get('group'):
-            ical_event.add('organizer', event['group'])
+            group_name = event['group']
+            group_website = group_websites.get(group_name)
+            if group_website:
+                # Use website URL as ORGANIZER with CN parameter for group name
+                ical_event.add('organizer', group_website, parameters={'CN': group_name})
         
         # Generate a unique ID for the event
         # Use URL if available, otherwise create a hash-based UID
         if event.get('url'):
             uid = f"{event['url']}@dctech.events"
         else:
-            # Create a stable hash from date and title for consistent UIDs
-            uid_base = f"{event_date_str}-{event.get('title', 'event')}"
+            # Create a stable hash from date, time, and title for consistent UIDs
+            uid_base = f"{event_date_str}-{event_time_str}-{event.get('title', 'event')}"
             uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
             uid = f"{uid_hash}@dctech.events"
         ical_event.add('uid', uid)
