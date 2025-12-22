@@ -703,7 +703,7 @@ class TestApp(unittest.TestCase):
         import os
         import yaml
         from icalendar import Calendar
-        from datetime import datetime as dt
+        from datetime import datetime
         
         # Create test client
         client = app.test_client()
@@ -793,7 +793,7 @@ class TestApp(unittest.TestCase):
             self.assertIsNotNone(dtstart1)
             self.assertIsNotNone(dtend1)
             # Verify they are datetime objects (not date) and have timezone info
-            self.assertIsInstance(dtstart1, dt)
+            self.assertIsInstance(dtstart1, datetime)
             self.assertIsNotNone(dtstart1.tzinfo)
             
             # Check second event (all day) - should use date objects
@@ -807,7 +807,7 @@ class TestApp(unittest.TestCase):
             self.assertIsNotNone(dtend2)
             # Verify they are date objects (not datetime)
             self.assertIsInstance(dtstart2, date)
-            self.assertNotIsInstance(dtstart2, dt)
+            self.assertNotIsInstance(dtstart2, datetime)
             # Verify dtend is the day after dtstart (exclusive)
             self.assertEqual(dtend2, dtstart2 + timedelta(days=1))
             
@@ -832,7 +832,7 @@ class TestApp(unittest.TestCase):
         import os
         import yaml
         from icalendar import Calendar
-        from datetime import datetime as dt
+        from datetime import datetime
         
         # Create test client
         client = app.test_client()
@@ -890,7 +890,7 @@ class TestApp(unittest.TestCase):
             dtend1 = event1.get('dtend').dt
             self.assertIsNotNone(dtstart1)
             self.assertIsNotNone(dtend1)
-            self.assertIsInstance(dtstart1, dt)
+            self.assertIsInstance(dtstart1, datetime)
             self.assertIsNotNone(dtstart1.tzinfo)
             
             # Verify that end is after start
@@ -905,7 +905,7 @@ class TestApp(unittest.TestCase):
             self.assertIsNotNone(dtstart2)
             self.assertIsNotNone(dtend2)
             self.assertIsInstance(dtstart2, date)
-            self.assertNotIsInstance(dtstart2, dt)
+            self.assertNotIsInstance(dtstart2, datetime)
             
             # For all-day events, dtend should be the day after the last day (exclusive)
             # So if event is from today to three_days_later, dtend should be three_days_later + 1

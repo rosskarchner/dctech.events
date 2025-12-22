@@ -35,6 +35,9 @@ DATA_DIR = '_data'
 GROUPS_DIR = '_groups'
 SPONSORS_FILE = os.path.join(DATA_DIR, 'sponsors.json')
 
+# iCal constants
+END_OF_DAY_TIME = '23:59'  # Time used for multi-day event end times
+
 app = Flask(__name__, template_folder='templates')
 
 def load_sponsors():
@@ -1038,8 +1041,8 @@ def ical_feed():
                 if end_date_str:
                     try:
                         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                        # For multi-day events, use 23:59 on the end date
-                        end_time = datetime.strptime('23:59', '%H:%M').time()
+                        # For multi-day events, use end of day on the end date
+                        end_time = datetime.strptime(END_OF_DAY_TIME, '%H:%M').time()
                         end_datetime_local = datetime.combine(end_date, end_time)
                         end_datetime_local = local_tz.localize(end_datetime_local)
                         end_datetime = end_datetime_local.astimezone(pytz.UTC)
