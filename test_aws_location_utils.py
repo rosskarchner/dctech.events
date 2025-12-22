@@ -116,7 +116,7 @@ class TestAWSLocationUtils(unittest.TestCase):
             {'Error': {'Code': 'ServiceUnavailable', 'Message': 'Service unavailable'}},
             'search_text'
         )
-        # Mock suggest to also raise an error (complete failure)
+        # Mock suggest to also raise an error (both APIs fail, will use local normalization)
         mock_client.suggest.side_effect = ClientError(
             {'Error': {'Code': 'ServiceUnavailable', 'Message': 'Service unavailable'}},
             'suggest'
@@ -169,7 +169,7 @@ class TestAWSLocationUtils(unittest.TestCase):
         mock_client.search_text.return_value = {
             'ResultItems': []
         }
-        # Mock suggest to also return empty results (complete failure)
+        # Mock suggest to also return empty results (no results found, will use local normalization)
         mock_client.suggest.return_value = {
             'ResultItems': []
         }

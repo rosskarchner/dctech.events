@@ -173,8 +173,9 @@ def _normalize_with_aws(address, places_client):
         # Try suggest API as fallback
         return _normalize_with_aws_suggest(address, places_client)
     except (NoCredentialsError, PartialCredentialsError):
-        # Silently handle credential errors - these are logged at the higher level
-        return None
+        # Credentials are typically checked at client creation, but handle here for completeness
+        # Try suggest API in case it can somehow work (though unlikely)
+        return _normalize_with_aws_suggest(address, places_client)
     except Exception as e:
         print(f"Unexpected error in AWS Places API: {e}")
         # Try suggest API as fallback
