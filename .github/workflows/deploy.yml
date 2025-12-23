@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      clear_location_cache:
+        description: 'Clear location cache'
+        required: false
+        type: boolean
+        default: false
   schedule:
     # Runs at 2 AM Eastern (UTC-4)
     # Note: GitHub Actions uses UTC, so 2 AM Eastern is 6 AM UTC
@@ -30,6 +36,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Clear location cache if requested
+        if: ${{ github.event.inputs.clear_location_cache == 'true' }}
+        run: rm -f _cache/locations.json
 
       - name: Set up Python
         uses: actions/setup-python@v4
