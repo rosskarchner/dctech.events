@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Virtual Events - {{ site_name }}{% endblock %}
+
+
+{% block content %}
+<div class="home-container">
+
+    <section class="events-section">
+        <h2>{{ stats.upcoming_events }} Upcoming Virtual Events</h2>
+
+        <div id="subscribe">
+            <div>
+            Get this calendar in your inbox every week! <a href="{{ newsletter_signup_link }}" hx-get="{{ newsletter_signup_link }}" hx-target="#subscribe" hx-swap="innerHTML">Subscribe today</a>.
+            </div>
+        </div>
+
+    {% include "partials/events_by_day.html" %}
+
+</div>
+
+
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ site_name }}",
+  "description": "{{ tagline }}",
+  "url": "{{ base_url }}/virtual/"
+}
+</script>
+
+{% if days %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Upcoming Virtual Tech Events in DC",
+  "description": "{{ tagline }}",
+  "numberOfItems": {{ stats.upcoming_events }},
+  "itemListElement": [
+    {% set event_count = namespace(value=0) %}
+    {% for day in days %}
+      {% if day.has_events %}
+        {% for time_slot in day.time_slots %}
+          {% for event in time_slot.events %}
+            {% if event_count.value < 20 %}
+              {% if event_count.value > 0 %},{% endif %}
+              {
+                "@type": "ListItem",
+                "position": {{ event_count.value + 1 }},
+                "item": {
+                  "@type": "Event",
+                  "name": "{{ event.title | replace('"', '\\"') }}",
+                  "url": "{{ event.url }}",
+                  {% if event.time %}
+                  "startDate": "{{ day.date }}T{{ event.time }}",
+                  {% endif %}
+                  {% if event.group %}
+                  "organizer": {
+                    "@type": "Organization",
+                    "name": "{{ event.group | replace('"', '\\"') }}"
+                    {% if event.group_website %}
+                    ,"url": "{{ event.group_website }}"
+                    {% endif %}
+                  },
+                  {% endif %}
+                  "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode"
+                }
+              }
+              {% set event_count.value = event_count.value + 1 %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endif %}
+{% endblock %}

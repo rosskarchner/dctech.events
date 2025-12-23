@@ -70,6 +70,11 @@ def submit_group():
     yield {}
 
 @freezer.register_generator
+def virtual_events_page():
+    """Generate the virtual events page"""
+    yield {}
+
+@freezer.register_generator
 def newsletter_html():
     """Generate the HTML newsletter page"""
     yield {}

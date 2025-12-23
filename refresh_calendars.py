@@ -188,9 +188,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     base_url = get_base_url(event_response.text, event_response.url)
                     data = extruct.extract(event_response.text, base_url=base_url, syntaxes=['json-ld'])
 
-                    # Find Event schema
+                    # Find Event or BusinessEvent schema
                     for item in data.get('json-ld', []):
-                        if item.get('@type') == 'Event':
+                        if item.get('@type') in ['Event', 'BusinessEvent']:
                             event_data = item
                             break
 
@@ -217,16 +217,19 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                             if isinstance(loc, dict) and loc.get('@type') == 'Place':
                                 physical_location = loc
                                 break
-                        # If no physical location found, skip this event
+                        # If no physical location found, mark as virtual
                         if not physical_location:
-                            print(f"Skipping virtual-only event: {component.get('summary', 'Unknown')}")
-                            continue
-                        location = physical_location
+                            print(f"Marking as virtual event: {component.get('summary', 'Unknown')}")
+                            event['location_type'] = 'virtual'
+                            location = None
+                        else:
+                            location = physical_location
 
-                    # Skip virtual-only events
+                    # Mark virtual-only events
                     if isinstance(location, dict) and location.get('@type') == 'VirtualLocation':
-                        print(f"Skipping virtual-only event: {component.get('summary', 'Unknown')}")
-                        continue
+                        print(f"Marking as virtual event: {component.get('summary', 'Unknown')}")
+                        event['location_type'] = 'virtual'
+                        location = None
 
                     if isinstance(location, dict):
                         place_name = location.get('name', '')

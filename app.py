@@ -294,6 +294,42 @@ def filter_events_by_location(events, city=None, state=None):
 
     return filtered
 
+def is_virtual_event(event):
+    """
+    Determine if an event is virtual based on its location_type field.
+    
+    Args:
+        event: Event dictionary
+    
+    Returns:
+        True if event is virtual, False otherwise
+    """
+    return event.get('location_type') == 'virtual'
+
+def filter_virtual_events(events):
+    """
+    Filter events to return only virtual events.
+    
+    Args:
+        events: List of event dictionaries
+    
+    Returns:
+        List of virtual events
+    """
+    return [event for event in events if is_virtual_event(event)]
+
+def filter_in_person_events(events):
+    """
+    Filter events to return only in-person events (non-virtual).
+    
+    Args:
+        events: List of event dictionaries
+    
+    Returns:
+        List of in-person events
+    """
+    return [event for event in events if not is_virtual_event(event)]
+
 def get_iso_week_dates(year, week):
     """
     Get the start and end dates for an ISO week.
@@ -718,16 +754,38 @@ def generate_week_calendar_image(week_start, week_end, events):
 
 @app.route("/")
 def homepage():
-    # Get upcoming events
-    events = get_events()
+    # Get upcoming events and filter out virtual events
+    all_events = get_events()
+    events = filter_in_person_events(all_events)
     days = prepare_events_by_day(events, add_week_links=True)
 
     # Get base URL from config or use a default
     base_url = BASE_URL
 
-    # Get stats
+    # Get stats - count only in-person events
     stats = get_stats()
+    stats['upcoming_events'] = len(events)
+    
     return render_template('homepage.html',
+                          days=days,
+                          stats=stats,
+                          base_url=base_url)
+
+@app.route("/virtual/")
+def virtual_events_page():
+    """Show virtual events"""
+    # Get upcoming events and filter to only virtual events
+    all_events = get_events()
+    events = filter_virtual_events(all_events)
+    days = prepare_events_by_day(events, add_week_links=False)
+
+    # Get base URL from config or use a default
+    base_url = BASE_URL
+
+    # Get stats for virtual events only
+    stats = {'upcoming_events': len(events)}
+    
+    return render_template('virtual_events.html',
                           days=days,
                           stats=stats,
                           base_url=base_url)
@@ -935,6 +993,7 @@ def sitemap():
     # Create list of URLs with last modified dates
     urls = [
         {'loc': f"{base_url}/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/virtual/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/groups/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/locations/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/locations/dc/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
