@@ -308,6 +308,10 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     localend = end.astimezone(local_tz)
 
                     event_location = str(component.get('location', ''))
+                    
+                    # Skip location if it's a URL (already extracted for event_url)
+                    if event_location and ('http://' in event_location or 'https://' in event_location):
+                        event_location = ''
 
                     # Check if group has a URL override
                     final_url = group.get('url_override') if group and group.get('url_override') else event_url

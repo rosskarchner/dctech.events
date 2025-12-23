@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 import re
+from aws_location_utils import normalize_address_with_aws
 
 def extract_location_info(address):
     """Extract city and state from an address string."""
     if not address:
         return None, None
+
+    # Normalize the address using AWS first
+    address = normalize_address_with_aws(address)
 
     # Pattern to match: [anything], City, State [ZIP] [, USA]
     # Updated to accept any two-letter state code, not just DC/VA/MD

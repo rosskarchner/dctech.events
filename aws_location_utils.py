@@ -108,18 +108,11 @@ def _normalize_with_aws_suggest(address, places_client, bias_position=None):
         # Get the first (best) result
         result = response['ResultItems'][0]
         
-        # For Places (PlaceType available via nested Place object), use Title to preserve POI name
-        # Otherwise use the Address Label field
+        # Use the Label field which includes full address with city/state/zip
+        # This works for both POIs and regular addresses
         place_info = result.get('Place', {})
-        place_type = place_info.get('PlaceType', '')
-        
-        if place_type == 'PointOfInterest':
-            # Use Title which includes the POI name
-            address_text = result.get('Title', '')
-        else:
-            # Use the Label field for regular addresses
-            address_obj = place_info.get('Address', {})
-            address_text = address_obj.get('Label', '')
+        address_obj = place_info.get('Address', {})
+        address_text = address_obj.get('Label', '')
         
         if address_text:
             # Apply basic normalization to AWS result
@@ -224,20 +217,10 @@ def _normalize_with_aws(address, places_client, bias_position=None):
             # Get the first (best) result
             result = response['ResultItems'][0]
             
-            # For Points of Interest, use Title to preserve the place name
-            # For other address types, use the Label field
-            place_type = result.get('PlaceType', '')
-            if place_type == 'PointOfInterest':
-                # Title includes the POI name, e.g., "Open City (Open City at the National Cathedral)"
-                address_text = result.get('Title', '')
-            else:
-                # For regular addresses, use Label which is already well-formatted
-                address_obj = result.get('Address', {})
-                address_text = address_obj.get('Label', '')
-                
-                # If we extracted a place name from the input, prepend it to the address
-                if place_name and address_text:
-                    address_text = f"{place_name}, {address_text}"
+            # Use the Label field which includes full address with city/state/zip
+            # This works for both POIs and regular addresses
+            address_obj = result.get('Address', {})
+            address_text = address_obj.get('Label', '')
             
             if address_text:
                 # Apply basic normalization to AWS result
