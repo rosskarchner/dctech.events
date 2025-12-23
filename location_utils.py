@@ -10,13 +10,14 @@ def extract_location_info(address):
     # Normalize the address using AWS first
     address = normalize_address_with_aws(address)
 
-    # Pattern to match: [anything], City, State [ZIP] [, USA]
-    # Updated to accept any two-letter state code, not just DC/VA/MD
-    pattern = r'([^,]+),\s*([^,]+),\s*([A-Z]{2})(?:\s+\d{5})?(?:,\s*USA)?$'
+    # Pattern to match either:
+    # 1. [anything], City, State [ZIP] [, USA]  (full address with street)
+    # 2. City, State [ZIP] [, USA]              (just city and state)
+    pattern = r'(?:(?:[^,]+),\s*)?([^,]+),\s*([A-Z]{2})(?:\s+\d{5})?(?:,\s*USA)?$'
     match = re.search(pattern, address, re.IGNORECASE)
 
     if match:
-        _, city, state = match.groups()
+        city, state = match.groups()
         city = city.strip()
         state = state.upper()
 
