@@ -43,36 +43,46 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="time-hour">Time</label>
-                    <small>Leave blank for all-day or multi-day events</small>
-                    <div class="time-selector">
-                        <select id="time-hour" name="time-hour">
-                            <option value="">Hour</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                            <option value="7">7</option>
-                            <option value="8">8</option>
-                            <option value="9">9</option>
-                            <option value="10">10</option>
-                            <option value="11">11</option>
-                            <option value="12">12</option>
-                        </select>
-                        <select id="time-minute" name="time-minute">
-                            <option value="">Min</option>
-                            <option value="00">00</option>
-                            <option value="15">15</option>
-                            <option value="30">30</option>
-                            <option value="45">45</option>
-                        </select>
-                        <select id="time-ampm" name="time-ampm">
-                            <option value="">AM/PM</option>
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                        </select>
+                    <label>Event Timing <span class="required">*</span></label>
+                    <div class="timing-options">
+                        <label class="timing-option">
+                            <input type="radio" name="timing" value="specific" checked>
+                            <span class="timing-label">Specific Time</span>
+                            <div class="time-selector">
+                                <select id="time-hour" name="time-hour">
+                                    <option value="">Hour</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                    <option value="7">7</option>
+                                    <option value="8">8</option>
+                                    <option value="9">9</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                </select>
+                                <select id="time-minute" name="time-minute">
+                                    <option value="">Min</option>
+                                    <option value="00">00</option>
+                                    <option value="15">15</option>
+                                    <option value="30">30</option>
+                                    <option value="45">45</option>
+                                </select>
+                                <select id="time-ampm" name="time-ampm">
+                                    <option value="">AM/PM</option>
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                </select>
+                            </div>
+                        </label>
+
+                        <label class="timing-option">
+                            <input type="radio" name="timing" value="allday">
+                            <span class="timing-label">All-Day Event</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -107,13 +117,6 @@
                         <label for="cost">Cost</label>
                         <input type="text" id="cost" name="cost" maxlength="100"
                                placeholder="e.g., Free, $10, $5-$15">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="submitter_link">Your Link</label>
-                        <input type="url" id="submitter_link" name="submitter_link"
-                               placeholder="https://yoursite.com">
-                        <small>Link to your website or social profile</small>
                     </div>
                 </div>
             </details>
@@ -220,13 +223,53 @@
     font-size: 0.875rem;
 }
 
+.timing-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.timing-option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.timing-option:hover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.02);
+}
+
+.timing-option input[type="radio"] {
+    cursor: pointer;
+}
+
+.timing-option input[type="radio"]:checked {
+    accent-color: var(--color-primary);
+}
+
+.timing-option input[type="radio"]:checked ~ .timing-label {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.timing-label {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.timing-option input[type="radio"] {
+    width: auto;
+}
+
 .time-selector {
     display: flex;
     gap: var(--spacing-sm);
-}
-
-.time-selector select {
-    flex: 1;
 }
 
 .optional-details {

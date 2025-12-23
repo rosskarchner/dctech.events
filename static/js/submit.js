@@ -50,7 +50,12 @@ let userData = null;
 
 // Initialize on page load
 function initialize() {
-    initializeAuth();
+    // Check for dev preview mode (no OAuth required)
+    if (window.location.search.includes('dev=true')) {
+        showAuthenticatedState(true);
+    } else {
+        initializeAuth();
+    }
     setupEventListeners();
 }
 
@@ -119,6 +124,7 @@ function setupEventListeners() {
     const eventForm = document.getElementById('event-form');
     const cancelBtn = document.getElementById('cancel-btn');
     const submitAnotherBtn = document.getElementById('submit-another');
+    const timingRadios = document.querySelectorAll('input[name="timing"]');
 
     if (githubLoginBtn) {
         githubLoginBtn.addEventListener('click', handleGitHubLogin);
@@ -138,6 +144,30 @@ function setupEventListeners() {
         submitAnotherBtn.addEventListener('click', () => {
             document.getElementById('success-message').style.display = 'none';
             resetForm();
+        });
+    }
+
+    // Handle timing radio button changes
+    timingRadios.forEach(radio => {
+        radio.addEventListener('change', handleTimingChange);
+    });
+}
+
+/**
+ * Handle timing option change
+ */
+function handleTimingChange() {
+    const timingValue = document.querySelector('input[name="timing"]:checked').value;
+    const timeSelectors = document.querySelectorAll('.time-selector select');
+    
+    if (timingValue === 'specific') {
+        timeSelectors.forEach(select => {
+            select.disabled = false;
+        });
+    } else {
+        timeSelectors.forEach(select => {
+            select.disabled = true;
+            select.value = '';
         });
     }
 }
@@ -181,15 +211,23 @@ function handleGitHubLogin() {
 /**
  * Show authenticated state
  */
-function showAuthenticatedState() {
+function showAuthenticatedState(devMode = false) {
     const authStatus = document.getElementById('auth-status');
-    authStatus.className = 'auth-status authenticated';
-    authStatus.innerHTML = `
-        <p>✓ Signed in as <strong>${userData.login}</strong></p>
-        <button id="sign-out" class="btn btn-secondary">Sign Out</button>
-    `;
+    if (devMode) {
+        authStatus.className = 'auth-status authenticated';
+        authStatus.innerHTML = `
+            <p>✓ Dev Preview Mode (No authentication required)</p>
+        `;
+        userData = { login: 'dev-user' };
+    } else {
+        authStatus.className = 'auth-status authenticated';
+        authStatus.innerHTML = `
+            <p>✓ Signed in as <strong>${userData.login}</strong></p>
+            <button id="sign-out" class="btn btn-secondary">Sign Out</button>
+        `;
+        document.getElementById('sign-out').addEventListener('click', handleSignOut);
+    }
 
-    document.getElementById('sign-out').addEventListener('click', handleSignOut);
     document.getElementById('event-form').style.display = 'block';
     document.getElementById('auth-section').querySelector('p').style.display = 'none';
     
@@ -245,20 +283,19 @@ async function handleFormSubmit(e) {
         }
 
         // Collect form data
-        const city = document.getElementById('city').value.trim();
-        const state = document.getElementById('state').value;
-        
-        const formData = {
-            title: document.getElementById('title').value.trim(),
-            date: document.getElementById('date').value,
-            time: time24,
-            url: document.getElementById('url').value.trim(),
-            location: city && state ? `${city}, ${state}` : '',
-            end_date: document.getElementById('end_date').value || '',
-            cost: document.getElementById('cost').value.trim() || '',
-            submitter_link: document.getElementById('submitter_link').value.trim() || '',
-            submitted_by: userData.login
-        };
+         const city = document.getElementById('city').value.trim();
+         const state = document.getElementById('state').value;
+         
+         const formData = {
+             title: document.getElementById('title').value.trim(),
+             date: document.getElementById('date').value,
+             time: time24,
+             url: document.getElementById('url').value.trim(),
+             location: city && state ? `${city}, ${state}` : '',
+             end_date: document.getElementById('end_date').value || '',
+             cost: document.getElementById('cost').value.trim() || '',
+             submitted_by: userData.login
+         };
 
         // Validate data
         if (!formData.title || !formData.date || !formData.url || !formData.location) {
@@ -362,8 +399,7 @@ async function createPullRequest(eventData) {
 **Title:** ${eventData.title}
 **Date:** ${eventData.date}${eventData.time ? ' at ' + eventData.time : ''}
 ${eventData.end_date ? `**End Date:** ${eventData.end_date}\n` : ''}**URL:** ${eventData.url}
-${eventData.location ? `**Location:** ${eventData.location}\n` : ''}${eventData.cost ? `**Cost:** ${eventData.cost}\n` : ''}${eventData.submitter_link ? `**Submitted by:** ${eventData.submitter_link}\n` : ''}
-
+${eventData.location ? `**Location:** ${eventData.location}\n` : ''}${eventData.cost ? `**Cost:** ${eventData.cost}\n` : ''}
 This event was submitted via the web form by @${eventData.submitted_by}.`
     });
 
@@ -390,9 +426,6 @@ function generateYAML(data) {
         yaml += `cost: '${data.cost}'\n`;
     }
     yaml += `submitted_by: ${data.submitted_by}\n`;
-    if (data.submitter_link) {
-        yaml += `submitter_link: '${data.submitter_link}'\n`;
-    }
 
     return yaml;
 }
@@ -472,10 +505,17 @@ function setDefaultDateTime() {
     // Set the date field
     document.getElementById('date').value = dateString;
     
-    // Set time to 6:30 PM
+    // Set timing to "specific" and time to 6:30 PM
+    const specificTimingRadio = document.querySelector('input[name="timing"][value="specific"]');
+    if (specificTimingRadio) {
+        specificTimingRadio.checked = true;
+    }
     document.getElementById('time-hour').value = '6';
     document.getElementById('time-minute').value = '30';
     document.getElementById('time-ampm').value = 'PM';
+    document.querySelectorAll('.time-selector select').forEach(select => {
+        select.disabled = false;
+    });
 }
 
 /**
