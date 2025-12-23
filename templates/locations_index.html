@@ -5,9 +5,8 @@
 {% block content %}
 <div class="home-container">
     <section class="events-section">
-        <h2>Events by Location</h2>
+        <h2>Events by Region</h2>
         
-        <h3>Regions</h3>
         <ul>
             {% for region, count in location_stats.items() %}
                 <li>
@@ -17,20 +16,6 @@
                 </li>
             {% endfor %}
         </ul>
-        
-        {% if city_stats %}
-        <h3>Cities</h3>
-        <ul>
-            {% for city_state, count in city_stats.items() %}
-                {% set city, state = city_state.split(', ') %}
-                <li>
-                    <a href="/locations/{{ state.lower() }}/{{ city.lower().replace(' ', '-') }}/">
-                        {{ city_state }}
-                    </a> ({{ count }} events)
-                </li>
-            {% endfor %}
-        </ul>
-        {% endif %}
     </section>
 </div>
 {% endblock %}

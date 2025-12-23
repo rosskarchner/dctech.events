@@ -8,7 +8,6 @@ A platform for aggregating and displaying technology conferences and meetups in 
 
 - Python 3.10+ with pip
 - Node.js 20+ with npm
-- (Optional) AWS account with Location Services for enhanced address normalization
 
 ### Local Development
 
@@ -19,29 +18,14 @@ pip install -r requirements.txt
 npm install
 ```
 
-2. **Configure AWS Location Services (Optional)**:
-
-The calendar refresh script can use AWS Location Services to normalize addresses. This is optional - the script falls back to local normalization when AWS credentials are not available.
-
-To enable AWS Location Services:
-
-```bash
-export AWS_REGION=us-east-1
-export AWS_ACCESS_KEY_ID=your_access_key_id
-export AWS_SECRET_ACCESS_KEY=your_secret_access_key
-export AWS_LOCATION_INDEX_NAME=your_place_index_name
-```
-
-See [cloudformation/README.md](cloudformation/README.md) for setting up AWS infrastructure.
-
-3. **Build and run**:
+2. **Build and run**:
 
 ```bash
 make all          # Build everything
 python app.py     # Start dev server
 ```
 
-4. **Visit** `http://localhost:5000`
+3. **Visit** `http://localhost:5000`
 
 ## 📝 Adding Events
 
@@ -55,14 +39,14 @@ Visit `/submit/` or create a YAML file in `_single_events/` (format: `YYYY-MM-DD
 
 ## 🧹 Event Maintenance
 
-### Address Normalization
+### Address Handling
 
-Event addresses are automatically normalized using either:
+For aggregated events, the system extracts and displays city and state information only (e.g., "Arlington, VA"). This simplifies location handling and eliminates the need for complex address normalization. The `usaddress` library is used to accurately parse various address formats and extract city/state components.
 
-1. **AWS Location Services** (preferred): When AWS credentials are configured, addresses are geocoded and normalized using Amazon Location Service. Results are cached to minimize API calls.
-2. **Local Normalization** (fallback): When AWS is unavailable, a local algorithm removes redundant information like zip codes, country names, and duplicate city/state entries.
-
-The system caches AWS normalization results in `_cache/locations.json` but never caches fallback results, ensuring all addresses are eventually normalized with AWS once credentials are available.
+Address extraction works with:
+- Full street addresses: "1630 7th St NW, Washington, DC 20001" → "Washington, DC"
+- City and state: "Arlington, VA 22201" → "Arlington, VA"
+- Addresses with venue names: "The White House, 1600 Pennsylvania Avenue NW, Washington, DC" → "Washington, DC"
 
 ### Automatic Pruning
 

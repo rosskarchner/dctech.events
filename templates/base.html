@@ -55,7 +55,6 @@
             <nav aria-label="Main navigation">
                 {% if request.path == '/' %}<span aria-current="page">In-person</span>{% else %}<a href="/">In-person</a>{% endif %} |
                 {% if request.path == '/virtual/' %}<span aria-current="page">Virtual</span>{% else %}<a href="/virtual/">Virtual</a>{% endif %} |
-                {% if request.path == '/locations/' %}<span aria-current="page">Cities</span>{% else %}<a href="/locations/">Cities</a>{% endif %} |
                 {% if request.path == '/locations/dc/' %}<span aria-current="page">DC</span>{% else %}<a href="/locations/dc/">DC</a>{% endif %} |
                 {% if request.path == '/locations/va/' %}<span aria-current="page">VA</span>{% else %}<a href="/locations/va/">VA</a>{% endif %} |
                 {% if request.path == '/locations/md/' %}<span aria-current="page">MD</span>{% else %}<a href="/locations/md/">MD</a>{% endif %} |

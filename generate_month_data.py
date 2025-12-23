@@ -11,7 +11,6 @@ import sys
 import calendar as cal_module
 import dateparser
 import json
-from address_utils import normalize_address
 from location_utils import extract_location_info
 
 # Load configuration
@@ -245,7 +244,7 @@ def event_to_dict(event, group=None):
         event_dict = {
             'title': event_summary,
             'description': event_description,
-            'location': normalize_address(event_location),
+            'location': event_location,
             'start_date': localstart.strftime('%Y-%m-%d'),
             'start_time': localstart.strftime('%H:%M'),
             'end_date': localend.strftime('%Y-%m-%d'),
@@ -304,10 +303,6 @@ def load_single_events():
                 event = yaml.safe_load(f)
                 # Add the event ID (filename without extension)
                 event['id'] = os.path.splitext(os.path.basename(file_path))[0]
-
-                # Normalize location if present
-                if 'location' in event:
-                    event['location'] = normalize_address(event['location'])
 
                 # Map submitted_by to submitter_name and submitter_link
                 if 'submitted_by' in event:

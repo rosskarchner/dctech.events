@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 import extruct
 from w3lib.html import get_base_url
-from aws_location_utils import normalize_address_with_aws
+from location_utils import extract_location_info
 from urllib.parse import urlparse
 import recurring_ical_events
 
@@ -232,38 +232,57 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         location = None
 
                     if isinstance(location, dict):
-                        place_name = location.get('name', '')
                         address = location.get('address', {})
 
                         # Handle address object
                         if isinstance(address, dict):
-                            street = address.get('streetAddress', '')
                             locality = address.get('addressLocality', '')
                             region = address.get('addressRegion', '')
 
-                            # Build formatted address
-                            address_parts = []
-                            if street: address_parts.append(street)
-                            if locality: address_parts.append(locality)
-                            if region: address_parts.append(region)
-                            formatted_address = ', '.join(address_parts)
-
-                            if place_name and formatted_address:
-                                event['location'] = normalize_address_with_aws(f"{place_name}, {formatted_address}")
-                            elif place_name:
-                                event['location'] = normalize_address_with_aws(place_name)
-                            elif formatted_address:
-                                event['location'] = normalize_address_with_aws(formatted_address)
+                            # If we have structured locality and region, use them directly
+                            if locality and region:
+                                # Normalize full state names to abbreviations
+                                state_map = {
+                                    'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR',
+                                    'CALIFORNIA': 'CA', 'COLORADO': 'CO', 'CONNECTICUT': 'CT', 'DELAWARE': 'DE',
+                                    'FLORIDA': 'FL', 'GEORGIA': 'GA', 'HAWAII': 'HI', 'IDAHO': 'ID',
+                                    'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA', 'KANSAS': 'KS',
+                                    'KENTUCKY': 'KY', 'LOUISIANA': 'LA', 'MAINE': 'ME', 'MARYLAND': 'MD',
+                                    'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS',
+                                    'MISSOURI': 'MO', 'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV',
+                                    'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ', 'NEW MEXICO': 'NM', 'NEW YORK': 'NY',
+                                    'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH', 'OKLAHOMA': 'OK',
+                                    'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC',
+                                    'SOUTH DAKOTA': 'SD', 'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT',
+                                    'VERMONT': 'VT', 'VIRGINIA': 'VA', 'WASHINGTON': 'WA', 'WEST VIRGINIA': 'WV',
+                                    'WISCONSIN': 'WI', 'WYOMING': 'WY', 'DISTRICT OF COLUMBIA': 'DC'
+                                }
+                                
+                                state = region.upper()
+                                if state in state_map:
+                                    state = state_map[state]
+                                
+                                # Handle DC special case
+                                city = 'Washington' if state == 'DC' else locality
+                                
+                                event['location'] = f"{city}, {state}"
+                            else:
+                                event['location'] = ''
                         else:
-                            # Handle string address
-                            if place_name and address:
-                                event['location'] = normalize_address_with_aws(f"{place_name}, {address}")
-                            elif place_name:
-                                event['location'] = normalize_address_with_aws(place_name)
-                            elif address:
-                                event['location'] = normalize_address_with_aws(address)
+                            # Handle string address fallback - try to extract city/state
+                            location_str = str(address) if address else ''
+                            city, state = extract_location_info(location_str)
+                            if city and state:
+                                event['location'] = f"{city}, {state}"
+                            else:
+                                event['location'] = location_str
                     else:
-                        event['location'] = normalize_address_with_aws(str(location)) if location else ''
+                        location_str = str(location) if location else ''
+                        city, state = extract_location_info(location_str)
+                        if city and state:
+                            event['location'] = f"{city}, {state}"
+                        else:
+                            event['location'] = location_str
 
                     # Handle submitter information if present
                     submitter = event_data.get('submitter', {})
@@ -315,6 +334,11 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     # Skip location if it's a URL (already extracted for event_url)
                     if event_location and ('http://' in event_location or 'https://' in event_location):
                         event_location = ''
+                    
+                    # Normalize location to city, state format
+                    city, state = extract_location_info(event_location)
+                    if city and state:
+                        event_location = f"{city}, {state}"
 
                     # Check if group has a URL override
                     final_url = group.get('url_override') if group and group.get('url_override') else event_url
@@ -322,7 +346,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     event = {
                         'title': str(component.get('summary', '')),
                         'description': str(component.get('description', '')),
-                        'location': normalize_address_with_aws(event_location),
+                        'location': event_location,
                         'start_date': localstart.strftime('%Y-%m-%d'),
                         'start_time': localstart.strftime('%H:%M'),
                         'end_date': localend.strftime('%Y-%m-%d'),

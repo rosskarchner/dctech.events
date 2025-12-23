@@ -850,36 +850,21 @@ def week_page(week_id):
 
 @app.route("/locations/")
 def locations_index():
-    """Show available locations with event counts"""
+    """Show available regions with event counts"""
     events = get_events()
     
-    # Count events by location
+    # Count events by region only
     location_stats = {}
-    cities = set()
     
     for event in events:
         city, state = extract_location_info(event.get('location', ''))
         if state in ['DC', 'VA', 'MD']:
-            # Add to region count
             region = get_region_name(state)
             location_stats[region] = location_stats.get(region, 0) + 1
-            
-            # Add to city count (skip Washington, DC since it's same as DC region)
-            if city and not (city == 'Washington' and state == 'DC'):
-                city_key = f"{city}, {state}"
-                cities.add((city, state))
-    
-    # Get city counts
-    city_stats = {}
-    for city, state in cities:
-        city_events = filter_events_by_location(events, city=city, state=state)
-        if len(city_events) > 0:
-            city_name = city if state != 'DC' else 'Washington'
-            city_stats[f"{city_name}, {state}"] = len(city_events)
     
     return render_template('locations_index.html',
                           location_stats=location_stats,
-                          city_stats=city_stats)
+                          city_stats={})
 
 @app.route("/groups/")
 def approved_groups_list():
@@ -937,28 +922,6 @@ def region_page(state):
                           stats=stats,
                           location_name=region_name,
                           location_type='region')
-
-@app.route("/locations/<state>/<city>/")
-def city_page(state, city):
-    """Show events for a specific city"""
-    state = state.upper()
-    if state not in ['DC', 'VA', 'MD']:
-        return "Region not found", 404
-
-    events = get_events()
-    city_name = city.replace('-', ' ').title()
-    filtered_events = filter_events_by_location(events, city=city_name, state=state)
-    days = prepare_events_by_day(filtered_events)
-    if state == 'DC':
-        city_name = 'Washington DC'
-    
-    stats = {'upcoming_events': len(filtered_events)}
-    
-    return render_template('location_page.html',
-                          days=days,
-                          stats=stats,
-                          location_name=f"{city_name}, {state}",
-                          location_type='city')
 
 @app.route("/submit/")
 def submit():

@@ -12,6 +12,9 @@ pyyaml
 icalendar
 requests
 
+# Address parsing
+usaddress
+
 # Calendar aggregation (used by refresh_calendars.py)
 extruct
 w3lib

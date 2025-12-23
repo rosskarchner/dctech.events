@@ -245,12 +245,15 @@ async function handleFormSubmit(e) {
         }
 
         // Collect form data
+        const city = document.getElementById('city').value.trim();
+        const state = document.getElementById('state').value;
+        
         const formData = {
             title: document.getElementById('title').value.trim(),
             date: document.getElementById('date').value,
             time: time24,
             url: document.getElementById('url').value.trim(),
-            location: document.getElementById('location').value.trim() || '',
+            location: city && state ? `${city}, ${state}` : '',
             end_date: document.getElementById('end_date').value || '',
             cost: document.getElementById('cost').value.trim() || '',
             submitter_link: document.getElementById('submitter_link').value.trim() || '',
@@ -258,7 +261,7 @@ async function handleFormSubmit(e) {
         };
 
         // Validate data
-        if (!formData.title || !formData.date || !formData.url) {
+        if (!formData.title || !formData.date || !formData.url || !formData.location) {
             throw new Error('Please fill in all required fields');
         }
 
