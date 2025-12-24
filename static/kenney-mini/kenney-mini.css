@@ -1,0 +1,9 @@
+/* kenney-mini */
+@font-face {
+	font-family: "Kenney Mini";
+	font-style: normal;
+	font-weight: 400;
+	font-stretch: 100%;
+	src: local("Kenney Mini Regular"), local("Kenney-Mini"), url(kenney-mini.woff2) format("woff2");
+}
+
