@@ -54,7 +54,6 @@ h1.logo {
     font-size: 1.75rem; /* Smaller default for mobile */
     font-weight: 700;
     letter-spacing: -0.025em;
-    filter: drop-shadow(0 0 0.75rem rgb(178, 255, 250));
 }
 
 @media (min-width: 768px) {
