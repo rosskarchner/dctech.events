@@ -112,12 +112,19 @@ h2.day-heading a:hover {
 h3.time-heading {
     margin: 0;
     padding: var(--spacing-xs) 0;
-    width: 90px;
     font-size: 0.875rem;
-    text-align: right;
     color: var(--color-text-lighter);
     font-weight: 400;
-    float: left;
+    /* Mobile-first: no float, left-aligned */
+    text-align: left;
+}
+
+@media (min-width: 768px) {
+    h3.time-heading {
+        width: 90px;
+        text-align: right;
+        float: left;
+    }
 }
 
 /* Links */
@@ -199,13 +206,20 @@ nav [aria-current="page"] {
 
 /* Events */
 .event {
-    margin-left: 100px;
     line-height: 1.5;
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-sm);
     background: var(--color-background);
     border-radius: calc(var(--border-radius) * 0.75);
     transition: transform 0.2s, box-shadow 0.2s;
+    /* Mobile-first: no left margin */
+    margin-left: 0;
+}
+
+@media (min-width: 768px) {
+    .event {
+        margin-left: 100px;
+    }
 }
 
 .even .event {
