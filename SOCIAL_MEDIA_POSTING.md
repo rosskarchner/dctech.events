@@ -357,9 +357,40 @@ https://dctech.events
 
 ---
 
-## Scheduling Daily Posts
+## Automated Posting with GitHub Actions
 
-Both scripts can be scheduled to run daily using cron or GitHub Actions.
+This repository includes a GitHub Actions workflow that automatically posts daily event summaries at 8am EST.
+
+### Setup
+
+The workflow is located at `.github/workflows/social-media-posts.yml` and requires the following secrets to be configured in your GitHub repository:
+
+1. Go to your repository Settings → Secrets and variables → Actions
+2. Add the following secrets:
+   - `MASTODON_ACCESS_TOKEN` - Your Mastodon OAuth token
+   - `MASTODON_INSTANCE_URL` - Your Mastodon instance URL (e.g., `https://mastodon.social`)
+   - `BLUESKY_HANDLE` - Your Bluesky handle (e.g., `username.bsky.social`)
+   - `BLUESKY_APP_PASSWORD` - Your Bluesky app password
+
+### Workflow Features
+
+- **Scheduled posting**: Runs daily at 8am EST (12:00 UTC)
+- **Manual triggering**: Can be triggered manually with optional custom date
+- **Error resilience**: Continues even if one platform fails (`continue-on-error`)
+- **Fresh data**: Generates event data before posting
+
+### Manual Triggering
+
+To manually trigger the workflow:
+
+1. Go to Actions tab in your GitHub repository
+2. Select "Daily Social Media Posts" workflow
+3. Click "Run workflow"
+4. Optionally specify a custom date (YYYY-MM-DD format)
+
+---
+
+## Scheduling Daily Posts (Alternative Methods)
 
 ### Example Cron Job
 
@@ -371,7 +402,7 @@ Both scripts can be scheduled to run daily using cron or GitHub Actions.
 5 8 * * * cd /path/to/dctech.events && /usr/bin/python3 post_to_bluesky.py
 ```
 
-### Example GitHub Actions Workflow
+### Example Custom GitHub Actions Workflow
 
 ```yaml
 name: Daily Social Media Posts

@@ -103,15 +103,25 @@ https://dctech.events
 
 ## Automation
 
-### Example Cron
+### GitHub Actions (Included)
+The repository includes `.github/workflows/social-media-posts.yml` that:
+- Runs daily at 8am EST (12:00 UTC)
+- Can be manually triggered with custom dates
+- Requires secrets: `MASTODON_ACCESS_TOKEN`, `MASTODON_INSTANCE_URL`, `BLUESKY_HANDLE`, `BLUESKY_APP_PASSWORD`
+
+To use:
+1. Add secrets in GitHub repository Settings → Secrets and variables → Actions
+2. Workflow runs automatically every day
+3. Manual trigger: Actions tab → "Daily Social Media Posts" → Run workflow
+
+### Alternative: Cron
 ```cron
 # Daily at 8 AM Eastern
 0 8 * * * cd /path/to/repo && python post_to_mastodon.py
 5 8 * * * cd /path/to/repo && python post_to_bluesky.py
 ```
 
-### Example GitHub Actions
-See `SOCIAL_MEDIA_POSTING.md` for full workflow example.
+For detailed GitHub Actions setup, see `SOCIAL_MEDIA_POSTING.md`.
 
 ## Testing
 
