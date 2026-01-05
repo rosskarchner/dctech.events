@@ -1,6 +1,5 @@
 name: Northern Virginia Linux Users Group (NoVaLUG)
 website: https://novalug.org/
-ical: https://novalug.org/ics/novalug_calendar.ics
+ical: https://mobilizon.us/@novalug/feed/ics
 active: true
-url_override: https://novalug.org/meetings/
 scan_for_metadata: false
