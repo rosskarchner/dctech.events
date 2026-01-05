@@ -955,5 +955,48 @@ class TestApp(unittest.TestCase):
         finally:
             pass
 
+    def test_daily_schedule_feature(self):
+        """Test that multi-day events with daily_schedule display correctly"""
+        from app import prepare_events_by_day
+        
+        # Create a multi-day event with daily schedule
+        start_date = self.today + timedelta(days=1)
+        end_date = start_date + timedelta(days=2)
+        
+        events = [
+            {
+                'date': start_date.strftime('%Y-%m-%d'),
+                'end_date': end_date.strftime('%Y-%m-%d'),
+                'title': 'Conference with Daily Schedule',
+                'daily_schedule': {
+                    (start_date + timedelta(days=1)).strftime('%Y-%m-%d'): {
+                        'description': 'Day 2: 9:00 AM - 5:00 PM'
+                    },
+                    end_date.strftime('%Y-%m-%d'): {
+                        'description': 'Day 3: 10:00 AM - 2:00 PM'
+                    }
+                }
+            }
+        ]
+        
+        days = prepare_events_by_day(events)
+        
+        # Should have 3 days
+        self.assertEqual(len(days), 3)
+        
+        # First day should not have daily schedule info
+        first_day_event = days[0]['time_slots'][0]['events'][0]
+        self.assertNotIn('daily_schedule_info', first_day_event)
+        
+        # Second day should have daily schedule info
+        second_day_event = days[1]['time_slots'][0]['events'][0]
+        self.assertIn('daily_schedule_info', second_day_event)
+        self.assertEqual(second_day_event['daily_schedule_info'], 'Day 2: 9:00 AM - 5:00 PM')
+        
+        # Third day should have daily schedule info
+        third_day_event = days[2]['time_slots'][0]['events'][0]
+        self.assertIn('daily_schedule_info', third_day_event)
+        self.assertEqual(third_day_event['daily_schedule_info'], 'Day 3: 10:00 AM - 2:00 PM')
+
 if __name__ == '__main__':
     unittest.main()
