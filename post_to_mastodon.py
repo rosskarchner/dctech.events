@@ -118,7 +118,10 @@ def get_events_for_date(events, target_date):
 
 def format_event_line(event, max_length=100):
     """
-    Format a single event as a line of text.
+    Format a single event as a line of text with clickable link.
+    
+    For Mastodon, we include the URL after the title in plain text,
+    and Mastodon will automatically make it clickable.
     
     Args:
         event: Event dictionary
@@ -128,25 +131,29 @@ def format_event_line(event, max_length=100):
         Formatted string for the event
     """
     title = event.get('title', 'Untitled Event')
-    event_time = event.get('time', '')
+    url = event.get('url', '')
     
-    # Format time if available
-    if event_time and isinstance(event_time, str) and ':' in event_time:
-        try:
-            time_obj = datetime.strptime(event_time, '%H:%M').time()
-            time_str = time_obj.strftime('%-I:%M%p').lower()
-            event_line = f"• {time_str} - {title}"
-        except ValueError:
-            event_line = f"• {title}"
-    elif isinstance(event_time, dict):
-        # Multi-day event with per-day times
-        event_line = f"• {title}"
+    # Format event line without time, but with URL
+    if url:
+        event_line = f"• {title} {url}"
     else:
         event_line = f"• {title}"
     
     # Truncate if too long
     if len(event_line) > max_length:
-        event_line = event_line[:max_length-3] + "..."
+        # Try to preserve the URL if possible
+        if url:
+            # Calculate space needed for URL and ellipsis
+            url_with_space = f" {url}"
+            available_for_title = max_length - len(url_with_space) - len("• ") - 3  # 3 for "..."
+            if available_for_title > 10:  # Minimum reasonable title length
+                truncated_title = title[:available_for_title] + "..."
+                event_line = f"• {truncated_title}{url_with_space}"
+            else:
+                # URL too long, just truncate everything
+                event_line = event_line[:max_length-3] + "..."
+        else:
+            event_line = event_line[:max_length-3] + "..."
     
     return event_line
 

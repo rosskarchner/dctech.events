@@ -125,6 +125,9 @@ def format_event_line(event, max_length=80):
     """
     Format a single event as a line of text.
     
+    For Bluesky, we just format the title without the URL here.
+    The URL will be added as a facet in the post creation.
+    
     Args:
         event: Event dictionary
         max_length: Maximum length for the event line
@@ -133,21 +136,9 @@ def format_event_line(event, max_length=80):
         Formatted string for the event
     """
     title = event.get('title', 'Untitled Event')
-    event_time = event.get('time', '')
     
-    # Format time if available
-    if event_time and isinstance(event_time, str) and ':' in event_time:
-        try:
-            time_obj = datetime.strptime(event_time, '%H:%M').time()
-            time_str = time_obj.strftime('%-I:%M%p').lower()
-            event_line = f"• {time_str} - {title}"
-        except ValueError:
-            event_line = f"• {title}"
-    elif isinstance(event_time, dict):
-        # Multi-day event with per-day times
-        event_line = f"• {title}"
-    else:
-        event_line = f"• {title}"
+    # Format event line without time
+    event_line = f"• {title}"
     
     # Truncate if too long
     if len(event_line) > max_length:
@@ -158,7 +149,7 @@ def format_event_line(event, max_length=80):
 
 def create_bluesky_post(events, target_date, base_url):
     """
-    Create a Bluesky post text for the events.
+    Create a Bluesky post text with facets for clickable links.
     
     Args:
         events: List of events
@@ -166,7 +157,7 @@ def create_bluesky_post(events, target_date, base_url):
         base_url: Base URL of the website
     
     Returns:
-        Post text string
+        Tuple of (post_text, facets) where facets is a list of link facets
     """
     # Format date (shorter for Bluesky's limit)
     date_str = target_date.strftime('%b %-d')
@@ -174,34 +165,62 @@ def create_bluesky_post(events, target_date, base_url):
     # Start building the post
     intro = f"📅 DC tech events today ({date_str}):\n\n"
     
-    # Calculate how much space we have for events
-    url_line = f"\n\n{base_url}"
-    overhead = len(intro) + len(url_line)
-    available_chars = BLUESKY_CHAR_LIMIT - overhead - 30  # 30 char buffer
+    # We'll build the text and track facets (clickable links)
+    post_parts = [intro]
+    facets = []
     
-    # Add events
-    event_lines = []
-    current_length = 0
+    # Add events with clickable titles
     events_shown = 0
-    
-    for event in events[:8]:  # Limit to first 8 events (shorter limit than Mastodon)
-        event_line = format_event_line(event, max_length=70)  # Shorter lines
-        line_length = len(event_line) + 1  # +1 for newline
+    for event in events[:8]:  # Limit to first 8 events
+        title = event.get('title', 'Untitled Event')
+        url = event.get('url', '')
         
-        if current_length + line_length > available_chars:
-            remaining = len(events) - events_shown
-            if remaining > 0:
-                event_lines.append(f"...+{remaining} more")
-            break
+        # Calculate current position in text
+        current_text = "".join(post_parts)
         
-        event_lines.append(event_line)
-        current_length += line_length
+        # Add bullet and title
+        event_line = f"• {title}\n"
+        
+        # If we have a URL, create a facet for the title
+        if url:
+            # Find the byte positions for the title (not including bullet)
+            title_start = len(current_text.encode('utf-8')) + len("• ".encode('utf-8'))
+            title_end = title_start + len(title.encode('utf-8'))
+            
+            facets.append({
+                'index': {
+                    'byteStart': title_start,
+                    'byteEnd': title_end
+                },
+                'features': [{
+                    '$type': 'app.bsky.richtext.facet#link',
+                    'uri': url
+                }]
+            })
+        
+        post_parts.append(event_line)
         events_shown += 1
     
-    # Combine all parts
-    post_text = intro + "\n".join(event_lines) + url_line
+    # Add base URL at the end
+    post_parts.append(f"\n{base_url}")
     
-    return post_text
+    # Create facet for the base URL
+    final_text = "".join(post_parts)
+    base_url_start = len(final_text.encode('utf-8')) - len(base_url.encode('utf-8'))
+    base_url_end = len(final_text.encode('utf-8'))
+    
+    facets.append({
+        'index': {
+            'byteStart': base_url_start,
+            'byteEnd': base_url_end
+        },
+        'features': [{
+            '$type': 'app.bsky.richtext.facet#link',
+            'uri': base_url
+        }]
+    })
+    
+    return final_text, facets
 
 
 def create_bluesky_session(handle, app_password):
@@ -247,12 +266,13 @@ def create_bluesky_session(handle, app_password):
         return None, None
 
 
-def post_to_bluesky(post_text, dry_run=False):
+def post_to_bluesky(post_text, facets=None, dry_run=False):
     """
     Post to Bluesky using AT Protocol.
     
     Args:
         post_text: Text content to post
+        facets: List of facets (for clickable links, mentions, etc.)
         dry_run: If True, print what would be posted without actually posting
     
     Returns:
@@ -264,6 +284,8 @@ def post_to_bluesky(post_text, dry_run=False):
         print(f"Handle: {handle}")
         print(f"Post length: {len(post_text)} characters")
         print(f"\n{post_text}")
+        if facets:
+            print(f"\nWith {len(facets)} clickable link(s)")
         print("\n=== End of dry run ===\n")
         return True
     
@@ -288,6 +310,10 @@ def post_to_bluesky(post_text, dry_run=False):
         'text': post_text,
         'createdAt': now,
     }
+    
+    # Add facets if provided (for clickable links)
+    if facets:
+        post_record['facets'] = facets
     
     # Prepare the full record create request
     create_record_data = {
@@ -374,11 +400,11 @@ def main():
     
     print(f"Found {len(events)} event(s) for {target_date}")
     
-    # Create post text
-    post_text = create_bluesky_post(events, target_date, BASE_URL)
+    # Create post text with facets
+    post_text, facets = create_bluesky_post(events, target_date, BASE_URL)
     
     # Post to Bluesky
-    success = post_to_bluesky(post_text, dry_run=args.dry_run)
+    success = post_to_bluesky(post_text, facets=facets, dry_run=args.dry_run)
     
     return 0 if success else 1
 

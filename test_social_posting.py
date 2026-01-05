@@ -96,48 +96,47 @@ class TestEventFiltering(unittest.TestCase):
 class TestEventFormatting(unittest.TestCase):
     """Test event formatting for both scripts"""
     
-    def test_format_event_with_time(self):
-        """Test formatting event with time"""
+    def test_format_event_with_url_mastodon(self):
+        """Test formatting event with URL for Mastodon"""
         event = {
             'title': 'Python Meetup',
-            'time': '18:30',
+            'url': 'https://example.com/event',
         }
         result = format_event_line(event)
-        self.assertIn('6:30pm', result)
         self.assertIn('Python Meetup', result)
+        self.assertIn('https://example.com/event', result)
         self.assertIn('•', result)
     
-    def test_format_event_without_time(self):
-        """Test formatting event without time"""
+    def test_format_event_without_url_mastodon(self):
+        """Test formatting event without URL for Mastodon"""
         event = {
             'title': 'All Day Event',
-            'time': '',
         }
         result = format_event_line(event)
         self.assertIn('All Day Event', result)
         self.assertIn('•', result)
-        self.assertNotIn('pm', result)
-        self.assertNotIn('am', result)
     
     def test_format_event_truncation(self):
         """Test that long event titles are truncated"""
         event = {
             'title': 'A Very Long Event Title That Exceeds The Maximum Length Allowed For Display',
-            'time': '10:00',
+            'url': 'https://example.com/event',
         }
         result = format_event_line(event, max_length=50)
         self.assertLessEqual(len(result), 50)
         self.assertIn('...', result)
     
-    def test_format_event_dict_time(self):
-        """Test formatting event with dict time (multi-day)"""
+    def test_format_event_bluesky_simple(self):
+        """Test formatting event for Bluesky (no URL in text)"""
         event = {
             'title': 'Multi-Day Event',
-            'time': {'2026-01-15': '10:00', '2026-01-16': '14:00'},
+            'url': 'https://example.com/event',
         }
-        result = format_event_line(event)
+        result = format_event_line_bsky(event)
         self.assertIn('Multi-Day Event', result)
         self.assertIn('•', result)
+        # Bluesky format shouldn't include URL in text (uses facets instead)
+        self.assertNotIn('https://', result)
     
     def test_bluesky_format_shorter_max_length(self):
         """Test that Bluesky uses shorter max length by default"""
@@ -188,21 +187,25 @@ class TestPostCreation(unittest.TestCase):
     
     def test_bluesky_post_structure(self):
         """Test Bluesky post has correct structure"""
-        post = create_bluesky_post(self.events, self.target_date, self.base_url)
+        post_text, facets = create_bluesky_post(self.events, self.target_date, self.base_url)
         
         # Should contain emoji, shorter date, events, and URL
-        self.assertIn('📅', post)
-        self.assertIn('Jan 15', post)
-        self.assertIn('Event 1', post)
-        self.assertIn('Event 2', post)
-        self.assertIn('Event 3', post)
-        self.assertIn(self.base_url, post)
+        self.assertIn('📅', post_text)
+        self.assertIn('Jan 15', post_text)
+        self.assertIn('Event 1', post_text)
+        self.assertIn('Event 2', post_text)
+        self.assertIn('Event 3', post_text)
+        self.assertIn(self.base_url, post_text)
+        
+        # Should have facets for clickable links
+        self.assertIsNotNone(facets)
+        self.assertIsInstance(facets, list)
     
     def test_mastodon_post_length(self):
         """Test Mastodon post respects character limit"""
         # Create many events to test truncation
         many_events = [
-            {'title': f'Event {i}', 'time': '10:00'}
+            {'title': f'Event {i}', 'url': 'https://example.com'}
             for i in range(20)
         ]
         post = create_mastodon_post(many_events, self.target_date, self.base_url)
@@ -215,19 +218,19 @@ class TestPostCreation(unittest.TestCase):
         """Test Bluesky post respects character limit"""
         # Create many events to test truncation
         many_events = [
-            {'title': f'Event {i}', 'time': '10:00'}
+            {'title': f'Event {i}', 'url': 'https://example.com'}
             for i in range(20)
         ]
-        post = create_bluesky_post(many_events, self.target_date, self.base_url)
+        post_text, facets = create_bluesky_post(many_events, self.target_date, self.base_url)
         
         # Should be under 300 character limit
-        self.assertLessEqual(len(post), 300)
-        self.assertIn(self.base_url, post)
+        self.assertLessEqual(len(post_text), 300)
+        self.assertIn(self.base_url, post_text)
     
     def test_bluesky_shorter_than_mastodon(self):
         """Test that Bluesky posts are generally shorter due to limit"""
         post_mastodon = create_mastodon_post(self.events, self.target_date, self.base_url)
-        post_bluesky = create_bluesky_post(self.events, self.target_date, self.base_url)
+        post_bluesky, _ = create_bluesky_post(self.events, self.target_date, self.base_url)
         
         # Bluesky should use abbreviated date and be more concise
         self.assertIn('January', post_mastodon)
@@ -246,7 +249,7 @@ class TestEdgeCases(unittest.TestCase):
         
         # Should still create valid posts (though probably not useful)
         mastodon_post = create_mastodon_post(events, target_date, base_url)
-        bluesky_post = create_bluesky_post(events, target_date, base_url)
+        bluesky_post, bluesky_facets = create_bluesky_post(events, target_date, base_url)
         
         self.assertIn(base_url, mastodon_post)
         self.assertIn(base_url, bluesky_post)
@@ -272,18 +275,18 @@ class TestEdgeCases(unittest.TestCase):
         events = [
             {
                 'title': 'C++ & Python: A Talk',
-                'time': '18:00',
+                'url': 'https://example.com/cpp',
             },
             {
                 'title': 'Event with "Quotes"',
-                'time': '19:00',
+                'url': 'https://example.com/quotes',
             },
         ]
         target_date = date(2026, 1, 15)
         base_url = 'https://dctech.events'
         
         mastodon_post = create_mastodon_post(events, target_date, base_url)
-        bluesky_post = create_bluesky_post(events, target_date, base_url)
+        bluesky_post, _ = create_bluesky_post(events, target_date, base_url)
         
         # Should handle special characters gracefully
         self.assertIn('C++', mastodon_post)
