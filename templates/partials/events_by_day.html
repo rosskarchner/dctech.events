@@ -20,6 +20,9 @@
                                 <div class="h-event event">
                                     <a class="u-url p-name" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>{% if event.display_title != event.title %} <span class="p-summary">{{ event.display_title | replace(event.title, '') }}</span>{% endif %}
                                     {% if event.time %}<time class="dt-start" datetime="{{ day.date }}T{{ event.time }}">{{ event.formatted_time }}</time>{% endif %}
+                                    {% if event.daily_schedule_info %}
+                                        <div class="daily-schedule-info">{{ event.daily_schedule_info }}</div>
+                                    {% endif %}
                                     <div class="event-details">
                                         {% if event.location %}
                                             <div class="p-location event-location">

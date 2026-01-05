@@ -202,6 +202,14 @@ def prepare_events_by_day(events, add_week_links=False):
                 event_copy['display_title'] = f"{event['title']} (continuing)"
             else:
                 event_copy['display_title'] = event['title']
+            
+            # Check if there's a daily schedule for this specific day
+            daily_schedule = event.get('daily_schedule', {})
+            if daily_schedule and day_key in daily_schedule:
+                day_schedule = daily_schedule[day_key]
+                # Add schedule description to display title if provided
+                if 'description' in day_schedule:
+                    event_copy['daily_schedule_info'] = day_schedule['description']
 
             # Create time slot if it doesn't exist
             if time_key not in events_by_day[day_key]['time_slots']:
