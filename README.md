@@ -37,6 +37,24 @@ Visit `/submit-group/` or create a YAML file in `_groups/` with your group's RSS
 
 Visit `/submit/` or create a YAML file in `_single_events/` (format: `YYYY-MM-DD-event-title.yaml`).
 
+#### Multi-Day Events with Different Times Per Day
+
+For multi-day events where the time varies by day, use a dictionary for the `time` field with date keys:
+
+```yaml
+title: Data Center World 2026
+date: '2026-04-20'
+end_date: '2026-04-23'
+url: https://datacenterworld.com
+location: Washington, DC
+time:
+  '2026-04-21': '14:00'
+  '2026-04-22': '10:00'
+  '2026-04-23': '10:00'
+```
+
+Each date should be in `YYYY-MM-DD` format with the time in `HH:MM` (24-hour) format. Days not specified in the dictionary will display as "All Day" events.
+
 ## 🧹 Event Maintenance
 
 ### Address Handling

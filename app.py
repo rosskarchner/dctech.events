@@ -167,12 +167,17 @@ def prepare_events_by_day(events, add_week_links=False):
                     'time_slots': {}
                 }
 
-            # Format time once for all days
+            # Determine the time for this specific day
             time_key = 'All Day'
             formatted_time = 'All Day'
             original_time = event.get('time', '')
-
-            # Only try to parse time if it exists and hasn't been formatted yet
+            
+            # Check if time is a dictionary (per-day times)
+            if isinstance(original_time, dict):
+                # Use the time for this specific date if available
+                original_time = original_time.get(day_key, '')
+            
+            # Only try to parse time if it exists and is a string
             if original_time and isinstance(original_time, str):
                 try:
                     # Handle time parsing - only do this if time is in HH:MM format
@@ -185,10 +190,6 @@ def prepare_events_by_day(events, add_week_links=False):
                 except ValueError:
                     # If time parsing fails, keep All Day
                     pass
-
-            # Store both the original and formatted time
-            event['original_time'] = original_time
-            event['formatted_time'] = formatted_time
 
             # Create a copy of the event for this day
             event_copy = event.copy()

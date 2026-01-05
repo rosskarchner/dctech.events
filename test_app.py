@@ -955,5 +955,45 @@ class TestApp(unittest.TestCase):
         finally:
             pass
 
+    def test_time_dictionary_for_multiday_events(self):
+        """Test that multi-day events can have different times per day using a dictionary"""
+        from app import prepare_events_by_day
+        
+        # Create a multi-day event with time as a dictionary
+        start_date = self.today + timedelta(days=1)
+        end_date = start_date + timedelta(days=2)
+        
+        events = [
+            {
+                'date': start_date.strftime('%Y-%m-%d'),
+                'end_date': end_date.strftime('%Y-%m-%d'),
+                'title': 'Conference with Daily Times',
+                'time': {
+                    (start_date + timedelta(days=1)).strftime('%Y-%m-%d'): '09:00',
+                    end_date.strftime('%Y-%m-%d'): '10:00'
+                }
+            }
+        ]
+        
+        days = prepare_events_by_day(events)
+        
+        # Should have 3 days
+        self.assertEqual(len(days), 3)
+        
+        # First day should have All Day (no time specified in dict)
+        first_day_event = days[0]['time_slots'][0]['events'][0]
+        self.assertEqual(first_day_event['time'], '')
+        self.assertEqual(first_day_event['formatted_time'], 'All Day')
+        
+        # Second day should have 9:00 AM time
+        second_day_event = days[1]['time_slots'][0]['events'][0]
+        self.assertEqual(second_day_event['time'], '09:00')
+        self.assertEqual(second_day_event['formatted_time'], '9:00 am')
+        
+        # Third day should have 10:00 AM time
+        third_day_event = days[2]['time_slots'][0]['events'][0]
+        self.assertEqual(third_day_event['time'], '10:00')
+        self.assertEqual(third_day_event['formatted_time'], '10:00 am')
+
 if __name__ == '__main__':
     unittest.main()
