@@ -37,6 +37,28 @@ Visit `/submit-group/` or create a YAML file in `_groups/` with your group's RSS
 
 Visit `/submit/` or create a YAML file in `_single_events/` (format: `YYYY-MM-DD-event-title.yaml`).
 
+#### Multi-Day Events with Daily Schedules
+
+For multi-day events with different schedules on different days (e.g., varying expo hours), use the `daily_schedule` field:
+
+```yaml
+title: Data Center World 2026
+date: '2026-04-20'
+end_date: '2026-04-23'
+url: https://datacenterworld.com
+location: Walter E. Washington Convention Center, Washington, DC
+cost: Check website for pricing
+daily_schedule:
+  '2026-04-21':
+    description: 'Expo Hours: 2:00–6:00 PM'
+  '2026-04-22':
+    description: 'Expo Hours: 10:00 AM–6:00 PM'
+  '2026-04-23':
+    description: 'Expo Hours: 10:00 AM–1:00 PM'
+```
+
+The `daily_schedule` field allows you to specify different information for each day of a multi-day event. Each date should be in `YYYY-MM-DD` format with a `description` field containing the text to display.
+
 ## 🧹 Event Maintenance
 
 ### Address Handling
