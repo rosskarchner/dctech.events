@@ -167,12 +167,17 @@ def prepare_events_by_day(events, add_week_links=False):
                     'time_slots': {}
                 }
 
-            # Format time once for all days
+            # Determine the time for this specific day
             time_key = 'All Day'
             formatted_time = 'All Day'
             original_time = event.get('time', '')
-
-            # Only try to parse time if it exists and hasn't been formatted yet
+            
+            # Check if time is a dictionary (per-day times)
+            if isinstance(original_time, dict):
+                # Use the time for this specific date if available
+                original_time = original_time.get(day_key, '')
+            
+            # Only try to parse time if it exists and is a string
             if original_time and isinstance(original_time, str):
                 try:
                     # Handle time parsing - only do this if time is in HH:MM format
@@ -186,10 +191,6 @@ def prepare_events_by_day(events, add_week_links=False):
                     # If time parsing fails, keep All Day
                     pass
 
-            # Store both the original and formatted time
-            event['original_time'] = original_time
-            event['formatted_time'] = formatted_time
-
             # Create a copy of the event for this day
             event_copy = event.copy()
             # Store the machine-readable time (HH:MM format) for datetime attribute
@@ -202,14 +203,6 @@ def prepare_events_by_day(events, add_week_links=False):
                 event_copy['display_title'] = f"{event['title']} (continuing)"
             else:
                 event_copy['display_title'] = event['title']
-            
-            # Check if there's a daily schedule for this specific day
-            daily_schedule = event.get('daily_schedule', {})
-            if daily_schedule and day_key in daily_schedule:
-                day_schedule = daily_schedule[day_key]
-                # Add schedule description to display title if provided
-                if 'description' in day_schedule:
-                    event_copy['daily_schedule_info'] = day_schedule['description']
 
             # Create time slot if it doesn't exist
             if time_key not in events_by_day[day_key]['time_slots']:

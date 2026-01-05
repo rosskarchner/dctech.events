@@ -6,10 +6,7 @@ location: Walter E. Washington Convention Center, Washington, DC
 cost: Check website for pricing
 submitted_by: anonymous
 submitter_link: ''
-daily_schedule:
-  '2026-04-21':
-    description: 'Expo Hours: 2:00–6:00 PM'
-  '2026-04-22':
-    description: 'Expo Hours: 10:00 AM–6:00 PM'
-  '2026-04-23':
-    description: 'Expo Hours: 10:00 AM–1:00 PM'
+time:
+  '2026-04-21': '14:00'
+  '2026-04-22': '10:00'
+  '2026-04-23': '10:00'

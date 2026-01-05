@@ -329,48 +329,73 @@ def load_single_events():
                         event['date'] = parsed_date.strftime('%Y-%m-%d')
                     
                     # Now handle the time
-                    try:
-                        if isinstance(event['time'], int):
-                            # Handle integer time format (e.g., 1000 for 10:00)
-                            time_str = str(event['time']).zfill(4)
-                            hours = int(time_str[:-2])
-                            minutes = int(time_str[-2:])
-                            if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-                                raise ValueError
-                            event['time'] = f"{hours:02d}:{minutes:02d}"
-                        else:
-                            # Try to parse as HH:MM format first
+                    # Skip time validation if it's a dictionary (per-day times for multi-day events)
+                    if isinstance(event['time'], dict):
+                        # Validate each time in the dictionary
+                        for day_key, day_time in event['time'].items():
                             try:
-                                hours, minutes = map(int, str(event['time']).split(':'))
+                                if isinstance(day_time, int):
+                                    # Handle integer time format (e.g., 1000 for 10:00)
+                                    time_str = str(day_time).zfill(4)
+                                    hours = int(time_str[:-2])
+                                    minutes = int(time_str[-2:])
+                                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                                        raise ValueError
+                                    event['time'][day_key] = f"{hours:02d}:{minutes:02d}"
+                                else:
+                                    # Try to parse as HH:MM format first
+                                    hours, minutes = map(int, str(day_time).split(':'))
+                                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                                        raise ValueError
+                                    event['time'][day_key] = f"{hours:02d}:{minutes:02d}"
+                            except (ValueError, TypeError) as e:
+                                raise ValueError(f"Invalid time format for {day_key}: {day_time}")
+                        # Keep time as dictionary, skip combined date/time parsing
+                        # events.append will happen at the end of the try block
+                    else:
+                        # Process regular time (not a dictionary)
+                        try:
+                            if isinstance(event['time'], int):
+                                # Handle integer time format (e.g., 1000 for 10:00)
+                                time_str = str(event['time']).zfill(4)
+                                hours = int(time_str[:-2])
+                                minutes = int(time_str[-2:])
                                 if not (0 <= hours <= 23 and 0 <= minutes <= 59):
                                     raise ValueError
                                 event['time'] = f"{hours:02d}:{minutes:02d}"
-                            except (ValueError, TypeError):
-                                # If that fails, try flexible parsing
-                                parsed_time = dateparser.parse(str(event['time']), settings={
-                                    'TIMEZONE': timezone_name,
-                                    'RETURN_AS_TIMEZONE_AWARE': True
-                                })
-                                if parsed_time is None:
-                                    raise ValueError(f"Could not parse time: {event['time']}")
-                                event['time'] = parsed_time.strftime('%H:%M')
-                    except (ValueError, TypeError) as e:
-                        raise ValueError(f"Invalid time format: {event['time']}")
+                            else:
+                                # Try to parse as HH:MM format first
+                                try:
+                                    hours, minutes = map(int, str(event['time']).split(':'))
+                                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                                        raise ValueError
+                                    event['time'] = f"{hours:02d}:{minutes:02d}"
+                                except (ValueError, TypeError):
+                                    # If that fails, try flexible parsing
+                                    parsed_time = dateparser.parse(str(event['time']), settings={
+                                        'TIMEZONE': timezone_name,
+                                        'RETURN_AS_TIMEZONE_AWARE': True
+                                    })
+                                    if parsed_time is None:
+                                        raise ValueError(f"Could not parse time: {event['time']}")
+                                    event['time'] = parsed_time.strftime('%H:%M')
+                        except (ValueError, TypeError) as e:
+                            raise ValueError(f"Invalid time format: {event['time']}")
 
-                    # Combine date and time for full datetime
-                    event_datetime = dateparser.parse(f"{event['date']} {event['time']}", settings={
-                        'TIMEZONE': timezone_name,
-                        'RETURN_AS_TIMEZONE_AWARE': True,
-                        'DATE_ORDER': 'YMD',
-                        'PREFER_DATES_FROM': 'future'
-                    })
-                    
-                    if event_datetime is None:
-                        raise ValueError(f"Could not parse combined date/time: {event['date']} {event['time']}")
-                    
-                    # Set standardized fields
-                    event['start_date'] = event_datetime.strftime('%Y-%m-%d')
-                    event['start_time'] = event_datetime.strftime('%H:%M')
+                        # Combine date and time for full datetime
+                        event_datetime = dateparser.parse(f"{event['date']} {event['time']}", settings={
+                            'TIMEZONE': timezone_name,
+                            'RETURN_AS_TIMEZONE_AWARE': True,
+                            'DATE_ORDER': 'YMD',
+                            'PREFER_DATES_FROM': 'future'
+                        })
+                        
+                        if event_datetime is None:
+                            raise ValueError(f"Could not parse combined date/time: {event['date']} {event['time']}")
+                        
+                        # Set standardized fields
+                        event['start_date'] = event_datetime.strftime('%Y-%m-%d')
+                        event['start_time'] = event_datetime.strftime('%H:%M')
                     
                     # Handle end date/time
                     if 'end_date' in event and 'end_time' in event:
