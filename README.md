@@ -46,7 +46,7 @@ title: Data Center World 2026
 date: '2026-04-20'
 end_date: '2026-04-23'
 url: https://datacenterworld.com
-location: Walter E. Washington Convention Center, Washington, DC
+location: Washington, DC
 time:
   '2026-04-21': '14:00'
   '2026-04-22': '10:00'
