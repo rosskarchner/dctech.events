@@ -1107,14 +1107,19 @@ def ical_feed():
                 ical_event.add('organizer', group_website, parameters={'CN': group_name})
         
         # Generate a unique ID for the event
-        # Use URL if available, otherwise create a hash-based UID
+        # Always include date, time, and title to ensure uniqueness
+        # Include URL if available for additional stability
+        uid_parts = [
+            event_date_str,
+            event_time_str,
+            event.get('title', 'event')
+        ]
         if event.get('url'):
-            uid = f"{event['url']}@dctech.events"
-        else:
-            # Create a stable hash from date, time, and title for consistent UIDs
-            uid_base = f"{event_date_str}-{event_time_str}-{event.get('title', 'event')}"
-            uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
-            uid = f"{uid_hash}@dctech.events"
+            uid_parts.append(event['url'])
+
+        uid_base = '-'.join(str(p) for p in uid_parts)
+        uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+        uid = f"{uid_hash}@dctech.events"
         ical_event.add('uid', uid)
         
         # Add creation timestamp

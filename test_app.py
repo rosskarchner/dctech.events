@@ -958,11 +958,11 @@ class TestApp(unittest.TestCase):
     def test_time_dictionary_for_multiday_events(self):
         """Test that multi-day events can have different times per day using a dictionary"""
         from app import prepare_events_by_day
-        
+
         # Create a multi-day event with time as a dictionary
         start_date = self.today + timedelta(days=1)
         end_date = start_date + timedelta(days=2)
-        
+
         events = [
             {
                 'date': start_date.strftime('%Y-%m-%d'),
@@ -974,26 +974,121 @@ class TestApp(unittest.TestCase):
                 }
             }
         ]
-        
+
         days = prepare_events_by_day(events)
-        
+
         # Should have 3 days
         self.assertEqual(len(days), 3)
-        
+
         # First day should have All Day (no time specified in dict)
         first_day_event = days[0]['time_slots'][0]['events'][0]
         self.assertEqual(first_day_event['time'], '')
         self.assertEqual(first_day_event['formatted_time'], 'All Day')
-        
+
         # Second day should have 9:00 AM time
         second_day_event = days[1]['time_slots'][0]['events'][0]
         self.assertEqual(second_day_event['time'], '09:00')
         self.assertEqual(second_day_event['formatted_time'], '9:00 am')
-        
+
         # Third day should have 10:00 AM time
         third_day_event = days[2]['time_slots'][0]['events'][0]
         self.assertEqual(third_day_event['time'], '10:00')
         self.assertEqual(third_day_event['formatted_time'], '10:00 am')
+
+    def test_ical_unique_uids(self):
+        """Test that iCal feed generates unique UIDs for all events, even when sharing URLs"""
+        from app import app
+        import os
+        import yaml
+        from icalendar import Calendar
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        # Create multiple events that share the same URL (common for recurring meetups)
+        today_str = self.today.strftime('%Y-%m-%d')
+        tomorrow = self.today + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime('%Y-%m-%d')
+        next_week = self.today + timedelta(days=7)
+        next_week_str = next_week.strftime('%Y-%m-%d')
+
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Weekly Tech Meetup',
+                'location': 'Coffee Shop',
+                'url': 'http://meetup.example.com/weekly-tech'
+            },
+            {
+                'date': tomorrow_str,
+                'time': '14:00',
+                'title': 'Weekly Tech Meetup',
+                'location': 'Coffee Shop',
+                'url': 'http://meetup.example.com/weekly-tech'
+            },
+            {
+                'date': next_week_str,
+                'time': '09:00',
+                'title': 'Weekly Tech Meetup',
+                'location': 'Coffee Shop',
+                'url': 'http://meetup.example.com/weekly-tech'
+            },
+            {
+                'date': today_str,
+                'time': '10:00',
+                'title': 'Different Event Same Day',
+                'location': 'Office',
+                'url': 'http://meetup.example.com/different-event'
+            }
+        ]
+
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+
+            # Get iCal feed
+            response = client.get('/events.ics')
+            self.assertEqual(response.status_code, 200)
+
+            # Parse the iCal data
+            cal = Calendar.from_ical(response.data)
+
+            # Get events from calendar
+            events = [component for component in cal.walk() if component.name == 'VEVENT']
+            self.assertEqual(len(events), 4)
+
+            # Extract all UIDs
+            uids = [str(event.get('uid')) for event in events]
+
+            # Verify all UIDs are present
+            for uid in uids:
+                self.assertIsNotNone(uid)
+                self.assertTrue(len(uid) > 0)
+
+            # Verify all UIDs are unique (this is the main test)
+            self.assertEqual(len(uids), len(set(uids)),
+                           f"Duplicate UIDs found: {[uid for uid in uids if uids.count(uid) > 1]}")
+
+            # Verify all UIDs end with @dctech.events
+            for uid in uids:
+                self.assertTrue(uid.endswith('@dctech.events'),
+                              f"UID {uid} doesn't end with @dctech.events")
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except (OSError, FileNotFoundError):
+                pass
 
 if __name__ == '__main__':
     unittest.main()
