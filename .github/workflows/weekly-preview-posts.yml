@@ -1,0 +1,73 @@
+name: Weekly Preview Social Media Posts
+
+on:
+  # Run every Thursday at 3 PM Eastern (19:00 UTC during EST, 20:00 UTC during EDT)
+  # Using 19:00 UTC to cover both EST and EDT
+  schedule:
+    - cron: '0 19 * * 4'  # Thursday at 19:00 UTC
+
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Start date of week to preview (YYYY-MM-DD, leave empty for next Monday)'
+        required: false
+        type: string
+
+# Permissions needed to read repository contents
+permissions:
+  contents: read
+
+jobs:
+  post-weekly-preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate event data
+        run: |
+          python generate_month_data.py
+
+      - name: Post weekly preview to Mastodon
+        env:
+          MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+          MASTODON_INSTANCE_URL: ${{ secrets.MASTODON_INSTANCE_URL }}
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            python post_weekly_preview_to_mastodon.py --start-date "${{ github.event.inputs.start_date }}"
+          else
+            python post_weekly_preview_to_mastodon.py
+          fi
+        continue-on-error: true
+
+      - name: Post weekly preview to Bluesky
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ]; then
+            python post_weekly_preview_to_bluesky.py --start-date "${{ github.event.inputs.start_date }}"
+          else
+            python post_weekly_preview_to_bluesky.py
+          fi
+        continue-on-error: true
