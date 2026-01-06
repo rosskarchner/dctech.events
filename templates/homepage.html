@@ -15,7 +15,10 @@
             </div>
         </div>
 
-    {% include "partials/events_by_day.html" %}
+        {% include "partials/events_by_day.html" %}
+    </section>
+
+    {% include "partials/date_navigation.html" %}
 
 </div>
 
@@ -90,4 +93,8 @@
 }
 </script>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/date-navigation.js"></script>
 {% endblock %}

@@ -1,0 +1,61 @@
+{# Date Navigation Component - Shows upcoming dates with event counts #}
+<aside class="date-navigation" id="date-nav">
+    <div class="date-nav-header">
+        <h3>Jump to Date</h3>
+        <button class="date-nav-close" id="date-nav-close" aria-label="Close date navigation">
+            <span aria-hidden="true">×</span>
+        </button>
+    </div>
+
+    <nav aria-label="Date navigation">
+        {# Quick jump links #}
+        <div class="quick-jumps">
+            {% if days %}
+                {% set today = days[0].date %}
+                <a href="#{{ today }}" class="quick-jump-link">Today</a>
+
+                {# Find this week's last day (next 7 days) #}
+                {% set this_week_end_index = namespace(value=0) %}
+                {% for i in range(days|length) %}
+                    {% if i < 7 %}
+                        {% set this_week_end_index.value = i %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if this_week_end_index.value < (days|length - 1) %}
+                    <a href="#{{ days[this_week_end_index.value + 1].date }}" class="quick-jump-link">Next Week</a>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        {# Date list with event counts #}
+        <ul class="date-list">
+            {% for day in days[:30] %}  {# Show up to 30 days #}
+                {% if day.has_events %}
+                    {% set event_count = namespace(value=0) %}
+                    {% for time_slot in day.time_slots %}
+                        {% set event_count.value = event_count.value + (time_slot.events|length) %}
+                    {% endfor %}
+
+                    <li>
+                        <a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">
+                            <span class="date-short">{{ day.short_date }}</span>
+                            <span class="event-count">{{ event_count.value }} event{{ 's' if event_count.value != 1 else '' }}</span>
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+</aside>
+
+{# Mobile floating button #}
+<button class="date-nav-toggle" id="date-nav-toggle" aria-label="Open date navigation" aria-expanded="false">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+    <span class="sr-only">Jump to Date</span>
+</button>

@@ -341,3 +341,251 @@ footer {
     margin: 0;
     font-size: 0.95rem;
 }
+
+/* Date Navigation - Mobile-first approach */
+
+/* Screen reader only text */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Mobile: Floating toggle button (default) */
+.date-nav-toggle {
+    position: fixed;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    z-index: 100;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.date-nav-toggle:hover {
+    background: var(--color-primary-hover);
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.date-nav-toggle:active {
+    transform: scale(0.95);
+}
+
+/* Mobile: Slide-in drawer (default hidden) */
+.date-navigation {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 280px;
+    height: 100vh;
+    background: var(--color-background);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    z-index: 101;
+    overflow-y: auto;
+    transition: right 0.3s ease;
+    padding: var(--spacing-lg);
+}
+
+/* Mobile: When drawer is open */
+.date-navigation.open {
+    right: 0;
+}
+
+/* Date nav header */
+.date-nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.date-nav-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.date-nav-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--color-text-light);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.date-nav-close:hover {
+    background: var(--color-background-alt);
+    color: var(--color-text);
+}
+
+/* Quick jump links */
+.quick-jumps {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.quick-jump-link {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-primary);
+    color: white;
+    text-align: center;
+    border-radius: calc(var(--border-radius) * 0.5);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.quick-jump-link:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    color: white;
+    text-decoration: none;
+}
+
+.quick-jump-link:active {
+    transform: translateY(0);
+}
+
+/* Date list */
+.date-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.date-list li {
+    margin-bottom: var(--spacing-xs);
+}
+
+.date-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    border-radius: calc(var(--border-radius) * 0.5);
+    background: var(--color-background-alt);
+    transition: background-color 0.2s, transform 0.2s;
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.date-link:hover {
+    background: var(--color-border);
+    transform: translateX(-2px);
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.date-link.active {
+    background: var(--color-primary);
+    color: white;
+    font-weight: 600;
+}
+
+.date-link.active:hover {
+    color: white;
+}
+
+.date-short {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.event-count {
+    font-size: 0.8rem;
+    color: var(--color-text-light);
+}
+
+.date-link.active .event-count {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Tablet and Desktop: Side-by-side layout with sticky sidebar */
+@media (min-width: 1024px) {
+    /* Hide mobile toggle button on desktop */
+    .date-nav-toggle {
+        display: none;
+    }
+
+    /* Hide close button on desktop */
+    .date-nav-close {
+        display: none;
+    }
+
+    /* Adjust overall layout */
+    html {
+        max-width: 100%;
+        padding: var(--spacing-xl) var(--spacing-xl);
+    }
+
+    /* Main container becomes flex container */
+    .home-container {
+        display: flex;
+        gap: var(--spacing-xl);
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Events section takes most of the space */
+    .events-section {
+        flex: 1;
+        min-width: 0; /* Prevent flex item from overflowing */
+        max-width: 70ch;
+    }
+
+    /* Date navigation becomes sticky sidebar */
+    .date-navigation {
+        position: sticky;
+        top: var(--spacing-xl);
+        right: auto;
+        width: 280px;
+        height: fit-content;
+        max-height: calc(100vh - calc(var(--spacing-xl) * 2));
+        overflow-y: auto;
+        box-shadow: none;
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-lg);
+        background: var(--color-background-alt);
+        flex-shrink: 0;
+        transition: none;
+    }
+
+    /* Adjust header and footer to span full width */
+    header, footer {
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
