@@ -83,6 +83,37 @@ def load_events():
         return events if events else []
 
 
+def is_virtual_event(event):
+    """
+    Determine if an event is virtual/online (has no physical location).
+    
+    Args:
+        event: Event dictionary
+    
+    Returns:
+        True if event is virtual/online, False if it has a physical location
+    """
+    location = event.get('location', '')
+    
+    # If location is empty or None, consider it virtual
+    if not location or not location.strip():
+        return True
+    
+    # Check for common virtual/online indicators (case-insensitive)
+    location_lower = location.lower()
+    virtual_indicators = [
+        'virtual', 'online', 'remote', 'zoom', 'webinar', 
+        'livestream', 'live stream', 'web', 'internet',
+        'https://', 'http://', 'www.'
+    ]
+    
+    for indicator in virtual_indicators:
+        if indicator in location_lower:
+            return True
+    
+    return False
+
+
 def get_events_for_date(events, target_date):
     """
     Filter events for a specific date.
@@ -394,14 +425,25 @@ def main():
     # Filter events for target date
     events = get_events_for_date(all_events, target_date)
     
-    if not events:
-        print(f"No events found for {target_date}. Nothing to post.")
+    # Filter out virtual events (only post in-person events)
+    in_person_events = [event for event in events if not is_virtual_event(event)]
+    
+    if not in_person_events:
+        virtual_count = len(events)
+        if virtual_count > 0:
+            print(f"Found {virtual_count} event(s) for {target_date}, but all are virtual. Nothing to post.")
+        else:
+            print(f"No events found for {target_date}. Nothing to post.")
         return 0
     
-    print(f"Found {len(events)} event(s) for {target_date}")
+    virtual_count = len(events) - len(in_person_events)
+    if virtual_count > 0:
+        print(f"Found {len(events)} event(s) for {target_date} ({virtual_count} virtual, {len(in_person_events)} in-person)")
+    else:
+        print(f"Found {len(in_person_events)} in-person event(s) for {target_date}")
     
     # Create post text with facets
-    post_text, facets = create_bluesky_post(events, target_date, BASE_URL)
+    post_text, facets = create_bluesky_post(in_person_events, target_date, BASE_URL)
     
     # Post to Bluesky
     success = post_to_bluesky(post_text, facets=facets, dry_run=args.dry_run)

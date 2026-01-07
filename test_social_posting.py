@@ -16,11 +16,13 @@ from post_to_mastodon import (
     get_events_for_date,
     format_event_line,
     create_mastodon_post,
+    is_virtual_event,
 )
 from post_to_bluesky import (
     get_events_for_date as get_events_for_date_bsky,
     format_event_line as format_event_line_bsky,
     create_bluesky_post,
+    is_virtual_event as is_virtual_event_bsky,
 )
 
 
@@ -291,6 +293,125 @@ class TestEdgeCases(unittest.TestCase):
         # Should handle special characters gracefully
         self.assertIn('C++', mastodon_post)
         self.assertIn('Quotes', bluesky_post)
+
+
+class TestVirtualEventFiltering(unittest.TestCase):
+    """Test virtual event detection and filtering"""
+    
+    def test_is_virtual_event_empty_location(self):
+        """Test that events with empty location are considered virtual"""
+        event = {'title': 'Test Event', 'location': ''}
+        self.assertTrue(is_virtual_event(event))
+        self.assertTrue(is_virtual_event_bsky(event))
+    
+    def test_is_virtual_event_no_location(self):
+        """Test that events without location field are considered virtual"""
+        event = {'title': 'Test Event'}
+        self.assertTrue(is_virtual_event(event))
+        self.assertTrue(is_virtual_event_bsky(event))
+    
+    def test_is_virtual_event_none_location(self):
+        """Test that events with None location are considered virtual"""
+        event = {'title': 'Test Event', 'location': None}
+        self.assertTrue(is_virtual_event(event))
+        self.assertTrue(is_virtual_event_bsky(event))
+    
+    def test_is_virtual_event_virtual_keyword(self):
+        """Test that events with 'virtual' in location are considered virtual"""
+        event = {'title': 'Test Event', 'location': 'Virtual'}
+        self.assertTrue(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'Virtual Event'}
+        self.assertTrue(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'VIRTUAL'}
+        self.assertTrue(is_virtual_event(event))
+    
+    def test_is_virtual_event_online_keyword(self):
+        """Test that events with 'online' in location are considered virtual"""
+        event = {'title': 'Test Event', 'location': 'Online'}
+        self.assertTrue(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'online event'}
+        self.assertTrue(is_virtual_event(event))
+    
+    def test_is_virtual_event_zoom_keyword(self):
+        """Test that events with 'zoom' in location are considered virtual"""
+        event = {'title': 'Test Event', 'location': 'Zoom'}
+        self.assertTrue(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'Via Zoom'}
+        self.assertTrue(is_virtual_event(event))
+    
+    def test_is_virtual_event_webinar_keyword(self):
+        """Test that events with 'webinar' in location are considered virtual"""
+        event = {'title': 'Test Event', 'location': 'Webinar'}
+        self.assertTrue(is_virtual_event(event))
+    
+    def test_is_virtual_event_url_in_location(self):
+        """Test that events with URLs in location are considered virtual"""
+        event = {'title': 'Test Event', 'location': 'https://zoom.us/j/123456'}
+        self.assertTrue(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'http://meet.google.com/abc'}
+        self.assertTrue(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'www.example.com/webinar'}
+        self.assertTrue(is_virtual_event(event))
+    
+    def test_is_not_virtual_event_physical_location(self):
+        """Test that events with physical locations are not considered virtual"""
+        event = {'title': 'Test Event', 'location': 'Washington, DC'}
+        self.assertFalse(is_virtual_event(event))
+        self.assertFalse(is_virtual_event_bsky(event))
+        
+        event = {'title': 'Test Event', 'location': 'Arlington, VA'}
+        self.assertFalse(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': 'Baltimore, MD'}
+        self.assertFalse(is_virtual_event(event))
+        
+        event = {'title': 'Test Event', 'location': '1234 Main Street, Washington, DC'}
+        self.assertFalse(is_virtual_event(event))
+    
+    def test_filter_virtual_events_mixed_list(self):
+        """Test filtering a mixed list of virtual and in-person events"""
+        events = [
+            {'title': 'In-Person Event 1', 'location': 'Washington, DC', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 1', 'location': 'Virtual', 'date': '2026-01-15'},
+            {'title': 'In-Person Event 2', 'location': 'Arlington, VA', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 2', 'location': '', 'date': '2026-01-15'},
+            {'title': 'Online Event', 'location': 'Online', 'date': '2026-01-15'},
+        ]
+        
+        in_person_events = [event for event in events if not is_virtual_event(event)]
+        
+        self.assertEqual(len(in_person_events), 2)
+        self.assertEqual(in_person_events[0]['title'], 'In-Person Event 1')
+        self.assertEqual(in_person_events[1]['title'], 'In-Person Event 2')
+    
+    def test_filter_all_virtual_events(self):
+        """Test filtering when all events are virtual"""
+        events = [
+            {'title': 'Virtual Event 1', 'location': 'Virtual', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 2', 'location': '', 'date': '2026-01-15'},
+            {'title': 'Online Event', 'location': 'Online', 'date': '2026-01-15'},
+        ]
+        
+        in_person_events = [event for event in events if not is_virtual_event(event)]
+        
+        self.assertEqual(len(in_person_events), 0)
+    
+    def test_filter_all_in_person_events(self):
+        """Test filtering when all events are in-person"""
+        events = [
+            {'title': 'Event 1', 'location': 'Washington, DC', 'date': '2026-01-15'},
+            {'title': 'Event 2', 'location': 'Arlington, VA', 'date': '2026-01-15'},
+        ]
+        
+        in_person_events = [event for event in events if not is_virtual_event(event)]
+        
+        self.assertEqual(len(in_person_events), 2)
 
 
 if __name__ == '__main__':
