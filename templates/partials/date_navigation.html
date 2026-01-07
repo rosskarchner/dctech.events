@@ -1,4 +1,4 @@
-{# Date Navigation Component - Shows upcoming dates with event counts #}
+{# Date Navigation Component - Organized by time periods #}
 <aside class="date-navigation" id="date-nav">
     <div class="date-nav-header">
         <h3>Jump to Date</h3>
@@ -8,44 +8,82 @@
     </div>
 
     <nav aria-label="Date navigation">
-        {# Quick jump links #}
-        <div class="quick-jumps">
-            {% if days %}
-                {% set today = days[0].date %}
-                <a href="#{{ today }}" class="quick-jump-link">Today</a>
+        {% if days %}
+            {# Get current date info for comparisons #}
+            {% set now = days[0].date %}
+            {% set now_date = now.split('-') %}
+            {% set current_year = now_date[0]|int %}
+            {% set current_month = now_date[1]|int %}
+            {% set current_day = now_date[2]|int %}
 
-                {# Find this week's last day (next 7 days) #}
-                {% set this_week_end_index = namespace(value=0) %}
-                {% for i in range(days|length) %}
-                    {% if i < 7 %}
-                        {% set this_week_end_index.value = i %}
+            <ul class="date-list">
+                {# Process each day and group by time period #}
+                {% set ns = namespace(
+                    day_offset = 0,
+                    shown_next_week = false,
+                    shown_next_month = false,
+                    current_month_year = none,
+                    first_day = now
+                ) %}
+
+                {% for day in days[:90] %}  {# Show up to 90 days #}
+                    {% if day.has_events %}
+                        {# Parse the date #}
+                        {% set date_parts = day.date.split('-') %}
+                        {% set year = date_parts[0]|int %}
+                        {% set month = date_parts[1]|int %}
+                        {% set dom = date_parts[2]|int %}
+
+                        {# Calculate day offset from first day #}
+                        {% set day_diff = loop.index0 %}
+
+                        {# Month name mapping #}
+                        {% set month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+                        {% set month_name = month_names[month] %}
+
+                        {# Determine which section this date belongs to #}
+                        {% set is_today = (day_diff == 0) %}
+                        {% set is_tomorrow = (day_diff == 1) %}
+                        {% set is_this_week = (day_diff >= 2 and day_diff <= 6) %}
+                        {% set is_next_month = (month > current_month or year > current_year) and not is_this_week and not is_tomorrow and not is_today %}
+
+                        {# Today #}
+                        {% if is_today %}
+                            <li class="date-section-heading">Today {{ day.short_date.split(' ')[1] }}</li>
+                            <li><a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">{{ day.short_date }}</a></li>
+
+                        {# Tomorrow #}
+                        {% elif is_tomorrow %}
+                            <li class="date-section-heading">Tomorrow {{ day.short_date.split(' ')[1] }}</li>
+                            <li><a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">{{ day.short_date }}</a></li>
+
+                        {# This Week (days 2-6 from today) #}
+                        {% elif is_this_week %}
+                            {% if not ns.shown_next_week %}
+                                <li class="date-section-heading">Next Week</li>
+                                {% set ns.shown_next_week = true %}
+                            {% endif %}
+                            <li><a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">{{ day.short_date }}</a></li>
+
+                        {# Next Month heading (only show once when transitioning) #}
+                        {% elif is_next_month and not ns.shown_next_month and day_diff <= 35 %}
+                            <li class="date-section-heading">Next Month</li>
+                            {% set ns.shown_next_month = true %}
+                            <li><a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">{{ day.short_date }}</a></li>
+
+                        {# Monthly groupings #}
+                        {% else %}
+                            {% set month_year_key = month_name + ' ' + year|string %}
+                            {% if ns.current_month_year != month_year_key %}
+                                <li class="date-section-heading">{{ month_year_key }}</li>
+                                {% set ns.current_month_year = month_year_key %}
+                            {% endif %}
+                            <li><a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">{{ day.short_date }}</a></li>
+                        {% endif %}
                     {% endif %}
                 {% endfor %}
-
-                {% if this_week_end_index.value < (days|length - 1) %}
-                    <a href="#{{ days[this_week_end_index.value + 1].date }}" class="quick-jump-link">Next Week</a>
-                {% endif %}
-            {% endif %}
-        </div>
-
-        {# Date list with event counts #}
-        <ul class="date-list">
-            {% for day in days[:30] %}  {# Show up to 30 days #}
-                {% if day.has_events %}
-                    {% set event_count = namespace(value=0) %}
-                    {% for time_slot in day.time_slots %}
-                        {% set event_count.value = event_count.value + (time_slot.events|length) %}
-                    {% endfor %}
-
-                    <li>
-                        <a href="#{{ day.date }}" class="date-link" data-date="{{ day.date }}">
-                            <span class="date-short">{{ day.short_date }}</span>
-                            <span class="event-count">{{ event_count.value }} event{{ 's' if event_count.value != 1 else '' }}</span>
-                        </a>
-                    </li>
-                {% endif %}
-            {% endfor %}
-        </ul>
+            </ul>
+        {% endif %}
     </nav>
 </aside>
 

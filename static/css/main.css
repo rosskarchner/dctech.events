@@ -361,7 +361,7 @@ footer {
 .date-nav-toggle {
     position: fixed;
     bottom: var(--spacing-lg);
-    right: var(--spacing-lg);
+    left: var(--spacing-lg);
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -391,20 +391,20 @@ footer {
 .date-navigation {
     position: fixed;
     top: 0;
-    right: -100%;
-    width: 280px;
+    left: -100%;
+    width: 240px;
     height: 100vh;
     background: var(--color-background);
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
     z-index: 101;
     overflow-y: auto;
-    transition: right 0.3s ease;
+    transition: left 0.3s ease;
     padding: var(--spacing-lg);
 }
 
 /* Mobile: When drawer is open */
 .date-navigation.open {
-    right: 0;
+    left: 0;
 }
 
 /* Date nav header */
@@ -412,16 +412,18 @@ footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-md);
-    border-bottom: 2px solid var(--color-border);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .date-nav-header h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--color-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .date-nav-close {
@@ -446,35 +448,20 @@ footer {
     color: var(--color-text);
 }
 
-/* Quick jump links */
-.quick-jumps {
-    display: flex;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-lg);
+/* Date section headings */
+.date-section-heading {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+    padding-left: var(--spacing-xs);
 }
 
-.quick-jump-link {
-    flex: 1;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--color-primary);
-    color: white;
-    text-align: center;
-    border-radius: calc(var(--border-radius) * 0.5);
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background-color 0.2s, transform 0.2s;
-}
-
-.quick-jump-link:hover {
-    background: var(--color-primary-hover);
-    transform: translateY(-1px);
-    color: white;
-    text-decoration: none;
-}
-
-.quick-jump-link:active {
-    transform: translateY(0);
+.date-section-heading:first-child {
+    margin-top: 0;
 }
 
 /* Date list */
@@ -489,46 +476,30 @@ footer {
 }
 
 .date-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-md);
-    border-radius: calc(var(--border-radius) * 0.5);
-    background: var(--color-background-alt);
-    transition: background-color 0.2s, transform 0.2s;
+    display: block;
+    padding: var(--spacing-xs) var(--spacing-sm);
     text-decoration: none;
     color: var(--color-text);
+    font-size: 0.875rem;
+    border-left: 2px solid transparent;
+    transition: all 0.15s ease;
 }
 
 .date-link:hover {
-    background: var(--color-border);
-    transform: translateX(-2px);
+    color: var(--color-primary);
+    border-left-color: var(--color-border);
+    padding-left: calc(var(--spacing-sm) + 4px);
     text-decoration: none;
-    color: var(--color-text);
 }
 
 .date-link.active {
-    background: var(--color-primary);
-    color: white;
-    font-weight: 600;
+    color: var(--color-primary);
+    border-left-color: var(--color-primary);
+    font-weight: 500;
 }
 
 .date-link.active:hover {
-    color: white;
-}
-
-.date-short {
-    font-weight: 500;
-    font-size: 0.9rem;
-}
-
-.event-count {
-    font-size: 0.8rem;
-    color: var(--color-text-light);
-}
-
-.date-link.active .event-count {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-primary-hover);
 }
 
 /* Tablet and Desktop: Side-by-side layout with sticky sidebar */
@@ -557,29 +528,39 @@ footer {
         margin: 0 auto;
     }
 
+    /* Date navigation becomes sticky sidebar on LEFT */
+    .date-navigation {
+        position: sticky;
+        top: var(--spacing-xl);
+        left: auto;
+        width: 200px;
+        height: fit-content;
+        max-height: calc(100vh - calc(var(--spacing-xl) * 2));
+        overflow-y: auto;
+        box-shadow: none;
+        border: none;
+        border-right: 1px solid var(--color-border);
+        border-radius: 0;
+        padding: 0;
+        padding-right: var(--spacing-lg);
+        background: transparent;
+        flex-shrink: 0;
+        transition: none;
+        order: -1; /* Place before events section */
+    }
+
+    /* Simplify header on desktop */
+    .date-nav-header {
+        border-bottom: none;
+        margin-bottom: var(--spacing-lg);
+        padding-bottom: 0;
+    }
+
     /* Events section takes most of the space */
     .events-section {
         flex: 1;
         min-width: 0; /* Prevent flex item from overflowing */
         max-width: 70ch;
-    }
-
-    /* Date navigation becomes sticky sidebar */
-    .date-navigation {
-        position: sticky;
-        top: var(--spacing-xl);
-        right: auto;
-        width: 280px;
-        height: fit-content;
-        max-height: calc(100vh - calc(var(--spacing-xl) * 2));
-        overflow-y: auto;
-        box-shadow: none;
-        border: 1px solid var(--color-border);
-        border-radius: var(--border-radius);
-        padding: var(--spacing-lg);
-        background: var(--color-background-alt);
-        flex-shrink: 0;
-        transition: none;
     }
 
     /* Adjust header and footer to span full width */
