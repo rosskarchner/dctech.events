@@ -44,6 +44,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
+      - name: Refresh calendar data
+        run: |
+          python refresh_calendars.py
+      
       - name: Generate event data
         run: |
           python generate_month_data.py
