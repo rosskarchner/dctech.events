@@ -98,7 +98,7 @@ def is_virtual_event(event):
     location_lower = location.lower()
     virtual_indicators = [
         'virtual', 'online', 'remote', 'zoom', 'webinar', 
-        'livestream', 'live stream', 'web', 'internet',
+        'livestream', 'live stream', 'internet',
         'https://', 'http://', 'www.'
     ]
     
