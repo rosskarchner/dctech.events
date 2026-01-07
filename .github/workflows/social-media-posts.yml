@@ -98,7 +98,7 @@ jobs:
           echo "has_bluesky=$HAS_BLUESKY" >> $GITHUB_OUTPUT
           
           if [ -n "$MISSING_SECRETS" ]; then
-            echo "::error::The following secrets are not configured: $MISSING_SECRETS"
+            echo "::warning::The following secrets are not configured: $MISSING_SECRETS"
             echo "Please configure these secrets in Settings → Secrets and variables → Actions"
             echo "See SOCIAL_MEDIA_POSTING.md for instructions on obtaining these credentials"
           fi
