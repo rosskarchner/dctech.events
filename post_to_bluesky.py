@@ -85,33 +85,15 @@ def load_events():
 
 def is_virtual_event(event):
     """
-    Determine if an event is virtual/online (has no physical location).
+    Determine if an event is virtual based on its location_type field.
     
     Args:
         event: Event dictionary
     
     Returns:
-        True if event is virtual/online, False if it has a physical location
+        True if event is virtual, False otherwise
     """
-    location = event.get('location', '')
-    
-    # If location is empty or None, consider it virtual
-    if not location or not location.strip():
-        return True
-    
-    # Check for common virtual/online indicators (case-insensitive)
-    location_lower = location.lower()
-    virtual_indicators = [
-        'virtual', 'online', 'remote', 'zoom', 'webinar', 
-        'livestream', 'live stream', 'internet',
-        'https://', 'http://', 'www.'
-    ]
-    
-    for indicator in virtual_indicators:
-        if indicator in location_lower:
-            return True
-    
-    return False
+    return event.get('location_type') == 'virtual'
 
 
 def get_events_for_date(events, target_date):

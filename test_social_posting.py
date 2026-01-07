@@ -296,92 +296,33 @@ class TestEdgeCases(unittest.TestCase):
 
 
 class TestVirtualEventFiltering(unittest.TestCase):
-    """Test virtual event detection and filtering"""
+    """Test virtual event detection using location_type field"""
     
-    def test_is_virtual_event_empty_location(self):
-        """Test that events with empty location are considered virtual"""
-        event = {'title': 'Test Event', 'location': ''}
+    def test_is_virtual_event_with_location_type(self):
+        """Test that events with location_type='virtual' are identified as virtual"""
+        event = {'title': 'Test Event', 'location_type': 'virtual'}
         self.assertTrue(is_virtual_event(event))
         self.assertTrue(is_virtual_event_bsky(event))
     
-    def test_is_virtual_event_no_location(self):
-        """Test that events without location field are considered virtual"""
-        event = {'title': 'Test Event'}
-        self.assertTrue(is_virtual_event(event))
-        self.assertTrue(is_virtual_event_bsky(event))
-    
-    def test_is_virtual_event_none_location(self):
-        """Test that events with None location are considered virtual"""
-        event = {'title': 'Test Event', 'location': None}
-        self.assertTrue(is_virtual_event(event))
-        self.assertTrue(is_virtual_event_bsky(event))
-    
-    def test_is_virtual_event_virtual_keyword(self):
-        """Test that events with 'virtual' in location are considered virtual"""
-        event = {'title': 'Test Event', 'location': 'Virtual'}
-        self.assertTrue(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'Virtual Event'}
-        self.assertTrue(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'VIRTUAL'}
-        self.assertTrue(is_virtual_event(event))
-    
-    def test_is_virtual_event_online_keyword(self):
-        """Test that events with 'online' in location are considered virtual"""
-        event = {'title': 'Test Event', 'location': 'Online'}
-        self.assertTrue(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'online event'}
-        self.assertTrue(is_virtual_event(event))
-    
-    def test_is_virtual_event_zoom_keyword(self):
-        """Test that events with 'zoom' in location are considered virtual"""
-        event = {'title': 'Test Event', 'location': 'Zoom'}
-        self.assertTrue(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'Via Zoom'}
-        self.assertTrue(is_virtual_event(event))
-    
-    def test_is_virtual_event_webinar_keyword(self):
-        """Test that events with 'webinar' in location are considered virtual"""
-        event = {'title': 'Test Event', 'location': 'Webinar'}
-        self.assertTrue(is_virtual_event(event))
-    
-    def test_is_virtual_event_url_in_location(self):
-        """Test that events with URLs in location are considered virtual"""
-        event = {'title': 'Test Event', 'location': 'https://zoom.us/j/123456'}
-        self.assertTrue(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'http://meet.google.com/abc'}
-        self.assertTrue(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'www.example.com/webinar'}
-        self.assertTrue(is_virtual_event(event))
-    
-    def test_is_not_virtual_event_physical_location(self):
-        """Test that events with physical locations are not considered virtual"""
+    def test_is_not_virtual_event_without_location_type(self):
+        """Test that events without location_type field are not considered virtual"""
         event = {'title': 'Test Event', 'location': 'Washington, DC'}
         self.assertFalse(is_virtual_event(event))
         self.assertFalse(is_virtual_event_bsky(event))
-        
-        event = {'title': 'Test Event', 'location': 'Arlington, VA'}
+    
+    def test_is_not_virtual_event_with_different_location_type(self):
+        """Test that events with location_type other than 'virtual' are not virtual"""
+        event = {'title': 'Test Event', 'location_type': 'physical'}
         self.assertFalse(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': 'Baltimore, MD'}
-        self.assertFalse(is_virtual_event(event))
-        
-        event = {'title': 'Test Event', 'location': '1234 Main Street, Washington, DC'}
-        self.assertFalse(is_virtual_event(event))
+        self.assertFalse(is_virtual_event_bsky(event))
     
     def test_filter_virtual_events_mixed_list(self):
         """Test filtering a mixed list of virtual and in-person events"""
         events = [
             {'title': 'In-Person Event 1', 'location': 'Washington, DC', 'date': '2026-01-15'},
-            {'title': 'Virtual Event 1', 'location': 'Virtual', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 1', 'location_type': 'virtual', 'date': '2026-01-15'},
             {'title': 'In-Person Event 2', 'location': 'Arlington, VA', 'date': '2026-01-15'},
-            {'title': 'Virtual Event 2', 'location': '', 'date': '2026-01-15'},
-            {'title': 'Online Event', 'location': 'Online', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 2', 'location_type': 'virtual', 'date': '2026-01-15'},
         ]
         
         in_person_events = [event for event in events if not is_virtual_event(event)]
@@ -393,9 +334,8 @@ class TestVirtualEventFiltering(unittest.TestCase):
     def test_filter_all_virtual_events(self):
         """Test filtering when all events are virtual"""
         events = [
-            {'title': 'Virtual Event 1', 'location': 'Virtual', 'date': '2026-01-15'},
-            {'title': 'Virtual Event 2', 'location': '', 'date': '2026-01-15'},
-            {'title': 'Online Event', 'location': 'Online', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 1', 'location_type': 'virtual', 'date': '2026-01-15'},
+            {'title': 'Virtual Event 2', 'location_type': 'virtual', 'date': '2026-01-15'},
         ]
         
         in_person_events = [event for event in events if not is_virtual_event(event)]
