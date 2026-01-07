@@ -75,14 +75,14 @@ jobs:
             MISSING_SECRETS="${MISSING_SECRETS}MASTODON_ACCESS_TOKEN "
             HAS_MASTODON="false"
           fi
-          if [ -z "${{ secrets.MASTODON_INSTANCE_URL }}" ]; then
+          if [ -z "${{ environment.MASTODON_INSTANCE_URL }}" ]; then
             echo "::warning::MASTODON_INSTANCE_URL secret is not set"
             MISSING_SECRETS="${MISSING_SECRETS}MASTODON_INSTANCE_URL "
             HAS_MASTODON="false"
           fi
           
           # Check Bluesky secrets
-          if [ -z "${{ secrets.BLUESKY_HANDLE }}" ]; then
+          if [ -z "${{ environment.BLUESKY_HANDLE }}" ]; then
             echo "::warning::BLUESKY_HANDLE secret is not set"
             MISSING_SECRETS="${MISSING_SECRETS}BLUESKY_HANDLE "
             HAS_BLUESKY="false"
@@ -107,7 +107,7 @@ jobs:
         if: steps.validate.outputs.has_mastodon == 'true'
         env:
           MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
-          MASTODON_INSTANCE_URL: ${{ secrets.MASTODON_INSTANCE_URL }}
+          MASTODON_INSTANCE_URL: ${{ environment.MASTODON_INSTANCE_URL }}
         run: |
           if [ -n "${{ github.event.inputs.date }}" ]; then
             python post_to_mastodon.py --date "${{ github.event.inputs.date }}"
@@ -119,7 +119,7 @@ jobs:
       - name: Post to Bluesky
         if: steps.validate.outputs.has_bluesky == 'true'
         env:
-          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_HANDLE: ${{ environment.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
         run: |
           if [ -n "${{ github.event.inputs.date }}" ]; then
