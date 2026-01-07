@@ -63,28 +63,39 @@ jobs:
           python generate_month_data.py
 
       - name: Validate secrets
+        id: validate
         run: |
           MISSING_SECRETS=""
+          HAS_MASTODON="true"
+          HAS_BLUESKY="true"
           
           # Check Mastodon secrets
           if [ -z "${{ secrets.MASTODON_ACCESS_TOKEN }}" ]; then
             echo "::warning::MASTODON_ACCESS_TOKEN secret is not set"
             MISSING_SECRETS="${MISSING_SECRETS}MASTODON_ACCESS_TOKEN "
+            HAS_MASTODON="false"
           fi
           if [ -z "${{ secrets.MASTODON_INSTANCE_URL }}" ]; then
             echo "::warning::MASTODON_INSTANCE_URL secret is not set"
             MISSING_SECRETS="${MISSING_SECRETS}MASTODON_INSTANCE_URL "
+            HAS_MASTODON="false"
           fi
           
           # Check Bluesky secrets
           if [ -z "${{ secrets.BLUESKY_HANDLE }}" ]; then
             echo "::warning::BLUESKY_HANDLE secret is not set"
             MISSING_SECRETS="${MISSING_SECRETS}BLUESKY_HANDLE "
+            HAS_BLUESKY="false"
           fi
           if [ -z "${{ secrets.BLUESKY_APP_PASSWORD }}" ]; then
             echo "::warning::BLUESKY_APP_PASSWORD secret is not set"
             MISSING_SECRETS="${MISSING_SECRETS}BLUESKY_APP_PASSWORD "
+            HAS_BLUESKY="false"
           fi
+          
+          # Set outputs for conditional steps
+          echo "has_mastodon=$HAS_MASTODON" >> $GITHUB_OUTPUT
+          echo "has_bluesky=$HAS_BLUESKY" >> $GITHUB_OUTPUT
           
           if [ -n "$MISSING_SECRETS" ]; then
             echo "::error::The following secrets are not configured: $MISSING_SECRETS"
@@ -93,7 +104,7 @@ jobs:
           fi
 
       - name: Post weekly preview to Mastodon
-        if: ${{ secrets.MASTODON_ACCESS_TOKEN != '' && secrets.MASTODON_INSTANCE_URL != '' }}
+        if: steps.validate.outputs.has_mastodon == 'true'
         env:
           MASTODON_ACCESS_TOKEN: ${{ secrets.MASTODON_ACCESS_TOKEN }}
           MASTODON_INSTANCE_URL: ${{ secrets.MASTODON_INSTANCE_URL }}
@@ -106,7 +117,7 @@ jobs:
         continue-on-error: true
 
       - name: Post weekly preview to Bluesky
-        if: ${{ secrets.BLUESKY_HANDLE != '' && secrets.BLUESKY_APP_PASSWORD != '' }}
+        if: steps.validate.outputs.has_bluesky == 'true'
         env:
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
