@@ -395,12 +395,7 @@ def main():
     events = get_events_for_date(all_events, target_date)
     
     if not events:
-        print(f"✓ No events scheduled for {target_date}. Nothing to post.")
-        # Find the next upcoming event to provide context
-        future_events = [e for e in all_events if e.get('date') and e.get('date') >= target_date.strftime('%Y-%m-%d')]
-        if future_events:
-            next_event = future_events[0]
-            print(f"ℹ️  Next event: {next_event.get('title', 'Unknown')} on {next_event.get('date')}")
+        print(f"No events found for {target_date}. Nothing to post.")
         return 0
     
     print(f"Found {len(events)} event(s) for {target_date}")
