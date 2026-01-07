@@ -366,19 +366,11 @@ This repository includes a GitHub Actions workflow that automatically posts dail
 The workflow is located at `.github/workflows/social-media-posts.yml` and requires the following secrets to be configured in your GitHub repository:
 
 1. Go to your repository Settings → Secrets and variables → Actions
-2. **Option A: Repository Secrets** (simpler, works for all workflows)
-   - Add the following repository secrets:
-     - `MASTODON_ACCESS_TOKEN` - Your Mastodon OAuth token
-     - `MASTODON_INSTANCE_URL` - Your Mastodon instance URL (e.g., `https://mastodon.social`)
-     - `BLUESKY_HANDLE` - Your Bluesky handle (e.g., `username.bsky.social`)
-     - `BLUESKY_APP_PASSWORD` - Your Bluesky app password
-
-3. **Option B: Environment Secrets** (recommended, provides better access control)
-   - First, create a "production" environment: Settings → Environments → New environment
-   - Add the same secrets to the "production" environment
-   - The workflows are already configured to use the `production` environment
-
-**Note:** The workflows are configured to use the `production` environment by default, which provides better security and deployment tracking. If you use repository secrets instead, the workflows will still work, but you can remove the `environment:` section from the workflow files if desired.
+2. Add the following secrets:
+   - `MASTODON_ACCESS_TOKEN` - Your Mastodon OAuth token
+   - `MASTODON_INSTANCE_URL` - Your Mastodon instance URL (e.g., `https://mastodon.social`)
+   - `BLUESKY_HANDLE` - Your Bluesky handle (e.g., `username.bsky.social`)
+   - `BLUESKY_APP_PASSWORD` - Your Bluesky app password
 
 ### Workflow Features
 
@@ -423,8 +415,6 @@ on:
 jobs:
   post-to-social:
     runs-on: ubuntu-latest
-    environment:
-      name: production  # Use environment for better secret management
     steps:
       - uses: actions/checkout@v3
       
