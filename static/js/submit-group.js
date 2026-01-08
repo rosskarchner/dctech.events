@@ -40,8 +40,7 @@ const REPO_CONFIG = {
     repo: 'dctech.events',
     branch: 'main',
     getTargetDir: function() {
-        const city = getSelectedCity();
-        return `cities/${city}/_groups`;
+        return '_groups';
     }
 };
 
