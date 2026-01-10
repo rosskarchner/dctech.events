@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Event Tags - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>Browse Events by Topic</h2>
+        <p>Explore our curated collection of DC Tech events organized by topic. Click on any topic below to see upcoming events.</p>
+        
+        <div class="tags-grid">
+            {% for tag in tags %}
+            <div class="tag-card">
+                <h3><a href="/tags/{{ tag.id }}/">{{ tag.name }}</a></h3>
+                <p>{{ tag.description }}</p>
+                <div class="tag-count">
+                    {% if tag.event_count > 0 %}
+                        <a href="/tags/{{ tag.id }}/">{{ tag.event_count }} event{% if tag.event_count != 1 %}s{% endif %}</a>
+                    {% else %}
+                        <span class="no-events">No upcoming events</span>
+                        <p style="font-size: 0.9em; margin-top: 8px;">
+                            <a href="{{ add_events_link }}">Submit an event</a>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<style>
+.tags-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.tag-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    background: #f9f9f9;
+    transition: all 0.3s ease;
+}
+
+.tag-card:hover {
+    border-color: #0066cc;
+    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+}
+
+.tag-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.3em;
+}
+
+.tag-card h3 a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.tag-card h3 a:hover {
+    text-decoration: underline;
+}
+
+.tag-card p {
+    color: #666;
+    font-size: 0.95em;
+    margin: 10px 0;
+    line-height: 1.4;
+}
+
+.tag-count {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+    font-weight: 500;
+}
+
+.tag-count a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.tag-count a:hover {
+    text-decoration: underline;
+}
+
+.no-events {
+    color: #999;
+    font-style: italic;
+}
+
+.no-events + p a {
+    color: #0066cc;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.no-events + p a:hover {
+    text-decoration: underline;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_head %}
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ site_name }}",
+  "description": "{{ tagline }}",
+  "url": "{{ base_url }}/tags/"
+}
+</script>
+{% endblock %}

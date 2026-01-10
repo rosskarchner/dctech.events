@@ -23,6 +23,9 @@ recurring-ical-events
 # Image generation
 Pillow>=10.0.0
 
+# AWS services (for event classification)
+boto3>=1.26.0
+
 # Dev/testing only (not needed for CI build, but kept for local development)
 beautifulsoup4
 responses

@@ -12,6 +12,7 @@ import calendar as cal_module
 import dateparser
 import json
 from location_utils import extract_location_info
+from classifier import classify_events
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -563,6 +564,17 @@ def generate_yaml():
     
     # Sort events by date and time
     all_events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
+    
+    # Classify events with tags
+    print("Classifying events...")
+    try:
+        all_events = classify_events(all_events)
+    except Exception as e:
+        print(f"Warning: Event classification failed: {e}")
+        # Continue without tags if classification fails
+        for event in all_events:
+            if 'tags' not in event:
+                event['tags'] = []
     
     # Get current month and year
     current_month = today.month

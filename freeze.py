@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 # Import app
 from app import app
-from app import local_tz, get_events, get_upcoming_weeks
+from app import local_tz, get_events, get_upcoming_weeks, load_tags_config
 
 # Configure Freezer output destination
 app.config['FREEZER_DESTINATION'] = 'build'
@@ -72,6 +72,18 @@ def sitemap():
 def ical_feed():
     """Generate the iCal feed"""
     yield {}
+
+@freezer.register_generator
+def tags_page():
+    """Generate the tags index page"""
+    yield {}
+
+@freezer.register_generator
+def tag_page():
+    """Generate URLs for tag pages"""
+    tags = load_tags_config()
+    for tag in tags:
+        yield {'tag_id': tag['id']}
 
 # Image generation temporarily disabled
 # @freezer.register_generator

@@ -119,6 +119,93 @@
                         <input type="text" id="cost" name="cost" maxlength="100"
                                placeholder="e.g., Free, $10, $5-$15">
                     </div>
+
+                    <div class="form-group">
+                        <label for="tags">Event Tags (Optional)</label>
+                        <small>Select tags that describe your event. These help categorize your event and make it easier to discover.</small>
+                        <div class="tags-checklist">
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="ai">
+                                <span>AI & Machine Learning</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="startups">
+                                <span>Startups & Entrepreneurship</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="cybersecurity">
+                                <span>Cybersecurity</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="web-dev">
+                                <span>Web Development</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="python">
+                                <span>Python</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="rust">
+                                <span>Rust</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="golang">
+                                <span>Go/Golang</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="gamedev">
+                                <span>Game Development</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="cloud">
+                                <span>Cloud & DevOps</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="data">
+                                <span>Data & Analytics</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="crypto">
+                                <span>Cryptocurrency & Web3</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="design">
+                                <span>Design & UX</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="hardware">
+                                <span>Hardware & IoT</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="mobile">
+                                <span>Mobile Development</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="accessibility">
+                                <span>Accessibility</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="women-in-tech">
+                                <span>Women in Tech</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="networking">
+                                <span>Networking & Community</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="civic-tech">
+                                <span>Civic Tech</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="defense-tech">
+                                <span>Defense & Government Tech</span>
+                            </label>
+                            <label class="tag-checkbox">
+                                <input type="checkbox" name="tags" value="open-source">
+                                <span>Open Source</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </details>
         </div>
@@ -387,6 +474,47 @@
 .success-box a {
     color: var(--color-primary);
     word-break: break-all;
+}
+
+.tags-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--color-background-alt);
+    border-radius: var(--border-radius);
+}
+
+.tag-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s;
+}
+
+.tag-checkbox:hover {
+    background-color: var(--color-border);
+}
+
+.tag-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: var(--spacing-sm);
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+.tag-checkbox span {
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.tag-checkbox input[type="checkbox"]:checked + span {
+    font-weight: 600;
+    color: var(--color-primary);
 }
 </style>
 {% endblock %}

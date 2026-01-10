@@ -1,0 +1,80 @@
+# Event Tags Configuration
+# Site curator defines the set of tags used to classify events
+# These tags will be used by the AWS Bedrock classifier to tag events
+
+tags:
+  - id: ai
+    name: AI & Machine Learning
+    description: Artificial intelligence, machine learning, deep learning, LLMs, and AI applications
+    
+  - id: startups
+    name: Startups & Entrepreneurship
+    description: Startup communities, co-founder networking, pitch events, and entrepreneurship workshops
+    
+  - id: cybersecurity
+    name: Cybersecurity
+    description: Cybersecurity, infosec, penetration testing, threat analysis, and security practices
+    
+  - id: web-dev
+    name: Web Development
+    description: Web frameworks, frontend, backend, full-stack development, and web technologies
+    
+  - id: python
+    name: Python
+    description: Python programming language, Python libraries, and Python-focused development
+    
+  - id: rust
+    name: Rust
+    description: Rust programming language, systems programming, and Rust-focused development
+    
+  - id: golang
+    name: Go/Golang
+    description: Go programming language, Golang applications, and Go-focused development
+    
+  - id: gamedev
+    name: Game Development and Gaming
+    description: Game development, game engines, indie games, and game design
+    
+  - id: cloud
+    name: Cloud & DevOps
+    description: Cloud platforms (AWS, Azure, GCP), cloud architecture, DevOps, and infrastructure
+    
+  - id: data
+    name: Data & Analytics
+    description: Data science, data engineering, analytics, databases, and data-driven development
+    
+  - id: cryptocurrency
+    name: Cryptocurrency & Web3
+    description: Cryptocurrency, blockchain, Web3, NFTs, and decentralized technologies
+    
+  - id: design
+    name: Design & UX
+    description: User experience, UI design, product design, and design thinking
+    
+  - id: hardware
+    name: Hardware & IoT
+    description: Hardware development, IoT, embedded systems, and physical computing
+    
+  - id: mobile
+    name: Mobile Development
+    description: Mobile apps, iOS, Android, React Native, and mobile-specific technologies
+    
+  - id: accessibility
+    name: Accessibility
+    description: Web accessibility, inclusive design, and accessibility best practices
+    
+  - id: networking
+    name: Networking & Community
+    description: Networking events, community mixers, and social tech gatherings
+    
+  - id: civic-tech
+    name: Civic Tech
+    description: Technology for civic good, government technology, and public sector innovation
+    
+  - id: defense-tech
+    name: Defense & Government Tech
+    description: Defense technology, government tech, national security, and federal initiatives
+    
+  - id: open-source
+    name: Open Source
+    description: Open source software, open source communities, and collaborative development

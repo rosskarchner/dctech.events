@@ -80,6 +80,48 @@ python prune_old_events.py --dry-run # Preview what would be deleted
 python prune_old_events.py --days 14 # Keep events for 14 days instead
 ```
 
+## 🏷️ Event Classification & Tagging
+
+Events are automatically classified and tagged using AWS Bedrock Claude. This makes events discoverable by topic.
+
+### How It Works
+
+1. **Curator-Defined Tags**: Site curators define a set of meaningful tags in `tags.yaml`
+2. **Automatic Classification**: When events are generated, AWS Bedrock's Claude model analyzes each event's title, group, description, and URL to assign relevant tags
+3. **Smart Caching**: Results are cached so events are only classified once, unless tags are updated
+4. **User Tagging**: Users can optionally assign tags when submitting events via `/submit/`
+
+### Viewing Events by Tag
+
+- Browse all tags: `/tags/`
+- View events for a tag: `/tags/{tag-id}/` (e.g., `/tags/ai/`, `/tags/python/`)
+- Tags appear in event listings throughout the site
+
+### Managing Tags
+
+To add, modify, or remove tags:
+
+1. Edit `tags.yaml` - add/modify tag definitions
+2. Run: `python generate_month_data.py`
+3. The classifier automatically re-classifies all events with the new tag set
+
+Tags must have:
+- `id`: Lowercase, hyphen-separated (used in URLs)
+- `name`: Display name for users
+- `description`: Explanation of what events belong in this category
+
+### Current Tags
+
+The system includes 20 curated tags covering:
+- **Programming**: Python, Rust, Go/Golang, Web Development
+- **AI/Data**: AI & Machine Learning, Data & Analytics
+- **Infrastructure**: Cloud & DevOps, Hardware & IoT, Mobile
+- **Security**: Cybersecurity, Accessibility
+- **Innovation**: Startups & Entrepreneurship, Open Source, Cryptocurrency & Web3
+- **Community**: Women in Tech, Networking, Design & UX, Civic Tech, Defense Tech
+
+For detailed information, see [`CLASSIFIER.md`](CLASSIFIER.md).
+
 ## 🤝 Contributing
 
 - **Add events/groups**: Use the web forms (`/submit/` or `/submit-group/`) or submit a pull request with YAML files

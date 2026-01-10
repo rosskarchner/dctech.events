@@ -753,7 +753,34 @@ def generate_week_calendar_image(week_start, week_end, events):
 
     return img
 
+def load_tags_config():
+    """Load the tags configuration from tags.yaml"""
+    tags_file = 'tags.yaml'
+    if not os.path.exists(tags_file):
+        return []
+    
+    try:
+        with open(tags_file, 'r') as f:
+            config = yaml.safe_load(f)
+            return config.get('tags', [])
+    except Exception as e:
+        print(f"Error loading tags: {e}")
+        return []
+
+def filter_events_by_tag(events, tag_id):
+    """Filter events that have the given tag"""
+    return [event for event in events if tag_id in event.get('tags', [])]
+
+def get_tag_info(tag_id):
+    """Get information about a specific tag"""
+    tags = load_tags_config()
+    for tag in tags:
+        if tag['id'] == tag_id:
+            return tag
+    return None
+
 @app.route("/")
+
 def homepage():
     # Get upcoming events and filter out virtual events
     all_events = get_events()
@@ -1130,6 +1157,52 @@ def ical_feed():
     
     # Return calendar as text/calendar
     return Response(cal.to_ical(), mimetype='text/calendar')
+
+@app.route("/tags/")
+def tags_page():
+    """Show all available tags with event counts"""
+    tags = load_tags_config()
+    all_events = get_events()
+    
+    tag_data = []
+    for tag in tags:
+        events = filter_events_by_tag(all_events, tag['id'])
+        tag_data.append({
+            'id': tag['id'],
+            'name': tag['name'],
+            'description': tag['description'],
+            'event_count': len(events)
+        })
+    
+    return render_template('tags.html',
+                          tags=tag_data,
+                          base_url=BASE_URL)
+
+@app.route("/tags/<tag_id>/")
+def tag_page(tag_id):
+    """Show events for a specific tag"""
+    tag_info = get_tag_info(tag_id)
+    if not tag_info:
+        return "Tag not found", 404
+    
+    all_events = get_events()
+    events = filter_events_by_tag(all_events, tag_id)
+    days = prepare_events_by_day(events, add_week_links=False)
+    
+    # Get base URL
+    base_url = config.get('base_url', 'https://dctech.events')
+    
+    # Get stats
+    stats = {'upcoming_events': len(events)}
+    
+    return render_template('tag_page.html',
+                          tag_name=tag_info['name'],
+                          tag_id=tag_id,
+                          tag_description=tag_info['description'],
+                          days=days,
+                          stats=stats,
+                          base_url=base_url,
+                          add_events_link=ADD_EVENTS_LINK)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
