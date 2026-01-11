@@ -22,14 +22,14 @@ env = Environment(account=account, region=region)
 project_name = "DCTechEvents"
 environment_name = app.node.try_get_context("environment") or "prod"
 
-# Database Stack - DynamoDB table
+# Database Stack - DynamoDB tables (Events + Groups)
 database_stack = DatabaseStack(
     app,
     f"{project_name}-Database-{environment_name}",
     project_name=project_name,
     environment=environment_name,
     env=env,
-    description="DynamoDB tables for DC Tech Events"
+    description="DynamoDB tables for DC Tech Events (Events + Groups)"
 )
 
 # Application Stack - Chalice app, Lambda, API Gateway
@@ -39,6 +39,7 @@ application_stack = ApplicationStack(
     project_name=project_name,
     environment=environment_name,
     events_table=database_stack.events_table,
+    groups_table=database_stack.groups_table,
     env=env,
     description="Chalice API application for DC Tech Events"
 )
@@ -50,6 +51,7 @@ scheduler_stack = SchedulerStack(
     project_name=project_name,
     environment=environment_name,
     events_table=database_stack.events_table,
+    groups_table=database_stack.groups_table,
     env=env,
     description="Scheduled event collection for DC Tech Events"
 )

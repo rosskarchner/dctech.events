@@ -24,11 +24,13 @@ class ApplicationStack(Stack):
         project_name: str,
         environment: str,
         events_table: dynamodb.Table,
+        groups_table: dynamodb.Table,
         **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # S3 bucket for static assets and group definitions
+        # S3 bucket for static assets only
+        # Groups and single events are now in DynamoDB
         self.assets_bucket = s3.Bucket(
             self,
             "AssetsBucket",
@@ -39,25 +41,7 @@ class ApplicationStack(Stack):
             versioned=True,
         )
 
-        # Deploy _groups directory to S3
-        s3_deployment.BucketDeployment(
-            self,
-            "GroupsDeployment",
-            sources=[s3_deployment.Source.asset("../_groups")],
-            destination_bucket=self.assets_bucket,
-            destination_key_prefix="groups/",
-        )
-
-        # Deploy _single_events directory to S3
-        s3_deployment.BucketDeployment(
-            self,
-            "SingleEventsDeployment",
-            sources=[s3_deployment.Source.asset("../_single_events")],
-            destination_bucket=self.assets_bucket,
-            destination_key_prefix="single_events/",
-        )
-
-        # Deploy static assets
+        # Deploy static assets (CSS, JS, images)
         s3_deployment.BucketDeployment(
             self,
             "StaticAssetsDeployment",
@@ -73,7 +57,8 @@ class ApplicationStack(Stack):
             source_dir="../chalice-app",
             stage_config={
                 "environment_variables": {
-                    "DYNAMODB_TABLE_NAME": events_table.table_name,
+                    "EVENTS_TABLE_NAME": events_table.table_name,
+                    "GROUPS_TABLE_NAME": groups_table.table_name,
                     "ASSETS_BUCKET": self.assets_bucket.bucket_name,
                     "ENVIRONMENT": environment,
                 },
@@ -83,7 +68,7 @@ class ApplicationStack(Stack):
                 },
                 "manage_iam_role": False,
                 "iam_role_arn": self._create_chalice_role(
-                    events_table, self.assets_bucket
+                    events_table, groups_table, self.assets_bucket
                 ).role_arn,
             },
         )
@@ -108,6 +93,7 @@ class ApplicationStack(Stack):
     def _create_chalice_role(
         self,
         events_table: dynamodb.Table,
+        groups_table: dynamodb.Table,
         assets_bucket: s3.Bucket
     ) -> iam.Role:
         """Create IAM role for Chalice Lambda functions"""
@@ -122,10 +108,12 @@ class ApplicationStack(Stack):
             ],
         )
 
-        # Grant DynamoDB permissions
-        events_table.grant_read_data(role)
+        # Grant DynamoDB read/write permissions
+        # Read for public APIs, write for submissions
+        events_table.grant_read_write_data(role)
+        groups_table.grant_read_write_data(role)
 
-        # Grant S3 read permissions
+        # Grant S3 read permissions (for static assets)
         assets_bucket.grant_read(role)
 
         return role
