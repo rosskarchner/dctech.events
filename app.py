@@ -152,7 +152,16 @@ def prepare_events_by_day(events, add_week_links=False):
         # Add event to each day
         for i, event_date in enumerate(event_dates):
             day_key = event_date.strftime('%Y-%m-%d')
-            short_date = event_date.strftime('%a %-m/%-d')  # Format as "Mon 5/5"
+
+            # Use friendly names for today and tomorrow
+            today = date.today()
+            tomorrow = today + timedelta(days=1)
+            if event_date == today:
+                short_date = 'Today'
+            elif event_date == tomorrow:
+                short_date = 'Tomorrow'
+            else:
+                short_date = event_date.strftime('%a %-m/%-d')  # Format as "Mon 5/5"
 
             if day_key not in events_by_day:
                 week_url = None

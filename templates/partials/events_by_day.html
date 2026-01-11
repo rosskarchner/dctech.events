@@ -1,4 +1,4 @@
-{# Partial template for displaying events grouped by day and time #}
+{# Partial template for displaying events grouped by day and sorted by time #}
 <div class="events-by-day">
     {% if days %}
         {% for day in days %}
@@ -13,50 +13,58 @@
                         {% endif %}
                     </h2>
 
-                    {% for time_slot in day.time_slots %}
-                        <div class="time-slot">
-                            <h3 class="time-heading">{{ time_slot.events[0].formatted_time }}</h3>
+                    <div class="events-list">
+                        {% for time_slot in day.time_slots %}
                             {% for event in time_slot.events %}
                                 <div class="h-event event">
-                                    <a class="u-url p-name" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>{% if event.display_title != event.title %} <span class="p-summary">{{ event.display_title | replace(event.title, '') }}</span>{% endif %}
+                                    <a class="u-url p-name event-title" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>{% if event.display_title != event.title %} <span class="p-summary">{{ event.display_title | replace(event.title, '') }}</span>{% endif %}
                                     {% if event.time %}<time class="dt-start" datetime="{{ day.date }}T{{ event.time }}">{{ event.formatted_time }}</time>{% endif %}
-                                    <div class="event-details">
+                                    <div class="event-meta">
+                                        {% if event.time %}
+                                            <span class="event-time">{{ event.formatted_time }}</span>
+                                        {% endif %}
                                         {% if event.location %}
-                                            <div class="p-location event-location">
-                                                {{ event.location }}
-                                            </div>
+                                            {% if event.time %}<span class="separator"> | </span>{% endif %}
+                                            <span class="p-location">{{ event.location }}</span>
                                         {% endif %}
-                                        {% if event.submitter_name and event.submitter_name != 'anonymous' %}
-                                            <div>submitted by
-                                            {% if event.submitter_link %}
-                                                <a href="{{ event.submitter_link }}" target="_blank" rel="noopener noreferrer" class="p-author h-card">{{ event.submitter_name }}</a>
-                                            {% else %}
-                                                <span class="p-author">{{ event.submitter_name }}</span>
-                                            {% endif %}
-                                            </div>
-
-                                        {% elif event.group %}
-                                           <div class="p-organizer h-card">
-                                            {% if event.group_website %}
-                                                <a class="u-url p-name" href="{{ event.group_website }}" target="_blank" rel="noopener noreferrer">{{ event.group }}</a>
-                                            {% else %}
-                                                <span class="p-name">{{ event.group }}</span>
-                                            {% endif %}
-                                            </div>
-                                        {% endif %}
-                                        {% if event.also_published_by %}
-                                            <div class="also-published-by">
-                                                Also published by 
-                                                {% for alt_group in event.also_published_by %}
-                                                    <a href="{{ alt_group.url }}" target="_blank" rel="noopener noreferrer">{{ alt_group.group }}</a>{% if not loop.last %}{% if loop.revindex == 2 %} and {% else %}, {% endif %}{% endif %}
-                                                {% endfor %}
-                                            </div>
+                                        {% if event.group %}
+                                            {% if event.time or event.location %}<span class="separator"> | </span>{% endif %}
+                                            <span class="p-organizer h-card">
+                                                {% if event.group_website %}
+                                                    <a class="u-url p-name" href="{{ event.group_website }}" target="_blank" rel="noopener noreferrer">{{ event.group }}</a>
+                                                {% else %}
+                                                    <span class="p-name">{{ event.group }}</span>
+                                                {% endif %}
+                                            </span>
                                         {% endif %}
                                     </div>
+                                    {% if event.submitter_name and event.submitter_name != 'anonymous' or event.also_published_by %}
+                                        <div class="event-additional">
+                                            {% if event.submitter_name and event.submitter_name != 'anonymous' %}
+                                                <span class="submitted-by">
+                                                    submitted by
+                                                    {% if event.submitter_link %}
+                                                        <a href="{{ event.submitter_link }}" target="_blank" rel="noopener noreferrer" class="p-author h-card">{{ event.submitter_name }}</a>
+                                                    {% else %}
+                                                        <span class="p-author">{{ event.submitter_name }}</span>
+                                                    {% endif %}
+                                                </span>
+                                            {% endif %}
+                                            {% if event.also_published_by %}
+                                                <span class="also-published-by">
+                                                    {% if event.submitter_name and event.submitter_name != 'anonymous' %} | {% endif %}
+                                                    Also published by
+                                                    {% for alt_group in event.also_published_by %}
+                                                        <a href="{{ alt_group.url }}" target="_blank" rel="noopener noreferrer">{{ alt_group.group }}</a>{% if not loop.last %}{% if loop.revindex == 2 %} and {% else %}, {% endif %}{% endif %}
+                                                    {% endfor %}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
-                        </div>
-                    {% endfor %}
+                        {% endfor %}
+                    </div>
                 </div>
             {% endif %}
         {% endfor %}
