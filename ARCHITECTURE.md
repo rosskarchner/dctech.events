@@ -92,9 +92,11 @@ Migration from Flask + YAML to Chalice + DynamoDB architecture with CloudFront C
 
 2. **Event Collection Lambda**
    - Scheduled function (runs daily)
-   - Fetches iCal feeds
+   - Fetches iCal feeds from active groups
+   - Loads single events from S3 (`_single_events/*.yaml`)
    - Processes events and stores in DynamoDB
-   - Implements "last seen" logic
+   - Implements "last seen" logic for iCal events
+   - Single events are always refreshed (no "last seen" logic needed)
 
 3. **CloudFront Distribution**
    - CDN for API caching
@@ -127,14 +129,33 @@ Migration from Flask + YAML to Chalice + DynamoDB architecture with CloudFront C
 - `?group_id=xxx` - Events by group
 - `?limit=50` - Result limit
 
+### Event Sources
+
+1. **iCal Feeds** (Primary)
+   - Automatic collection from group iCal feeds
+   - Recurring events expanded for 60 days
+   - "Last seen" logic to prevent premature deletion
+   - Source type: `ical`
+
+2. **Single Events** (Manual Submissions)
+   - YAML files in `_single_events/` directory
+   - Manually curated and submitted events
+   - No recurring event support
+   - No date limits (can be far in future)
+   - Source type: `single_event`
+   - Group ID: `single_events`
+   - Group name: "Community Submitted"
+
 ### Data Flow
 
 ```
-iCal Feeds → Event Collection Lambda → DynamoDB
-                                          ↓
-                   User → CloudFront → API Gateway → Chalice Lambda → DynamoDB
-                              ↓
-                         S3 (static assets)
+iCal Feeds ────┐
+               ├──→ Event Collection Lambda ──→ DynamoDB
+Single Events ─┘         (S3 Loader)                ↓
+                                                     ↓
+              User → CloudFront → API Gateway → Chalice Lambda → Query DynamoDB
+                         ↓
+                    S3 (static assets, groups, single_events)
 ```
 
 ---

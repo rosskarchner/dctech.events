@@ -38,7 +38,7 @@ CACHE_TABLE_NAME = os.getenv('CACHE_TABLE_NAME', DYNAMODB_TABLE_NAME + '-Cache')
 
 def lambda_handler(event, context):
     """
-    Main Lambda handler - refresh all calendars
+    Main Lambda handler - refresh all calendars and single events
 
     Args:
         event: Lambda event (can contain specific group_id to refresh)
@@ -58,13 +58,14 @@ def lambda_handler(event, context):
         g for g in groups
         if g.get('active', False) and g.get('ical')
     ]
-    print(f"Found {active_groups} active groups with iCal feeds")
+    print(f"Found {len(active_groups)} active groups with iCal feeds")
 
     # Process each group
     stats = {
         'groups_processed': 0,
         'events_created': 0,
         'events_updated': 0,
+        'single_events_processed': 0,
         'errors': []
     }
 
@@ -79,6 +80,18 @@ def lambda_handler(event, context):
             error_msg = f"Error processing group {group.get('id')}: {str(e)}"
             print(error_msg)
             stats['errors'].append(error_msg)
+
+    # Process single events
+    print("Processing single events...")
+    try:
+        single_stats = process_single_events()
+        stats['single_events_processed'] = single_stats['processed']
+        stats['events_created'] += single_stats['created']
+        stats['events_updated'] += single_stats['updated']
+    except Exception as e:
+        error_msg = f"Error processing single events: {str(e)}"
+        print(error_msg)
+        stats['errors'].append(error_msg)
 
     print(f"Calendar refresh complete: {stats}")
 
@@ -521,3 +534,209 @@ def update_events_in_dynamodb(
             # Otherwise, let TTL handle deletion (no action needed)
 
     return stats
+
+
+def process_single_events() -> Dict[str, int]:
+    """
+    Load and process single events from S3
+
+    Returns:
+        Statistics dictionary
+    """
+    stats = {'processed': 0, 'created': 0, 'updated': 0}
+
+    try:
+        # List all YAML files in single_events/ prefix
+        response = s3.list_objects_v2(
+            Bucket=ASSETS_BUCKET,
+            Prefix='single_events/'
+        )
+
+        if 'Contents' not in response:
+            print("No single events found in S3")
+            return stats
+
+        # Load each single event YAML file
+        for obj in response['Contents']:
+            key = obj['Key']
+
+            # Skip if not a YAML file
+            if not key.endswith(('.yaml', '.yml')):
+                continue
+
+            try:
+                # Download and parse YAML
+                obj_response = s3.get_object(
+                    Bucket=ASSETS_BUCKET,
+                    Key=key
+                )
+
+                yaml_content = obj_response['Body'].read().decode('utf-8')
+                event_data = yaml.safe_load(yaml_content)
+
+                if event_data:
+                    # Extract event ID from filename
+                    filename = key.split('/')[-1]
+                    event_id = filename.replace('.yaml', '').replace('.yml', '')
+
+                    # Parse and create event
+                    event = parse_single_event(event_data, event_id)
+                    if event:
+                        # Check if event already exists
+                        existing = table.get_item(
+                            Key={
+                                'event_id': event['event_id'],
+                                'start_datetime': event['start_datetime']
+                            }
+                        ).get('Item')
+
+                        if existing:
+                            # Update existing event
+                            table.put_item(Item=event)
+                            stats['updated'] += 1
+                        else:
+                            # Create new event
+                            table.put_item(Item=event)
+                            stats['created'] += 1
+
+                        stats['processed'] += 1
+
+            except Exception as e:
+                print(f"Error loading single event from {key}: {e}")
+                continue
+
+        print(f"Processed {stats['processed']} single events")
+        return stats
+
+    except Exception as e:
+        print(f"Error processing single events: {e}")
+        return stats
+
+
+def parse_single_event(
+    event_data: Dict[str, Any],
+    event_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Parse single event YAML into DynamoDB event format
+
+    Args:
+        event_data: Event data from YAML
+        event_id: Event identifier (from filename)
+
+    Returns:
+        Event dictionary or None if invalid
+    """
+    # Required fields
+    title = event_data.get('title')
+    date_str = event_data.get('date')
+    url = event_data.get('url', '')
+
+    if not title or not date_str:
+        print(f"Missing required fields for event {event_id}")
+        return None
+
+    # Parse date
+    if isinstance(date_str, date):
+        start_date = date_str
+    else:
+        try:
+            start_date = datetime.strptime(str(date_str), '%Y-%m-%d').date()
+        except:
+            print(f"Invalid date format for event {event_id}: {date_str}")
+            return None
+
+    # Parse time (optional)
+    time_str = event_data.get('time')
+    if time_str:
+        try:
+            time_parts = str(time_str).split(':')
+            hour = int(time_parts[0])
+            minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+            start_dt = datetime.combine(start_date, datetime.min.time().replace(hour=hour, minute=minute))
+            start_dt = local_tz.localize(start_dt)
+        except:
+            print(f"Invalid time format for event {event_id}: {time_str}")
+            # Default to all-day event
+            start_dt = datetime.combine(start_date, datetime.min.time())
+            start_dt = local_tz.localize(start_dt)
+    else:
+        # All-day event
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        start_dt = local_tz.localize(start_dt)
+
+    # End datetime (optional)
+    end_date_str = event_data.get('end_date')
+    end_time_str = event_data.get('end_time')
+
+    if end_date_str:
+        try:
+            if isinstance(end_date_str, date):
+                end_date = end_date_str
+            else:
+                end_date = datetime.strptime(str(end_date_str), '%Y-%m-%d').date()
+
+            if end_time_str:
+                time_parts = str(end_time_str).split(':')
+                hour = int(time_parts[0])
+                minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+                end_dt = datetime.combine(end_date, datetime.min.time().replace(hour=hour, minute=minute))
+            else:
+                end_dt = datetime.combine(end_date, datetime.min.time())
+
+            end_dt = local_tz.localize(end_dt)
+        except:
+            end_dt = start_dt + timedelta(hours=2)  # Default 2-hour duration
+    else:
+        end_dt = start_dt + timedelta(hours=2)  # Default 2-hour duration
+
+    # Location
+    location = event_data.get('location', '')
+    city, state = extract_location_info(location)
+    location_type = 'virtual' if is_virtual_location(location) else 'in_person'
+
+    # Submitter info
+    submitter_name = event_data.get('submitted_by', '')
+    submitter_link = event_data.get('submitter_link', '')
+
+    # Description and cost
+    description = event_data.get('description', '')
+    cost = event_data.get('cost', '')
+
+    # Generate unique event_id
+    unique_event_id = generate_event_id(url or title, title, start_dt)
+
+    # Build event dictionary
+    event = {
+        'event_id': unique_event_id,
+        'start_datetime': start_dt.isoformat(),
+        'end_datetime': end_dt.isoformat(),
+        'title': title,
+        'description': description,
+        'url': url,
+        'location': location,
+        'location_type': location_type,
+        'city': city or '',
+        'state': state or 'ALL',
+        'group_id': 'single_events',  # Special group ID for single events
+        'group_name': 'Community Submitted',
+        'group_website': '',
+        'source_type': 'single_event',
+        'last_seen_date': datetime.now(timezone.utc).date().isoformat(),
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'updated_at': datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Optional fields
+    if cost:
+        event['cost'] = cost
+    if submitter_name:
+        event['submitted_by'] = submitter_name
+    if submitter_link:
+        event['submitter_link'] = submitter_link
+
+    # Set TTL (7 days after event end)
+    ttl_date = end_dt + timedelta(days=7)
+    event['ttl'] = int(ttl_date.timestamp())
+
+    return event

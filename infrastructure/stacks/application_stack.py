@@ -48,6 +48,15 @@ class ApplicationStack(Stack):
             destination_key_prefix="groups/",
         )
 
+        # Deploy _single_events directory to S3
+        s3_deployment.BucketDeployment(
+            self,
+            "SingleEventsDeployment",
+            sources=[s3_deployment.Source.asset("../_single_events")],
+            destination_bucket=self.assets_bucket,
+            destination_key_prefix="single_events/",
+        )
+
         # Deploy static assets
         s3_deployment.BucketDeployment(
             self,
