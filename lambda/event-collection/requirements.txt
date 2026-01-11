@@ -1,0 +1,8 @@
+boto3>=1.26.0
+icalendar>=5.0.0
+pytz>=2023.3
+pyyaml>=6.0
+requests>=2.31.0
+recurring-ical-events>=2.0.0
+extruct>=0.15.0
+w3lib>=2.1.0

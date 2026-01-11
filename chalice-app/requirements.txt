@@ -1,0 +1,5 @@
+chalice>=1.29.0
+boto3>=1.26.0
+pytz>=2023.3
+pyyaml>=6.0
+icalendar>=5.0.0

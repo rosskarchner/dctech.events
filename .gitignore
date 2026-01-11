@@ -63,3 +63,33 @@ infrastructure/lambda/refresh/*
 !infrastructure/lambda/refresh/lambda_function.py
 !infrastructure/lambda/refresh/requirements.txt
 !infrastructure/lambda/refresh/README.md
+
+# CDK
+cdk.out/
+.cdk.staging/
+cdk.context.json
+
+# Chalice
+.chalice/deployments/
+.chalice/deployed/
+chalice-app/.chalice/deployed/
+chalice-app/.chalice/deployments/
+
+# Lambda package dependencies
+lambda/event-collection/package/
+lambda/*/package/
+
+# Virtual environments (additional)
+.venv/
+infrastructure/.venv/
+chalice-app/.venv/
+lambda/*/.venv/
+
+# Terraform (if used alongside CDK)
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Temporary files
+/tmp/
+*.log

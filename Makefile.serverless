@@ -1,0 +1,286 @@
+# Makefile for DC Tech Events - Serverless Architecture
+# Run `make help` to see available commands
+
+.PHONY: help install bootstrap deploy deploy-db deploy-app deploy-scheduler deploy-cdn destroy \
+        test test-api test-local refresh logs logs-api logs-collection status clean \
+        invalidate-cache validate-groups
+
+# Default target
+.DEFAULT_GOAL := help
+
+# AWS Configuration
+AWS_REGION ?= us-east-1
+ENVIRONMENT ?= prod
+PROJECT_NAME = DCTechEvents
+
+# Derived variables
+DATABASE_STACK = $(PROJECT_NAME)-Database-$(ENVIRONMENT)
+APPLICATION_STACK = $(PROJECT_NAME)-Application-$(ENVIRONMENT)
+SCHEDULER_STACK = $(PROJECT_NAME)-Scheduler-$(ENVIRONMENT)
+DISTRIBUTION_STACK = $(PROJECT_NAME)-Distribution-$(ENVIRONMENT)
+
+help: ## Show this help message
+	@echo "DC Tech Events - Serverless Deployment"
+	@echo ""
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+
+# Installation and Setup
+install: ## Install all dependencies (CDK, Chalice, Lambda)
+	@echo "Installing CDK dependencies..."
+	cd infrastructure && pip install -r requirements.txt
+	@echo "Installing Chalice dependencies..."
+	cd chalice-app && pip install -r requirements.txt
+	@echo "Installing Lambda dependencies..."
+	cd lambda/event-collection && pip install -r requirements.txt
+	@echo "Installing AWS CDK CLI..."
+	npm install -g aws-cdk
+	@echo "✓ All dependencies installed"
+
+bootstrap: ## Bootstrap AWS CDK (first time only)
+	@echo "Bootstrapping CDK..."
+	cd infrastructure && cdk bootstrap
+	@echo "✓ CDK bootstrapped"
+
+# Deployment
+deploy: ## Deploy all stacks
+	@echo "Deploying all stacks..."
+	cd infrastructure && cdk deploy --all --require-approval never
+	@echo "✓ All stacks deployed"
+
+deploy-db: ## Deploy database stack only
+	@echo "Deploying database stack..."
+	cd infrastructure && cdk deploy $(DATABASE_STACK)
+	@echo "✓ Database stack deployed"
+
+deploy-app: ## Deploy application stack only (Chalice API)
+	@echo "Deploying application stack..."
+	cd infrastructure && cdk deploy $(APPLICATION_STACK)
+	@echo "✓ Application stack deployed"
+
+deploy-scheduler: ## Deploy scheduler stack only (Event Collection Lambda)
+	@echo "Deploying scheduler stack..."
+	cd infrastructure && cdk deploy $(SCHEDULER_STACK)
+	@echo "✓ Scheduler stack deployed"
+
+deploy-cdn: ## Deploy CloudFront distribution
+	@echo "Deploying CloudFront distribution..."
+	cd infrastructure && cdk deploy $(DISTRIBUTION_STACK)
+	@echo "✓ CloudFront deployed"
+
+# Destruction
+destroy: ## Destroy all stacks (WARNING: deletes all resources)
+	@echo "⚠️  WARNING: This will delete all resources!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		cd infrastructure && cdk destroy --all; \
+	fi
+
+# Testing
+test: test-api ## Run all tests
+
+test-api: ## Test API endpoints
+	@echo "Testing API endpoints..."
+	@CLOUDFRONT_URL=$$(aws cloudformation describe-stacks \
+		--stack-name $(DISTRIBUTION_STACK) \
+		--query "Stacks[0].Outputs[?OutputKey=='DistributionDomain'].OutputValue" \
+		--output text 2>/dev/null || echo ""); \
+	if [ -z "$$CLOUDFRONT_URL" ]; then \
+		echo "CloudFront distribution not found. Using API Gateway URL..."; \
+		CLOUDFRONT_URL=$$(aws cloudformation describe-stacks \
+			--stack-name $(APPLICATION_STACK) \
+			--query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+			--output text); \
+	fi; \
+	echo "Testing https://$$CLOUDFRONT_URL"; \
+	echo ""; \
+	echo "Health check:"; \
+	curl -s https://$$CLOUDFRONT_URL/health | jq .; \
+	echo ""; \
+	echo "Upcoming events:"; \
+	curl -s "https://$$CLOUDFRONT_URL/api/events/upcoming?limit=3" | jq '.days[0]'; \
+	echo ""; \
+	echo "Groups:"; \
+	curl -s "https://$$CLOUDFRONT_URL/api/groups?limit=5" | jq '.groups[0]'
+
+test-local: ## Run Chalice app locally for testing
+	@echo "Starting Chalice local server..."
+	@echo "Set required environment variables first:"
+	@echo "  export DYNAMODB_TABLE_NAME=$(PROJECT_NAME)-Events-$(ENVIRONMENT)"
+	@echo "  export ASSETS_BUCKET=$(shell echo $(PROJECT_NAME) | tr '[:upper:]' '[:lower:]')-assets-$(ENVIRONMENT)"
+	@echo ""
+	cd chalice-app && chalice local --port 8000
+
+# Event Collection
+refresh: ## Manually trigger event collection Lambda
+	@echo "Triggering event collection..."
+	@FUNCTION_NAME=$$(aws lambda list-functions \
+		--query "Functions[?starts_with(FunctionName, '$(PROJECT_NAME)-EventCollection-$(ENVIRONMENT)')].FunctionName" \
+		--output text); \
+	if [ -z "$$FUNCTION_NAME" ]; then \
+		echo "❌ Event collection Lambda not found"; \
+		exit 1; \
+	fi; \
+	aws lambda invoke \
+		--function-name $$FUNCTION_NAME \
+		--invocation-type Event \
+		/tmp/response.json; \
+	echo "✓ Event collection triggered. Check logs with: make logs-collection"
+
+# Logs
+logs: logs-collection ## View all logs (defaults to event collection)
+
+logs-api: ## View Chalice API Lambda logs
+	@echo "Viewing Chalice API logs..."
+	@FUNCTION_NAME=$$(aws lambda list-functions \
+		--query "Functions[?contains(FunctionName, 'dctech-events-$(ENVIRONMENT)')].FunctionName" \
+		--output text); \
+	if [ -z "$$FUNCTION_NAME" ]; then \
+		echo "❌ Chalice Lambda not found"; \
+		exit 1; \
+	fi; \
+	aws logs tail /aws/lambda/$$FUNCTION_NAME --follow
+
+logs-collection: ## View event collection Lambda logs
+	@echo "Viewing event collection logs..."
+	@FUNCTION_NAME=$$(aws lambda list-functions \
+		--query "Functions[?starts_with(FunctionName, '$(PROJECT_NAME)-EventCollection-$(ENVIRONMENT)')].FunctionName" \
+		--output text); \
+	if [ -z "$$FUNCTION_NAME" ]; then \
+		echo "❌ Event collection Lambda not found"; \
+		exit 1; \
+	fi; \
+	aws logs tail /aws/lambda/$$FUNCTION_NAME --follow
+
+# Status and Information
+status: ## Show deployment status and URLs
+	@echo "DC Tech Events - Deployment Status"
+	@echo "===================================="
+	@echo ""
+	@echo "Environment: $(ENVIRONMENT)"
+	@echo "Region: $(AWS_REGION)"
+	@echo ""
+	@echo "CloudFormation Stacks:"
+	@echo "---------------------"
+	@aws cloudformation list-stacks \
+		--stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
+		--query "StackSummaries[?starts_with(StackName, '$(PROJECT_NAME)')].{Name:StackName,Status:StackStatus}" \
+		--output table
+	@echo ""
+	@echo "API Endpoint:"
+	@echo "------------"
+	@API_URL=$$(aws cloudformation describe-stacks \
+		--stack-name $(APPLICATION_STACK) \
+		--query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+		--output text 2>/dev/null || echo "Not deployed"); \
+	echo "API Gateway: $$API_URL"
+	@CLOUDFRONT_URL=$$(aws cloudformation describe-stacks \
+		--stack-name $(DISTRIBUTION_STACK) \
+		--query "Stacks[0].Outputs[?OutputKey=='DistributionDomain'].OutputValue" \
+		--output text 2>/dev/null || echo "Not deployed"); \
+	echo "CloudFront: https://$$CLOUDFRONT_URL"
+	@echo ""
+	@echo "DynamoDB Table:"
+	@echo "--------------"
+	@TABLE_NAME="$(PROJECT_NAME)-Events-$(ENVIRONMENT)"; \
+	COUNT=$$(aws dynamodb scan \
+		--table-name $$TABLE_NAME \
+		--select COUNT \
+		--query 'Count' \
+		--output text 2>/dev/null || echo "0"); \
+	echo "Table: $$TABLE_NAME"; \
+	echo "Event count: $$COUNT"
+
+# Cache Management
+invalidate-cache: ## Invalidate CloudFront cache
+	@echo "Invalidating CloudFront cache..."
+	@DISTRIBUTION_ID=$$(aws cloudformation describe-stacks \
+		--stack-name $(DISTRIBUTION_STACK) \
+		--query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" \
+		--output text 2>/dev/null); \
+	if [ -z "$$DISTRIBUTION_ID" ]; then \
+		echo "❌ CloudFront distribution not found"; \
+		exit 1; \
+	fi; \
+	aws cloudfront create-invalidation \
+		--distribution-id $$DISTRIBUTION_ID \
+		--paths "/*"; \
+	echo "✓ Cache invalidation created"
+
+# Validation
+validate-groups: ## Validate all group YAML files
+	@echo "Validating group YAML files..."
+	@python3 -c "import sys, yaml, pathlib; \
+		files = list(pathlib.Path('_groups').glob('*.yaml')); \
+		errors = []; \
+		for f in files: \
+			try: \
+				yaml.safe_load(open(f)); \
+				print(f'✓ {f.name}'); \
+			except Exception as e: \
+				errors.append(f'{f.name}: {e}'); \
+				print(f'✗ {f.name}: {e}'); \
+		sys.exit(1 if errors else 0)"
+	@echo "✓ All group files are valid"
+
+# Cleanup
+clean: ## Clean build artifacts
+	@echo "Cleaning build artifacts..."
+	rm -rf infrastructure/cdk.out
+	rm -rf infrastructure/.cdk.staging
+	rm -rf chalice-app/.chalice/deployments
+	rm -rf chalice-app/.chalice/deployed
+	rm -rf lambda/event-collection/package
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
+	@echo "✓ Build artifacts cleaned"
+
+# Database Operations
+db-scan: ## Scan DynamoDB table (first 10 events)
+	@aws dynamodb scan \
+		--table-name $(PROJECT_NAME)-Events-$(ENVIRONMENT) \
+		--max-items 10 \
+		--output json | jq '.Items'
+
+db-count: ## Count events in DynamoDB
+	@echo "Counting events..."
+	@aws dynamodb scan \
+		--table-name $(PROJECT_NAME)-Events-$(ENVIRONMENT) \
+		--select COUNT \
+		--query 'Count' \
+		--output text
+
+db-export: ## Export DynamoDB table to S3 (requires S3 bucket)
+	@read -p "Enter S3 bucket name: " BUCKET; \
+	echo "Exporting table to s3://$$BUCKET/exports/$(PROJECT_NAME)-Events-$(ENVIRONMENT)/..."; \
+	TABLE_ARN=$$(aws dynamodb describe-table \
+		--table-name $(PROJECT_NAME)-Events-$(ENVIRONMENT) \
+		--query 'Table.TableArn' \
+		--output text); \
+	aws dynamodb export-table-to-point-in-time \
+		--table-arn $$TABLE_ARN \
+		--s3-bucket $$BUCKET \
+		--s3-prefix exports/$(PROJECT_NAME)-Events-$(ENVIRONMENT)/
+
+# CDK Utilities
+cdk-diff: ## Show differences between deployed and local
+	cd infrastructure && cdk diff
+
+cdk-synth: ## Synthesize CloudFormation templates
+	cd infrastructure && cdk synth
+
+cdk-list: ## List all CDK stacks
+	cd infrastructure && cdk list
+
+# Development shortcuts
+dev: ## Deploy to dev environment
+	$(MAKE) deploy ENVIRONMENT=dev
+
+prod: ## Deploy to prod environment
+	$(MAKE) deploy ENVIRONMENT=prod
+
+watch: ## Watch Chalice app for changes (auto-reload)
+	cd chalice-app && chalice local --port 8000 --autoreload
