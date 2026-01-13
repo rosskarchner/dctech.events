@@ -990,6 +990,19 @@ def category_page(slug):
                          category_name=category['name'],
                          category_description=category.get('description', ''))
 
+@app.route("/edit/")
+def edit_list():
+    """List of upcoming events for editing"""
+    events = get_events()
+    # Filter to only future events
+    today = date.today()
+    future_events = [e for e in events if e.get('start_date') and 
+                     datetime.strptime(e['start_date'], '%Y-%m-%d').date() >= today]
+    # Sort by start_date
+    future_events.sort(key=lambda e: e.get('start_date', ''))
+    
+    return render_template('edit_list.html', events=future_events)
+
 @app.route("/edit/<event_id>/")
 def edit_event(event_id):
     """Edit event page with GitHub OAuth

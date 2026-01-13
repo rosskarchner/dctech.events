@@ -29,6 +29,11 @@ def week_page():
         yield {'week_id': week_id}
 
 @freezer.register_generator
+def edit_list():
+    """Generate the edit events list page"""
+    yield {}
+
+@freezer.register_generator
 def submit():
     """Generate the event submission page"""
     yield {}
