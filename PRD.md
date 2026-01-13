@@ -417,7 +417,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 ## Phase 8: Frontend Polish and Documentation
 
-### - [ ] 8.1 Update Templates for Categories
+### - [x] 8.1 Update Templates for Categories
 **Files:**
 - `templates/partials/events_by_day.html` - display category badges on events
 
@@ -562,4 +562,4 @@ def calculate_event_hash(date, time, title, url=None):
 - [ ] Overrides persist across calendar refreshes
 - [ ] Multiple categories per event works
 - [x] Empty state displays correctly on category pages
-- [ ] Category badges display on events in listings
+- [x] Category badges display on events in listings

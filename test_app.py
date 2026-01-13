@@ -2332,6 +2332,45 @@ class TestIntegrationEndToEnd(unittest.TestCase):
             if os.path.exists(test_file):
                 os.remove(test_file)
 
+    def test_category_badges_display_on_events(self):
+        """Test that category badges display on events in listings"""
+        from app import app
+        import yaml
+        import os
+        
+        client = app.test_client()
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        future_date = (self.today + timedelta(days=5)).strftime('%Y-%m-%d')
+        
+        test_event = {
+            'date': future_date,
+            'time': '19:00',
+            'title': 'Python ML Workshop',
+            'location': 'Arlington VA',
+            'url': 'https://example.com/ml',
+            'categories': ['python', 'ai']
+        }
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump([test_event], f)
+            
+            # Check homepage renders with category badges
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            
+            # Should contain category badge links
+            self.assertIn(b'category-badge', response.data)
+            self.assertIn(b'/categories/python/', response.data)
+            self.assertIn(b'/categories/ai/', response.data)
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
 
 if __name__ == '__main__':
     unittest.main()

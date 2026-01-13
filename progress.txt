@@ -356,3 +356,25 @@ Learnings for future iterations:
 - Next task: Phase 7.3 - Integration Testing
 
 ---
+
+## Iteration 18 - Integration Testing (Phase 7.3)
+- Added TestIntegrationEndToEnd class with 7 comprehensive integration tests
+- Tests cover all PRD 7.3 requirements:
+  - test_manual_event_edit_workflow: End-to-end manual event → edit form workflow
+  - test_ical_event_with_override_workflow: End-to-end iCal event → override → merge workflow
+  - test_multiple_categories_per_event: Event appears in all assigned category pages
+  - test_category_empty_states: Empty state displays correctly on category pages
+  - test_no_override_returns_original_event: Events without overrides remain unchanged
+  - test_categories_inherited_from_group_in_pipeline: Category inheritance works
+  - test_edit_route_accessible_by_both_guid_and_slug: Both lookup methods work
+- All 59 tests pass
+- Files changed: test_app.py, PRD.md
+
+Learnings for future iterations:
+- Integration tests verify full workflow from data creation to template rendering
+- Test cleanup is critical - use try/finally for temporary files
+- Flask test client works well for simulating HTTP requests
+- Events can be looked up by guid (preferred) or slug for manual events
+- Next task: Phase 8.1 - Update Templates for Categories
+
+---

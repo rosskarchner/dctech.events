@@ -52,6 +52,15 @@
                                                 {% endfor %}
                                             </div>
                                         {% endif %}
+                                        {% if event.categories %}
+                                            <div class="event-categories">
+                                                {% for cat_slug in event.categories %}
+                                                    {% if categories and cat_slug in categories %}
+                                                        <a href="/categories/{{ cat_slug }}/" class="category-badge">{{ categories[cat_slug].name }}</a>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             {% endfor %}

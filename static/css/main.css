@@ -259,6 +259,33 @@ nav [aria-current="page"] {
     color: var(--color-text-lighter);
 }
 
+/* Category Badges */
+.event-categories {
+    margin-top: var(--spacing-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    background-color: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-radius: 9999px;
+    text-decoration: none;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.category-badge:hover {
+    background-color: #dbeafe;
+    border-color: var(--color-primary);
+    text-decoration: none;
+}
+
 .dt-start {
     display: none;
 }
