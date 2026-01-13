@@ -990,6 +990,40 @@ def category_page(slug):
                          category_name=category['name'],
                          category_description=category.get('description', ''))
 
+@app.route("/edit/<event_id>/")
+def edit_event(event_id):
+    """Edit event page with GitHub OAuth
+    
+    Args:
+        event_id: Either a slug (for manual events) or a hash (for iCal events)
+    """
+    events = get_events()
+    
+    # Find the event by guid (hash) or by slug (for manual events)
+    event = None
+    for e in events:
+        # Check if event_id matches guid (iCal events and manual events both have guid)
+        if e.get('guid') == event_id:
+            event = e
+            break
+        # Check if event_id matches the slug (for manual events)
+        if e.get('source') == 'manual' and e.get('slug') == event_id:
+            event = e
+            break
+    
+    if not event:
+        return "Event not found", 404
+    
+    # Get OAuth configuration from environment or config
+    github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
+    oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
+                                            config.get('oauth_callback_endpoint', ''))
+    
+    return render_template('edit.html',
+                          event=event,
+                          github_client_id=github_client_id,
+                          oauth_callback_endpoint=oauth_callback_endpoint)
+
 @app.route("/submit/")
 def submit():
     """Event submission page with GitHub OAuth"""

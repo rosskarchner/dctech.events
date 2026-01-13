@@ -1611,5 +1611,161 @@ class TestEventHashCalculation(unittest.TestCase):
         
         self.assertEqual(actual_hash, expected_hash)
 
+class TestEditRoute(unittest.TestCase):
+    """Test cases for the /edit/<event_id>/ route"""
+    
+    def setUp(self):
+        from datetime import datetime
+        import pytz
+        self.timezone_name = 'US/Eastern'
+        self.local_tz = pytz.timezone(self.timezone_name)
+        self.today = datetime.now(self.local_tz).date()
+    
+    def test_edit_route_loads_event_by_guid(self):
+        """Test that edit route loads correctly with valid event guid"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_guid = 'abc123def456789012345678901234ab'
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '18:00',
+                'title': 'Test Python Meetup',
+                'location': 'Washington DC',
+                'url': 'https://example.com/event',
+                'guid': test_guid,
+                'source': 'ical'
+            }
+        ]
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            response = client.get(f'/edit/{test_guid}/')
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Test Python Meetup', response.data)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_edit_route_loads_event_by_slug(self):
+        """Test that edit route loads manual events by slug"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '18:00',
+                'title': 'Manual Event Test',
+                'location': 'Arlington VA',
+                'url': 'https://example.com/manual',
+                'guid': 'xyz789',
+                'source': 'manual',
+                'slug': 'manual-event-test'
+            }
+        ]
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            response = client.get('/edit/manual-event-test/')
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Manual Event Test', response.data)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_edit_route_returns_404_for_unknown_event(self):
+        """Test that edit route returns 404 for nonexistent event"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump([], f)
+            
+            response = client.get('/edit/nonexistent-event-id/')
+            
+            self.assertEqual(response.status_code, 404)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_edit_route_passes_event_data_to_template(self):
+        """Test that edit route passes event data correctly to template"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_guid = 'testguid123456789012345678901234'
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '14:30',
+                'title': 'AI Conference 2025',
+                'location': 'Bethesda MD',
+                'url': 'https://ai-conf.example.com',
+                'description': 'Annual AI meetup',
+                'guid': test_guid,
+                'source': 'ical',
+                'categories': ['ai', 'data']
+            }
+        ]
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            response = client.get(f'/edit/{test_guid}/')
+            
+            self.assertEqual(response.status_code, 200)
+            # Check event data is in the page
+            self.assertIn(b'AI Conference 2025', response.data)
+            self.assertIn(b'Bethesda MD', response.data)
+            self.assertIn(b'14:30', response.data)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -303,7 +303,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 ## Phase 5: Edit Functionality - Backend (Minimal)
 
-### - [ ] 5.1 Add `/edit/<event_id>/` Route
+### - [x] 5.1 Add `/edit/<event_id>/` Route
 **File:** `app.py`
 
 **Function:** `edit_event(event_id)`
