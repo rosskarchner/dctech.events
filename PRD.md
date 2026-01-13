@@ -320,7 +320,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 1 hour
 
-### - [ ] 5.2 Add Event Hash Calculation Utility
+### - [x] 5.2 Add Event Hash Calculation Utility
 **File:** `app.py` (shared utility)
 
 **Function:** `calculate_event_hash(date, time, title, url=None)`
@@ -336,7 +336,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 ## Phase 6: GitHub Integration (Frontend-based)
 
-### - [ ] 6.1 Review Existing GitHub OAuth Flow
+### - [x] 6.1 Review Existing GitHub OAuth Flow
 **Files:** `oauth-endpoint/`, `.github/workflows/deploy-oauth.yml`, `static/js/submit.js`
 
 **Tasks:**

@@ -77,8 +77,11 @@ def decode_state_parameter(state):
             return None
 
         # Validate return_url is one of the allowed paths
+        # Allow /edit/{event_id}/ pattern for event editing
         allowed_paths = ['/submit/', '/submit-group/']
-        if state_data['return_url'] not in allowed_paths:
+        return_url = state_data['return_url']
+        is_edit_path = return_url.startswith('/edit/') and return_url.endswith('/')
+        if return_url not in allowed_paths and not is_edit_path:
             print(f"Invalid return URL in state: {state_data['return_url']}")
             return None
 

@@ -191,3 +191,72 @@ Learnings for future iterations:
 
 ---
 
+## Iteration 11 - Create Edit Form Template (Phase 4.1)
+- Created templates/edit.html based on submit.html structure
+- Template extends base.html with proper layout
+- Includes GitHub auth section with login button
+- Edit form with pre-populated fields:
+  - Title (required), URL, Date (required), Time picker
+  - City/State location fields, End Date, Cost, Description
+  - Category checkboxes for all available categories
+- Shows source type (ical/manual) as read-only
+- Shows group name as read-only if present
+- Success state with PR link display
+- Passes GITHUB_CONFIG, EVENT_DATA, and CATEGORIES to JavaScript via window object
+- Full styling matching submit.html patterns
+- Files changed: templates/edit.html (new file)
+
+Learnings for future iterations:
+- Template uses event|tojson to pass event data to JavaScript
+- Categories passed to template via context processor
+- Event categories checked via slug in event.get('categories', [])
+- Form references edit.bundle.js (needs to be created in Phase 4.2)
+- All 28 tests pass
+- Next task: Phase 4.2 - Create Frontend JavaScript for Edit Form
+
+---
+
+## Iteration 12 - Create Frontend JavaScript for Edit Form (Phase 4.2)
+- Created static/js/edit.js with full edit form functionality
+- Implements GitHub OAuth flow (same pattern as submit.js)
+- Pre-populates form fields from EVENT_DATA passed from Flask template
+- Handles time parsing (24-hour to 12-hour AM/PM conversion)
+- Parses location into city and state components
+- Implements MD5 hash calculation for event identification (matches generate_month_data.py)
+- Generates diff description for PR body showing what changed
+- Determines file path based on event source:
+  - Manual events: updates _single_events/{slug}.yaml
+  - iCal events: creates _event_overrides/{hash}.yaml
+- Generates YAML content with proper formatting (including categories)
+- Creates GitHub PR via Octokit with fork workflow
+- Updated build.js to include edit.bundle.js in esbuild config
+- Files changed: static/js/edit.js (new), build.js
+
+Learnings for future iterations:
+- edit.js follows same OAuth pattern as submit.js
+- MD5 hash is calculated client-side to match server-side algorithm
+- YAML generation includes proper escaping for titles and multi-line descriptions
+- Bundle is generated to static/js/dist/edit.bundle.js (ignored by .gitignore)
+- All 28 tests pass
+- Build completes successfully with new edit bundle (~212kb)
+- Next task: Phase 4.3 - Test Forms Locally (or Phase 5.1 - Add /edit/<event_id>/ Route)
+
+---
+
+## Iteration 13 - Review Existing GitHub OAuth Flow (Phase 6.1)
+- Reviewed OAuth callback endpoint in oauth-endpoint/app.py
+- Found that allowed_paths only included /submit/ and /submit-group/
+- Updated decode_state_parameter() to also allow /edit/{event_id}/ paths
+- The is_edit_path check validates URL starts with /edit/ and ends with /
+- OAuth flow uses Octokit for GitHub API calls (same as submit.js)
+- Client ID is public in oauth-endpoint, secret is in AWS Secrets Manager
+- Files changed: oauth-endpoint/app.py
+
+Learnings for future iterations:
+- OAuth endpoint validates return_url against allowed paths for security
+- Edit URLs follow pattern /edit/{event_id}/ - validated with startswith/endswith
+- Chalice tests need chalice module (not in main venv), but main tests pass
+- All 28 tests pass
+- Next task: Phase 6.2 - Implement PR Creation in edit.js
+
+---
