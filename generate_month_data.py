@@ -31,6 +31,7 @@ ALLOWED_STATES = config.get('only_states', [])
 # Constants - data paths
 GROUPS_DIR = '_groups'
 SINGLE_EVENTS_DIR = '_single_events'
+CATEGORIES_DIR = '_categories'
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'  # Shared cache directory
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
@@ -478,6 +479,67 @@ def load_single_events():
 
     return events
 
+def load_categories():
+    """
+    Load all categories from the _categories directory
+
+    Returns:
+        A dictionary mapping category slugs to category metadata
+    """
+    categories = {}
+
+    # Load categories from local _categories directory
+    for file_path in glob.glob(os.path.join(CATEGORIES_DIR, '*.yaml')):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                category = yaml.safe_load(f)
+                # Get the category slug (filename without extension)
+                slug = os.path.splitext(os.path.basename(file_path))[0]
+                category['slug'] = slug
+                categories[slug] = category
+        except Exception as e:
+            print(f"Error loading category from {file_path}: {str(e)}")
+
+    return categories
+
+def resolve_event_categories(event, group, categories):
+    """
+    Resolve categories for an event based on event-level and group-level categories.
+
+    Priority:
+    1. Event-specific categories (if present)
+    2. Group categories (if event doesn't have categories)
+    3. Empty list (if neither has categories)
+
+    Args:
+        event: Event dictionary
+        group: Group dictionary (or None for single events)
+        categories: Dictionary of valid categories
+
+    Returns:
+        List of category slugs (empty list if none)
+    """
+    # Check if event has categories
+    if 'categories' in event and event['categories']:
+        event_cats = event['categories']
+        # Ensure it's a list
+        if not isinstance(event_cats, list):
+            event_cats = [event_cats]
+        # Filter to only valid categories
+        return [cat for cat in event_cats if cat in categories]
+
+    # Check if group has categories
+    if group and 'categories' in group and group['categories']:
+        group_cats = group['categories']
+        # Ensure it's a list
+        if not isinstance(group_cats, list):
+            group_cats = [group_cats]
+        # Filter to only valid categories
+        return [cat for cat in group_cats if cat in categories]
+
+    # No categories found
+    return []
+
 def calculate_stats(groups, all_events):
     """
     Calculate statistics about events and groups
@@ -517,16 +579,19 @@ def generate_yaml():
         True if any YAML files were updated, False otherwise
     """
     print("Generating YAML files...")
-    
+
     # Get current date at the start
     today = datetime.now(local_tz).date()
-    
+
     # Calculate date 90 days from now
     max_future_date = today + timedelta(days=90)
-    
+
     # Load all groups
     groups = load_groups()
-    
+
+    # Load all categories
+    categories = load_categories()
+
     # Load all single events
     single_events = load_single_events()
     
@@ -566,6 +631,10 @@ def generate_yaml():
                                     # Add group information
                                     event['group'] = str(group.get('name', ''))
                                     event['group_website'] = str(group.get('website', ''))
+                                    # Resolve and add categories
+                                    event_categories = resolve_event_categories(event, group, categories)
+                                    if event_categories:
+                                        event['categories'] = event_categories
                                     # For iCal+JSON-LD events, apply 90-day limit
                                     event_date = dateparser.parse(event['date'], settings={
                                         'TIMEZONE': timezone_name,
@@ -590,6 +659,18 @@ def generate_yaml():
             'DATE_ORDER': 'YMD'
         }).date()
         if today <= event_date:  # Only check that event is in the future
+            # Find the group for this event if it has one
+            event_group = None
+            if 'group' in event and event['group']:
+                # Try to find the group by name
+                for group in groups:
+                    if group.get('name', '') == event['group']:
+                        event_group = group
+                        break
+            # Resolve and add categories
+            event_categories = resolve_event_categories(event, event_group, categories)
+            if event_categories:
+                event['categories'] = event_categories
             all_events.append(event)
     
     # Remove duplicates across all events (keeps first occurrence)
