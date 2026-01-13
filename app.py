@@ -948,6 +948,26 @@ def region_page(state):
                           location_name=region_name,
                           location_type='region')
 
+@app.route("/categories/<slug>/")
+def category_page(slug):
+    """Show events for a specific category"""
+    categories = get_categories()
+    if slug not in categories:
+        return "Category not found", 404
+
+    events = get_events()
+    filtered_events = [e for e in events if slug in e.get('categories', [])]
+    days = prepare_events_by_day(filtered_events)
+
+    category = categories[slug]
+    stats = {'upcoming_events': len(filtered_events)}
+
+    return render_template('category_page.html',
+                         days=days,
+                         stats=stats,
+                         category_name=category['name'],
+                         category_description=category.get('description', ''))
+
 @app.route("/submit/")
 def submit():
     """Event submission page with GitHub OAuth"""

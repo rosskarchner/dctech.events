@@ -78,3 +78,23 @@ Learnings for future iterations:
 
 ---
 
+## Iteration 5 - Add Category Page Route (Phase 2.2)
+- Implemented category_page(slug) route in app.py at line 951
+- Route pattern: /categories/<slug>/
+- Function loads categories via get_categories()
+- Returns 404 if category slug not found
+- Filters events by checking if slug is in event's categories list
+- Passes filtered events to prepare_events_by_day() for display
+- Renders category_page.html with days, stats, category_name, and category_description
+- Files changed: app.py
+
+Learnings for future iterations:
+- Category page route follows same pattern as region_page (line 932)
+- Event filtering checks if slug is in e.get('categories', []) list
+- Used .get('description', '') for safe access to optional description field
+- All 79 tests pass successfully after adding route
+- Route validates category exists before attempting to filter events
+- Next task: Phase 2.3 - Update Sitemap Generation
+
+---
+
