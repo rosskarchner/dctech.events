@@ -263,7 +263,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 2-3 hours
 
-### - [ ] 4.2 Create Frontend JavaScript for Edit Form
+### - [x] 4.2 Create Frontend JavaScript for Edit Form
 **File:** `static/js/edit.js`
 
 **Functionality:**

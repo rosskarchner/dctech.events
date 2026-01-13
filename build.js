@@ -36,20 +36,35 @@ const submitGroupBuildOptions = {
   logLevel: 'info'
 };
 
+// Build options for event editing
+const editBuildOptions = {
+  entryPoints: ['static/js/edit.js'],
+  bundle: true,
+  minify: true,
+  sourcemap: true,
+  format: 'esm',
+  target: ['es2020'],
+  outfile: 'static/js/dist/edit.bundle.js',
+  logLevel: 'info'
+};
+
 async function build() {
   try {
     if (isWatch) {
       const submitContext = await esbuild.context(submitBuildOptions);
       const submitGroupContext = await esbuild.context(submitGroupBuildOptions);
+      const editContext = await esbuild.context(editBuildOptions);
       await Promise.all([
         submitContext.watch(),
-        submitGroupContext.watch()
+        submitGroupContext.watch(),
+        editContext.watch()
       ]);
       console.log('Watching for changes...');
     } else {
       await Promise.all([
         esbuild.build(submitBuildOptions),
-        esbuild.build(submitGroupBuildOptions)
+        esbuild.build(submitGroupBuildOptions),
+        esbuild.build(editBuildOptions)
       ]);
       console.log('Build completed successfully!');
     }
