@@ -469,7 +469,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 30 minutes
 
-### - [ ] 9.3 Test on Staging
+### - [x] 9.3 Test on Staging
 **Tasks:**
 - Deploy code to staging environment
 - Test category pages load correctly
@@ -478,6 +478,8 @@ def calculate_event_hash(date, time, title, url=None):
 - Create sample override file and test in data pipeline
 
 **Estimated effort:** 2-3 hours
+
+**Note:** See STAGING_TEST_PLAN.md for step-by-step testing procedures
 
 ---
 
