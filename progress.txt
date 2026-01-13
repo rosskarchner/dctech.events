@@ -282,3 +282,32 @@ Learnings for future iterations:
 - Next task: Phase 7.1 - Ensure Override and Category Merging in Data Pipeline
 
 ---
+
+## Iteration 15 - Ensure Override and Category Merging in Data Pipeline (Phase 7.1)
+- Verified that overrides are loaded and merged when building upcoming.yaml
+- Verified that categories are assigned and inherited correctly
+- Verified that suppress_guid suppresses events correctly
+- Added comprehensive test suite (TestDataPipelineIntegration class) with 11 tests:
+  - test_merge_event_with_override: Override fields take precedence
+  - test_merge_event_with_none_override: None override returns original
+  - test_resolve_event_categories_from_event: Event categories take priority
+  - test_resolve_event_categories_from_group: Group categories used as fallback
+  - test_resolve_event_categories_empty_when_none: Empty list when no categories
+  - test_resolve_event_categories_filters_invalid: Invalid slugs filtered out
+  - test_load_categories: Categories loaded from _categories/
+  - test_load_event_override_nonexistent: Nonexistent override returns None
+  - test_suppress_guid_in_group: suppress_guid field works in group config
+  - test_event_override_merging_with_file: Override files loaded and merged
+  - test_categories_override_group_categories: Override categories take precedence
+- All 100 tests pass
+- Files changed: test_app.py, PRD.md
+
+Learnings for future iterations:
+- Data pipeline functions in generate_month_data.py are well structured and testable
+- Override merging happens via merge_event_with_override() which is called for both iCal and single events
+- Category resolution follows priority: event > group > none (via resolve_event_categories())
+- suppress_guid is checked alongside suppress_urls in generate_yaml() (line 669-672)
+- Tests use temporary files with try/finally for cleanup
+- Next task: Phase 7.2 - Update Tests
+
+---

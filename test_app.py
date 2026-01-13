@@ -1321,6 +1321,220 @@ class TestApp(unittest.TestCase):
                 self.assertIn(category_url, sitemap_content,
                             f"Sitemap missing category page: {category_url}")
 
+class TestDataPipelineIntegration(unittest.TestCase):
+    """Test cases for data pipeline - overrides, categories, and suppress_guid"""
+    
+    def test_merge_event_with_override(self):
+        """Test that override fields take precedence over original event data"""
+        from generate_month_data import merge_event_with_override
+        
+        original_event = {
+            'title': 'Original Title',
+            'date': '2025-01-15',
+            'time': '18:00',
+            'location': 'Original Location',
+            'description': 'Original description'
+        }
+        
+        override = {
+            'title': 'Updated Title',
+            'location': 'Updated Location'
+        }
+        
+        merged = merge_event_with_override(original_event, override)
+        
+        # Override fields should take precedence
+        self.assertEqual(merged['title'], 'Updated Title')
+        self.assertEqual(merged['location'], 'Updated Location')
+        
+        # Original fields should be preserved
+        self.assertEqual(merged['date'], '2025-01-15')
+        self.assertEqual(merged['time'], '18:00')
+        self.assertEqual(merged['description'], 'Original description')
+    
+    def test_merge_event_with_none_override(self):
+        """Test that None override returns original event unchanged"""
+        from generate_month_data import merge_event_with_override
+        
+        original_event = {'title': 'Test Event', 'date': '2025-01-15'}
+        
+        merged = merge_event_with_override(original_event, None)
+        
+        self.assertEqual(merged, original_event)
+    
+    def test_resolve_event_categories_from_event(self):
+        """Test that event-level categories take priority"""
+        from generate_month_data import resolve_event_categories
+        
+        categories = {'python': {'name': 'Python'}, 'ai': {'name': 'AI'}}
+        event = {'title': 'Test', 'categories': ['python']}
+        group = {'name': 'Test Group', 'categories': ['ai']}
+        
+        result = resolve_event_categories(event, group, categories)
+        
+        # Event categories should take priority
+        self.assertEqual(result, ['python'])
+    
+    def test_resolve_event_categories_from_group(self):
+        """Test that group categories are used when event has no categories"""
+        from generate_month_data import resolve_event_categories
+        
+        categories = {'python': {'name': 'Python'}, 'ai': {'name': 'AI'}}
+        event = {'title': 'Test'}  # No categories
+        group = {'name': 'Test Group', 'categories': ['ai']}
+        
+        result = resolve_event_categories(event, group, categories)
+        
+        # Group categories should be used
+        self.assertEqual(result, ['ai'])
+    
+    def test_resolve_event_categories_empty_when_none(self):
+        """Test that empty list is returned when neither event nor group has categories"""
+        from generate_month_data import resolve_event_categories
+        
+        categories = {'python': {'name': 'Python'}}
+        event = {'title': 'Test'}
+        group = {'name': 'Test Group'}  # No categories
+        
+        result = resolve_event_categories(event, group, categories)
+        
+        self.assertEqual(result, [])
+    
+    def test_resolve_event_categories_filters_invalid(self):
+        """Test that invalid category slugs are filtered out"""
+        from generate_month_data import resolve_event_categories
+        
+        categories = {'python': {'name': 'Python'}}
+        event = {'title': 'Test', 'categories': ['python', 'nonexistent']}
+        group = None
+        
+        result = resolve_event_categories(event, group, categories)
+        
+        # Only valid category should be included
+        self.assertEqual(result, ['python'])
+    
+    def test_load_categories(self):
+        """Test that categories are loaded correctly from _categories directory"""
+        from generate_month_data import load_categories
+        
+        categories = load_categories()
+        
+        # Should have all 16 expected categories
+        self.assertGreaterEqual(len(categories), 15)
+        
+        # Check a known category
+        self.assertIn('python', categories)
+        self.assertEqual(categories['python']['name'], 'Python')
+        self.assertIn('description', categories['python'])
+    
+    def test_load_event_override_nonexistent(self):
+        """Test that nonexistent override returns None"""
+        from generate_month_data import load_event_override
+        
+        result = load_event_override('nonexistent_hash_1234567890abcdef')
+        
+        self.assertIsNone(result)
+    
+    def test_suppress_guid_in_group(self):
+        """Test that suppress_guid field works in group configuration"""
+        import os
+        import yaml
+        from generate_month_data import load_groups, calculate_event_hash
+        
+        # Create a test group with suppress_guid
+        test_group = {
+            'name': 'Test Suppress Group',
+            'website': 'https://example.com',
+            'suppress_guid': ['abc123', 'def456']
+        }
+        
+        group_file = '_groups/test_suppress_group.yaml'
+        
+        try:
+            os.makedirs('_groups', exist_ok=True)
+            with open(group_file, 'w') as f:
+                yaml.dump(test_group, f)
+            
+            groups = load_groups()
+            test_group_loaded = next((g for g in groups if g['id'] == 'test_suppress_group'), None)
+            
+            self.assertIsNotNone(test_group_loaded)
+            self.assertIn('suppress_guid', test_group_loaded)
+            self.assertEqual(test_group_loaded['suppress_guid'], ['abc123', 'def456'])
+        finally:
+            if os.path.exists(group_file):
+                os.remove(group_file)
+    
+    def test_event_override_merging_with_file(self):
+        """Test that override files are loaded and merged correctly"""
+        import os
+        import yaml
+        from generate_month_data import load_event_override, merge_event_with_override, calculate_event_hash
+        
+        # Create a test override file
+        test_hash = 'test_override_123456789abcdef0'
+        override_data = {
+            'title': 'Overridden Title',
+            'categories': ['python', 'ai']
+        }
+        
+        override_file = f'_event_overrides/{test_hash}.yaml'
+        
+        try:
+            os.makedirs('_event_overrides', exist_ok=True)
+            with open(override_file, 'w') as f:
+                yaml.dump(override_data, f)
+            
+            # Test loading
+            loaded_override = load_event_override(test_hash)
+            
+            self.assertIsNotNone(loaded_override)
+            self.assertEqual(loaded_override['title'], 'Overridden Title')
+            self.assertEqual(loaded_override['categories'], ['python', 'ai'])
+            
+            # Test merging
+            original_event = {
+                'title': 'Original Title',
+                'date': '2025-01-15',
+                'location': 'DC'
+            }
+            
+            merged = merge_event_with_override(original_event, loaded_override)
+            
+            self.assertEqual(merged['title'], 'Overridden Title')
+            self.assertEqual(merged['date'], '2025-01-15')  # Preserved
+            self.assertEqual(merged['location'], 'DC')  # Preserved
+            self.assertEqual(merged['categories'], ['python', 'ai'])  # Added
+        finally:
+            if os.path.exists(override_file):
+                os.remove(override_file)
+    
+    def test_categories_override_group_categories(self):
+        """Test that override categories take precedence over group categories"""
+        from generate_month_data import resolve_event_categories, merge_event_with_override
+        
+        categories = {
+            'python': {'name': 'Python'},
+            'ai': {'name': 'AI'},
+            'cloud': {'name': 'Cloud'}
+        }
+        
+        # Original event (no categories) with group categories
+        original_event = {'title': 'Test Event'}
+        group = {'name': 'Test Group', 'categories': ['cloud']}
+        
+        # Override adds categories
+        override = {'categories': ['python', 'ai']}
+        
+        # Merge override into event
+        merged_event = merge_event_with_override(original_event, override)
+        
+        # Resolve categories - should use event categories (from override)
+        result = resolve_event_categories(merged_event, group, categories)
+        
+        self.assertEqual(sorted(result), ['ai', 'python'])
+
+
 class TestEventHashCalculation(unittest.TestCase):
     """Test cases for calculate_event_hash function"""
     

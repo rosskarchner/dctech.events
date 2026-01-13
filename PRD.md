@@ -376,7 +376,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 ## Phase 7: Integration and Data Flow Updates
 
-### - [ ] 7.1 Ensure Override and Category Merging in Data Pipeline
+### - [x] 7.1 Ensure Override and Category Merging in Data Pipeline
 **Files:** `generate_month_data.py`, `refresh_calendars.py`
 
 **Tasks:**
@@ -546,10 +546,10 @@ def calculate_event_hash(date, time, title, url=None):
 - [x] Categories load correctly from `_categories/` directory
 - [x] Category pages filter events properly
 - [x] Category pages appear in sitemap
-- [ ] suppress_guid suppresses events from iCal feeds
-- [ ] suppress_urls and suppress_guid work together
+- [x] suppress_guid suppresses events from iCal feeds
+- [x] suppress_urls and suppress_guid work together
 - [x] Categories assigned from groups are inherited by events
-- [ ] Categories in event/override override group categories
+- [x] Categories in event/override override group categories
 - [ ] Edit form displays with pre-populated data
 - [ ] Location validation works (client and server)
 - [ ] Category checkboxes work on edit form
