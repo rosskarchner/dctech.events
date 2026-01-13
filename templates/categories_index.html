@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>Browse by Category</h2>
+        <p>Explore technology events in Washington, DC and surrounding areas by category.</p>
+
+        {% if categories %}
+            <div class="categories-list">
+                {% for category in categories %}
+                    <div class="category-card">
+                        <h3>
+                            <a href="/categories/{{ category.slug }}/">{{ category.name }}</a>
+                        </h3>
+                        {% if category.description %}
+                            <p class="category-description">{{ category.description }}</p>
+                        {% endif %}
+                        <p class="category-count">
+                            <strong>{{ category.count }}</strong>
+                            {% if category.count == 1 %}
+                                upcoming event
+                            {% else %}
+                                upcoming events
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No categories available.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+    <meta property="og:title" content="Event Categories">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Browse technology events by category">
+    <meta property="og:site_name" content="{{ site_name }}">
+{% endblock %}

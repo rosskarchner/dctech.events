@@ -970,6 +970,24 @@ def region_page(state):
                           location_name=region_name,
                           location_type='region')
 
+@app.route("/categories/")
+def categories_index():
+    """Show listing of all categories with event counts"""
+    categories = get_categories()
+    events = get_events()
+    
+    categories_with_counts = []
+    for slug, category in sorted(categories.items(), key=lambda x: x[1]['name']):
+        filtered_events = [e for e in events if slug in e.get('categories', [])]
+        categories_with_counts.append({
+            'slug': slug,
+            'name': category['name'],
+            'description': category.get('description', ''),
+            'count': len(filtered_events)
+        })
+    
+    return render_template('categories_index.html', categories=categories_with_counts)
+
 @app.route("/categories/<slug>/")
 def category_page(slug):
     """Show events for a specific category"""
@@ -1071,6 +1089,7 @@ def sitemap():
     urls = [
         {'loc': f"{base_url}/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/virtual/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
+        {'loc': f"{base_url}/categories/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/groups/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/locations/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/locations/dc/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
