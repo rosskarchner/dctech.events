@@ -172,7 +172,7 @@ def category_page(slug):
 
 ## Phase 3: Edit Functionality - Backend Infrastructure
 
-### - [ ] 3.1 Create `_event_overrides/` Directory
+### - [x] 3.1 Create `_event_overrides/` Directory
 **Changes:**
 - Create empty `_event_overrides/` directory
 - Add to `.gitignore` (if override files shouldn't be committed) OR leave tracked (if they should be)
