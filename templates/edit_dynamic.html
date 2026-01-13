@@ -4,6 +4,16 @@
 
 {% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
+{% block extra_head %}
+<script type="importmap">
+{
+  "imports": {
+    "octokit": "https://esm.sh/octokit@3.1.2"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="edit-container">
     <div id="loading-state" style="text-align: center; padding: 2rem;">
