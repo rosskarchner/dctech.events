@@ -7,7 +7,6 @@ import calendar
 import json
 from pathlib import Path
 from location_utils import extract_location_info, get_region_name
-from PIL import Image, ImageDraw, ImageFont, __version__ as PIL_VERSION
 import io
 from icalendar import Calendar, Event as ICalEvent
 import hashlib
