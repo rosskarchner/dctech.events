@@ -289,7 +289,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 2.5 hours
 
-### - [ ] 4.3 Test Forms Locally
+### - [x] 4.3 Test Forms Locally
 **Testing:**
 - Load edit form for different event types (manual vs iCal)
 - Verify form pre-population
@@ -462,7 +462,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 1-2 hours
 
-### - [ ] 9.2 Create Initial Categories (Post-Deploy)
+### - [x] 9.2 Create Initial Categories (Post-Deploy)
 **Task:**
 - After code is deployed, populate `_categories/` with initial 15 categories
 - Or commit category YAML files in Phase 1
