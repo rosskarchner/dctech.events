@@ -403,7 +403,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 3-4 hours
 
-### - [ ] 7.3 Integration Testing
+### - [x] 7.3 Integration Testing
 **Testing:**
 - End-to-end: create manual event → edit it → verify changes in PR
 - End-to-end: iCal event → edit it → verify override file created → verify it appears in listings

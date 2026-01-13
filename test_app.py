@@ -2018,5 +2018,320 @@ class TestEditRoute(unittest.TestCase):
                 os.remove(test_file)
 
 
+class TestIntegrationEndToEnd(unittest.TestCase):
+    """Integration tests for end-to-end workflows (Phase 7.3)"""
+    
+    def setUp(self):
+        self.timezone_name = 'US/Eastern'
+        self.local_tz = pytz.timezone(self.timezone_name)
+        self.today = datetime.now(self.local_tz).date()
+    
+    def test_manual_event_edit_workflow(self):
+        """Test end-to-end: manual event -> edit form -> verify data flow"""
+        from app import app, calculate_event_hash
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        future_date = (self.today + timedelta(days=7)).strftime('%Y-%m-%d')
+        
+        # Simulate a manual event in upcoming.yaml
+        test_event = {
+            'date': future_date,
+            'time': '18:00',
+            'title': 'DC Python Meetup',
+            'location': 'Washington DC',
+            'url': 'https://dcpython.example.com',
+            'source': 'manual',
+            'slug': 'dc-python-meetup',
+            'guid': calculate_event_hash(future_date, '18:00', 'DC Python Meetup', 'https://dcpython.example.com'),
+            'categories': ['python']
+        }
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump([test_event], f)
+            
+            # 1. Verify event appears in listings
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'DC Python Meetup', response.data)
+            
+            # 2. Verify event appears in category page
+            response = client.get('/categories/python/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'DC Python Meetup', response.data)
+            
+            # 3. Verify edit form loads with event data
+            response = client.get(f'/edit/{test_event["slug"]}/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'DC Python Meetup', response.data)
+            self.assertIn(b'manual', response.data)  # Source type should be visible
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_ical_event_with_override_workflow(self):
+        """Test end-to-end: iCal event -> override file -> verify merge in listings"""
+        from app import app, calculate_event_hash
+        from generate_month_data import load_event_override, merge_event_with_override
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        override_dir = '_event_overrides'
+        os.makedirs(data_dir, exist_ok=True)
+        os.makedirs(override_dir, exist_ok=True)
+        
+        future_date = (self.today + timedelta(days=14)).strftime('%Y-%m-%d')
+        event_title = 'Tech Startup Happy Hour'
+        event_time = '17:30'
+        event_url = 'https://startup-meetup.example.com'
+        
+        # Calculate the guid that would be generated
+        event_guid = calculate_event_hash(future_date, event_time, event_title, event_url)
+        
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        override_file = os.path.join(override_dir, f'{event_guid}.yaml')
+        
+        # Original iCal event
+        ical_event = {
+            'date': future_date,
+            'time': event_time,
+            'title': event_title,
+            'location': 'Arlington VA',
+            'url': event_url,
+            'source': 'ical',
+            'guid': event_guid,
+            'categories': []
+        }
+        
+        # Override data (user wants to change location and add category)
+        override_data = {
+            'location': 'Rosslyn VA',
+            'categories': ['startups', 'social']
+        }
+        
+        try:
+            # 1. Create override file
+            with open(override_file, 'w') as f:
+                yaml.dump(override_data, f)
+            
+            # 2. Verify override loads correctly
+            loaded_override = load_event_override(event_guid)
+            self.assertIsNotNone(loaded_override)
+            self.assertEqual(loaded_override['location'], 'Rosslyn VA')
+            
+            # 3. Verify merge works correctly
+            merged_event = merge_event_with_override(ical_event.copy(), loaded_override)
+            self.assertEqual(merged_event['location'], 'Rosslyn VA')  # Override
+            self.assertEqual(merged_event['title'], event_title)  # Original
+            self.assertEqual(merged_event['categories'], ['startups', 'social'])  # Override
+            
+            # 4. Put merged event in upcoming.yaml and verify it appears correctly
+            with open(test_file, 'w') as f:
+                yaml.dump([merged_event], f)
+            
+            response = client.get('/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Tech Startup Happy Hour', response.data)
+            
+            # 5. Verify event appears in both category pages
+            response = client.get('/categories/startups/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Tech Startup Happy Hour', response.data)
+            
+            response = client.get('/categories/social/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Tech Startup Happy Hour', response.data)
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            if os.path.exists(override_file):
+                os.remove(override_file)
+    
+    def test_multiple_categories_per_event(self):
+        """Test that events with multiple categories appear correctly on each category page"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        future_date = (self.today + timedelta(days=5)).strftime('%Y-%m-%d')
+        
+        # Event with multiple categories
+        test_event = {
+            'date': future_date,
+            'time': '19:00',
+            'title': 'AI in Cloud Computing Workshop',
+            'location': 'Reston VA',
+            'url': 'https://ai-cloud-workshop.example.com',
+            'guid': 'multi-cat-test-guid-12345678901234',
+            'source': 'manual',
+            'categories': ['ai', 'cloud', 'data']
+        }
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump([test_event], f)
+            
+            # Verify event appears in ALL three category pages
+            for category in ['ai', 'cloud', 'data']:
+                response = client.get(f'/categories/{category}/')
+                self.assertEqual(response.status_code, 200, f"Category page /{category}/ should load")
+                self.assertIn(b'AI in Cloud Computing Workshop', response.data,
+                             f"Event should appear on /{category}/ page")
+            
+            # Verify event does NOT appear on unrelated category page
+            response = client.get('/categories/gaming/')
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn(b'AI in Cloud Computing Workshop', response.data)
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_category_empty_states(self):
+        """Test that category pages show empty state when no events"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        try:
+            # Empty upcoming.yaml
+            with open(test_file, 'w') as f:
+                yaml.dump([], f)
+            
+            # Verify each category page shows empty state
+            response = client.get('/categories/gaming/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'no upcoming gaming events', response.data.lower())
+            
+            response = client.get('/categories/python/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'no upcoming python events', response.data.lower())
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_no_override_returns_original_event(self):
+        """Test that events without override files are unchanged"""
+        from generate_month_data import load_event_override, merge_event_with_override
+        
+        # Event with a guid that has no override file
+        original_event = {
+            'date': '2025-06-15',
+            'time': '10:00',
+            'title': 'No Override Event',
+            'location': 'Silver Spring MD',
+            'guid': 'no-override-exists-12345678901234'
+        }
+        
+        # Load override (should return None)
+        override = load_event_override(original_event['guid'])
+        self.assertIsNone(override)
+        
+        # Merge with None override should return original
+        result = merge_event_with_override(original_event.copy(), override)
+        self.assertEqual(result, original_event)
+    
+    def test_categories_inherited_from_group_in_pipeline(self):
+        """Test that events inherit categories from their group when not specified"""
+        from generate_month_data import resolve_event_categories, load_categories
+        
+        # Load categories
+        categories = load_categories()
+        
+        # Event without categories
+        event_without_categories = {
+            'date': '2025-07-01',
+            'title': 'Group Event'
+        }
+        
+        # Group with categories
+        group_with_categories = {
+            'name': 'Python DC',
+            'categories': ['python', 'data']
+        }
+        
+        # Resolve should use group categories
+        resolved = resolve_event_categories(event_without_categories, group_with_categories, categories)
+        self.assertEqual(sorted(resolved), ['data', 'python'])
+        
+        # Event with own categories (should override group)
+        event_with_categories = {
+            'date': '2025-07-01',
+            'title': 'Event with Categories',
+            'categories': ['ai']
+        }
+        
+        resolved = resolve_event_categories(event_with_categories, group_with_categories, categories)
+        self.assertEqual(resolved, ['ai'])
+    
+    def test_edit_route_accessible_by_both_guid_and_slug(self):
+        """Test that edit route works with both guid and slug"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        future_date = (self.today + timedelta(days=10)).strftime('%Y-%m-%d')
+        
+        test_event = {
+            'date': future_date,
+            'time': '20:00',
+            'title': 'Dual Access Event',
+            'location': 'Tysons VA',
+            'url': 'https://dual-access.example.com',
+            'guid': 'dual-access-guid-123456789012345',
+            'source': 'manual',
+            'slug': 'dual-access-event'
+        }
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump([test_event], f)
+            
+            # Access by guid
+            response = client.get('/edit/dual-access-guid-123456789012345/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Dual Access Event', response.data)
+            
+            # Access by slug
+            response = client.get('/edit/dual-access-event/')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b'Dual Access Event', response.data)
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+
 if __name__ == '__main__':
     unittest.main()
