@@ -134,6 +134,28 @@ def get_categories():
 
     return categories
 
+def calculate_event_hash(date, time, title, url=None):
+    """
+    Calculate MD5 hash for event identification.
+    Matches iCal GUID generation algorithm in generate_month_data.py.
+    
+    Args:
+        date: Event date (YYYY-MM-DD format)
+        time: Event time (HH:MM format, or empty string)
+        title: Event title
+        url: Optional event URL
+    
+    Returns:
+        MD5 hash string (hex)
+    """
+    uid_parts = [date, time, title]
+    if url:
+        uid_parts.append(url)
+    
+    uid_base = '-'.join(str(p) for p in uid_parts)
+    uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+    return uid_hash
+
 def prepare_events_by_day(events, add_week_links=False):
     """
     Organize events by day and time

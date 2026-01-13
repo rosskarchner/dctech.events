@@ -116,3 +116,35 @@ Learnings for future iterations:
 
 ---
 
+## Iteration 7 - Test Category Pages (Phase 2.4)
+- Fixed 3 failing test assertions in test_app.py
+- test_category_pages_load: Category name with '&' is HTML-encoded as '&amp;', fixed with html.escape()
+- test_category_empty_state: Empty state text is "no upcoming gaming events" not generic, fixed assertion
+- test_category_sitemap: Content-type is 'text/xml' not 'application/xml', fixed to check for 'xml'
+- All 22 tests now pass successfully
+- Files changed: test_app.py
+
+Learnings for future iterations:
+- HTML escaping: Use html.escape() when comparing category names in HTML output
+- Template empty states include category name: "no upcoming {category} events"
+- Flask sitemap returns text/xml content-type, not application/xml
+- Category pages functionality is complete and tested
+- Next task: Phase 3.1 - Create _event_overrides/ Directory
+
+---
+
+## Iteration 8 - Create _event_overrides/ Directory (Phase 3.1)
+- Created _event_overrides/ directory for storing event override YAML files
+- Added .gitkeep file to ensure directory is tracked in git
+- Override files will be committed via PR workflow (as per PRD decision)
+- Directory is NOT in .gitignore so override files are version controlled
+- Files changed: _event_overrides/.gitkeep (new file)
+
+Learnings for future iterations:
+- Override files are committed to git via PR workflow (same as event submissions)
+- Use .gitkeep to track empty directories in git
+- All 83 tests pass
+- Next task: Phase 3.2 - Add Event Hash Calculation Utility
+
+---
+

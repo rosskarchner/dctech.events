@@ -180,7 +180,7 @@ def category_page(slug):
 
 **Estimated effort:** 15 minutes
 
-### - [ ] 3.2 Add Event Hash Calculation Utility
+### - [x] 3.2 Add Event Hash Calculation Utility
 **File:** `app.py` (or new `event_utils.py`)
 
 **Function:** `calculate_event_hash(date, time, title, url=None)`

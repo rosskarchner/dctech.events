@@ -1321,5 +1321,81 @@ class TestApp(unittest.TestCase):
                 self.assertIn(category_url, sitemap_content,
                             f"Sitemap missing category page: {category_url}")
 
+class TestEventHashCalculation(unittest.TestCase):
+    """Test cases for calculate_event_hash function"""
+    
+    def test_calculate_event_hash_basic(self):
+        """Test basic hash calculation with date, time, and title"""
+        from app import calculate_event_hash
+        
+        hash1 = calculate_event_hash('2025-01-15', '18:00', 'Python Meetup')
+        
+        # Hash should be a 32-character hex string
+        self.assertEqual(len(hash1), 32)
+        self.assertTrue(all(c in '0123456789abcdef' for c in hash1))
+    
+    def test_calculate_event_hash_deterministic(self):
+        """Test that same inputs always produce the same hash"""
+        from app import calculate_event_hash
+        
+        hash1 = calculate_event_hash('2025-01-15', '18:00', 'Python Meetup')
+        hash2 = calculate_event_hash('2025-01-15', '18:00', 'Python Meetup')
+        
+        self.assertEqual(hash1, hash2)
+    
+    def test_calculate_event_hash_with_url(self):
+        """Test hash calculation with optional URL"""
+        from app import calculate_event_hash
+        
+        hash_without_url = calculate_event_hash('2025-01-15', '18:00', 'Python Meetup')
+        hash_with_url = calculate_event_hash('2025-01-15', '18:00', 'Python Meetup', 
+                                              'https://example.com/event')
+        
+        # Hash should be different when URL is included
+        self.assertNotEqual(hash_without_url, hash_with_url)
+    
+    def test_calculate_event_hash_different_inputs(self):
+        """Test that different inputs produce different hashes"""
+        from app import calculate_event_hash
+        
+        hash1 = calculate_event_hash('2025-01-15', '18:00', 'Python Meetup')
+        hash2 = calculate_event_hash('2025-01-16', '18:00', 'Python Meetup')  # Different date
+        hash3 = calculate_event_hash('2025-01-15', '19:00', 'Python Meetup')  # Different time
+        hash4 = calculate_event_hash('2025-01-15', '18:00', 'JavaScript Meetup')  # Different title
+        
+        # All hashes should be unique
+        self.assertNotEqual(hash1, hash2)
+        self.assertNotEqual(hash1, hash3)
+        self.assertNotEqual(hash1, hash4)
+    
+    def test_calculate_event_hash_empty_time(self):
+        """Test hash calculation with empty time string"""
+        from app import calculate_event_hash
+        
+        hash1 = calculate_event_hash('2025-01-15', '', 'All Day Event')
+        
+        # Hash should still be valid
+        self.assertEqual(len(hash1), 32)
+        self.assertTrue(all(c in '0123456789abcdef' for c in hash1))
+    
+    def test_calculate_event_hash_matches_generate_month_data(self):
+        """Test that hash matches the algorithm in generate_month_data.py"""
+        from app import calculate_event_hash
+        import hashlib
+        
+        # Manually compute hash the same way generate_month_data does
+        date = '2025-01-15'
+        time = '18:00'
+        title = 'Test Event'
+        url = 'https://example.com/event'
+        
+        uid_parts = [date, time, title, url]
+        uid_base = '-'.join(str(p) for p in uid_parts)
+        expected_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+        
+        actual_hash = calculate_event_hash(date, time, title, url)
+        
+        self.assertEqual(actual_hash, expected_hash)
+
 if __name__ == '__main__':
     unittest.main()
