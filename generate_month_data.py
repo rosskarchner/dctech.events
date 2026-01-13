@@ -11,6 +11,7 @@ import sys
 import calendar as cal_module
 import dateparser
 import json
+import hashlib
 from location_utils import extract_location_info
 
 # Load configuration
@@ -62,6 +63,28 @@ def represent_vuri(dumper, data):
 # Register the custom representers with PyYAML
 yaml.add_representer(icalendar.prop.vText, represent_vtext)
 yaml.add_representer(icalendar.prop.vUri, represent_vuri)
+
+def calculate_event_hash(date, time, title, url=None):
+    """
+    Calculate MD5 hash for event identification.
+    Matches iCal GUID generation algorithm.
+
+    Args:
+        date: Event date (YYYY-MM-DD format)
+        time: Event time (HH:MM format, or empty string)
+        title: Event title
+        url: Optional event URL
+
+    Returns:
+        MD5 hash string (hex)
+    """
+    uid_parts = [date, time, title]
+    if url:
+        uid_parts.append(url)
+
+    uid_base = '-'.join(str(p) for p in uid_parts)
+    uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+    return uid_hash
 
 def looks_like_url(text):
     """
@@ -526,7 +549,18 @@ def generate_yaml():
                         for event in events:
                             # Check if event URL is in suppress_urls list
                             suppress_urls = group.get('suppress_urls', [])
-                            if event.get('url') not in suppress_urls:
+
+                            # Calculate event GUID hash for suppress_guid check
+                            event_hash = calculate_event_hash(
+                                event.get('date', ''),
+                                event.get('time', ''),
+                                event.get('title', ''),
+                                event.get('url')
+                            )
+                            suppress_guids = group.get('suppress_guid', [])
+
+                            # Skip event if URL or GUID is suppressed
+                            if event.get('url') not in suppress_urls and event_hash not in suppress_guids:
                                 # Apply site-wide state filter for iCal events
                                 if is_event_in_allowed_states(event, ALLOWED_STATES):
                                     # Add group information
