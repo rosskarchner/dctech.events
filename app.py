@@ -1009,6 +1009,15 @@ def sitemap():
         {'loc': f"{base_url}/locations/md/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
     ]
 
+    # Add category pages
+    categories = get_categories()
+    for slug in categories.keys():
+        urls.append({
+            'loc': f"{base_url}/categories/{slug}/",
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'daily'
+        })
+
     # Add upcoming week pages
     upcoming_weeks = get_upcoming_weeks(12)
     for week_id in upcoming_weeks:
