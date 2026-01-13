@@ -148,3 +148,20 @@ Learnings for future iterations:
 
 ---
 
+## Iteration 9 - Add Event Hash Calculation Utility (Phase 3.2)
+- Implemented calculate_event_hash() function in app.py
+- Function takes date, time, title, and optional url parameters
+- Returns MD5 hash string (32 hex characters)
+- Algorithm matches existing logic in generate_month_data.py (line 87)
+- Added 6 comprehensive tests in test_app.py (TestEventHashCalculation class)
+- Files changed: app.py, test_app.py
+
+Learnings for future iterations:
+- hashlib is already imported in app.py (line 13)
+- Function is deterministic: same inputs always produce same hash
+- Hash is based on: date + time + title + optional url joined by '-'
+- All 28 tests pass
+- Next task: Phase 3.3 - Update Event Loading in generate_month_data.py (PRIMARY)
+
+---
+

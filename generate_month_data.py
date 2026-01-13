@@ -35,6 +35,7 @@ CATEGORIES_DIR = '_categories'
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'  # Shared cache directory
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
+EVENT_OVERRIDES_DIR = '_event_overrides'
 REFRESH_FLAG_FILE = os.path.join(DATA_DIR, '.refreshed')
 UPDATED_FLAG_FILE = os.path.join(DATA_DIR, '.updated')
 
@@ -502,6 +503,49 @@ def load_categories():
 
     return categories
 
+
+def load_event_override(event_hash):
+    """
+    Load an event override file if it exists.
+
+    Args:
+        event_hash: MD5 hash identifying the event
+
+    Returns:
+        Dictionary with override data, or None if no override exists
+    """
+    override_file = os.path.join(EVENT_OVERRIDES_DIR, f"{event_hash}.yaml")
+    if os.path.exists(override_file):
+        try:
+            with open(override_file, 'r', encoding='utf-8') as f:
+                override = yaml.safe_load(f)
+                return override if override else None
+        except Exception as e:
+            print(f"Error loading override from {override_file}: {str(e)}")
+    return None
+
+
+def merge_event_with_override(event, override):
+    """
+    Merge an event with its override data. Override fields take precedence.
+
+    Args:
+        event: Original event dictionary
+        override: Override data dictionary
+
+    Returns:
+        Merged event dictionary
+    """
+    if not override:
+        return event
+
+    merged = event.copy()
+    # Override fields take precedence
+    for key, value in override.items():
+        if value is not None:
+            merged[key] = value
+    return merged
+
 def resolve_event_categories(event, group, categories):
     """
     Resolve categories for an event based on event-level and group-level categories.
@@ -628,9 +672,19 @@ def generate_yaml():
                             if event.get('url') not in suppress_urls and event_hash not in suppress_guids:
                                 # Apply site-wide state filter for iCal events
                                 if is_event_in_allowed_states(event, ALLOWED_STATES):
+                                    # Check for event override and merge if exists
+                                    override = load_event_override(event_hash)
+                                    if override:
+                                        event = merge_event_with_override(event, override)
+                                    
                                     # Add group information
                                     event['group'] = str(group.get('name', ''))
                                     event['group_website'] = str(group.get('website', ''))
+                                    
+                                    # Mark source as 'ical'
+                                    event['source'] = 'ical'
+                                    event['guid'] = event_hash
+                                    
                                     # Resolve and add categories
                                     event_categories = resolve_event_categories(event, group, categories)
                                     if event_categories:
@@ -667,6 +721,24 @@ def generate_yaml():
                     if group.get('name', '') == event['group']:
                         event_group = group
                         break
+            
+            # Calculate event hash for single events
+            event_hash = calculate_event_hash(
+                event.get('date', ''),
+                event.get('time', ''),
+                event.get('title', ''),
+                event.get('url')
+            )
+            
+            # Check for event override and merge if exists
+            override = load_event_override(event_hash)
+            if override:
+                event = merge_event_with_override(event, override)
+            
+            # Mark source as 'manual'
+            event['source'] = 'manual'
+            event['guid'] = event_hash
+            
             # Resolve and add categories
             event_categories = resolve_event_categories(event, event_group, categories)
             if event_categories:
