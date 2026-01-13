@@ -162,3 +162,75 @@ Both scripts are production-ready and can be:
 - Used with environment variables from secrets management
 
 For detailed information, see `SOCIAL_MEDIA_POSTING.md`.
+
+---
+
+## Categories
+
+### File Format
+Category files are stored in `_categories/` as YAML:
+```yaml
+# _categories/python.yaml
+name: "Python"
+description: "Python programming language events"
+```
+
+### Assigning Categories
+
+**To groups (events inherit):**
+```yaml
+# _groups/{group_id}.yaml
+name: "DC Python"
+categories:
+  - python
+  - data
+```
+
+**To single events:**
+```yaml
+# _single_events/{slug}.yaml
+title: "PyCon DC 2026"
+categories:
+  - python
+  - conferences
+```
+
+**Via override files (for iCal events):**
+```yaml
+# _event_overrides/{hash}.yaml
+categories:
+  - ai
+  - training
+```
+
+### Category Priority
+Event categories > Group categories > None
+
+### Available Categories
+`python`, `ai`, `gaming`, `cybersecurity`, `data`, `coworking`, `ux-design`, `microsoft`, `cloud`, `linux`, `crypto`, `startups`, `social`, `vendor-conferences`, `conferences`, `training`
+
+### Browse by Category
+Visit `/categories/{slug}/` (e.g., `/categories/python/`)
+
+---
+
+## Editing Events
+
+### Web Interface
+Edit events at `/edit/{event_id}/` where `event_id` is the event's GUID or slug.
+
+### Workflow
+1. Go to event edit page
+2. Log in with GitHub
+3. Modify fields (title, date, time, location, categories, etc.)
+4. Submit creates a GitHub PR
+5. PR merged → event updated on next build
+
+### How Edits Are Stored
+
+| Event Type | Edit Location |
+|------------|---------------|
+| Manual (`_single_events/`) | Updates existing YAML file |
+| iCal (from calendars) | Creates `_event_overrides/{hash}.yaml` |
+
+Override files merge with iCal data during build, with override fields taking precedence.

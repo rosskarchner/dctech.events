@@ -439,7 +439,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 1 hour
 
-### - [ ] 8.3 Update QUICK_REFERENCE.md
+### - [x] 8.3 Update QUICK_REFERENCE.md
 **File:** `QUICK_REFERENCE.md`
 
 **Add:**

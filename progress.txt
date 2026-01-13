@@ -397,3 +397,24 @@ Learnings for future iterations:
 - Next task: Phase 8.2 - Update README.md
 
 ---
+
+## Iteration 20 - Update README.md (Phase 8.2)
+- Added Directory Structure section describing key directories
+- Added Categories section explaining:
+  - Category YAML file format in _categories/
+  - How to assign categories to groups (events inherit them)
+  - How to assign categories to single events
+  - Category priority (event > group)
+  - How to browse by category (/categories/{slug}/)
+- Added Editing Events section explaining:
+  - Web interface at /edit/{event_id}/
+  - Step-by-step workflow (login, edit, PR)
+  - How edits are stored (manual events vs iCal overrides)
+- Files changed: README.md, PRD.md
+
+Learnings for future iterations:
+- All 121 tests pass
+- README updates are documentation-only (no code changes needed)
+- Next task: Phase 8.3 - Update QUICK_REFERENCE.md
+
+---
