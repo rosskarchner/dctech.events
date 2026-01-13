@@ -37,11 +37,16 @@
             <div class="event-section">
                 <h3>Event Details</h3>
 
-                <p class="source-info">
+                <p class="source-info" id="source-info-container">
                     <strong>Source:</strong>
                     <span id="event-source-label"></span>
                     <span class="source-note">(source cannot be changed)</span>
                 </p>
+
+                <div id="ical-restrictions-notice" class="info-notice" style="display: none;">
+                    <strong>Note:</strong> This is an iCal/group event. You can only edit the title and categories.
+                    To change date, time, or URL, please contact the group organizer directly.
+                </div>
 
                 <div id="event-group-container" style="display: none;" class="form-group">
                     <label>Group</label>
@@ -155,6 +160,9 @@
                 <button type="submit" id="submit-btn" class="btn btn-primary">
                     Submit Changes
                 </button>
+                <button type="button" id="remove-btn" class="btn btn-danger" style="display: none;">
+                    Remove from Calendar
+                </button>
                 <a href="/edit/" class="btn btn-secondary">
                     Cancel
                 </a>
@@ -193,6 +201,15 @@
 .source-note {
     color: var(--color-text-light);
     font-size: 0.875rem;
+}
+
+.info-notice {
+    background-color: #eff6ff;
+    border: 1px solid: #93c5fd;
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    color: #1e40af;
 }
 
 .readonly-field {
@@ -411,6 +428,15 @@
     background-color: var(--color-border);
 }
 
+.btn-danger {
+    background-color: #dc2626;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
 .form-actions {
     display: flex;
     gap: var(--spacing-md);
@@ -471,7 +497,18 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script type="module">
+    import { Octokit } from 'octokit';
+    import {
+        REPO_CONFIG,
+        ensureFork,
+        createBranch,
+        createOrUpdateFile,
+        deleteFile,
+        createPullRequest,
+        generateHiddenOverrideYAML
+    } from '/static/js/github-utils.js';
+
     // Pass configuration from Flask to JavaScript
     window.GITHUB_CONFIG = {
         clientId: '{{ github_client_id }}',
@@ -480,6 +517,45 @@
     // EVENT_DATA and CATEGORIES will be loaded via fetch from events.json
     window.EVENT_DATA = null;
     window.CATEGORIES = {{ categories|tojson }};
+
+    // State management for GitHub
+    let octokit = null;
+    let userData = null;
+
+    // Initialize GitHub auth
+    initializeGitHubAuth();
+
+    function initializeGitHubAuth() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const accessToken = urlParams.get('access_token');
+
+        if (accessToken) {
+            sessionStorage.setItem('github_token', accessToken);
+            // Remove token from URL but keep hash
+            const url = new URL(window.location.href);
+            url.searchParams.delete('access_token');
+            window.history.replaceState({}, document.title, url.toString());
+            initializeOctokit(accessToken);
+            return;
+        }
+
+        const storedToken = sessionStorage.getItem('github_token');
+        if (storedToken) {
+            initializeOctokit(storedToken);
+        }
+    }
+
+    async function initializeOctokit(token) {
+        try {
+            octokit = new Octokit({ auth: token });
+            const { data } = await octokit.rest.users.getAuthenticated();
+            userData = data;
+            console.log('Authenticated as:', userData.login);
+        } catch (error) {
+            console.error('Authentication error:', error);
+            sessionStorage.removeItem('github_token');
+        }
+    }
 
     // Load event data from URL hash
     async function loadEventData() {
@@ -526,6 +602,9 @@
             // Populate the form with event data
             populateFormWithEventData();
 
+            // Dispatch event to signal data is loaded
+            document.dispatchEvent(new Event('eventDataLoaded'));
+
         } catch (error) {
             console.error('Error loading event:', error);
             showError('Failed to load event data: ' + error.message);
@@ -541,6 +620,8 @@
 
     function populateFormWithEventData() {
         const event = window.EVENT_DATA;
+        const isIcalEvent = event.source === 'ical';
+        const isManualEvent = event.source === 'manual';
 
         // Populate source info
         document.getElementById('event-source-label').textContent = event.source || 'unknown';
@@ -549,6 +630,11 @@
         if (event.group) {
             document.getElementById('event-group-container').style.display = 'block';
             document.getElementById('event-group').textContent = event.group;
+        }
+
+        // Show restrictions notice for iCal events
+        if (isIcalEvent) {
+            document.getElementById('ical-restrictions-notice').style.display = 'block';
         }
 
         // Populate basic fields
@@ -639,6 +725,33 @@
 
         // Enable/disable time selectors based on timing option
         handleTimingChange();
+
+        // Restrict fields for iCal events
+        if (isIcalEvent) {
+            // Disable date, time, URL, location fields
+            document.getElementById('date').disabled = true;
+            document.getElementById('url').disabled = true;
+            document.getElementById('city').disabled = true;
+            document.getElementById('state').disabled = true;
+            document.getElementById('end_date').disabled = true;
+
+            // Disable timing radios and selectors
+            document.querySelectorAll('input[name="timing"]').forEach(radio => {
+                radio.disabled = true;
+            });
+            document.getElementById('time-hour').disabled = true;
+            document.getElementById('time-minute').disabled = true;
+            document.getElementById('time-ampm').disabled = true;
+
+            // Hide "Submit Changes" button, show "Remove from Calendar" button
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('remove-btn').style.display = 'inline-block';
+        } else {
+            // For manual events, show both buttons
+            document.getElementById('submit-btn').style.display = 'inline-block';
+            document.getElementById('remove-btn').style.display = 'inline-block';
+            document.getElementById('remove-btn').textContent = 'Delete Event';
+        }
     }
 
     // Handle timing option change (copied from edit.js)
@@ -656,6 +769,147 @@
             });
         }
     }
+
+    // Handle remove button click
+    async function handleRemoveEvent() {
+        const event = window.EVENT_DATA;
+        const isManualEvent = event.source === 'manual';
+
+        const confirmMessage = isManualEvent
+            ? `Are you sure you want to DELETE this event?\n\n"${event.title}"\n\nThis will create a PR to permanently remove this event from the calendar.`
+            : `Are you sure you want to HIDE this event from the calendar?\n\n"${event.title}"\n\nThis will create a PR to mark this event as hidden. The event will no longer appear on the calendar.`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // Check authentication
+        if (!octokit || !userData) {
+            alert('Please sign in with GitHub to remove/hide events.');
+            // Redirect to OAuth
+            if (window.GITHUB_CONFIG.clientId) {
+                const authUrl = new URL('https://github.com/login/oauth/authorize');
+                authUrl.searchParams.set('client_id', window.GITHUB_CONFIG.clientId);
+                authUrl.searchParams.set('redirect_uri', window.GITHUB_CONFIG.callbackEndpoint);
+                authUrl.searchParams.set('scope', 'public_repo');
+                // Preserve the event hash
+                authUrl.searchParams.set('state', btoa(JSON.stringify({
+                    return_url: window.location.pathname + window.location.hash
+                })));
+                window.location.href = authUrl.toString();
+            }
+            return;
+        }
+
+        const statusDiv = document.createElement('div');
+        statusDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #eff6ff; border: 2px solid #3b82f6; padding: 1rem; border-radius: 8px; z-index: 10000; max-width: 300px;';
+        statusDiv.innerHTML = '<strong>Creating Pull Request...</strong><p>Please wait...</p>';
+        document.body.appendChild(statusDiv);
+
+        try {
+            // Ensure fork exists
+            statusDiv.innerHTML = '<strong>Checking fork...</strong>';
+            await ensureFork(octokit, userData);
+
+            // Create branch
+            const branchName = isManualEvent
+                ? `delete-event-${Date.now()}`
+                : `hide-event-${Date.now()}`;
+            statusDiv.innerHTML = '<strong>Creating branch...</strong>';
+            await createBranch(octokit, userData, branchName);
+
+            let prTitle, prBody;
+
+            if (isManualEvent) {
+                // Delete the manual event file
+                const filePath = `_single_events/${event.slug}.yaml`;
+                statusDiv.innerHTML = '<strong>Deleting event file...</strong>';
+
+                await deleteFile(
+                    octokit,
+                    userData,
+                    branchName,
+                    filePath,
+                    `Delete event: ${event.title}`
+                );
+
+                prTitle = `Delete event: ${event.title}`;
+                prBody = `## Delete Manual Event
+
+**Event:** ${event.title}
+**Date:** ${event.date || event.start_date}
+**File:** \`${filePath}\`
+
+This PR deletes a manually added event from the calendar.
+
+---
+Submitted via web interface by @${userData.login}`;
+
+            } else {
+                // Create override file with hidden: true
+                const eventId = event.guid || event.slug;
+                const filePath = `_event_overrides/${eventId}.yaml`;
+                const yamlContent = generateHiddenOverrideYAML();
+
+                statusDiv.innerHTML = '<strong>Creating override file...</strong>';
+
+                await createOrUpdateFile(
+                    octokit,
+                    userData,
+                    branchName,
+                    filePath,
+                    yamlContent,
+                    `Hide event: ${event.title}`
+                );
+
+                prTitle = `Hide event: ${event.title}`;
+                prBody = `## Hide Event
+
+**Event:** ${event.title}
+**Date:** ${event.date || event.start_date}
+**Source:** ${event.source}
+**Group:** ${event.group || 'N/A'}
+**File:** \`${filePath}\`
+
+This PR marks an iCal event as hidden. The event will no longer appear on the calendar.
+
+---
+Submitted via web interface by @${userData.login}`;
+            }
+
+            // Create pull request
+            statusDiv.innerHTML = '<strong>Creating pull request...</strong>';
+            const prUrl = await createPullRequest(
+                octokit,
+                userData,
+                branchName,
+                prTitle,
+                prBody
+            );
+
+            // Show success
+            statusDiv.innerHTML = `<strong>✓ Success!</strong><p>Pull request created: <a href="${prUrl}" target="_blank" style="color: #2563eb;">View PR</a></p><p><a href="/edit/" style="color: #2563eb;">Return to event list</a></p>`;
+            // Don't auto-remove, let user see success and click link
+            setTimeout(() => {
+                if (confirm('PR created successfully! Return to event list?')) {
+                    window.location.href = '/edit/';
+                }
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error removing event:', error);
+            statusDiv.innerHTML = `<strong>❌ Error</strong><p>${error.message}</p>`;
+            setTimeout(() => statusDiv.remove(), 10000);
+        }
+    }
+
+    // Set up remove button after data loads
+    document.addEventListener('eventDataLoaded', () => {
+        const removeBtn = document.getElementById('remove-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', handleRemoveEvent);
+        }
+    });
 
     // Load event when page loads
     if (document.readyState === 'loading') {

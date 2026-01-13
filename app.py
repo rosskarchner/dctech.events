@@ -1010,16 +1010,37 @@ def category_page(slug):
 
 @app.route("/edit/")
 def edit_list():
-    """List of upcoming events for editing"""
+    """List of upcoming events for editing, grouped by date/time slot"""
     events = get_events()
     # Filter to only future events
     today = date.today()
-    future_events = [e for e in events if e.get('start_date') and 
+    future_events = [e for e in events if e.get('start_date') and
                      datetime.strptime(e['start_date'], '%Y-%m-%d').date() >= today]
-    # Sort by start_date
-    future_events.sort(key=lambda e: e.get('start_date', ''))
-    
-    return render_template('edit_list.html', events=future_events)
+    # Sort by start_date, then time
+    future_events.sort(key=lambda e: (e.get('start_date', ''), e.get('time', '')))
+
+    # Group events by date and time slot
+    grouped_events = []
+    current_group = None
+
+    for event in future_events:
+        date_key = event.get('start_date', event.get('date', ''))
+        time_key = event.get('time', event.get('start_time', ''))
+        slot_key = f"{date_key}_{time_key}"
+
+        if current_group is None or current_group['slot_key'] != slot_key:
+            # Start a new group
+            current_group = {
+                'slot_key': slot_key,
+                'date': date_key,
+                'time': time_key,
+                'events': []
+            }
+            grouped_events.append(current_group)
+
+        current_group['events'].append(event)
+
+    return render_template('edit_list.html', grouped_events=grouped_events)
 
 @app.route("/edit/event/")
 def edit_event_dynamic():

@@ -7,99 +7,271 @@
 {% block content %}
 <div class="edit-list-container">
     <h1>Edit Events</h1>
-    <p>Select an event below to edit it:</p>
+    <p>Select an event below to edit it. Check multiple events in the same time slot to merge duplicates.</p>
 
-    {% if events %}
-    <div class="events-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Event Title</th>
-                    <th>Source</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for event in events %}
-                <tr>
-                    <td>{{ event.start_date }}</td>
-                    <td>{{ event.title }}</td>
-                    <td><span class="source-badge source-{{ event.source|default('unknown') }}">{{ event.source|default('unknown') }}</span></td>
-                    <td>
-                        <a href="/edit/event/#{{ event.guid or event.slug }}" class="btn btn-sm btn-primary">Edit</a>
-                    </td>
-                </tr>
+    <div id="merge-controls" style="display: none;" class="merge-controls">
+        <button id="merge-button" class="btn btn-warning">Merge Selected Duplicates</button>
+        <span id="selected-count">0 selected</span>
+    </div>
+
+    {% if grouped_events %}
+    <div class="events-list">
+        {% for group in grouped_events %}
+        <div class="time-slot-group {% if group.events|length > 1 %}has-multiple{% endif %}">
+            <div class="time-slot-header">
+                <strong>{{ group.date }}</strong>
+                {% if group.time %}
+                    at {{ group.time }}
+                {% else %}
+                    (All Day)
+                {% endif %}
+                {% if group.events|length > 1 %}
+                    <span class="potential-duplicate">({{ group.events|length }} events)</span>
+                {% endif %}
+            </div>
+
+            <div class="events-in-slot">
+                {% for event in group.events %}
+                <div class="event-row">
+                    {% if group.events|length > 1 %}
+                    <div class="event-checkbox">
+                        <input type="checkbox"
+                               class="duplicate-checkbox"
+                               data-slot="{{ group.slot_key }}"
+                               data-event-id="{{ event.guid or event.slug }}"
+                               data-event-title="{{ event.title }}"
+                               data-event-source="{{ event.source|default('unknown') }}">
+                    </div>
+                    {% endif %}
+
+                    <div class="event-details">
+                        <div class="event-title">
+                            {{ event.title }}
+                            {% if event.duplicate_of %}
+                            <span class="duplicate-indicator">(duplicate of {{ event.duplicate_of[:8] }}...)</span>
+                            {% endif %}
+                        </div>
+                        <div class="event-meta">
+                            <span class="source-badge source-{{ event.source|default('unknown') }}">
+                                {{ event.source|default('unknown') }}
+                            </span>
+                            {% if event.group %}
+                            <span class="event-group">{{ event.group }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="event-actions">
+                        <a href="/edit/event/?dev=true#{{ event.guid or event.slug }}"
+                           class="btn btn-sm btn-primary">Edit</a>
+                    </div>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% else %}
     <p class="no-events">No upcoming events to edit.</p>
     {% endif %}
 </div>
 
+<!-- Merge Confirmation Modal -->
+<div id="merge-modal" class="modal">
+    <div class="modal-content">
+        <h2>Merge Duplicates</h2>
+        <div id="merge-preview"></div>
+        <div class="modal-actions">
+            <button id="confirm-merge" class="btn btn-primary">Create Pull Request</button>
+            <button id="cancel-merge" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <style>
 .edit-list-container {
-    max-width: 900px;
+    max-width: 1000px;
     margin: 2rem auto;
     padding: 0 1rem;
 }
 
-.events-table {
-    overflow-x: auto;
+.merge-controls {
+    background-color: #fef3c7;
+    border: 2px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#selected-count {
+    font-weight: 600;
+    color: #92400e;
+}
+
+.events-list {
     margin-top: 2rem;
 }
 
-.events-table table {
-    width: 100%;
-    border-collapse: collapse;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.time-slot-group {
+    margin-bottom: 2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.events-table th {
-    background-color: #f5f5f5;
-    padding: 1rem;
-    text-align: left;
+.time-slot-group.has-multiple {
+    border-color: #fbbf24;
+    background-color: #fffbeb;
+}
+
+.time-slot-header {
+    background-color: #f3f4f6;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.time-slot-group.has-multiple .time-slot-header {
+    background-color: #fef3c7;
+    border-bottom-color: #fbbf24;
+}
+
+.potential-duplicate {
+    color: #b45309;
     font-weight: 600;
-    border-bottom: 2px solid #ddd;
+    margin-left: 0.5rem;
 }
 
-.events-table td {
+.events-in-slot {
+    background-color: white;
+}
+
+.event-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     padding: 1rem;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #f3f4f6;
 }
 
-.events-table tbody tr:hover {
-    background-color: #f9f9f9;
+.event-row:last-child {
+    border-bottom: none;
+}
+
+.event-row:hover {
+    background-color: #f9fafb;
+}
+
+.event-checkbox {
+    flex-shrink: 0;
+}
+
+.event-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.event-details {
+    flex-grow: 1;
+}
+
+.event-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.duplicate-indicator {
+    color: #dc2626;
+    font-size: 0.875rem;
+    font-weight: normal;
+    font-style: italic;
+}
+
+.event-meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.event-group {
+    color: #6b7280;
 }
 
 .source-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
     border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .source-manual {
-    background-color: #e3f2fd;
-    color: #1976d2;
+    background-color: #dbeafe;
+    color: #1e40af;
 }
 
 .source-ical {
-    background-color: #f3e5f5;
-    color: #7b1fa2;
+    background-color: #f3e8ff;
+    color: #6b21a8;
 }
 
 .source-eventbrite {
-    background-color: #fff3e0;
-    color: #f57c00;
+    background-color: #ffedd5;
+    color: #c2410c;
 }
 
 .source-meetup {
-    background-color: #e8f5e9;
-    color: #388e3c;
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.event-actions {
+    flex-shrink: 0;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-secondary {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.btn-secondary:hover {
+    background-color: #d1d5db;
+}
+
+.btn-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
 }
 
 .btn-sm {
@@ -109,9 +281,386 @@
 
 .no-events {
     text-align: center;
-    color: #999;
-    padding: 2rem;
+    color: #9ca3af;
+    padding: 3rem;
     font-size: 1.1rem;
 }
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+#merge-preview {
+    margin-bottom: 1.5rem;
+}
+
+.merge-preview-section {
+    margin-bottom: 1.5rem;
+}
+
+.merge-preview-section h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.merge-primary {
+    background-color: #d1fae5;
+    border: 2px solid #059669;
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.merge-duplicate {
+    background-color: #fee2e2;
+    border: 2px solid #dc2626;
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
 </style>
+
+<script type="module">
+import { Octokit } from 'octokit';
+import {
+    REPO_CONFIG,
+    ensureFork,
+    createBranch,
+    createOrUpdateFile,
+    createPullRequest,
+    generateDuplicateOverrideYAML,
+    fetchAllEvents
+} from '/static/js/github-utils.js';
+
+// GitHub OAuth Configuration
+const CONFIG = {
+    clientId: window.GITHUB_CONFIG?.clientId || '',
+    callbackEndpoint: window.GITHUB_CONFIG?.callbackEndpoint || ''
+};
+
+// State management
+let octokit = null;
+let userData = null;
+let allEvents = [];
+
+// Track selected events for merging
+const selectedEvents = new Map(); // slot_key -> Set of event IDs
+
+// Initialize auth on page load
+initializeAuth();
+
+/**
+ * Initialize authentication state
+ */
+function initializeAuth() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+
+    if (accessToken) {
+        sessionStorage.setItem('github_token', accessToken);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        initializeOctokit(accessToken);
+        return;
+    }
+
+    const storedToken = sessionStorage.getItem('github_token');
+    if (storedToken) {
+        initializeOctokit(storedToken);
+    }
+}
+
+/**
+ * Initialize Octokit with access token
+ */
+async function initializeOctokit(token) {
+    try {
+        octokit = new Octokit({ auth: token });
+        const { data } = await octokit.rest.users.getAuthenticated();
+        userData = data;
+        console.log('Authenticated as:', userData.login);
+    } catch (error) {
+        console.error('Authentication error:', error);
+        sessionStorage.removeItem('github_token');
+    }
+}
+
+// Update merge controls visibility
+function updateMergeControls() {
+    const mergeControls = document.getElementById('merge-controls');
+    const mergeButton = document.getElementById('merge-button');
+    const selectedCount = document.getElementById('selected-count');
+
+    // Count slots with 2+ selections
+    let totalSelected = 0;
+    let slotsWithMultiple = 0;
+
+    for (const [slot, eventIds] of selectedEvents.entries()) {
+        if (eventIds.size >= 2) {
+            slotsWithMultiple++;
+            totalSelected += eventIds.size;
+        }
+    }
+
+    if (slotsWithMultiple > 0) {
+        mergeControls.style.display = 'flex';
+        selectedCount.textContent = `${totalSelected} events selected across ${slotsWithMultiple} slot(s)`;
+    } else {
+        mergeControls.style.display = 'none';
+    }
+}
+
+// Handle checkbox changes
+document.addEventListener('DOMContentLoaded', () => {
+    const checkboxes = document.querySelectorAll('.duplicate-checkbox');
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const slot = e.target.dataset.slot;
+            const eventId = e.target.dataset.eventId;
+
+            if (!selectedEvents.has(slot)) {
+                selectedEvents.set(slot, new Set());
+            }
+
+            if (e.target.checked) {
+                selectedEvents.get(slot).add(eventId);
+            } else {
+                selectedEvents.get(slot).delete(eventId);
+                if (selectedEvents.get(slot).size === 0) {
+                    selectedEvents.delete(slot);
+                }
+            }
+
+            updateMergeControls();
+        });
+    });
+
+    // Handle merge button click
+    document.getElementById('merge-button')?.addEventListener('click', showMergeConfirmation);
+
+    // Handle modal buttons
+    document.getElementById('cancel-merge')?.addEventListener('click', closeMergeModal);
+    document.getElementById('confirm-merge')?.addEventListener('click', executeMerge);
+});
+
+function showMergeConfirmation() {
+    const modal = document.getElementById('merge-modal');
+    const preview = document.getElementById('merge-preview');
+
+    preview.innerHTML = '';
+
+    // Build preview for each slot
+    for (const [slot, eventIds] of selectedEvents.entries()) {
+        if (eventIds.size < 2) continue;
+
+        const section = document.createElement('div');
+        section.className = 'merge-preview-section';
+
+        const slotTitle = document.createElement('h3');
+        slotTitle.textContent = `Time Slot: ${slot}`;
+        section.appendChild(slotTitle);
+
+        // Get event data from checkboxes
+        const events = Array.from(eventIds).map(id => {
+            const checkbox = document.querySelector(`input[data-event-id="${id}"]`);
+            return {
+                id,
+                title: checkbox.dataset.eventTitle,
+                source: checkbox.dataset.eventSource
+            };
+        });
+
+        // Determine primary (prefer manual, otherwise first)
+        const primaryEvent = events.find(e => e.source === 'manual') || events[0];
+        const duplicates = events.filter(e => e.id !== primaryEvent.id);
+
+        // Display primary
+        const primaryDiv = document.createElement('div');
+        primaryDiv.className = 'merge-primary';
+        primaryDiv.innerHTML = `<strong>✓ Primary Event:</strong> ${primaryEvent.title} (${primaryEvent.source})`;
+        section.appendChild(primaryDiv);
+
+        // Display duplicates
+        duplicates.forEach(dup => {
+            const dupDiv = document.createElement('div');
+            dupDiv.className = 'merge-duplicate';
+            dupDiv.innerHTML = `<strong>× Will be marked as duplicate:</strong> ${dup.title} (${dup.source})`;
+            section.appendChild(dupDiv);
+        });
+
+        preview.appendChild(section);
+    }
+
+    modal.classList.add('active');
+}
+
+function closeMergeModal() {
+    const modal = document.getElementById('merge-modal');
+    modal.classList.remove('active');
+}
+
+async function executeMerge() {
+    // Check authentication
+    if (!octokit || !userData) {
+        alert('Please sign in with GitHub to merge duplicates.');
+        // Redirect to OAuth
+        if (CONFIG.clientId) {
+            const authUrl = new URL('https://github.com/login/oauth/authorize');
+            authUrl.searchParams.set('client_id', CONFIG.clientId);
+            authUrl.searchParams.set('redirect_uri', CONFIG.callbackEndpoint);
+            authUrl.searchParams.set('scope', 'public_repo');
+            window.location.href = authUrl.toString();
+        }
+        return;
+    }
+
+    closeMergeModal();
+
+    const statusDiv = document.createElement('div');
+    statusDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #eff6ff; border: 2px solid #3b82f6; padding: 1rem; border-radius: 8px; z-index: 10000; max-width: 300px;';
+    statusDiv.innerHTML = '<strong>Creating Pull Request...</strong><p>Please wait...</p>';
+    document.body.appendChild(statusDiv);
+
+    try {
+        // Load all events to get full event data
+        if (allEvents.length === 0) {
+            statusDiv.innerHTML = '<strong>Loading events...</strong>';
+            allEvents = await fetchAllEvents();
+        }
+
+        // Collect merge operations
+        const mergeOperations = [];
+        for (const [slot, eventIds] of selectedEvents.entries()) {
+            if (eventIds.size < 2) continue;
+
+            // Get full event data
+            const events = Array.from(eventIds).map(id => {
+                const event = allEvents.find(e => (e.guid || e.slug) === id);
+                const checkbox = document.querySelector(`input[data-event-id="${id}"]`);
+                return {
+                    id,
+                    title: checkbox.dataset.eventTitle,
+                    source: checkbox.dataset.eventSource,
+                    fullData: event
+                };
+            });
+
+            // Determine primary (prefer manual, otherwise first)
+            const primaryEvent = events.find(e => e.source === 'manual') || events[0];
+            const duplicates = events.filter(e => e.id !== primaryEvent.id);
+
+            mergeOperations.push({
+                slot,
+                primary: primaryEvent,
+                duplicates
+            });
+        }
+
+        // Ensure fork exists
+        statusDiv.innerHTML = '<strong>Checking fork...</strong>';
+        await ensureFork(octokit, userData);
+
+        // Create branch
+        const branchName = `merge-duplicates-${Date.now()}`;
+        statusDiv.innerHTML = '<strong>Creating branch...</strong>';
+        await createBranch(octokit, userData, branchName);
+
+        // Create override files for each duplicate
+        statusDiv.innerHTML = '<strong>Creating override files...</strong>';
+        const overrideFiles = [];
+
+        for (const operation of mergeOperations) {
+            for (const duplicate of operation.duplicates) {
+                const filePath = `_event_overrides/${duplicate.id}.yaml`;
+                const yamlContent = generateDuplicateOverrideYAML(operation.primary.id);
+
+                await createOrUpdateFile(
+                    octokit,
+                    userData,
+                    branchName,
+                    filePath,
+                    yamlContent,
+                    `Mark ${duplicate.title} as duplicate of ${operation.primary.title}`
+                );
+
+                overrideFiles.push({
+                    duplicate: duplicate.title,
+                    primary: operation.primary.title,
+                    file: filePath
+                });
+            }
+        }
+
+        // Generate PR body
+        const prBody = `## Merge Duplicate Events
+
+This PR marks ${overrideFiles.length} event(s) as duplicates:
+
+${overrideFiles.map(f => `- **${f.duplicate}** → duplicate of **${f.primary}**\n  File: \`${f.file}\``).join('\n')}
+
+---
+Submitted via web interface by @${userData.login}`;
+
+        // Create pull request
+        statusDiv.innerHTML = '<strong>Creating pull request...</strong>';
+        const prUrl = await createPullRequest(
+            octokit,
+            userData,
+            branchName,
+            `Merge duplicate events (${overrideFiles.length} duplicates)`,
+            prBody
+        );
+
+        // Show success
+        statusDiv.innerHTML = `<strong>✓ Success!</strong><p>Pull request created: <a href="${prUrl}" target="_blank">View PR</a></p>`;
+        setTimeout(() => statusDiv.remove(), 10000);
+
+        // Clear selections
+        selectedEvents.clear();
+        document.querySelectorAll('.duplicate-checkbox:checked').forEach(cb => cb.checked = false);
+        updateMergeControls();
+
+    } catch (error) {
+        console.error('Error creating merge PR:', error);
+        statusDiv.innerHTML = `<strong>❌ Error</strong><p>${error.message}</p>`;
+        setTimeout(() => statusDiv.remove(), 10000);
+    }
+}
+</script>
 {% endblock %}
