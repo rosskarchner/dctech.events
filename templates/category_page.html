@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category_name }} Events - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>{{ stats.upcoming_events }} Upcoming {{ category_name }} Events</h2>
+
+        {% if category_description %}
+            <p class="category-description">{{ category_description }}</p>
+        {% endif %}
+
+        {% if stats.upcoming_events == 0 %}
+            <p>No upcoming {{ category_name }} events found. <a href="/">View all events</a> or <a href="{{ add_events_link }}">add an event</a>.</p>
+        {% else %}
+            {% include "partials/events_by_day.html" %}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+    <meta property="og:title" content="{{ category_name }} Tech Events">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="{{ category_description }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+{% endblock %}
