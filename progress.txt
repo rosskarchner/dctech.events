@@ -1,0 +1,80 @@
+## Iteration 1 - Create Categories Directory Structure (Phase 1.1)
+- Created _categories/ directory
+- Added 16 category YAML files (python, ai, gaming, cybersecurity, data, coworking, ux-design, microsoft, cloud, linux, crypto, startups, social, vendor-conferences, conferences, training)
+- Each file contains name and description fields as per PRD template
+- Files changed: 16 new files in _categories/
+
+Learnings for future iterations:
+- Category files follow simple YAML structure with name and description
+- All 16 files created match the specification in PRD.md Phase 1.1
+- Tests failed due to missing Python dependencies (markupsafe, dateutil, yaml) - not related to this change
+- The _categories/ directory is now ready for Phase 1.2 (get_categories() function)
+- Next task should be implementing get_categories() function in app.py
+
+---
+
+## Iteration 2 - Add get_categories() Function (Phase 1.2)
+- Implemented get_categories() function in app.py
+- Function loads all YAML files from _categories/ directory
+- Returns dict mapping slugs to category metadata: {'python': {'name': '...', 'description': '...', 'slug': 'python'}, ...}
+- Added categories to context processor so available in all templates
+- Files changed: app.py
+
+Learnings for future iterations:
+- Followed same pattern as get_approved_groups() function
+- Categories dict is keyed by slug (filename without extension) for easy lookup
+- Each category includes name, description, and slug fields
+- Context processor now provides 'categories' variable to all templates
+- All 18 tests passed successfully
+- Function successfully loads all 16 categories
+- Next task: Phase 1.3 - Add suppress_guid feature
+
+---
+
+## Iteration 3 - Update Data Loading Pipeline (Phase 1.4)
+- Implemented category resolution in generate_month_data.py
+- Added CATEGORIES_DIR constant for _categories directory
+- Created load_categories() function to load all category YAML files
+- Created resolve_event_categories() function with priority logic:
+  1. Event-specific categories take priority
+  2. Falls back to group categories if event doesn't specify
+  3. Returns empty list if neither has categories
+- Updated generate_yaml() to load categories at start of build
+- Added category resolution for iCal events (resolves from event or group)
+- Added category resolution for single events (resolves from event or group, looks up group by name)
+- Categories are now stored in upcoming.yaml event data
+- Files changed: generate_month_data.py
+
+Learnings for future iterations:
+- Phase 1.3 (suppress_guid) was already implemented in commit 813669c
+- Category resolution happens during the build process, not at request time
+- Single events can reference groups by name, so we need to look up the group object
+- Category inheritance follows the priority: event > group > none
+- Categories are validated against loaded category definitions
+- All 18 tests pass successfully
+- Tested category inheritance by temporarily adding categories to a group
+- Next task: Phase 2.1 - Create Category Page Template
+
+---
+
+## Iteration 4 - Create Category Page Template (Phase 2.1)
+- Created templates/category_page.html based on location_page.html structure
+- Template extends base.html and includes standard layout
+- Displays category name as page title
+- Shows category description when available
+- Displays count of upcoming events with proper pluralization
+- Includes partials/events_by_day.html for event listings
+- Shows empty state when no events found (with links to home and add event pages)
+- Added Open Graph meta tags for social sharing (og:title, og:type, og:description, og:site_name)
+- Files changed: templates/category_page.html (new file)
+
+Learnings for future iterations:
+- Category page template mirrors location_page.html with variable name changes
+- Template is ready but needs corresponding route in app.py (Phase 2.2) to be functional
+- All 79 tests pass successfully after adding template
+- Template uses same partials as other listing pages for consistency
+- Empty state provides helpful navigation back to main site or submission form
+- Next task: Phase 2.2 - Add Category Page Route
+
+---
+
