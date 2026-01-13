@@ -217,7 +217,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 30 minutes
 
-### - [ ] 3.3 Update Event Loading in generate_month_data.py (PRIMARY)
+### - [x] 3.3 Update Event Loading in generate_month_data.py (PRIMARY)
 **File:** `generate_month_data.py`
 
 **Changes:**

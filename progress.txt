@@ -165,3 +165,29 @@ Learnings for future iterations:
 
 ---
 
+## Iteration 10 - Update Event Loading in generate_month_data.py (Phase 3.3)
+- Added EVENT_OVERRIDES_DIR constant for _event_overrides directory
+- Created load_event_override(event_hash) function to load override YAML files
+- Created merge_event_with_override(event, override) function to merge override data
+- Updated iCal event processing to:
+  - Check for override file by event hash and merge if exists
+  - Add 'source': 'ical' indicator to events
+  - Add 'guid' field with event hash
+- Updated single events processing to:
+  - Calculate event hash
+  - Check for override file and merge if exists
+  - Add 'source': 'manual' indicator to events
+  - Add 'guid' field with event hash
+- Files changed: generate_month_data.py
+
+Learnings for future iterations:
+- Override files are stored as _event_overrides/{hash}.yaml
+- Merge gives precedence to override fields over original event data
+- 'source' field indicates 'ical' or 'manual' origin
+- 'guid' field stores the MD5 hash for event identification
+- All 89 tests pass
+- Build process runs successfully and generates source/guid fields
+- Next task: Phase 4.1 - Create Edit Form Template
+
+---
+
