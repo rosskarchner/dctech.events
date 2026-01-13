@@ -744,6 +744,8 @@
             document.getElementById('city').disabled = true;
             document.getElementById('state').disabled = true;
             document.getElementById('end_date').disabled = true;
+            document.getElementById('cost').disabled = true;
+            document.getElementById('description').disabled = true;
 
             // Disable timing radios and selectors
             document.querySelectorAll('input[name="timing"]').forEach(radio => {
@@ -753,12 +755,15 @@
             document.getElementById('time-minute').disabled = true;
             document.getElementById('time-ampm').disabled = true;
 
-            // Hide "Submit Changes" button, show "Remove from Calendar" button
-            document.getElementById('submit-btn').style.display = 'none';
+            // Show both "Submit Changes" (for title/category edits) and "Remove from Calendar"
+            document.getElementById('submit-btn').style.display = 'inline-block';
+            document.getElementById('submit-btn').textContent = 'Save Title/Category Changes';
             document.getElementById('remove-btn').style.display = 'inline-block';
+            document.getElementById('remove-btn').textContent = 'Remove from Calendar';
         } else {
             // For manual events, show both buttons
             document.getElementById('submit-btn').style.display = 'inline-block';
+            document.getElementById('submit-btn').textContent = 'Submit Changes';
             document.getElementById('remove-btn').style.display = 'inline-block';
             document.getElementById('remove-btn').textContent = 'Delete Event';
         }
