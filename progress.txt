@@ -418,3 +418,58 @@ Learnings for future iterations:
 - Next task: Phase 8.3 - Update QUICK_REFERENCE.md
 
 ---
+
+## Iteration 21 - Update QUICK_REFERENCE.md (Phase 8.3)
+- Added Categories section to QUICK_REFERENCE.md
+  - File format with YAML example
+  - How to assign categories to groups, single events, and override files
+  - Category priority order (event > group > none)
+  - List of available categories
+  - Browse by category URL pattern
+- Added Editing Events section
+  - Web interface URL pattern (/edit/{event_id}/)
+  - Step-by-step workflow (login, edit, PR, merge)
+  - Table showing where edits are stored (manual vs iCal events)
+- Files changed: QUICK_REFERENCE.md, PRD.md
+
+Learnings for future iterations:
+- All 121 tests pass
+- QUICK_REFERENCE.md is now comprehensive with social media + categories + editing
+- Next task: Phase 9.1 - Prepare Deployment
+
+---
+
+## Iteration 22 - Prepare Deployment (Phase 9.1)
+- Verified all required directories exist:
+  - _categories (16 category files)
+  - _event_overrides (.gitkeep to track empty directory)
+  - _single_events, _groups, _data, templates, static, oauth-endpoint
+- Verified all required files exist:
+  - Core files: app.py, generate_month_data.py, refresh_calendars.py
+  - Templates: base.html, edit.html, category_page.html, events_by_day.html
+  - JavaScript: edit.js, edit.bundle.js
+  - Config: config.yaml, oauth-endpoint/app.py
+- Tested data pipeline:
+  - Ran generate_month_data.py successfully
+  - Verified upcoming.yaml contains 103 events with guid, source, categories fields
+  - Category files load correctly with name and description fields
+- Tested Flask routes and rendering:
+  - Category pages load correctly with proper HTML
+  - Edit route loads with event data
+  - Nonexistent pages return 404
+  - Sitemap includes all category pages
+- Verified GitHub OAuth configuration:
+  - Client ID configured (Ov23liSTVbSKSvkYW6yg)
+  - OAuth endpoint allows /edit/{event_id}/ paths
+  - AWS Secrets Manager integration for client secret
+- All 60 tests pass
+- Files changed: PRD.md
+
+Learnings for future iterations:
+- All infrastructure is in place for deployment
+- Events without categories have field omitted (uses .get('categories', []))
+- OAuth endpoint properly validates /edit/ paths with startswith/endswith pattern
+- File paths are all correct and verified
+- Data pipeline generates required fields (guid, source, categories)
+- Next task: Phase 9.2 - Create Initial Categories (Post-Deploy)
+---
