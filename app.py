@@ -33,6 +33,7 @@ NEWSLETTER_SIGNUP_LINK = config.get('newsletter_signup_link', 'https://newslette
 # Constants - data paths
 DATA_DIR = '_data'
 GROUPS_DIR = '_groups'
+CATEGORIES_DIR = '_categories'
 SPONSORS_FILE = os.path.join(DATA_DIR, 'sponsors.json')
 
 app = Flask(__name__, template_folder='templates')
@@ -58,7 +59,8 @@ def inject_config():
         'base_url': BASE_URL,
         'add_events_link': ADD_EVENTS_LINK,
         'newsletter_signup_link': NEWSLETTER_SIGNUP_LINK,
-        'sponsors': load_sponsors()
+        'sponsors': load_sponsors(),
+        'categories': get_categories()
     }
 
     return context
@@ -89,7 +91,7 @@ def get_events():
 def get_approved_groups():
     """
     Get all groups from the _groups directory
-    
+
     Returns:
         A list of group dictionaries
     """
@@ -104,11 +106,33 @@ def get_approved_groups():
                 groups.append(group)
         except Exception as e:
             print(f"Error loading group from {file_path}: {str(e)}")
-    
+
     # Sort groups by name
     groups.sort(key=lambda x: x.get('name', '').lower())
-    
+
     return groups
+
+def get_categories():
+    """
+    Get all categories from the _categories directory
+
+    Returns:
+        A dict mapping category slugs to category metadata
+        Example: {'python': {'name': 'Python', 'description': '...', 'slug': 'python'}, ...}
+    """
+    categories = {}
+    for file_path in Path(CATEGORIES_DIR).glob('*.yaml'):
+        try:
+            with open(file_path, 'r') as f:
+                category = yaml.safe_load(f)
+                # Add the slug (filename without extension)
+                slug = file_path.stem
+                category['slug'] = slug
+                categories[slug] = category
+        except Exception as e:
+            print(f"Error loading category from {file_path}: {str(e)}")
+
+    return categories
 
 def prepare_events_by_day(events, add_week_links=False):
     """
