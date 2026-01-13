@@ -387,7 +387,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 1-2 hours
 
-### - [ ] 7.2 Update Tests
+### - [x] 7.2 Update Tests
 **Files:**
 - `test_app.py` - add tests for new routes
 - `test_generate_month_data.py` - test override merging

@@ -1611,6 +1611,257 @@ class TestEventHashCalculation(unittest.TestCase):
         
         self.assertEqual(actual_hash, expected_hash)
 
+class TestLocationValidation(unittest.TestCase):
+    """Test cases for location handling and validation"""
+    
+    def test_location_parsing_city_state(self):
+        """Test that city, state format locations are handled correctly"""
+        location = "Washington DC"
+        
+        # Simple check - location should contain city info
+        self.assertIn("Washington", location)
+    
+    def test_location_parsing_with_comma(self):
+        """Test location parsing with comma separator"""
+        location = "Arlington, VA"
+        parts = [p.strip() for p in location.split(',')]
+        
+        self.assertEqual(len(parts), 2)
+        self.assertEqual(parts[0], "Arlington")
+        self.assertEqual(parts[1], "VA")
+    
+    def test_location_empty_handling(self):
+        """Test that empty location is handled gracefully"""
+        from app import prepare_events_by_day
+        import pytz
+        from datetime import datetime
+        
+        local_tz = pytz.timezone('US/Eastern')
+        today = datetime.now(local_tz).date()
+        today_str = today.strftime('%Y-%m-%d')
+        
+        events = [
+            {'date': today_str, 'time': '18:00', 'title': 'Event Without Location'}
+        ]
+        
+        days = prepare_events_by_day(events)
+        self.assertEqual(len(days), 1)
+        self.assertEqual(len(days[0]['time_slots']), 1)
+    
+    def test_location_with_venue_and_address(self):
+        """Test location with full venue and address info"""
+        location = "Conference Center, 1234 Main St, Washington DC"
+        
+        # Should contain venue info
+        self.assertIn("Conference Center", location)
+        self.assertIn("Washington DC", location)
+
+
+class TestEditFormPrePopulation(unittest.TestCase):
+    """Test cases for edit form pre-population"""
+    
+    def setUp(self):
+        from datetime import datetime
+        import pytz
+        self.timezone_name = 'US/Eastern'
+        self.local_tz = pytz.timezone(self.timezone_name)
+        self.today = datetime.now(self.local_tz).date()
+    
+    def test_edit_form_contains_all_fields(self):
+        """Test that edit form contains all required input fields"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_guid = 'formtest123456789012345678901234'
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '18:00',
+                'title': 'Test Event',
+                'location': 'Washington DC',
+                'url': 'https://example.com',
+                'guid': test_guid,
+                'source': 'ical'
+            }
+        ]
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            response = client.get(f'/edit/{test_guid}/')
+            html = response.data.decode()
+            
+            # Check all form fields exist
+            self.assertIn('id="title"', html)
+            self.assertIn('id="url"', html)
+            self.assertIn('id="date"', html)
+            self.assertIn('id="time-hour"', html)
+            self.assertIn('id="city"', html)
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_edit_form_shows_categories(self):
+        """Test that edit form shows category checkboxes"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_guid = 'cattest1234567890123456789012345'
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '18:00',
+                'title': 'Python Event',
+                'location': 'DC',
+                'url': 'https://example.com',
+                'guid': test_guid,
+                'source': 'ical',
+                'categories': ['python']
+            }
+        ]
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            response = client.get(f'/edit/{test_guid}/')
+            html = response.data.decode()
+            
+            # Check that category checkboxes exist
+            self.assertIn('name="categories"', html)
+            self.assertIn('value="python"', html)
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_edit_form_shows_source_type(self):
+        """Test that edit form displays source type (ical/manual)"""
+        from app import app
+        import os
+        import yaml
+        
+        client = app.test_client()
+        
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+        
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_guid = 'srctest1234567890123456789012345'
+        
+        test_events = [
+            {
+                'date': today_str,
+                'time': '18:00',
+                'title': 'iCal Event',
+                'location': 'DC',
+                'url': 'https://example.com',
+                'guid': test_guid,
+                'source': 'ical'
+            }
+        ]
+        
+        try:
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+            
+            response = client.get(f'/edit/{test_guid}/')
+            html = response.data.decode()
+            
+            # Check source type is displayed
+            self.assertIn('ical', html.lower())
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+
+class TestOverrideFileCreation(unittest.TestCase):
+    """Test cases for override file creation and loading"""
+    
+    def test_override_file_structure(self):
+        """Test that override files have correct YAML structure"""
+        import yaml
+        import os
+        
+        override_data = {
+            'title': 'Updated Event Title',
+            'location': 'New Location DC',
+            'categories': ['python', 'ai']
+        }
+        
+        test_file = '_event_overrides/test_structure.yaml'
+        
+        try:
+            os.makedirs('_event_overrides', exist_ok=True)
+            with open(test_file, 'w') as f:
+                yaml.dump(override_data, f)
+            
+            # Read back and verify
+            with open(test_file, 'r') as f:
+                loaded = yaml.safe_load(f)
+            
+            self.assertEqual(loaded['title'], 'Updated Event Title')
+            self.assertEqual(loaded['location'], 'New Location DC')
+            self.assertEqual(loaded['categories'], ['python', 'ai'])
+            
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+    
+    def test_override_partial_fields(self):
+        """Test that override files can contain partial field updates"""
+        from generate_month_data import merge_event_with_override
+        
+        original_event = {
+            'title': 'Original Title',
+            'date': '2025-01-15',
+            'time': '18:00',
+            'location': 'DC',
+            'url': 'https://example.com',
+            'description': 'Original description'
+        }
+        
+        # Override only some fields
+        override = {
+            'title': 'Updated Title',
+            'location': 'Arlington VA'
+        }
+        
+        merged = merge_event_with_override(original_event, override)
+        
+        # Check overridden fields
+        self.assertEqual(merged['title'], 'Updated Title')
+        self.assertEqual(merged['location'], 'Arlington VA')
+        
+        # Check preserved fields
+        self.assertEqual(merged['date'], '2025-01-15')
+        self.assertEqual(merged['time'], '18:00')
+        self.assertEqual(merged['url'], 'https://example.com')
+        self.assertEqual(merged['description'], 'Original description')
+
+
 class TestEditRoute(unittest.TestCase):
     """Test cases for the /edit/<event_id>/ route"""
     

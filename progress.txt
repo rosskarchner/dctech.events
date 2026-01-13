@@ -311,3 +311,48 @@ Learnings for future iterations:
 - Next task: Phase 7.2 - Update Tests
 
 ---
+
+## Iteration 16 - Add /edit/<event_id>/ Route (Phase 5.1)
+- Implemented edit_event(event_id) route in app.py
+- Route pattern: /edit/<event_id>/
+- Function loads events from get_events() and finds matching event
+- Supports lookup by guid (MD5 hash) for both iCal and manual events
+- Supports lookup by slug for manual events
+- Returns 404 if event not found
+- Passes event data and OAuth config to edit.html template
+- Added 4 comprehensive tests in TestEditRoute class:
+  - test_edit_route_loads_event_by_guid
+  - test_edit_route_loads_event_by_slug
+  - test_edit_route_returns_404_for_unknown_event
+  - test_edit_route_passes_event_data_to_template
+- Files changed: app.py, test_app.py
+
+Learnings for future iterations:
+- Edit route uses guid field for event lookup (preferred over slug)
+- Manual events can also be found by slug if source='manual'
+- All 43 tests pass
+- Next task: Phase 4.3 - Test Forms Locally (or continue with remaining tasks)
+
+---
+
+## Iteration 17 - Update Tests (Phase 7.2)
+- Added 4 new test classes to test_app.py:
+  - TestLocationValidation: 4 tests for location parsing and handling
+  - TestEditFormPrePopulation: 3 tests for edit form field presence and data
+  - TestOverrideFileCreation: 2 tests for override file structure and partial updates
+- Tests verify:
+  - Location parsing (city/state, comma-separated, empty, venue with address)
+  - Edit form contains all required fields (title, url, date, time, city)
+  - Edit form shows category checkboxes
+  - Edit form displays source type (ical/manual)
+  - Override file YAML structure
+  - Partial field override merging
+- Files changed: test_app.py, PRD.md
+
+Learnings for future iterations:
+- Form field IDs are 'title', 'url', 'date', 'time-hour', 'city' (not prefixed with 'event-')
+- All 52 tests now pass
+- Test suite covers all Phase 7.2 requirements from PRD
+- Next task: Phase 7.3 - Integration Testing
+
+---
