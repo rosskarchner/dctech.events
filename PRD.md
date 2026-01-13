@@ -238,7 +238,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 ## Phase 4: Edit Functionality - UI and Forms
 
-### - [ ] 4.1 Create Edit Form Template
+### - [x] 4.1 Create Edit Form Template
 **File:** `templates/edit.html`
 
 **Template Structure:**
