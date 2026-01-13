@@ -767,7 +767,12 @@ def generate_yaml():
     upcoming_file = os.path.join(DATA_DIR, 'upcoming.yaml')
     with open(upcoming_file, 'w', encoding='utf-8') as f:
         yaml.dump(all_events, f, sort_keys=False, allow_unicode=True)
-    
+
+    # Write all events to events.json for client-side use
+    events_json_file = os.path.join(DATA_DIR, 'events.json')
+    with open(events_json_file, 'w', encoding='utf-8') as f:
+        json.dump(all_events, f, indent=2, ensure_ascii=False)
+
     # Generate and write stats.yaml
     stats = calculate_stats(groups, all_events)
     stats_file = os.path.join(DATA_DIR, 'stats.yaml')

@@ -27,7 +27,7 @@
                     <td>{{ event.title }}</td>
                     <td><span class="source-badge source-{{ event.source|default('unknown') }}">{{ event.source|default('unknown') }}</span></td>
                     <td>
-                        <a href="/edit/{{ event.guid or event.slug }}/" class="btn btn-sm btn-primary">Edit</a>
+                        <a href="/edit/event/#{{ event.guid or event.slug }}" class="btn btn-sm btn-primary">Edit</a>
                     </td>
                 </tr>
                 {% endfor %}

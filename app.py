@@ -1021,37 +1021,21 @@ def edit_list():
     
     return render_template('edit_list.html', events=future_events)
 
-@app.route("/edit/<event_id>/")
-def edit_event(event_id):
-    """Edit event page with GitHub OAuth
-    
-    Args:
-        event_id: Either a slug (for manual events) or a hash (for iCal events)
+@app.route("/edit/event/")
+def edit_event_dynamic():
+    """Dynamic edit event page that loads event data client-side via hash routing
+
+    This serves a single static page that uses JavaScript to:
+    1. Parse the event ID from the URL hash (e.g., /edit/event/#abc123)
+    2. Fetch /events.json
+    3. Find and display the matching event for editing
     """
-    events = get_events()
-    
-    # Find the event by guid (hash) or by slug (for manual events)
-    event = None
-    for e in events:
-        # Check if event_id matches guid (iCal events and manual events both have guid)
-        if e.get('guid') == event_id:
-            event = e
-            break
-        # Check if event_id matches the slug (for manual events)
-        if e.get('source') == 'manual' and e.get('slug') == event_id:
-            event = e
-            break
-    
-    if not event:
-        return "Event not found", 404
-    
     # Get OAuth configuration from environment or config
     github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
     oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
                                             config.get('oauth_callback_endpoint', ''))
-    
-    return render_template('edit.html',
-                          event=event,
+
+    return render_template('edit_dynamic.html',
                           github_client_id=github_client_id,
                           oauth_callback_endpoint=oauth_callback_endpoint)
 
@@ -1130,6 +1114,17 @@ def sitemap():
     xml.append('</urlset>')
 
     return Response('\n'.join(xml), mimetype='text/xml')
+
+@app.route("/events.json")
+def events_json():
+    """Serve events data as JSON for client-side use"""
+    events_json_file = os.path.join(DATA_DIR, 'events.json')
+    if os.path.exists(events_json_file):
+        with open(events_json_file, 'r', encoding='utf-8') as f:
+            return Response(f.read(), mimetype='application/json')
+    # Fallback: return current events if JSON doesn't exist yet
+    events = get_events()
+    return Response(json.dumps(events, indent=2), mimetype='application/json')
 
 @app.route("/events.ics")
 def ical_feed():

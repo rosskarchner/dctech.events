@@ -34,6 +34,11 @@ def edit_list():
     yield {}
 
 @freezer.register_generator
+def edit_event_dynamic():
+    """Generate the dynamic edit event page"""
+    yield {}
+
+@freezer.register_generator
 def submit():
     """Generate the event submission page"""
     yield {}
@@ -71,6 +76,11 @@ def newsletter_text():
 @freezer.register_generator
 def sitemap():
     """Generate the sitemap.xml page"""
+    yield {}
+
+@freezer.register_generator
+def events_json():
+    """Generate the events JSON file"""
     yield {}
 
 @freezer.register_generator

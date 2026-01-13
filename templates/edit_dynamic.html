@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Event - {{ site_name }}{% endblock %}
+
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <div id="loading-state" style="text-align: center; padding: 2rem;">
+        <p>Loading event...</p>
+    </div>
+
+    <div id="error-state" style="display: none; text-align: center; padding: 2rem;">
+        <p class="error-message" style="color: #dc2626;"></p>
+        <a href="/edit/" class="btn btn-secondary">Back to event list</a>
+    </div>
+
+    <div id="edit-content" style="display: none;">
+        <h2>Edit Event</h2>
+
+        <div id="auth-section">
+            <p>To edit an event, you'll need to sign in with a GitHub account. Don't have one? Just email the changes to ross@karchner.com.
+            </p>
+
+            <div class="auth-status" id="auth-status">
+                <p>Not signed in</p>
+                <button id="github-login" class="btn btn-primary">
+                    <svg height="16" width="16" viewBox="0 0 16 16" style="vertical-align: text-bottom; margin-right: 8px;">
+                        <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                    </svg>
+                    Sign in with GitHub
+                </button>
+            </div>
+        </div>
+
+        <form id="edit-form" style="display: none;">
+            <div class="event-section">
+                <h3>Event Details</h3>
+
+                <p class="source-info">
+                    <strong>Source:</strong>
+                    <span id="event-source-label"></span>
+                    <span class="source-note">(source cannot be changed)</span>
+                </p>
+
+                <div id="event-group-container" style="display: none;" class="form-group">
+                    <label>Group</label>
+                    <p id="event-group" class="readonly-field"></p>
+                    <small>Group cannot be changed</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="title">Event Title <span class="required">*</span></label>
+                    <input type="text" id="title" name="title" required maxlength="200">
+                </div>
+
+                <div class="form-group">
+                    <label for="url">Event URL</label>
+                    <input type="url" id="url" name="url" placeholder="https://example.com/event">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date">Date <span class="required">*</span></label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Event Timing</label>
+                        <div class="timing-options">
+                            <label class="timing-option">
+                                <input type="radio" name="timing" value="specific">
+                                <span class="timing-label">Specific Time</span>
+                                <div class="time-selector">
+                                    <select id="time-hour" name="time-hour">
+                                        <option value="">Hour</option>
+                                        {% for h in range(1, 13) %}
+                                        <option value="{{ h }}">{{ h }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select id="time-minute" name="time-minute">
+                                        <option value="">Min</option>
+                                        <option value="00">00</option>
+                                        <option value="15">15</option>
+                                        <option value="30">30</option>
+                                        <option value="45">45</option>
+                                    </select>
+                                    <select id="time-ampm" name="time-ampm">
+                                        <option value="">AM/PM</option>
+                                        <option value="AM">AM</option>
+                                        <option value="PM">PM</option>
+                                    </select>
+                                </div>
+                            </label>
+
+                            <label class="timing-option">
+                                <input type="radio" name="timing" value="allday">
+                                <span class="timing-label">All-Day Event</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">City <span class="required">*</span></label>
+                        <input type="text" id="city" name="city" required maxlength="100"
+                               placeholder="e.g., Arlington">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="state">State <span class="required">*</span></label>
+                        <select id="state" name="state" required>
+                            <option value="DC">DC</option>
+                            <option value="MD">Maryland</option>
+                            <option value="VA">Virginia</option>
+                        </select>
+                    </div>
+                </div>
+
+                <details class="optional-details" open>
+                    <summary>Optional Details</summary>
+                    <div class="optional-fields">
+                        <div class="form-group">
+                            <label for="end_date">End Date</label>
+                            <input type="date" id="end_date" name="end_date">
+                            <small>For multi-day events</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cost">Cost</label>
+                            <input type="text" id="cost" name="cost" maxlength="100"
+                                   placeholder="e.g., Free, $10, $5-$15">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" rows="4"
+                                      placeholder="Optional description of the event"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Categories</label>
+                            <div id="category-checkboxes" class="category-checkboxes">
+                                <!-- Categories will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div id="status-message" class="status-message"></div>
+
+            <div class="form-actions">
+                <button type="submit" id="submit-btn" class="btn btn-primary">
+                    Submit Changes
+                </button>
+                <a href="/edit/" class="btn btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+
+        <div id="success-message" style="display: none;">
+            <div class="success-box">
+                <h3>✓ Pull Request Created!</h3>
+                <p>Your edit has been submitted successfully. A pull request has been created:</p>
+                <p><a id="pr-link" target="_blank" rel="noopener noreferrer"></a></p>
+                <p>Once reviewed and merged, your changes will appear on the calendar.</p>
+                <a href="/" class="btn btn-primary">Return to Events</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.edit-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.edit-container h2 {
+    margin-bottom: var(--spacing-lg);
+}
+
+.source-info {
+    background-color: var(--color-background-alt);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+}
+
+.source-note {
+    color: var(--color-text-light);
+    font-size: 0.875rem;
+}
+
+.readonly-field {
+    background-color: var(--color-background-alt);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    margin: 0;
+}
+
+.event-section {
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.event-section h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-lg);
+    font-size: 1.25rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+}
+
+@media (max-width: 640px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text);
+}
+
+.form-group label .required {
+    color: #dc2626;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group small {
+    display: block;
+    margin-top: var(--spacing-xs);
+    color: var(--color-text-light);
+    font-size: 0.875rem;
+}
+
+.timing-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.timing-option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.timing-option:hover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.02);
+}
+
+.timing-option input[type="radio"] {
+    cursor: pointer;
+    width: auto;
+}
+
+.timing-option input[type="radio"]:checked {
+    accent-color: var(--color-primary);
+}
+
+.timing-option input[type="radio"]:checked ~ .timing-label {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.timing-label {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.time-selector {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.time-selector select {
+    width: auto;
+}
+
+.optional-details {
+    margin-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-lg);
+}
+
+.optional-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-primary);
+    padding: var(--spacing-sm) 0;
+    list-style-position: inside;
+}
+
+.optional-details summary:hover {
+    color: var(--color-primary-hover);
+}
+
+.optional-fields {
+    padding-top: var(--spacing-lg);
+}
+
+.category-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.category-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: normal;
+    transition: all 0.2s;
+}
+
+.category-checkbox:hover {
+    border-color: var(--color-primary);
+    background-color: rgba(37, 99, 235, 0.02);
+}
+
+.category-checkbox input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.category-checkbox input[type="checkbox"]:checked {
+    accent-color: var(--color-primary);
+}
+
+.btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-primary:disabled {
+    background-color: var(--color-text-lighter);
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--color-background-alt);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-border);
+}
+
+.form-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+}
+
+.auth-status {
+    padding: var(--spacing-lg);
+    background-color: var(--color-background-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin: var(--spacing-lg) 0;
+}
+
+.auth-status.authenticated {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+}
+
+.status-message {
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+    display: none;
+}
+
+.status-message.error {
+    display: block;
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+}
+
+.status-message.info {
+    display: block;
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+.success-box {
+    padding: var(--spacing-xl);
+    background-color: #f0fdf4;
+    border: 2px solid #86efac;
+    border-radius: var(--border-radius);
+}
+
+.success-box h3 {
+    color: #166534;
+    margin-top: 0;
+}
+
+.success-box a {
+    color: var(--color-primary);
+    word-break: break-all;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pass configuration from Flask to JavaScript
+    window.GITHUB_CONFIG = {
+        clientId: '{{ github_client_id }}',
+        callbackEndpoint: '{{ oauth_callback_endpoint }}'
+    };
+    // EVENT_DATA and CATEGORIES will be loaded via fetch from events.json
+    window.EVENT_DATA = null;
+    window.CATEGORIES = {{ categories|tojson }};
+
+    // Load event data from URL hash
+    async function loadEventData() {
+        const eventId = window.location.hash.substring(1); // Remove the #
+
+        if (!eventId) {
+            showError('No event ID provided in URL');
+            return;
+        }
+
+        try {
+            // Fetch all events
+            const response = await fetch('/events.json');
+            if (!response.ok) {
+                throw new Error('Failed to load events data');
+            }
+
+            const events = await response.json();
+
+            // Find the matching event
+            const event = events.find(e =>
+                e.guid === eventId ||
+                (e.source === 'manual' && e.slug === eventId)
+            );
+
+            if (!event) {
+                showError(`Event not found: ${eventId}`);
+                return;
+            }
+
+            // Set the global event data
+            window.EVENT_DATA = event;
+
+            // Show the edit interface
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('edit-content').style.display = 'block';
+
+            // Set up timing change event listeners
+            const timingRadios = document.querySelectorAll('input[name="timing"]');
+            timingRadios.forEach(radio => {
+                radio.addEventListener('change', handleTimingChange);
+            });
+
+            // Populate the form with event data
+            populateFormWithEventData();
+
+        } catch (error) {
+            console.error('Error loading event:', error);
+            showError('Failed to load event data: ' + error.message);
+        }
+    }
+
+    function showError(message) {
+        document.getElementById('loading-state').style.display = 'none';
+        const errorState = document.getElementById('error-state');
+        errorState.style.display = 'block';
+        errorState.querySelector('.error-message').textContent = message;
+    }
+
+    function populateFormWithEventData() {
+        const event = window.EVENT_DATA;
+
+        // Populate source info
+        document.getElementById('event-source-label').textContent = event.source || 'unknown';
+
+        // Populate group if present
+        if (event.group) {
+            document.getElementById('event-group-container').style.display = 'block';
+            document.getElementById('event-group').textContent = event.group;
+        }
+
+        // Populate basic fields
+        document.getElementById('title').value = event.title || '';
+        document.getElementById('url').value = event.url || '';
+        document.getElementById('date').value = event.date || event.start_date || '';
+        document.getElementById('end_date').value = event.end_date || '';
+        document.getElementById('cost').value = event.cost || '';
+        document.getElementById('description').value = event.description || '';
+
+        // Parse location into city and state
+        if (event.location) {
+            const locationParts = event.location.split(',').map(s => s.trim());
+            if (locationParts.length >= 2) {
+                const cityField = document.getElementById('city');
+                const stateField = document.getElementById('state');
+                if (cityField) cityField.value = locationParts[0];
+                if (stateField) {
+                    const stateValue = locationParts[locationParts.length - 1].toUpperCase();
+                    // Try to match state abbreviation
+                    const stateOptions = stateField.options;
+                    for (let i = 0; i < stateOptions.length; i++) {
+                        if (stateOptions[i].value === stateValue ||
+                            stateOptions[i].text.toUpperCase().includes(stateValue)) {
+                            stateField.value = stateOptions[i].value;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Parse time if present (format: HH:MM in 24-hour)
+        const eventTime = event.time || event.start_time || '';
+        if (eventTime) {
+            const timeParts = eventTime.split(':');
+            if (timeParts.length >= 2) {
+                let hour = parseInt(timeParts[0], 10);
+                const minute = timeParts[1];
+                let ampm = 'AM';
+
+                if (hour >= 12) {
+                    ampm = 'PM';
+                    if (hour > 12) hour -= 12;
+                }
+                if (hour === 0) hour = 12;
+
+                const hourSelect = document.getElementById('time-hour');
+                const minuteSelect = document.getElementById('time-minute');
+                const ampmSelect = document.getElementById('time-ampm');
+
+                if (hourSelect) hourSelect.value = hour.toString();
+                if (minuteSelect) {
+                    // Round to nearest 15 minutes
+                    const minInt = parseInt(minute, 10);
+                    const roundedMin = Math.round(minInt / 15) * 15;
+                    minuteSelect.value = roundedMin === 60 ? '00' : roundedMin.toString().padStart(2, '0');
+                }
+                if (ampmSelect) ampmSelect.value = ampm;
+
+                // Select "specific time" radio
+                document.querySelector('input[name="timing"][value="specific"]').checked = true;
+            }
+        } else {
+            // Select "all day" radio
+            document.querySelector('input[name="timing"][value="allday"]').checked = true;
+        }
+
+        // Populate category checkboxes
+        const categoryContainer = document.getElementById('category-checkboxes');
+        const categories = window.CATEGORIES || {};
+        for (const [slug, category] of Object.entries(categories)) {
+            const label = document.createElement('label');
+            label.className = 'category-checkbox';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'categories';
+            checkbox.value = slug;
+            if (event.categories && event.categories.includes(slug)) {
+                checkbox.checked = true;
+            }
+
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(' ' + category.name));
+            categoryContainer.appendChild(label);
+        }
+
+        // Enable/disable time selectors based on timing option
+        handleTimingChange();
+    }
+
+    // Handle timing option change (copied from edit.js)
+    function handleTimingChange() {
+        const timingValue = document.querySelector('input[name="timing"]:checked')?.value;
+        const timeSelectors = document.querySelectorAll('.time-selector select');
+
+        if (timingValue === 'specific') {
+            timeSelectors.forEach(select => {
+                select.disabled = false;
+            });
+        } else {
+            timeSelectors.forEach(select => {
+                select.disabled = true;
+            });
+        }
+    }
+
+    // Load event when page loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadEventData);
+    } else {
+        loadEventData();
+    }
+</script>
+<script type="module" src="/static/js/dist/edit.bundle.js"></script>
+{% endblock %}
