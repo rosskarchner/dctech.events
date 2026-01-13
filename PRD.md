@@ -428,7 +428,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 1-2 hours
 
-### - [ ] 8.2 Update README.md
+### - [x] 8.2 Update README.md
 **File:** `README.md`
 
 **Add sections:**

@@ -27,6 +27,18 @@ python app.py     # Start dev server
 
 3. **Visit** `http://localhost:5000`
 
+## 📁 Directory Structure
+
+```
+_categories/         # Category definitions (python.yaml, ai.yaml, etc.)
+_data/               # Generated data files (upcoming.yaml)
+_event_overrides/    # Override files for iCal events (committed via PR)
+_groups/             # Group/meetup configurations with iCal/RSS feeds
+_single_events/      # Manually submitted single events
+templates/           # Jinja2 HTML templates
+static/              # CSS, JavaScript, and images
+```
+
 ## 📝 Adding Events
 
 ### Add a Group/Meetup
@@ -54,6 +66,61 @@ time:
 ```
 
 Each date should be in `YYYY-MM-DD` format with the time in `HH:MM` (24-hour) format. Days not specified in the dictionary will display as "All Day" events.
+
+## 🏷️ Categories
+
+Events can be organized by category. Categories are defined in `_categories/` as YAML files:
+
+```yaml
+name: "Python"
+description: "Python programming language events"
+```
+
+### Assigning Categories
+
+**To a group** (all events inherit these categories):
+```yaml
+# _groups/python-users.yaml
+name: "DC Python Users"
+ical: "https://example.com/calendar.ics"
+categories:
+  - python
+```
+
+**To a single event**:
+```yaml
+# _single_events/2025-03-15-pycon-dc.yaml
+title: "PyCon DC"
+date: "2025-03-15"
+categories:
+  - python
+  - conferences
+```
+
+**Priority**: Event-specific categories override group categories.
+
+### Browse by Category
+
+Visit `/categories/{slug}/` to see all events in a category (e.g., `/categories/python/`).
+
+## ✏️ Editing Events
+
+Events can be edited via the web interface at `/edit/{event_id}/`. The edit button appears on event listings for logged-in users.
+
+### How It Works
+
+1. Click the "Edit" button on any event
+2. Log in with GitHub (if not already authenticated)
+3. Modify event details (title, date, time, location, categories)
+4. Submit creates a pull request with your changes
+5. Changes go live after PR is reviewed and merged
+
+### How Edits Are Stored
+
+- **Manual events** (`_single_events/`): The original YAML file is updated
+- **iCal events**: An override file is created in `_event_overrides/{hash}.yaml`
+
+Override files only store the changed fields and are merged with the original iCal data during the build process.
 
 ## 🧹 Event Maintenance
 

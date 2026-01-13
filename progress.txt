@@ -378,3 +378,22 @@ Learnings for future iterations:
 - Next task: Phase 8.1 - Update Templates for Categories
 
 ---
+
+## Iteration 19 - Update Templates for Categories (Phase 8.1)
+- Added category badges to event listings in templates/partials/events_by_day.html
+- Badges display after event details (location, organizer, also published by)
+- Each badge links to /categories/{slug}/ page
+- Added CSS for .event-categories and .category-badge in static/css/main.css
+- Badges use pill style with light blue background and primary color text
+- Hover effect darkens background and adds border highlight
+- Added test_category_badges_display_on_events test
+- All 60 tests pass
+- Files changed: templates/partials/events_by_day.html, static/css/main.css, test_app.py, PRD.md
+
+Learnings for future iterations:
+- Categories are available in templates via context processor (set up in Phase 1.2)
+- Template checks if category slug exists in categories dict before rendering badge
+- Badges use flex-wrap for responsive display on mobile
+- Next task: Phase 8.2 - Update README.md
+
+---
