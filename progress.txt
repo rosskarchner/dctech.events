@@ -98,3 +98,21 @@ Learnings for future iterations:
 
 ---
 
+## Iteration 6 - Update Sitemap Generation (Phase 2.3)
+- Added category pages to sitemap.xml generation in app.py (line 1012-1019)
+- Loop through all categories from get_categories() and add to sitemap URLs
+- Each category page URL follows pattern: {base_url}/categories/{slug}/
+- Set changefreq to 'daily' (same as location pages)
+- All 16 category pages now included in sitemap
+- Files changed: app.py
+
+Learnings for future iterations:
+- Sitemap function is at line 996 in app.py
+- Categories are added before week pages in the sitemap
+- All 18 tests pass successfully after adding category sitemap entries
+- Verified sitemap includes all 16 category pages with correct format
+- Each category page in sitemap has: loc, lastmod, and changefreq fields
+- Next task: Phase 2.4 - Test Category Pages (or move to Phase 3.1)
+
+---
+

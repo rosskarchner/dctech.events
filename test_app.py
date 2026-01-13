@@ -1090,5 +1090,236 @@ class TestApp(unittest.TestCase):
             except (OSError, FileNotFoundError):
                 pass
 
+    def test_category_pages_load(self):
+        """Test that category pages load without errors"""
+        from app import app, get_categories
+        import os
+        import yaml
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        # Create test events with categories
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Python Workshop',
+                'location': 'Washington DC',
+                'url': 'http://python-event.example.com',
+                'categories': ['python']
+            },
+            {
+                'date': today_str,
+                'time': '14:00',
+                'title': 'AI Meetup',
+                'location': 'Arlington VA',
+                'url': 'http://ai-event.example.com',
+                'categories': ['ai']
+            }
+        ]
+
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+
+            # Get all categories
+            categories = get_categories()
+
+            # Verify we have categories
+            self.assertGreater(len(categories), 0)
+
+            # Test loading a few category pages
+            for slug in ['python', 'ai', 'gaming']:
+                if slug in categories:
+                    response = client.get(f'/categories/{slug}/')
+                    self.assertEqual(response.status_code, 200,
+                                   f"Category page for {slug} failed to load")
+
+                    # Verify page contains category name (HTML-escaped)
+                    import html as html_lib
+                    html = response.data.decode()
+                    escaped_name = html_lib.escape(categories[slug]['name'])
+                    self.assertIn(escaped_name, html)
+
+            # Test invalid category returns 404
+            response = client.get('/categories/invalid-category/')
+            self.assertEqual(response.status_code, 404)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_category_filtering(self):
+        """Test that category pages filter events correctly"""
+        from app import app
+        import os
+        import yaml
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        # Create test events with different categories
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Python Workshop',
+                'location': 'Washington DC',
+                'categories': ['python', 'data']
+            },
+            {
+                'date': today_str,
+                'time': '14:00',
+                'title': 'AI Conference',
+                'location': 'Arlington VA',
+                'categories': ['ai']
+            },
+            {
+                'date': today_str,
+                'time': '18:00',
+                'title': 'Gaming Night',
+                'location': 'Bethesda MD',
+                'categories': ['gaming']
+            }
+        ]
+
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+
+            # Test Python category page
+            response = client.get('/categories/python/')
+            self.assertEqual(response.status_code, 200)
+            html = response.data.decode()
+
+            # Should include Python Workshop
+            self.assertIn('Python Workshop', html)
+            # Should NOT include AI Conference or Gaming Night
+            self.assertNotIn('AI Conference', html)
+            self.assertNotIn('Gaming Night', html)
+
+            # Test AI category page
+            response = client.get('/categories/ai/')
+            self.assertEqual(response.status_code, 200)
+            html = response.data.decode()
+
+            # Should include AI Conference
+            self.assertIn('AI Conference', html)
+            # Should NOT include Python Workshop or Gaming Night
+            self.assertNotIn('Python Workshop', html)
+            self.assertNotIn('Gaming Night', html)
+
+            # Test data category page (Python Workshop has both python and data)
+            response = client.get('/categories/data/')
+            self.assertEqual(response.status_code, 200)
+            html = response.data.decode()
+
+            # Should include Python Workshop (has data category)
+            self.assertIn('Python Workshop', html)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_category_empty_state(self):
+        """Test that category pages show empty state when no events match"""
+        from app import app
+        import os
+        import yaml
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        # Create test events WITHOUT any gaming category
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'Python Workshop',
+                'location': 'Washington DC',
+                'categories': ['python']
+            }
+        ]
+
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+
+            # Test gaming category page (should be empty)
+            response = client.get('/categories/gaming/')
+            self.assertEqual(response.status_code, 200)
+            html = response.data.decode()
+
+            # Should show empty state message (template shows "no upcoming {category} events")
+            self.assertIn('no upcoming gaming events', html.lower())
+            # Should NOT include the Python Workshop
+            self.assertNotIn('Python Workshop', html)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except:
+                pass
+
+    def test_category_sitemap(self):
+        """Test that sitemap includes category pages"""
+        from app import app, get_categories
+
+        # Create test client
+        client = app.test_client()
+
+        # Get sitemap
+        response = client.get('/sitemap.xml')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('xml', response.content_type)
+
+        # Get all categories
+        categories = get_categories()
+
+        # Verify sitemap includes category pages
+        sitemap_content = response.data.decode()
+
+        # Check for at least a few category URLs
+        for slug in ['python', 'ai', 'gaming']:
+            if slug in categories:
+                category_url = f'/categories/{slug}/'
+                self.assertIn(category_url, sitemap_content,
+                            f"Sitemap missing category page: {category_url}")
+
 if __name__ == '__main__':
     unittest.main()
