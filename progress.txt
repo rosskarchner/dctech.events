@@ -260,3 +260,25 @@ Learnings for future iterations:
 - Next task: Phase 6.2 - Implement PR Creation in edit.js
 
 ---
+
+## Iteration 14 - Implement PR Creation in edit.js (Phase 6.2)
+- Task already completed in Iteration 12 (Phase 4.2)
+- Verified createEditPullRequest() function exists in static/js/edit.js (lines 554-683)
+- Function implements all PRD requirements:
+  - Initializes Octokit with GitHub token
+  - Generates PR title/description with formatted diff
+  - Determines target file (manual → _single_events/, iCal → _event_overrides/)
+  - Builds YAML content via generateEditYAML()
+  - Creates branch, commits file, creates PR via Octokit
+  - Displays success page with PR link
+- All 28 tests pass
+- JavaScript build completes successfully (edit.bundle.js: 211.7kb)
+- Files changed: None (already implemented)
+
+Learnings for future iterations:
+- Phase 4.2 (Frontend JavaScript for Edit Form) already included the full PR creation logic
+- The task was marked incomplete in PRD but code was present
+- Always verify implementation before assuming task is incomplete
+- Next task: Phase 7.1 - Ensure Override and Category Merging in Data Pipeline
+
+---

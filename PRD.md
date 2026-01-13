@@ -347,7 +347,7 @@ def calculate_event_hash(date, time, title, url=None):
 
 **Estimated effort:** 1 hour (review only)
 
-### - [ ] 6.2 Implement PR Creation in edit.js
+### - [x] 6.2 Implement PR Creation in edit.js
 **File:** `static/js/edit.js`
 
 **Function:** `createEditPullRequest(eventType, eventId, formData, originalEvent)`
