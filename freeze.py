@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 # Import app
 from app import app
-from app import local_tz, get_events, get_upcoming_weeks
+from app import local_tz, get_events, get_upcoming_weeks, get_categories
 
 # Configure Freezer output destination
 app.config['FREEZER_DESTINATION'] = 'build'
@@ -62,6 +62,13 @@ def submit_group():
 def virtual_events_page():
     """Generate the virtual events page"""
     yield {}
+
+@freezer.register_generator
+def category_page():
+    """Generate URLs for individual category pages"""
+    categories = get_categories()
+    for slug in categories.keys():
+        yield {'slug': slug}
 
 @freezer.register_generator
 def newsletter_html():
