@@ -808,3 +808,23 @@ curl -I https://dctech.events
 - ⏳ Website testing pending (requires deployed infrastructure)
 
 ---
+
+## Iteration 28 - Fix Broken Edit Route Tests
+- Fixed 8 failing tests in TestEditRoute and TestEditFormPrePopulation classes
+- Tests were written for server-side /edit/<event_id>/ routes, but implementation uses:
+  - /edit/ - list page for all editable events
+  - /edit/event/ - dynamic page with client-side JS loading via hash routing
+- Updated tests to match actual implementation:
+  - TestEditFormPrePopulation: Now tests /edit/event/ page structure
+  - TestEditRoute: Tests both /edit/ list page and /edit/event/ dynamic page
+  - TestIntegrationEndToEnd: Removed assumptions about specific /edit/<id>/ routes
+- Fixed test data to use 'start_date' field (required by edit_list filter)
+- All 61 tests now pass
+- Files changed: test_app.py
+
+Learnings for future iterations:
+- edit_list() requires 'start_date' field, not just 'date'
+- /edit/event/ uses client-side JavaScript to load events via hash routing
+- Category checkboxes in edit form are populated by JS, not server-side
+- Tests for client-side rendered content should verify structure exists, not content
+---
