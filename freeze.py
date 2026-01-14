@@ -59,6 +59,16 @@ def submit_group():
     yield {}
 
 @freezer.register_generator
+def groups_json():
+    """Generate the groups JSON endpoint"""
+    yield {}
+
+@freezer.register_generator
+def edit_groups():
+    """Generate the groups edit page"""
+    yield {}
+
+@freezer.register_generator
 def virtual_events_page():
     """Generate the virtual events page"""
     yield {}

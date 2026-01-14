@@ -1049,6 +1049,7 @@ def edit_list():
     
     return render_template('edit_list.html',
                           grouped_events=grouped_events,
+                          categories=get_categories(),
                           is_dev_mode=is_dev_mode,
                           github_client_id=github_client_id,
                           oauth_callback_endpoint=oauth_callback_endpoint)
@@ -1092,6 +1093,29 @@ def submit_group():
                                             config.get('oauth_callback_endpoint', ''))
 
     return render_template('submit-group.html',
+                          github_client_id=github_client_id,
+                          oauth_callback_endpoint=oauth_callback_endpoint)
+
+@app.route("/groups.json")
+def groups_json():
+    """Serve groups data as JSON for client-side editing"""
+    groups = get_approved_groups()
+    return Response(json.dumps(groups, indent=2), mimetype='application/json')
+
+@app.route("/groups/edit/")
+def edit_groups():
+    """Bulk edit page for groups"""
+    categories = get_categories()
+
+    # Get OAuth configuration from environment or config
+    github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
+    oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
+                                            config.get('oauth_callback_endpoint', ''))
+    is_dev_mode = app.debug or os.environ.get('FLASK_ENV') == 'development'
+
+    return render_template('edit_groups.html',
+                          categories=categories,
+                          is_dev_mode=is_dev_mode,
                           github_client_id=github_client_id,
                           oauth_callback_endpoint=oauth_callback_endpoint)
 

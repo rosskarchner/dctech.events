@@ -33,11 +33,23 @@
     </div>
 
     <div id="events-content" style="display: none;">
-        <p>Select an event below to edit it. Check multiple events in the same time slot to merge duplicates.</p>
+        <p>Select an event below to edit it. Check multiple events in the same time slot to merge duplicates, or check any events to assign categories.</p>
 
         <div id="merge-controls" style="display: none;" class="merge-controls">
         <button id="merge-button" class="btn btn-warning">Merge Selected Duplicates</button>
         <span id="selected-count">0 selected</span>
+    </div>
+
+    <div id="category-controls" style="display: none;" class="category-controls">
+        <label for="category-select">Assign category to selected events:</label>
+        <select id="category-select">
+            <option value="">-- Select Category --</option>
+            {% for slug, cat in categories.items() %}
+            <option value="{{ slug }}">{{ cat.name }}</option>
+            {% endfor %}
+        </select>
+        <button id="apply-category-button" class="btn btn-primary">Apply to Selected</button>
+        <span id="category-selected-count">0 selected</span>
     </div>
 
     {% if grouped_events %}
@@ -59,16 +71,14 @@
             <div class="events-in-slot">
                 {% for event in group.events %}
                 <div class="event-row">
-                    {% if group.events|length > 1 %}
                     <div class="event-checkbox">
                         <input type="checkbox"
-                               class="duplicate-checkbox"
+                               class="event-checkbox"
                                data-slot="{{ group.slot_key }}"
                                data-event-id="{{ event.guid or event.slug }}"
                                data-event-title="{{ event.title }}"
                                data-event-source="{{ event.source|default('unknown') }}">
                     </div>
-                    {% endif %}
 
                     <div class="event-details">
                         <div class="event-title">
@@ -131,6 +141,35 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+}
+
+.category-controls {
+    background-color: #eff6ff;
+    border: 2px solid #3b82f6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.category-controls label {
+    font-weight: 600;
+    color: #1e40af;
+}
+
+.category-controls select {
+    padding: 0.5rem;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+#category-selected-count {
+    font-weight: 600;
+    color: #1e3a8a;
 }
 
 #selected-count {
@@ -401,6 +440,8 @@ window.GITHUB_CONFIG = {
     clientId: '{{ github_client_id }}',
     callbackEndpoint: '{{ oauth_callback_endpoint }}'
 };
+
+window.CATEGORIES = {{ categories|tojson }};
 </script>
 
 <script type="module">
@@ -412,6 +453,8 @@ import {
     createOrUpdateFile,
     createPullRequest,
     generateDuplicateOverrideYAML,
+    generateCategoryOverride,
+    updateSingleEventCategory,
     fetchAllEvents
 } from '/static/js/github-utils.js';
 
@@ -426,8 +469,11 @@ let octokit = null;
 let userData = null;
 let allEvents = [];
 
-// Track selected events for merging
+// Track selected events for merging (slot-based)
 const selectedEvents = new Map(); // slot_key -> Set of event IDs
+
+// Track selected events for category assignment (global)
+const categorySelections = new Set(); // Set of event IDs
 
 // Initialize auth on page load
 initializeAuth();
@@ -566,32 +612,44 @@ function updateMergeControls() {
 
 // Handle checkbox changes
 document.addEventListener('DOMContentLoaded', () => {
-    const checkboxes = document.querySelectorAll('.duplicate-checkbox');
+    const checkboxes = document.querySelectorAll('.event-checkbox');
 
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
             const slot = e.target.dataset.slot;
             const eventId = e.target.dataset.eventId;
 
-            if (!selectedEvents.has(slot)) {
-                selectedEvents.set(slot, new Set());
-            }
-
             if (e.target.checked) {
+                // Add to category selections
+                categorySelections.add(eventId);
+
+                // Add to duplicate selections if in multi-event slot
+                if (!selectedEvents.has(slot)) {
+                    selectedEvents.set(slot, new Set());
+                }
                 selectedEvents.get(slot).add(eventId);
             } else {
-                selectedEvents.get(slot).delete(eventId);
-                if (selectedEvents.get(slot).size === 0) {
-                    selectedEvents.delete(slot);
+                // Remove from both
+                categorySelections.delete(eventId);
+
+                if (selectedEvents.has(slot)) {
+                    selectedEvents.get(slot).delete(eventId);
+                    if (selectedEvents.get(slot).size === 0) {
+                        selectedEvents.delete(slot);
+                    }
                 }
             }
 
             updateMergeControls();
+            updateCategoryControls();
         });
     });
 
     // Handle merge button click
     document.getElementById('merge-button')?.addEventListener('click', showMergeConfirmation);
+
+    // Handle category button click
+    document.getElementById('apply-category-button')?.addEventListener('click', applyCategoryToEvents);
 
     // Handle modal buttons
     document.getElementById('cancel-merge')?.addEventListener('click', closeMergeModal);
@@ -777,6 +835,131 @@ Submitted via web interface by @${userData.login}`;
 
     } catch (error) {
         console.error('Error creating merge PR:', error);
+        statusDiv.innerHTML = `<strong>❌ Error</strong><p>${error.message}</p>`;
+        setTimeout(() => statusDiv.remove(), 10000);
+    }
+}
+
+// Update category controls visibility
+function updateCategoryControls() {
+    const categoryControls = document.getElementById('category-controls');
+    const selectedCount = document.getElementById('category-selected-count');
+
+    const count = categorySelections.size;
+
+    if (count > 0) {
+        categoryControls.style.display = 'flex';
+        selectedCount.textContent = `${count} event${count !== 1 ? 's' : ''} selected`;
+    } else {
+        categoryControls.style.display = 'none';
+    }
+}
+
+// Apply category to selected events
+async function applyCategoryToEvents() {
+    const category = document.getElementById('category-select').value;
+    const eventIds = Array.from(categorySelections);
+
+    if (!category) {
+        alert('Please select a category');
+        return;
+    }
+
+    if (eventIds.length === 0) {
+        alert('Please select at least one event');
+        return;
+    }
+
+    // Check authentication
+    if (!octokit || !userData) {
+        alert('Please sign in with GitHub to apply categories.');
+        return;
+    }
+
+    const statusDiv = document.createElement('div');
+    statusDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #eff6ff; border: 2px solid #3b82f6; padding: 1rem; border-radius: 8px; z-index: 10000; max-width: 300px;';
+    statusDiv.innerHTML = '<strong>Creating Pull Request...</strong><p>Please wait...</p>';
+    document.body.appendChild(statusDiv);
+
+    try {
+        // Load all events to get full event data
+        if (allEvents.length === 0) {
+            statusDiv.innerHTML = '<strong>Loading events...</strong>';
+            allEvents = await fetchAllEvents();
+        }
+
+        // Ensure fork exists
+        statusDiv.innerHTML = '<strong>Checking fork...</strong>';
+        await ensureFork(octokit, userData);
+
+        // Create branch
+        const branchName = `categorize-events-${Date.now()}`;
+        statusDiv.innerHTML = '<strong>Creating branch...</strong>';
+        await createBranch(octokit, userData, branchName);
+
+        // Update event files (either _single_events/ or _event_overrides/)
+        statusDiv.innerHTML = '<strong>Updating event files...</strong>';
+        const updatedEvents = [];
+
+        for (const eventId of eventIds) {
+            const event = allEvents.find(e => (e.guid || e.id) === eventId);
+
+            // Check if this is a manually submitted event (source='manual', from _single_events/)
+            // vs an iCal event (source='ical', needs override in _event_overrides/)
+            if (event.source === 'manual' && event.id) {
+                // This is a manually submitted event in _single_events/
+                const filePath = `_single_events/${event.id}.yaml`;
+                const yamlContent = await updateSingleEventCategory(octokit, userData, branchName, event.id, category);
+
+                await createOrUpdateFile(
+                    octokit, userData, branchName, filePath, yamlContent,
+                    `Add ${category} category to ${event.title}`
+                );
+            } else {
+                // This is an iCal event, use override mechanism
+                const filePath = `_event_overrides/${eventId}.yaml`;
+                const yamlContent = await generateCategoryOverride(octokit, userData, branchName, eventId, category);
+
+                await createOrUpdateFile(
+                    octokit, userData, branchName, filePath, yamlContent,
+                    `Add ${category} category to ${event.title}`
+                );
+            }
+
+            updatedEvents.push(event.title);
+        }
+
+        // Generate PR body
+        const prBody = `## Bulk Category Assignment
+
+Assigned category **${category}** to ${updatedEvents.length} event(s):
+
+${updatedEvents.map(t => `- ${t}`).join('\n')}
+
+---
+Submitted via web interface by @${userData.login}`;
+
+        // Create pull request
+        statusDiv.innerHTML = '<strong>Creating pull request...</strong>';
+        const prUrl = await createPullRequest(
+            octokit, userData, branchName,
+            `Assign ${category} category to ${updatedEvents.length} events`,
+            prBody
+        );
+
+        // Show success
+        statusDiv.innerHTML = `<strong>✓ Success!</strong><p>Pull request created: <a href="${prUrl}" target="_blank">View PR</a></p>`;
+        setTimeout(() => statusDiv.remove(), 10000);
+
+        // Clear selections
+        categorySelections.clear();
+        document.querySelectorAll('.event-checkbox:checked').forEach(cb => cb.checked = false);
+        updateCategoryControls();
+        updateMergeControls();
+        document.getElementById('category-select').value = '';
+
+    } catch (error) {
+        console.error('Error creating category PR:', error);
         statusDiv.innerHTML = `<strong>❌ Error</strong><p>${error.message}</p>`;
         setTimeout(() => statusDiv.remove(), 10000);
     }

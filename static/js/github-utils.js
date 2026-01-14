@@ -155,3 +155,88 @@ export async function fetchAllEvents() {
     }
     return await response.json();
 }
+
+/**
+ * Generate YAML for category override
+ * Merges with existing override if present
+ */
+export async function generateCategoryOverride(octokit, userData, branchName, eventId, category) {
+    let existingContent = '';
+
+    try {
+        const { data: file } = await octokit.rest.repos.getContent({
+            owner: userData.login,
+            repo: REPO_CONFIG.repo,
+            path: `_event_overrides/${eventId}.yaml`,
+            ref: branchName
+        });
+        existingContent = atob(file.content);
+    } catch (error) {
+        if (error.status !== 404) throw error;
+    }
+
+    if (existingContent) {
+        return mergeCategoryIntoYAML(existingContent, category);
+    } else {
+        return `categories:\n  - ${category}\n`;
+    }
+}
+
+/**
+ * Merge category into existing YAML content
+ */
+function mergeCategoryIntoYAML(existingYAML, newCategory) {
+    const lines = existingYAML.split('\n');
+    const result = [];
+    let existingCategories = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (line.match(/^categories:/)) {
+            // Extract existing categories
+            while (i + 1 < lines.length && lines[i + 1].match(/^  - (.+)/)) {
+                i++;
+                const match = lines[i].match(/^  - (.+)/);
+                existingCategories.push(match[1]);
+            }
+            continue;
+        }
+
+        result.push(line);
+    }
+
+    // Remove trailing empty lines
+    while (result.length > 0 && result[result.length - 1].trim() === '') {
+        result.pop();
+    }
+
+    // Add categories (merge and dedupe)
+    const allCategories = [...new Set([...existingCategories, newCategory])];
+    result.push('categories:');
+    for (const cat of allCategories) {
+        result.push(`  - ${cat}`);
+    }
+    result.push('');
+
+    return result.join('\n');
+}
+
+/**
+ * Update category in single event file (for events in _single_events/)
+ * Fetches the file, updates the category, and returns the updated content
+ */
+export async function updateSingleEventCategory(octokit, userData, branchName, eventId, category) {
+    const filePath = `_single_events/${eventId}.yaml`;
+
+    // Fetch existing file content from upstream (not the branch yet, get original)
+    const { data: file } = await octokit.rest.repos.getContent({
+        owner: REPO_CONFIG.owner,
+        repo: REPO_CONFIG.repo,
+        path: filePath,
+        ref: REPO_CONFIG.branch
+    });
+
+    const existingContent = atob(file.content);
+    return mergeCategoryIntoYAML(existingContent, category);
+}
