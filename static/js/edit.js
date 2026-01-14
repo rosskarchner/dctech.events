@@ -518,6 +518,7 @@ function md5(string) {
 
 /**
  * Generate a diff description of changes for PR body
+ * Only shows fields that were actually changed
  */
 function generateDiffDescription(originalEvent, formData) {
     const changes = [];
@@ -537,7 +538,9 @@ function generateDiffDescription(originalEvent, formData) {
         const original = originalEvent[field.key] || '';
         const updated = formData[field.key] || '';
         if (original !== updated) {
-            changes.push(`- **${field.label}:** \`${original || '(empty)'}\` → \`${updated || '(empty)'}\``);
+            const origDisplay = original || '(none)';
+            const updatedDisplay = updated || '(none)';
+            changes.push(`- **${field.label}:** \`${origDisplay}\` → \`${updatedDisplay}\``);
         }
     }
     
@@ -545,7 +548,9 @@ function generateDiffDescription(originalEvent, formData) {
     const originalCats = (originalEvent.categories || []).sort();
     const updatedCats = (formData.categories || []).sort();
     if (JSON.stringify(originalCats) !== JSON.stringify(updatedCats)) {
-        changes.push(`- **Categories:** \`${originalCats.join(', ') || '(none)'}\` → \`${updatedCats.join(', ') || '(none)'}\``);
+        const origCatDisplay = originalCats.join(', ') || '(none)';
+        const updatedCatDisplay = updatedCats.join(', ') || '(none)';
+        changes.push(`- **Categories:** \`${origCatDisplay}\` → \`${updatedCatDisplay}\``);
     }
     
     return changes.length > 0 ? changes.join('\n') : 'No changes detected';
@@ -687,45 +692,85 @@ This edit was submitted via the web form by @${formData.edited_by}.`
 
 /**
  * Generate YAML content for event edit
+ * For override files, only includes fields that actually changed from the original
+ * For manual events, includes all non-empty fields
  */
 function generateEditYAML(formData, originalEvent) {
-    let yaml = `title: "${formData.title.replace(/"/g, '\\"')}"\n`;
-    yaml += `date: '${formData.date}'\n`;
+    const isOverride = originalEvent.source !== 'manual';
+    let yaml = '';
     
-    if (formData.time) {
-        yaml += `time: '${formData.time}'\n`;
-    }
+    // Helper to check if a field changed
+    const hasChanged = (key) => {
+        const original = originalEvent[key] || '';
+        const updated = formData[key] || '';
+        return original !== updated;
+    };
     
-    if (formData.url) {
-        yaml += `url: ${formData.url}\n`;
-    }
-    
-    if (formData.location) {
-        yaml += `location: ${formData.location}\n`;
-    }
-    
-    if (formData.end_date) {
-        yaml += `end_date: '${formData.end_date}'\n`;
-    }
-    
-    if (formData.cost) {
-        yaml += `cost: '${formData.cost}'\n`;
-    }
-    
-    if (formData.description) {
-        // Multi-line description
-        yaml += `description: |\n  ${formData.description.replace(/\n/g, '\n  ')}\n`;
-    }
-    
-    if (formData.categories && formData.categories.length > 0) {
-        yaml += `categories:\n`;
-        for (const cat of formData.categories) {
-            yaml += `  - ${cat}\n`;
+    // For manual events, include all fields; for overrides, only changed fields
+    if (!isOverride || hasChanged('title')) {
+        if (formData.title) {
+            yaml += `title: "${formData.title.replace(/"/g, '\\"')}"\n`;
         }
     }
     
-    // Preserve group from original event if present
-    if (originalEvent.group) {
+    if (!isOverride || hasChanged('date')) {
+        if (formData.date) {
+            yaml += `date: '${formData.date}'\n`;
+        }
+    }
+    
+    if (!isOverride || hasChanged('time')) {
+        if (formData.time) {
+            yaml += `time: '${formData.time}'\n`;
+        }
+    }
+    
+    if (!isOverride || hasChanged('url')) {
+        if (formData.url) {
+            yaml += `url: ${formData.url}\n`;
+        }
+    }
+    
+    if (!isOverride || hasChanged('location')) {
+        if (formData.location) {
+            yaml += `location: ${formData.location}\n`;
+        }
+    }
+    
+    if (!isOverride || hasChanged('end_date')) {
+        if (formData.end_date) {
+            yaml += `end_date: '${formData.end_date}'\n`;
+        }
+    }
+    
+    if (!isOverride || hasChanged('cost')) {
+        if (formData.cost) {
+            yaml += `cost: '${formData.cost}'\n`;
+        }
+    }
+    
+    if (!isOverride || hasChanged('description')) {
+        if (formData.description) {
+            yaml += `description: |\n  ${formData.description.replace(/\n/g, '\n  ')}\n`;
+        }
+    }
+    
+    // Handle categories - check if they changed
+    const originalCats = (originalEvent.categories || []).sort();
+    const updatedCats = (formData.categories || []).sort();
+    const catsChanged = JSON.stringify(originalCats) !== JSON.stringify(updatedCats);
+    
+    if (!isOverride || catsChanged) {
+        if (formData.categories && formData.categories.length > 0) {
+            yaml += `categories:\n`;
+            for (const cat of formData.categories) {
+                yaml += `  - ${cat}\n`;
+            }
+        }
+    }
+    
+    // For manual events, preserve group from original if present
+    if (!isOverride && originalEvent.group) {
         yaml += `group: "${originalEvent.group.replace(/"/g, '\\"')}"\n`;
     }
     
