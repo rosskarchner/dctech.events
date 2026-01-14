@@ -72,7 +72,7 @@
                     </div>
 
                     <div class="event-actions">
-                        <a href="/edit/event/?dev=true#{{ event.guid or event.slug }}"
+                        <a href="/edit/event/{% if is_dev_mode %}?dev=true{% endif %}#{{ event.guid or event.slug }}"
                            class="btn btn-sm btn-primary">Edit</a>
                     </div>
                 </div>

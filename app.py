@@ -1039,7 +1039,10 @@ def edit_list():
 
         current_group['events'].append(event)
 
-    return render_template('edit_list.html', grouped_events=grouped_events)
+    # Check if in dev mode (Flask debug mode or FLASK_ENV=development)
+    is_dev_mode = app.debug or os.environ.get('FLASK_ENV') == 'development'
+    
+    return render_template('edit_list.html', grouped_events=grouped_events, is_dev_mode=is_dev_mode)
 
 @app.route("/edit/event/")
 def edit_event_dynamic():
