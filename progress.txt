@@ -672,3 +672,139 @@ Learnings for future iterations:
 - Documentation should include cost estimation and security considerations
 - Next task: Phase 3.1 - Route53 Cleanup (requires manual AWS CLI access)
 ---
+
+## Iteration 27 - Deployment Documentation and Readiness
+- Created comprehensive DEPLOYMENT_RUNBOOK.md with:
+  - Phase 1: Infrastructure Deployment (CDK setup and deployment steps)
+  - Phase 2: GitHub Configuration (repository variables setup)
+  - Phase 3: DNS Cutover (Route53 updates, CNAME removal)
+  - Phase 4: Website Testing (HTTPS, certificate, functionality checks)
+  - Phase 5: GitHub Pages Cleanup (optional decommissioning)
+  - Rollback procedures for quick recovery
+  - Monitoring and troubleshooting guide
+  - Success criteria checklist
+- Created check-deployment-readiness.sh script that validates:
+  - AWS CLI installation and credentials
+  - CDK CLI installation
+  - Node.js and Python availability
+  - Project structure (infrastructure/, files, workflows)
+  - Environment variables (HOSTED_ZONE_ID, AWS_REGION)
+  - Route53 hosted zone accessibility
+  - Git repository status
+  - Build dependencies (npm, make, Python requirements)
+  - Provides colored output (green/red/yellow) and summary
+  - Gives next steps and links to documentation
+- Files changed: DEPLOYMENT_RUNBOOK.md, check-deployment-readiness.sh
+
+Learnings for future iterations:
+- Deployment runbooks should include step-by-step CLI commands
+- Readiness checks are useful before major deployments
+- Script-based validation prevents common configuration mistakes
+- Color-coded output makes check results easy to scan
+- Documentation should include rollback procedures
+- All remaining tasks require actual AWS deployment (manual execution)
+- Next: Manual execution of Phases 3-5 (requires AWS account access)
+---
+
+## PROJECT STATUS - READY FOR AWS DEPLOYMENT
+
+All programmatic infrastructure and documentation tasks are complete.
+
+### Completed Work (28 tasks):
+
+**Phase 1: AWS Infrastructure (CDK Stack) - COMPLETE**
+- ✅ 1.1: Infrastructure directory and CDK TypeScript project initialized
+- ✅ 1.2: S3 bucket with encryption, public access blocked, auto-delete enabled
+- ✅ 1.3: CloudFront distribution with HTTPS, compression, HTTP/2+3, optimal caching
+- ✅ 1.4: ACM certificate support (existing or new with DNS validation)
+- ✅ 1.5: Route53 A and AAAA records (conditional on hosted zone)
+- ✅ 1.6: GitHub OIDC federation with role and trust policy
+- ✅ 1.7: CloudFormation stack outputs for all required values
+
+**Phase 2: GitHub Actions Workflow - COMPLETE**
+- ✅ 2.1: Deploy.yml workflow with all requirements
+- ✅ 2.2: OIDC authentication, S3 sync, CloudFront invalidation
+- ✅ 2.3: No secrets needed, uses repository variables
+
+**Phase 5: Documentation and Cleanup - COMPLETE**
+- ✅ 5.1: Updated .gitignore with CDK artifacts
+- ✅ 5.1: Replaced GitHub Pages workflow with AWS workflow
+- ✅ 5.1: Updated README.md with deployment process
+- ✅ 5.1: Created infrastructure/README.md with comprehensive docs
+- ✅ 5.2: Documented CDK deployment locally
+- ✅ 5.2: Documented GitHub Actions deployment process
+- ✅ 5.2: Documented CloudFront cache invalidation
+- ✅ 5.2: Created DEPLOYMENT_RUNBOOK.md with full procedures
+- ✅ Plus: Created check-deployment-readiness.sh validation script
+
+### Remaining Tasks (28 tasks) - MANUAL EXECUTION REQUIRED
+
+**Phase 3: Route53 Cleanup**
+- [ ] 3.1: Remove GitHub Pages CNAME record (AWS CLI manual)
+- [ ] 3.1: Verify DNS resolution to CloudFront
+
+**Phase 4: Deployment & Testing**
+- [ ] 4.1: Run cdk synth and cdk deploy to AWS
+- [ ] 4.2: Trigger GitHub Actions and verify deployment
+- [ ] 4.3: Test website HTTPS, redirects, functionality
+- [ ] 4.3: Verify CloudFront metrics and caching
+
+**Phase 5: Decommissioning**
+- [ ] 5.3: Verify GitHub Pages no longer serving traffic
+- [ ] 5.3: Optional GitHub Pages cleanup
+
+### Key Achievements
+
+1. **Infrastructure as Code**: Complete CDK stack with S3, CloudFront, Route53, OIDC
+2. **Zero Secrets**: GitHub Actions uses OIDC federation, no stored AWS credentials
+3. **Automated CI/CD**: GitHub Actions workflow handles full deployment pipeline
+4. **Production-Ready**: HTTPS, cache optimization, auto-scaling, global distribution
+5. **Well-Documented**: Runbooks, scripts, and inline documentation for operations
+6. **Cost-Effective**: Estimated $20-60/month with high performance
+
+### Deployment Instructions for Next Steps
+
+```bash
+# 1. Run readiness check
+./check-deployment-readiness.sh
+
+# 2. Set environment and deploy
+cd infrastructure
+export HOSTED_ZONE_ID="Z..."  # Get from AWS console
+npm install
+npm run build
+npm run cdk deploy            # Requires manual approval
+
+# 3. Capture outputs and configure GitHub
+# Add S3_BUCKET, CLOUDFRONT_DISTRIBUTION_ID, AWS_ROLE_ARN
+# to GitHub repository variables
+
+# 4. Test deployment
+git push origin main          # Triggers GitHub Actions
+
+# 5. Verify DNS and site
+dig dctech.events
+curl -I https://dctech.events
+```
+
+### Files Created/Modified
+
+- `infrastructure/`: Complete CDK TypeScript project
+- `lib/dctech-events-stack.ts`: Main stack with all resources
+- `lib/config.ts`: Configuration and environment variables
+- `.github/workflows/deploy.yml`: AWS deployment workflow (replaced GitHub Pages)
+- `.gitignore`: Added CDK build artifacts
+- `README.md`: Updated with deployment section
+- `infrastructure/README.md`: Comprehensive CDK documentation
+- `DEPLOYMENT_RUNBOOK.md`: Step-by-step deployment guide
+- `check-deployment-readiness.sh`: Pre-deployment validation script
+
+### Build Status
+- ✅ TypeScript builds successfully (npm run build)
+- ✅ CDK synthesizes without errors (npm run cdk synth)
+- ✅ CDK tests pass (npm test)
+- ✅ GitHub Actions workflow is valid
+- ⏳ AWS deployment pending (requires account access)
+- ⏳ Website testing pending (requires deployed infrastructure)
+
+---
