@@ -65,11 +65,19 @@ sessionName: 'github-actions-deploy'
 
 ```bash
 # Set Route53 hosted zone ID (find in AWS console)
+# This is REQUIRED for certificate DNS validation and DNS records
 export HOSTED_ZONE_ID="Z1234567890ABC"
 
 # Optional: Set existing ACM certificate ARN if available
+# If not set, a new certificate will be created with automatic DNS validation
 export ACM_CERTIFICATE_ARN="arn:aws:acm:us-east-1:123456789012:certificate/xxx"
 ```
+
+**Note**: If you don't have an existing certificate, the stack will automatically:
+1. Create a new ACM certificate for `dctech.events` and `*.dctech.events`
+2. Add DNS validation records to your Route53 hosted zone
+3. Wait for validation to complete (typically 5-10 minutes)
+4. Attach the certificate to CloudFront
 
 ### 2. Build TypeScript
 
@@ -156,12 +164,14 @@ When deployment completes, the CDK displays these outputs:
 - **S3BucketName**: Name of the S3 bucket for site content
 - **CloudFrontDistributionId**: ID used for cache invalidation
 - **CloudFrontDomainName**: CloudFront domain (e.g., `d123abc.cloudfront.net`)
+- **CertificateArn**: ACM certificate ARN used for HTTPS
 - **GithubActionsRoleArn**: IAM role ARN for GitHub Actions OIDC
 
 These are also stored in CloudFormation stack exports with these names:
 - `DctechEventsBucketName`
 - `DctechEventsDistributionId`
 - `DctechEventsCloudFrontDomain`
+- `DctechEventsCertificateArn`
 - `DctechEventsGithubActionsRoleArn`
 
 ## GitHub Actions Deployment
@@ -194,10 +204,20 @@ If `cdk deploy` fails:
 
 ### DNS Not Resolving
 
-1. Verify Route53 A and AAAA records exist
+1. Verify Route53 A and AAAA records exist (both IPv4 and IPv6)
 2. Check that old CNAME record pointing to GitHub Pages is deleted
 3. Allow 5-10 minutes for DNS propagation
 4. Use `dig dctech.events` or online DNS checker to verify
+
+```bash
+# Check IPv4 (A record)
+dig dctech.events A
+
+# Check IPv6 (AAAA record)
+dig dctech.events AAAA
+```
+
+Both should point to CloudFront distribution addresses.
 
 ## Cost Estimation
 

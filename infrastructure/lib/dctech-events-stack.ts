@@ -23,15 +23,27 @@ export class DctechEventsStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
-    // Create Origin Access Identity for CloudFront
-    const oai = new cloudfront.OriginAccessIdentity(this, 'S3OAI', {
-      comment: 'OAI for DC Tech Events S3 bucket',
+    // Create Origin Access Control for CloudFront (modern replacement for OAI)
+    const oac = new cloudfront.S3OriginAccessControl(this, 'S3OAC', {
+      description: 'OAC for DC Tech Events S3 bucket',
     });
 
-    // Grant CloudFront OAI read access to S3 bucket
-    siteBucket.grantRead(oai);
+    // Phase 1.5: Route53 Hosted Zone lookup (required for certificate validation and DNS records)
+    // Note: Hosted zone must exist in the same AWS account
+    let hostedZone: route53.IHostedZone | undefined;
+    if (stackConfig.hostedZoneId) {
+      hostedZone = route53.HostedZone.fromHostedZoneAttributes(
+        this,
+        'DctechEventsHostedZone',
+        {
+          hostedZoneId: stackConfig.hostedZoneId,
+          zoneName: stackConfig.domain,
+        }
+      );
+    }
 
     // Phase 1.4: SSL/TLS Certificate (reference existing or create new)
+    // Note: Certificate MUST be in us-east-1 for CloudFront
     let certificate: acm.ICertificate;
     if (stackConfig.acm.existingCertificateArn) {
       certificate = acm.Certificate.fromCertificateArn(
@@ -40,18 +52,25 @@ export class DctechEventsStack extends cdk.Stack {
         stackConfig.acm.existingCertificateArn
       );
     } else {
+      if (!hostedZone) {
+        throw new Error(
+          'HOSTED_ZONE_ID environment variable must be set to create a new certificate with DNS validation'
+        );
+      }
+      // Create certificate with DNS validation using the hosted zone
+      // This will automatically create the DNS validation records in Route53
       certificate = new acm.Certificate(this, 'DctechEventsCertificate', {
         domainName: stackConfig.acm.domainName,
         subjectAlternativeNames: stackConfig.acm.alternativeNames,
-        validation: acm.CertificateValidation.fromDns(),
+        validation: acm.CertificateValidation.fromDns(hostedZone),
       });
     }
 
     // Phase 1.3: CloudFront Distribution
     const distribution = new cloudfront.Distribution(this, 'DctechEventsDistribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(siteBucket, {
-          originAccessIdentity: oai,
+        origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket, {
+          originAccessControl: oac,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: stackConfig.cloudfront.enableCompression,
@@ -65,7 +84,23 @@ export class DctechEventsStack extends cdk.Stack {
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
     });
 
-    // Phase 1.6: GitHub OIDC Federation
+    // Add bucket policy to allow CloudFront OAC to access S3
+    siteBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [siteBucket.arnForObjects('*')],
+        principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+        conditions: {
+          StringEquals: {
+            'AWS:SourceArn': `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${
+              distribution.distributionId
+            }`,
+          },
+        },
+      })
+    );
+
+    // Phase 1.7: GitHub OIDC Federation
     // Create OIDC identity provider
     const oidcProvider = new iam.OpenIdConnectProvider(
       this,
@@ -118,38 +153,37 @@ export class DctechEventsStack extends cdk.Stack {
       })
     );
 
-    // Phase 1.5: Route53 DNS Records (requires hosted zone)
-    // Note: Hosted zone lookup assumes it exists in the same AWS account
-    if (stackConfig.hostedZoneId) {
-      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
-        this,
-        'DctechEventsHostedZone',
-        {
-          hostedZoneId: stackConfig.hostedZoneId,
-          zoneName: stackConfig.domain,
-        }
-      );
-
-      // Create A record (IPv4)
+    // Phase 1.6: Route53 DNS Records (requires hosted zone)
+    // Create A and AAAA records for IPv4 and IPv6 support
+    if (hostedZone) {
+      // Create A record (IPv4) - points to CloudFront distribution
       new route53.ARecord(this, 'DctechEventsARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
           new route53targets.CloudFrontTarget(distribution)
         ),
         recordName: stackConfig.domain,
+        comment: 'IPv4 record for dctech.events pointing to CloudFront',
       });
 
-      // Create AAAA record (IPv6)
+      // Create AAAA record (IPv6) - points to CloudFront distribution
       new route53.AaaaRecord(this, 'DctechEventsAAAARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
           new route53targets.CloudFrontTarget(distribution)
         ),
         recordName: stackConfig.domain,
+        comment: 'IPv6 record for dctech.events pointing to CloudFront',
+      });
+    } else {
+      // Output message if hosted zone is not configured
+      new cdk.CfnOutput(this, 'DNSRecordsNote', {
+        value: 'Hosted zone not configured. Please set HOSTED_ZONE_ID to create DNS records.',
+        description: 'DNS records configuration status',
       });
     }
 
-    // Phase 1.7: Stack outputs
+    // Phase 1.8: Stack outputs
     new cdk.CfnOutput(this, 'S3BucketName', {
       value: siteBucket.bucketName,
       description: 'S3 bucket name for static site',
@@ -166,6 +200,12 @@ export class DctechEventsStack extends cdk.Stack {
       value: distribution.domainName,
       description: 'CloudFront domain name',
       exportName: 'DctechEventsCloudFrontDomain',
+    });
+
+    new cdk.CfnOutput(this, 'CertificateArn', {
+      value: certificate.certificateArn,
+      description: 'ACM Certificate ARN used for HTTPS',
+      exportName: 'DctechEventsCertificateArn',
     });
 
     new cdk.CfnOutput(this, 'GithubActionsRoleArn', {

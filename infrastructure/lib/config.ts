@@ -44,7 +44,7 @@ export const stackConfig = {
     oidcProviderUrl: 'https://token.actions.githubusercontent.com',
     oidcClientId: 'sts.amazonaws.com',
     oidcThumbprint: '6938fd4d98bab03faadb97b34396831e3780aea1', // GitHub's OIDC thumbprint
-    repositoryOwner: 'dctech-community',
+    repositoryOwner: 'rosskarchner',
     repositoryName: 'dctech.events',
     ref: 'ref:refs/heads/main', // Only main branch
   },

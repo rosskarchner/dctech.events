@@ -828,3 +828,33 @@ Learnings for future iterations:
 - Category checkboxes in edit form are populated by JS, not server-side
 - Tests for client-side rendered content should verify structure exists, not content
 ---
+
+## Iteration 29 - Review Remaining Tasks
+
+All remaining tasks in PRD.md require manual AWS access:
+
+**Phase 1.5** (line 47): "Remove existing CNAME record pointing to GitHub Pages (manual CLI step)"
+- Explicitly marked as manual step in PRD
+- Requires: `aws route53 change-resource-record-sets` command
+
+**Phase 3.1** (lines 105-107): Route53 cleanup
+- Delete CNAME record via AWS CLI
+- Verify DNS resolution
+
+**Phase 4.1-4.3**: CDK deployment and testing
+- Run `cdk synth` and `cdk deploy`
+- Test GitHub Actions workflow
+- Verify HTTPS and site functionality
+
+**Phase 5.1**: Remove GitHub Pages settings from repository
+- Manual repository settings change
+
+**Phase 5.3**: Decommissioning
+- Verify GitHub Pages not serving traffic
+- Clean up old artifacts
+
+All programmatic/code work is complete. User must run:
+1. `./check-deployment-readiness.sh` 
+2. Follow `DEPLOYMENT_RUNBOOK.md` for AWS deployment
+
+---
