@@ -603,9 +603,12 @@ async function createEditPullRequest(formData) {
     let filePath;
     let fileName;
     
-    if (EVENT_DATA.source === 'manual' && EVENT_DATA.slug) {
+    // Manual events use slug or id as the filename
+    const eventSlug = EVENT_DATA.slug || EVENT_DATA.id;
+    
+    if (EVENT_DATA.source === 'manual' && eventSlug) {
         // Manual event - update the existing file in _single_events
-        fileName = `${EVENT_DATA.slug}.yaml`;
+        fileName = `${eventSlug}.yaml`;
         filePath = `_single_events/${fileName}`;
     } else {
         // iCal event - create override file
@@ -767,11 +770,6 @@ function generateEditYAML(formData, originalEvent) {
                 yaml += `  - ${cat}\n`;
             }
         }
-    }
-    
-    // For manual events, preserve group from original if present
-    if (!isOverride && originalEvent.group) {
-        yaml += `group: "${originalEvent.group.replace(/"/g, '\\"')}"\n`;
     }
     
     yaml += `edited_by: ${formData.edited_by}\n`;
