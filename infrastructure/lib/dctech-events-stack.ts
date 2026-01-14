@@ -66,7 +66,32 @@ export class DctechEventsStack extends cdk.Stack {
       });
     }
 
+    // CloudFront Function to rewrite directory URLs to index.html
+    // This allows /locations/dc/ to serve /locations/dc/index.html
+    const directoryIndexFunction = new cloudfront.Function(this, 'DirectoryIndexFunction', {
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+
+  // If URI ends with '/', append 'index.html'
+  if (uri.endsWith('/')) {
+    request.uri += 'index.html';
+  }
+  // If URI has no extension, append '/index.html'
+  else if (!uri.includes('.')) {
+    request.uri += '/index.html';
+  }
+
+  return request;
+}
+      `),
+      comment: 'Rewrite directory URLs to index.html',
+      functionName: 'dctech-events-directory-index',
+    });
+
     // Phase 1.3: CloudFront Distribution
+    // Web ACL must be explicitly declared to prevent CloudFormation from trying to remove it
     const distribution = new cloudfront.Distribution(this, 'DctechEventsDistribution', {
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket, {
@@ -75,6 +100,12 @@ export class DctechEventsStack extends cdk.Stack {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: stackConfig.cloudfront.enableCompression,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        functionAssociations: [
+          {
+            function: directoryIndexFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          },
+        ],
       },
       defaultRootObject: 'index.html',
       domainNames: [stackConfig.domain],
@@ -82,6 +113,7 @@ export class DctechEventsStack extends cdk.Stack {
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       enableIpv6: true,
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
+      webAclId: stackConfig.cloudfront.webAclId,
     });
 
     // Add bucket policy to allow CloudFront OAC to access S3

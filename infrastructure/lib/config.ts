@@ -8,14 +8,14 @@ export const stackConfig = {
 
   // Domain configuration
   domain: 'dctech.events',
-  hostedZoneId: process.env.HOSTED_ZONE_ID || '', // Must be set via environment variable
+  hostedZoneId: 'Z078066931R85FQDWCM3P',
 
   // AWS region - CloudFront requires certificates in us-east-1
   region: 'us-east-1',
 
   // S3 bucket configuration
   s3: {
-    bucketName: `dctech-events-site-${Date.now()}`, // Use timestamp to ensure uniqueness
+    bucketName: 'dctech-events-site-1768361440101',
     versioningEnabled: false,
     blockPublicAccess: true,
     encryption: true,
@@ -29,14 +29,16 @@ export const stackConfig = {
     httpVersion: 'http2and3',
     enableCompression: true,
     redirectHttpToHttps: true,
+    // Web ACL from CloudFront pricing plan subscription - must be preserved in updates
+    webAclId: 'arn:aws:wafv2:us-east-1:797438674243:global/webacl/CreatedByCloudFront-bc55731a/1e530f09-09ff-4259-a51f-81c7a4aeb9fb',
   },
 
   // ACM Certificate configuration
   acm: {
     domainName: 'dctech.events',
     alternativeNames: ['*.dctech.events'],
-    // Set to use existing certificate ARN if available
-    existingCertificateArn: process.env.ACM_CERTIFICATE_ARN || '',
+    // Certificate is managed by CloudFormation
+    existingCertificateArn: '',
   },
 
   // GitHub OIDC configuration

@@ -204,6 +204,36 @@ def test_decode_state_parameter_invalid_return_url():
     result = decode_state_parameter(state_base64)
     assert result is None
 
+def test_decode_state_parameter_valid_edit():
+    """Test decoding valid state parameter for /edit/ path"""
+    state_data = {
+        'csrf_token': 'random_token_edit',
+        'return_url': '/edit/'
+    }
+    state_json = json.dumps(state_data)
+    state_base64 = base64.b64encode(state_json.encode('utf-8')).decode('utf-8')
+
+    result = decode_state_parameter(state_base64)
+
+    assert result is not None
+    assert result['csrf_token'] == 'random_token_edit'
+    assert result['return_url'] == '/edit/'
+
+def test_decode_state_parameter_valid_edit_with_hash():
+    """Test decoding valid state parameter for /edit/event/ with hash fragment"""
+    state_data = {
+        'csrf_token': 'random_token_hash',
+        'return_url': '/edit/event/#abc123'
+    }
+    state_json = json.dumps(state_data)
+    state_base64 = base64.b64encode(state_json.encode('utf-8')).decode('utf-8')
+
+    result = decode_state_parameter(state_base64)
+
+    assert result is not None
+    assert result['csrf_token'] == 'random_token_hash'
+    assert result['return_url'] == '/edit/event/#abc123'
+
 @patch('app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_with_valid_state_submit(mock_post, mock_secret, test_client):

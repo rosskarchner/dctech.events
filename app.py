@@ -1042,7 +1042,16 @@ def edit_list():
     # Check if in dev mode (Flask debug mode or FLASK_ENV=development)
     is_dev_mode = app.debug or os.environ.get('FLASK_ENV') == 'development'
     
-    return render_template('edit_list.html', grouped_events=grouped_events, is_dev_mode=is_dev_mode)
+    # Get OAuth configuration from environment or config
+    github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
+    oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
+                                            config.get('oauth_callback_endpoint', ''))
+    
+    return render_template('edit_list.html',
+                          grouped_events=grouped_events,
+                          is_dev_mode=is_dev_mode,
+                          github_client_id=github_client_id,
+                          oauth_callback_endpoint=oauth_callback_endpoint)
 
 @app.route("/edit/event/")
 def edit_event_dynamic():
