@@ -182,16 +182,24 @@ def remove_duplicates(events):
     When the same event is posted to multiple groups, keep the first occurrence
     and add an 'also_published_by' field with info about the other groups.
     
+    Events marked with 'duplicate_of' field are treated as explicit duplicates
+    and rolled up to the event they reference (if found).
+    
     Args:
         events: List of event dictionaries
         
     Returns:
         List of events with duplicates removed and cross-posting info added
     """
+    # Separate explicit duplicates from regular events
+    explicit_duplicates = [e for e in events if e.get('duplicate_of')]
+    regular_events = [e for e in events if not e.get('duplicate_of')]
+    
     unique_events = []
     
-    for event in events:
-        # Check if this event is a duplicate of any existing event
+    # First, process regular events (auto-detect duplicates)
+    for event in regular_events:
+        # Check if this event is a duplicate of any existing event (automatic detection)
         is_duplicate = False
         for existing_event in unique_events:
             if are_events_duplicates(event, existing_event):
@@ -215,6 +223,37 @@ def remove_duplicates(events):
                 break
         
         if not is_duplicate:
+            unique_events.append(event)
+    
+    # Now process explicit duplicates
+    for event in explicit_duplicates:
+        duplicate_of_guid = event['duplicate_of']
+        # Find the event it's a duplicate of
+        parent_event = None
+        for existing_event in unique_events:
+            if existing_event.get('guid') == duplicate_of_guid:
+                parent_event = existing_event
+                break
+        
+        if parent_event:
+            # Parent found - roll up to it
+            # Add cross-posting information to the parent event
+            if 'also_published_by' not in parent_event:
+                parent_event['also_published_by'] = []
+            
+            # Add this event's group info if available
+            if event.get('group') and event.get('group_website'):
+                parent_event['also_published_by'].append({
+                    'group': event['group'],
+                    'group_website': event['group_website'],
+                    'url': event.get('url', '')
+                })
+                print(f"Rolling up duplicate event: {event.get('title', 'Unknown')} on {event.get('date', 'Unknown')} (also by {event['group']})")
+            else:
+                print(f"Removing duplicate event: {event.get('title', 'Unknown')} on {event.get('date', 'Unknown')}")
+        else:
+            # Parent not found in current list - keep this event for later processing
+            # This happens when processing per-group and the parent is in a different group
             unique_events.append(event)
     
     return unique_events
