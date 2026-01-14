@@ -615,3 +615,28 @@ All phases of the Event Edit Functionality and Event Categorization System imple
 See STAGING_TEST_PLAN.md for complete testing procedures before production deployment.
 
 ---
+
+## Iteration 25 - Initialize AWS CDK Infrastructure (Phase 1: All sections)
+- Created infrastructure/ directory at repository root
+- Initialized CDK TypeScript project with `cdk init app --language typescript`
+- Created lib/dctech-events-stack.ts with full stack implementation:
+  - Phase 1.2: S3 bucket with public access blocked, encryption enabled, auto-delete enabled
+  - Phase 1.3: CloudFront distribution with HTTPS redirect, compression, HTTP/2 and HTTP/3, CACHING_OPTIMIZED policy
+  - Phase 1.4: ACM certificate support (existing or new via validation)
+  - Phase 1.5: Route53 A and AAAA records (conditional on HOSTED_ZONE_ID)
+  - Phase 1.6: GitHub OIDC federation with trust policy scoped to main branch
+  - Phase 1.7: CloudFormation outputs for bucket, distribution ID, domain, and role ARN
+- Created lib/config.ts with comprehensive stack configuration
+- Updated bin/infrastructure.ts to use new stack and config
+- Build and synthesis successful (minor deprecation warnings on S3Origin, non-blocking)
+- CDK tests pass (1/1)
+- Files changed: infrastructure/, PRD.md
+
+Learnings for future iterations:
+- CDK v2.215.0 uses OriginAccessIdentity (OAI) instead of OAC for better compatibility
+- S3Origin is deprecated but functional - future versions should migrate to S3BucketOrigin
+- CloudFront requires ACM certificate in us-east-1 region for HTTPS
+- Route53 records are conditionally created when hostedZoneId is set
+- GitHub OIDC provider thumbprint is 6938fd4d98bab03faadb97b34396831e3780aea1
+- Next task: Phase 2.1 - Create GitHub Actions Deployment Workflow
+---
