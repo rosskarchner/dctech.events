@@ -20,9 +20,13 @@ const REPO_CONFIG = {
 let octokit = null;
 let userData = null;
 
-// Get event data passed from Flask template
-const EVENT_DATA = window.EVENT_DATA || {};
-const CATEGORIES = window.CATEGORIES || {};
+// Get event data - read dynamically since edit_dynamic.html loads data async
+function getEventData() {
+    return window.EVENT_DATA || {};
+}
+function getCategories() {
+    return window.CATEGORIES || {};
+}
 
 // Initialize on page load
 function initialize() {
@@ -113,13 +117,14 @@ function setupEventListeners() {
  * Populate form fields from event data
  */
 function populateFormFromEventData() {
-    if (!EVENT_DATA || Object.keys(EVENT_DATA).length === 0) {
+    const eventData = getEventData();
+    if (!eventData || Object.keys(eventData).length === 0) {
         return;
     }
 
     // Parse location into city and state
-    if (EVENT_DATA.location) {
-        const locationParts = EVENT_DATA.location.split(',').map(s => s.trim());
+    if (eventData.location) {
+        const locationParts = eventData.location.split(',').map(s => s.trim());
         if (locationParts.length >= 2) {
             const cityField = document.getElementById('city');
             const stateField = document.getElementById('state');
@@ -140,8 +145,8 @@ function populateFormFromEventData() {
     }
 
     // Parse time if present (format: HH:MM in 24-hour)
-    if (EVENT_DATA.time) {
-        const timeParts = EVENT_DATA.time.split(':');
+    if (eventData.time) {
+        const timeParts = eventData.time.split(':');
         if (timeParts.length >= 2) {
             let hour = parseInt(timeParts[0], 10);
             const minute = timeParts[1];
@@ -561,6 +566,7 @@ function generateDiffDescription(originalEvent, formData) {
  */
 async function createEditPullRequest(formData) {
     const statusMessage = document.getElementById('status-message');
+    const eventData = getEventData();
     
     // Step 1: Check if user has a fork, create one if needed
     try {
@@ -604,20 +610,20 @@ async function createEditPullRequest(formData) {
     let fileName;
     
     // Manual events use slug or id as the filename
-    const eventSlug = EVENT_DATA.slug || EVENT_DATA.id;
+    const eventSlug = eventData.slug || eventData.id;
     
-    if (EVENT_DATA.source === 'manual' && eventSlug) {
+    if (eventData.source === 'manual' && eventSlug) {
         // Manual event - update the existing file in _single_events
         fileName = `${eventSlug}.yaml`;
         filePath = `_single_events/${fileName}`;
     } else {
         // iCal event - create override file
         // Use the guid if available, otherwise calculate hash
-        const eventHash = EVENT_DATA.guid || calculateEventHash(
-            EVENT_DATA.date,
-            EVENT_DATA.time || '',
-            EVENT_DATA.title,
-            EVENT_DATA.url
+        const eventHash = eventData.guid || calculateEventHash(
+            eventData.date,
+            eventData.time || '',
+            eventData.title,
+            eventData.url
         );
         fileName = `${eventHash}.yaml`;
         filePath = `_event_overrides/${fileName}`;
@@ -633,7 +639,7 @@ async function createEditPullRequest(formData) {
     });
 
     // Step 5: Generate YAML content
-    const yamlContent = generateEditYAML(formData, EVENT_DATA);
+    const yamlContent = generateEditYAML(formData, eventData);
 
     // Step 6: Check if file exists (for updates) and get its SHA
     let existingSha = null;
@@ -669,7 +675,7 @@ async function createEditPullRequest(formData) {
     await octokit.rest.repos.createOrUpdateFileContents(commitOptions);
 
     // Step 8: Generate diff description
-    const diffDescription = generateDiffDescription(EVENT_DATA, formData);
+    const diffDescription = generateDiffDescription(eventData, formData);
 
     // Step 9: Create pull request from fork to upstream
     const { data: pr } = await octokit.rest.pulls.create({
@@ -680,8 +686,8 @@ async function createEditPullRequest(formData) {
         base: REPO_CONFIG.branch,
         body: `## Event Edit
 
-**Original Event:** ${EVENT_DATA.title}
-**Source:** ${EVENT_DATA.source || 'unknown'}
+**Original Event:** ${eventData.title}
+**Source:** ${eventData.source || 'unknown'}
 
 ### Changes
 ${diffDescription}
