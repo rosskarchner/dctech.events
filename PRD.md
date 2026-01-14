@@ -142,17 +142,17 @@ Migrate from GitHub Pages hosting to AWS (S3 + CloudFront) with automated deploy
 
 ### 5.1 Repository Cleanup
 - [ ] Remove GitHub Pages settings from repository
-- [ ] Remove old GitHub Pages deploy workflow (if exists)
-- [ ] Update `README.md` with new deployment process
-- [ ] Add `infrastructure/README.md` with CDK documentation
-- [ ] Update `.gitignore` to include CDK build artifacts
+- [x] Remove old GitHub Pages deploy workflow (if exists)
+- [x] Update `README.md` with new deployment process
+- [x] Add `infrastructure/README.md` with CDK documentation
+- [x] Update `.gitignore` to include CDK build artifacts
 
 ### 5.2 Documentation
-- [ ] Document how to deploy CDK stack locally
-- [ ] Document how to view deployment logs from GitHub Actions
-- [ ] Document CloudFront cache invalidation (when it happens automatically)
-- [ ] Document how to manually redeploy if needed
-- [ ] Create runbook for emergency DNS rollback
+- [x] Document how to deploy CDK stack locally
+- [x] Document how to view deployment logs from GitHub Actions
+- [x] Document CloudFront cache invalidation (when it happens automatically)
+- [x] Document how to manually redeploy if needed
+- [x] Create runbook for emergency DNS rollback
 
 ### 5.3 Decommissioning
 - [ ] Verify GitHub Pages is no longer serving traffic

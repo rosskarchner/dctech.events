@@ -640,3 +640,35 @@ Learnings for future iterations:
 - GitHub OIDC provider thumbprint is 6938fd4d98bab03faadb97b34396831e3780aea1
 - Next task: Phase 2.1 - Create GitHub Actions Deployment Workflow
 ---
+
+## Iteration 26 - Phase 2 GitHub Actions Workflow + Phase 5 Documentation
+- Created .github/workflows/deploy.yml replacing old GitHub Pages workflow
+- Workflow triggers on push to main, manual dispatch, and daily schedule (6 AM UTC)
+- Implements all requirements: Node.js, Python, npm run build, make all, OIDC auth, S3 sync, CF invalidation
+- Added retry logic for S3 sync and CloudFront invalidation (5-second delay on failure)
+- Uses repository variables (not secrets) for S3_BUCKET, CLOUDFRONT_DISTRIBUTION_ID, AWS_ROLE_ARN
+- Updated .gitignore with CDK build artifacts (infrastructure/dist/, *.js in infrastructure, cdk.out/, .cache/, .parcel-cache)
+- Created comprehensive infrastructure/README.md with:
+  - Overview of resources created (S3, CloudFront, ACM, Route53, IAM/OIDC)
+  - Project structure and prerequisites
+  - Step-by-step deployment instructions
+  - Configuration details
+  - Development workflow and useful commands
+  - Stack outputs and GitHub Actions setup
+  - Troubleshooting guide and cost estimation
+  - Security considerations and rollback plan
+- Updated main README.md with deployment section explaining:
+  - Deployment architecture (S3 + CloudFront + Route53)
+  - OIDC federation (no stored credentials)
+  - Automatic deployment on push to main
+  - Manual deployment instructions
+- Files changed: .github/workflows/deploy.yml, .gitignore, infrastructure/README.md, README.md, PRD.md
+
+Learnings for future iterations:
+- GitHub Actions workflow uses environment variables from repository variables
+- Retry logic uses continue-on-error and conditional steps (if: failure())
+- CloudFront cache invalidation must use distribution ID not domain name
+- S3 sync with --delete removes old files automatically
+- Documentation should include cost estimation and security considerations
+- Next task: Phase 3.1 - Route53 Cleanup (requires manual AWS CLI access)
+---
