@@ -56,6 +56,13 @@ yarn-error.log*
 # Built JavaScript
 static/js/dist/
 
+# CDK build artifacts
+infrastructure/dist/
+infrastructure/*.js
+infrastructure/cdk.out/
+infrastructure/.cache/
+infrastructure/.parcel-cache
+
 # Lambda dependencies (installed during deployment)
 # Ignore everything in lambda function directories except source files
 infrastructure/lambda/api/node_modules/

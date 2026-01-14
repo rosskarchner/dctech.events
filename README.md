@@ -122,6 +122,49 @@ Events can be edited via the web interface at `/edit/{event_id}/`. The edit butt
 
 Override files only store the changed fields and are merged with the original iCal data during the build process.
 
+## 🚀 Deployment
+
+The site is automatically deployed to AWS S3 + CloudFront on every push to the `main` branch using GitHub Actions with OIDC federation.
+
+### Deployment Architecture
+
+- **Infrastructure**: AWS CDK (TypeScript) in `infrastructure/` directory
+- **Hosting**: S3 bucket + CloudFront CDN
+- **DNS**: Route53
+- **CI/CD**: GitHub Actions with OIDC (no stored AWS credentials)
+
+### Infrastructure Setup
+
+See [`infrastructure/README.md`](./infrastructure/README.md) for detailed instructions on:
+- Deploying the CDK stack to AWS
+- Configuring GitHub Actions with repository variables
+- Troubleshooting deployment issues
+
+### Deployment Workflow
+
+When you push to `main`:
+
+1. GitHub Actions workflow triggers automatically
+2. Builds the site using Node.js and Python
+3. Authenticates to AWS using OIDC federation
+4. Syncs built files to S3 bucket
+5. Invalidates CloudFront cache (instant deployment)
+6. Site is live at https://dctech.events
+
+**No long-lived AWS credentials are stored in GitHub.**
+
+### Manual Deployment
+
+To manually deploy after making infrastructure changes:
+
+```bash
+# In the infrastructure directory
+cd infrastructure
+npm install
+npm run build
+npm run cdk deploy
+```
+
 ## 🧹 Event Maintenance
 
 ### Address Handling
