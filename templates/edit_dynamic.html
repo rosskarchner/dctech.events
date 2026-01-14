@@ -926,6 +926,26 @@ Submitted via web interface by @${userData.login}`;
         }
     });
 
+    // Set up GitHub login button
+    const githubLoginBtn = document.getElementById('github-login');
+    if (githubLoginBtn) {
+        githubLoginBtn.addEventListener('click', () => {
+            if (window.GITHUB_CONFIG.clientId) {
+                const authUrl = new URL('https://github.com/login/oauth/authorize');
+                authUrl.searchParams.set('client_id', window.GITHUB_CONFIG.clientId);
+                authUrl.searchParams.set('redirect_uri', window.GITHUB_CONFIG.callbackEndpoint);
+                authUrl.searchParams.set('scope', 'public_repo');
+                // Preserve the event hash when redirecting to OAuth
+                authUrl.searchParams.set('state', btoa(JSON.stringify({
+                    csrf_token: Math.random().toString(36).substring(7),
+                    return_url: window.location.pathname + window.location.hash,
+                    city: 'dc'
+                })));
+                window.location.href = authUrl.toString();
+            }
+        });
+    }
+
     // Load event when page loads
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadEventData);

@@ -58,7 +58,10 @@ function initializeAuth() {
 
     if (accessToken) {
         sessionStorage.setItem('github_token', accessToken);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Remove token from URL but keep hash for event navigation
+        const url = new URL(window.location.href);
+        url.searchParams.delete('access_token');
+        window.history.replaceState({}, document.title, url.toString());
         initializeOctokit(accessToken);
         return;
     }
@@ -203,7 +206,7 @@ function handleGitHubLogin() {
 
     const stateObj = {
         csrf_token: generateRandomState(),
-        return_url: window.location.pathname,
+        return_url: window.location.pathname + window.location.hash,
         city: 'dc'
     };
     const state = btoa(JSON.stringify(stateObj));
