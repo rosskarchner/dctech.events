@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Deploy to AWS
 
 on:
   push:
@@ -16,26 +16,31 @@ on:
     # Note: GitHub Actions uses UTC, so 2 AM Eastern is 6 AM UTC
     - cron: '0 6 * * *'
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Permissions for OIDC federation with AWS
 permissions:
   contents: read
-  pages: write
   id-token: write
 
 # Allow only one concurrent deployment
 concurrency:
-  group: "pages"
+  group: "deploy"
   cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  # These values are obtained from CDK stack outputs and stored as repository variables
+  # To set: Go to Settings > Secrets and variables > Actions > Repository variables
+  S3_BUCKET: ${{ vars.S3_BUCKET }}
+  CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+  # OIDC Role ARN is also stored as a repository variable
+  AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Clear location cache if requested
         if: ${{ github.event.inputs.clear_location_cache == 'true' }}
@@ -44,21 +49,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
-
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
 
       - name: Cache data directories
         uses: actions/cache@v3
@@ -78,19 +76,56 @@ jobs:
       - name: Install Node.js dependencies
         run: npm ci
 
-      - name: Run aggregator and build site
+      - name: Build JavaScript bundles
+        run: npm run build
+
+      - name: Generate static site
         env:
           GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
         run: make all
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          path: 'build'
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-deploy
+          role-duration-seconds: 3600
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Sync built site to S3 bucket
+        id: s3-sync
+        run: |
+          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ --delete
+        continue-on-error: true
+
+      - name: Retry S3 sync on failure
+        if: steps.s3-sync.outcome == 'failure'
+        run: |
+          echo "Retrying S3 sync..."
+          sleep 5
+          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ --delete
+
+      - name: Invalidate CloudFront cache
+        id: cf-invalidate
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+        continue-on-error: true
+
+      - name: Retry CloudFront invalidation on failure
+        if: steps.cf-invalidate.outcome == 'failure'
+        run: |
+          echo "Retrying CloudFront invalidation..."
+          sleep 5
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "📦 S3 Bucket: ${{ env.S3_BUCKET }}"
+          echo "🚀 CloudFront Distribution: ${{ env.CLOUDFRONT_DISTRIBUTION_ID }}"
+          echo "🌐 Site: https://dctech.events"

@@ -69,33 +69,33 @@ Migrate from GitHub Pages hosting to AWS (S3 + CloudFront) with automated deploy
 ## Phase 2: GitHub Actions Workflow
 
 ### 2.1 Deployment Workflow
-- [ ] Create `.github/workflows/deploy.yml`
-  - [ ] Trigger: On push to `main` branch
-  - [ ] Checkout code
-  - [ ] Set up Node.js
-  - [ ] Install dependencies: `npm install`
-  - [ ] Build JavaScript bundles: `npm run build`
-  - [ ] Set up Python environment
-  - [ ] Install Python dependencies: `pip install -r requirements.txt`
-  - [ ] Generate static site: `make all` (or equivalent frozen output)
-  - [ ] Configure OIDC authentication to AWS
-  - [ ] Sync built site to S3 bucket
-  - [ ] Invalidate CloudFront cache
-  - [ ] Add retry logic for robustness
+- [x] Create `.github/workflows/deploy.yml`
+  - [x] Trigger: On push to `main` branch
+  - [x] Checkout code
+  - [x] Set up Node.js
+  - [x] Install dependencies: `npm install`
+  - [x] Build JavaScript bundles: `npm run build`
+  - [x] Set up Python environment
+  - [x] Install Python dependencies: `pip install -r requirements.txt`
+  - [x] Generate static site: `make all` (or equivalent frozen output)
+  - [x] Configure OIDC authentication to AWS
+  - [x] Sync built site to S3 bucket
+  - [x] Invalidate CloudFront cache
+  - [x] Add retry logic for robustness
 
 ### 2.2 Workflow Details
-- [ ] Use `aws-actions/configure-aws-credentials@v4` with OIDC
-  - [ ] Role to assume: GitHub Actions role ARN from CDK outputs
-  - [ ] Session name: `github-actions-deploy`
-  - [ ] Duration: 3600 seconds
-- [ ] Use AWS CLI to sync `build/` to S3
-  - [ ] Command: `aws s3 sync build/ s3://bucket-name --delete`
-- [ ] Use AWS CLI to invalidate CloudFront
-  - [ ] Command: `aws cloudfront create-invalidation --distribution-id ID --paths "/*"`
+- [x] Use `aws-actions/configure-aws-credentials@v4` with OIDC
+  - [x] Role to assume: GitHub Actions role ARN from CDK outputs
+  - [x] Session name: `github-actions-deploy`
+  - [x] Duration: 3600 seconds
+- [x] Use AWS CLI to sync `build/` to S3
+  - [x] Command: `aws s3 sync build/ s3://bucket-name --delete`
+- [x] Use AWS CLI to invalidate CloudFront
+  - [x] Command: `aws cloudfront create-invalidation --distribution-id ID --paths "/*"`
 
 ### 2.3 Secrets Management
-- [ ] No secrets needed (pure OIDC federation)
-- [ ] Store CDK stack outputs in GitHub Actions environment variables or repository settings
+- [x] No secrets needed (pure OIDC federation)
+- [x] Store CDK stack outputs in GitHub Actions environment variables or repository settings
 
 ---
 
