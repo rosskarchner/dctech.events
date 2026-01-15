@@ -2,3 +2,5 @@ name: Data & AI Social Club
 website: https://www.meetup.com/data-ai-social-club/
 ical: https://www.meetup.com/data-ai-social-club/events/ical/
 active: true
+categories:
+  - ai
