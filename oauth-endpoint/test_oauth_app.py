@@ -1,5 +1,5 @@
 from chalice.test import Client
-from app import app, decode_state_parameter
+from oauth_app import app, decode_state_parameter
 import json
 from unittest.mock import patch, MagicMock
 import pytest
@@ -11,7 +11,7 @@ def test_client():
     with Client(app) as client:
         yield client
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_success(mock_post, mock_secret, test_client):
     """Test successful OAuth callback flow"""
@@ -57,7 +57,7 @@ def test_oauth_callback_error_param(test_client):
     assert 'Location' in response.headers
     assert 'error=access_denied' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 def test_oauth_callback_missing_credentials(mock_secret, test_client):
     """Test OAuth callback when OAuth credentials are not configured"""
     # Mock the GitHub secret to return None
@@ -68,7 +68,7 @@ def test_oauth_callback_missing_credentials(mock_secret, test_client):
     assert response.status_code == 302
     assert 'error=oauth_not_configured' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_github_error(mock_post, mock_secret, test_client):
     """Test OAuth callback when GitHub returns an error"""
@@ -87,7 +87,7 @@ def test_oauth_callback_github_error(mock_post, mock_secret, test_client):
     assert response.status_code == 302
     assert 'error=bad_verification_code' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_no_access_token(mock_post, mock_secret, test_client):
     """Test OAuth callback when no access token is returned"""
@@ -103,7 +103,7 @@ def test_oauth_callback_no_access_token(mock_post, mock_secret, test_client):
     assert response.status_code == 302
     assert 'error=no_token' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_exception(mock_post, mock_secret, test_client):
     """Test OAuth callback when an exception occurs"""
@@ -249,7 +249,7 @@ def test_decode_state_parameter_valid_groups_edit():
     assert result['csrf_token'] == 'random_token_groups'
     assert result['return_url'] == '/groups/edit/'
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_with_valid_state_submit(mock_post, mock_secret, test_client):
     """Test OAuth callback with valid state parameter for /submit/"""
@@ -279,7 +279,7 @@ def test_oauth_callback_with_valid_state_submit(mock_post, mock_secret, test_cli
     assert 'https://dctech.events/submit/' in response.headers['Location']
     assert 'access_token=test_access_token_123' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_with_valid_state_submit_group(mock_post, mock_secret, test_client):
     """Test OAuth callback with valid state parameter for /submit-group/"""
@@ -309,7 +309,7 @@ def test_oauth_callback_with_valid_state_submit_group(mock_post, mock_secret, te
     assert 'https://dctech.events/submit-group/' in response.headers['Location']
     assert 'access_token=test_access_token_456' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 def test_oauth_callback_with_invalid_state(mock_secret, test_client):
     """Test OAuth callback with invalid state parameter defaults to /submit/"""
     # Mock the GitHub secret
@@ -324,7 +324,7 @@ def test_oauth_callback_with_invalid_state(mock_secret, test_client):
     assert 'https://dctech.events/submit/' in response.headers['Location']
     assert 'error=' in response.headers['Location']
 
-@patch('app.get_github_secret')
+@patch('oauth_app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_error_with_valid_state(mock_post, mock_secret, test_client):
     """Test OAuth callback error redirects to correct return_url from state"""

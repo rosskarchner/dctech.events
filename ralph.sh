@@ -7,11 +7,11 @@ SLEEP=${3:-2}
 
 # Validate agent
 case "$AGENT" in
-  claude|amp|copilot)
+  claude|amp|copilot|gemini)
     ;;
   *)
     echo "Invalid agent: $AGENT"
-    echo "Usage: $0 [claude|amp|copilot] [max_iterations] [sleep_seconds]"
+    echo "Usage: $0 [claude|amp|copilot|gemini] [max_iterations] [sleep_seconds]"
     exit 1
     ;;
 esac
@@ -81,6 +81,9 @@ After completing your task, check PRD.md:
         ;;
       amp)
         result=$(amp --dangerously-allow-all -x "$PROMPT")
+        ;;
+      gemini)
+        result=$(gemini --yolo -p "$PROMPT")
         ;;
     esac
 
