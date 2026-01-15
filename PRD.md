@@ -33,36 +33,36 @@ Implement three features following existing patterns from `/edit` and `/groups/e
   - [x] Add inline JavaScript to inject OAuth config and categories data
 
 ### Frontend JavaScript
-- [ ] Create `static/js/edit-categories.js`
-  - [ ] Implement `loadCategories()` - fetch from `/categories.json`
-  - [ ] Implement `renderCategoriesList()` - display categories
-  - [ ] Implement `slugify(text)` - convert name to slug (lowercase, hyphenated)
-  - [ ] Implement `openCreateModal()` - show modal for new category
-  - [ ] Implement `openEditModal(slug)` - show modal with existing data, slug read-only
-  - [ ] Implement `createCategory(name, description)`:
+- [x] Create `static/js/edit-categories.js`
+  - [x] Implement `loadCategories()` - fetch from `/categories.json`
+  - [x] Implement `renderCategoriesList()` - display categories
+  - [x] Implement `slugify(text)` - convert name to slug (lowercase, hyphenated)
+  - [x] Implement `openCreateModal()` - show modal for new category
+  - [x] Implement `openEditModal(slug)` - show modal with existing data, slug read-only
+  - [x] Implement `createCategory(name, description)`:
     - Generate slug from name
     - Check for duplicate slug, show error if exists
     - Create YAML file at `_categories/{slug}.yaml`
     - Create PR with proper title/body
-  - [ ] Implement `editCategory(slug, newName, newDescription)`:
+  - [x] Implement `editCategory(slug, newName, newDescription)`:
     - Preserve slug (read-only)
     - Update name and description only
     - Update YAML file
     - Create PR
-  - [ ] Implement `deleteCategory(slug)`:
+  - [x] Implement `deleteCategory(slug)`:
     - Fetch `/events.json` and `/groups.json`
     - Count usage in events and groups
     - Show confirmation modal with stats
     - Allow deletion (don't block)
     - Create PR with usage stats in body
-  - [ ] Implement modal handlers (show/hide, form submission)
-  - [ ] Implement YAML generation with proper escaping
-  - [ ] Add OAuth initialization and GitHub API integration
+  - [x] Implement modal handlers (show/hide, form submission)
+  - [x] Implement YAML generation with proper escaping
+  - [x] Add OAuth initialization and GitHub API integration
 
 ### Build Configuration
-- [ ] Add webpack build script for `edit-categories.bundle.js`
-- [ ] Update package.json or webpack config with new entry point
-- [ ] Build and verify bundle generation
+- [x] Add webpack build script for `edit-categories.bundle.js`
+- [x] Update package.json or webpack config with new entry point
+- [x] Build and verify bundle generation
 
 ## Feature 2: Filtering on /edit Page
 

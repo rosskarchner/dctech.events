@@ -60,6 +60,18 @@ const editGroupsBuildOptions = {
   logLevel: 'info'
 };
 
+// Build options for categories editing
+const editCategoriesBuildOptions = {
+  entryPoints: ['static/js/edit-categories.js'],
+  bundle: true,
+  minify: true,
+  sourcemap: true,
+  format: 'esm',
+  target: ['es2020'],
+  outfile: 'static/js/dist/edit-categories.bundle.js',
+  logLevel: 'info'
+};
+
 async function build() {
   try {
     if (isWatch) {
@@ -67,11 +79,13 @@ async function build() {
       const submitGroupContext = await esbuild.context(submitGroupBuildOptions);
       const editContext = await esbuild.context(editBuildOptions);
       const editGroupsContext = await esbuild.context(editGroupsBuildOptions);
+      const editCategoriesContext = await esbuild.context(editCategoriesBuildOptions);
       await Promise.all([
         submitContext.watch(),
         submitGroupContext.watch(),
         editContext.watch(),
-        editGroupsContext.watch()
+        editGroupsContext.watch(),
+        editCategoriesContext.watch()
       ]);
       console.log('Watching for changes...');
     } else {
@@ -79,7 +93,8 @@ async function build() {
         esbuild.build(submitBuildOptions),
         esbuild.build(submitGroupBuildOptions),
         esbuild.build(editBuildOptions),
-        esbuild.build(editGroupsBuildOptions)
+        esbuild.build(editGroupsBuildOptions),
+        esbuild.build(editCategoriesBuildOptions)
       ]);
       console.log('Build completed successfully!');
     }

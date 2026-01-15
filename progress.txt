@@ -858,3 +858,96 @@ All programmatic/code work is complete. User must run:
 2. Follow `DEPLOYMENT_RUNBOOK.md` for AWS deployment
 
 ---
+
+## Iteration 30 - Add /categories.json Endpoint (Feature 1 Backend)
+- Implemented /categories.json endpoint in app.py at line 1105
+- Endpoint loads categories via get_categories()
+- Converts dict to list format with slug, name, description for each category
+- Returns JSON with proper content-type header
+- Follows same pattern as /groups.json endpoint
+- Files changed: app.py, PRD.md
+
+Learnings for future iterations:
+- Categories endpoint returns list format for easier client-side iteration
+- Each category includes all three fields: slug, name, description
+- Response uses json.dumps with indent=2 for readability
+- All 61 tests pass successfully
+- Endpoint tested manually and returns 16 categories correctly
+- Next task: Add /categories/edit/ route (Feature 1 Backend)
+---
+
+## Iteration 31 - Add /categories/edit/ Route (Feature 1 Backend)
+- Implemented /categories/edit/ route in app.py at line 1120
+- Route pattern: /categories/edit/
+- Function loads categories via get_categories()
+- Passes OAuth configuration (client ID, callback endpoint) to template
+- Passes dev mode flag for debugging
+- Renders edit_categories.html template (to be created next)
+- Follows same pattern as /groups/edit/ route (lines 1137-1151)
+- Files changed: app.py, PRD.md
+
+Learnings for future iterations:
+- Route follows exact same pattern as edit_groups() function
+- OAuth config loaded from environment variables or config file
+- is_dev_mode flag set based on app.debug or FLASK_ENV environment variable
+- All 145 tests pass successfully
+- Template edit_categories.html needs to be created next (Feature 1 Frontend Template)
+- Next task: Create templates/edit_categories.html
+---
+
+## Iteration 32 - Create templates/edit_categories.html (Feature 1 Frontend Template)
+- Created templates/edit_categories.html with complete category management UI
+- Template follows edit_groups.html pattern with adaptations for categories:
+  - OAuth authentication section with GitHub login button
+  - Categories list view showing name, slug badge, and description
+  - "Create New Category" button in actions bar
+  - Edit and Delete action buttons for each category
+  - Edit/Create modal with fields: name (required), description (textarea, optional)
+  - Slug display: read-only for edits, preview for creates (auto-generated)
+  - Delete confirmation modal with usage stats placeholder
+  - Status overlay for GitHub operations (spinner + message)
+  - Success modal with PR link display
+  - Complete CSS styles matching edit_groups.html pattern
+  - Inline JavaScript to inject GITHUB_CONFIG and CATEGORIES data
+- References edit-categories.bundle.js (to be created in next task)
+- All 61 tests pass successfully
+- Files changed: templates/edit_categories.html (new), PRD.md
+
+Learnings for future iterations:
+- Template structure mirrors edit_groups.html with variable/element name changes
+- Modal has two modes: create (shows slug preview) and edit (shows read-only slug)
+- Delete modal includes usage stats section (populated by JS later)
+- Categories list populated by JavaScript via window.CATEGORIES data
+- Template is complete and ready for JavaScript implementation (edit-categories.js)
+- Next task: Create static/js/edit-categories.js
+---
+
+## Iteration 33 - Create Frontend JavaScript for Edit Categories (Feature 1)
+- Created static/js/edit-categories.js with complete category management functionality
+- Implements GitHub OAuth flow (same pattern as edit-groups.js)
+- Implements all PRD requirements:
+  - loadCategories() - fetches from /categories.json and renders list
+  - renderCategoriesList() - displays categories with name, slug badge, description, and action buttons
+  - slugify(text) - converts name to lowercase hyphenated slug
+  - openCreateModal() - shows modal for new category with slug preview that updates as user types
+  - openEditModal(slug) - shows modal with existing data, slug displayed as read-only
+  - createCategory(name, description) - generates slug, checks for duplicates, creates YAML file, creates PR
+  - editCategory(slug, newName, newDescription) - preserves slug, updates name/description only, creates PR
+  - deleteCategory(slug) - fetches usage stats from /events.json and /groups.json, shows confirmation, creates PR
+  - generateCategoryYAML() - generates YAML with proper escaping for special characters
+  - Modal handlers - show/hide modals, form submission, background click to close
+- Added webpack build configuration in build.js for edit-categories.bundle.js
+- Build completes successfully (edit-categories.bundle.js: 210.8kb)
+- All 61 tests pass
+- Files changed: static/js/edit-categories.js (new), build.js, PRD.md
+
+Learnings for future iterations:
+- Slug is auto-generated client-side via slugify() during creation
+- Slug preview updates in real-time as user types name
+- Edit modal shows slug as read-only (cannot be changed after creation)
+- Delete shows usage stats fetched from /events.json and /groups.json
+- YAML generation handles special characters (:, #, ") with proper escaping
+- Multi-line descriptions use YAML block scalar format (|)
+- OAuth callback return URL is /categories/edit/ (needs to be whitelisted in oauth-endpoint)
+- Next task: Update OAuth endpoint to whitelist /categories/edit/ return URL
+---
