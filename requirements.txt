@@ -23,3 +23,5 @@ recurring-ical-events
 # Dev/testing only (not needed for CI build, but kept for local development)
 beautifulsoup4
 responses
+pytest
+pytest-cov

@@ -2,6 +2,8 @@
 
 {% block title %}{{ category_name }} Events - {{ site_name }}{% endblock %}
 
+{% block og_title %}{{ category_name }} Events - {{ site_name }}{% endblock %}
+
 {% block content %}
 <div class="home-container">
     <section class="events-section">
@@ -21,7 +23,7 @@
 {% endblock %}
 
 {% block extra_head %}
-    <meta property="og:title" content="{{ category_name }} Tech Events">
+    <meta property="og:title" content="{{ category_name }} Events - {{ site_name }}">
     <meta property="og:type" content="website">
     <meta property="og:description" content="{{ category_description }}">
     <meta property="og:site_name" content="{{ site_name }}">

@@ -33,4 +33,12 @@ clean:
 clean-all: clean
 	rm -rf _cache/
 
+test:
+	PYTHONPATH=. ./.venv/bin/python -m pytest . --ignore=oauth-endpoint --cov=app --cov=location_utils --cov=generate_month_data --cov=address_utils
+
+test-oauth:
+	cd oauth-endpoint && ../.venv/bin/python -m pytest test_oauth_app.py
+
+test-all: test test-oauth
+
 force: clean-all all

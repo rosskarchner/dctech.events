@@ -258,77 +258,6 @@ def remove_duplicates(events):
     
     return unique_events
 
-def event_to_dict(event, group=None):
-    """
-    Convert an iCal event to a dictionary
-    
-    Args:
-        event: The iCal event
-        group: The group the event belongs to (optional)
-        
-    Returns:
-        A dictionary representing the event
-    """
-    try:
-        start = event.get('dtstart').dt
-        end = event.get('dtend').dt if event.get('dtend') else start
-        
-        # Convert to UTC if datetime is naive
-        if isinstance(start, datetime) and start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
-        if isinstance(end, datetime) and end.tzinfo is None:
-            end = end.replace(tzinfo=timezone.utc)
-
-        # Convert to local timezone
-        localstart = start.astimezone(local_tz)
-        localend = end.astimezone(local_tz)
-        
-        # Get event details and ensure they are strings, not icalendar.prop.vText objects
-        event_summary = sanitize_text(event.get('summary', ''))
-        event_description = sanitize_text(event.get('description', ''))
-        event_location = sanitize_text(event.get('location', ''))
-        
-        # Get event URL or use fallback URL if provided
-        event_url = sanitize_text(event.get('url', ''))
-        
-        # If location looks like a URL and we don't have a URL yet, use it as the URL
-        if not event_url and looks_like_url(event_location):
-            event_url = event_location
-            event_location = ''  # Clear the location since we're using it as URL
-        
-        # If still no URL, try fallback URL from group
-        if not event_url and group and group.get('fallback_url'):
-            event_url = sanitize_text(group.get('fallback_url'))
-            
-        # If there's still no URL, skip this event
-        if not event_url:
-            return None
-        
-        # Create the event dictionary
-        event_dict = {
-            'title': event_summary,
-            'description': event_description,
-            'location': event_location,
-            'start_date': localstart.strftime('%Y-%m-%d'),
-            'start_time': localstart.strftime('%H:%M'),
-            'end_date': localend.strftime('%Y-%m-%d'),
-            'end_time': localend.strftime('%H:%M'),
-            'url': event_url,
-            'date': localstart.strftime('%Y-%m-%d'),  # For sorting
-            'time': localstart.strftime('%H:%M'),     # For sorting
-        }
-        
-        # Add group information if provided
-        if group:
-            event_dict['group'] = str(group.get('name', ''))
-            event_dict['group_website'] = str(group.get('website', ''))
-        
-        return event_dict
-    
-    except Exception as e:
-        print(f"Error converting event to dictionary: {str(e)}")
-        return None
-
 def load_groups():
     """
     Load all groups from the _groups directory
@@ -364,160 +293,179 @@ def load_single_events():
     for file_path in glob.glob(os.path.join(SINGLE_EVENTS_DIR, '*.yaml')):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                event = yaml.safe_load(f)
-                # Add the event ID (filename without extension)
-                event['id'] = os.path.splitext(os.path.basename(file_path))[0]
-
-                # Map submitted_by to submitter_name and submitter_link
-                if 'submitted_by' in event:
-                    if event['submitted_by'].lower() != 'anonymous':
-                        event['submitter_name'] = event['submitted_by']
-                        if 'submitter_link' in event:
-                            event['submitter_link'] = event['submitter_link']
-
-                # Parse date and time using dateparser
-                if 'date' in event and 'time' in event:
-                    # First normalize the date to YYYY-MM-DD format
-                    if isinstance(event['date'], date):
-                        event['date'] = event['date'].strftime('%Y-%m-%d')
-                    else:
-                        # Parse the date string flexibly
-                        parsed_date = dateparser.parse(str(event['date']), settings={
-                            'TIMEZONE': timezone_name,
-                            'DATE_ORDER': 'YMD',
-                            'PREFER_DATES_FROM': 'future',
-                            'PREFER_DAY_OF_MONTH': 'first'
-                        })
-                        if parsed_date is None:
-                            raise ValueError(f"Could not parse date: {event['date']}")
-                        event['date'] = parsed_date.strftime('%Y-%m-%d')
-                    
-                    # Now handle the time
-                    # Skip time validation if it's a dictionary (per-day times for multi-day events)
-                    if isinstance(event['time'], dict):
-                        # Validate each time in the dictionary
-                        for day_key, day_time in event['time'].items():
-                            try:
-                                if isinstance(day_time, int):
-                                    # Handle integer time format (e.g., 1000 for 10:00)
-                                    time_str = str(day_time).zfill(4)
-                                    hours = int(time_str[:-2])
-                                    minutes = int(time_str[-2:])
-                                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-                                        raise ValueError
-                                    event['time'][day_key] = f"{hours:02d}:{minutes:02d}"
-                                else:
-                                    # Try to parse as HH:MM format first
-                                    hours, minutes = map(int, str(day_time).split(':'))
-                                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-                                        raise ValueError
-                                    event['time'][day_key] = f"{hours:02d}:{minutes:02d}"
-                            except (ValueError, TypeError) as e:
-                                raise ValueError(f"Invalid time format for {day_key}: {day_time}")
-                        # Keep time as dictionary, skip combined date/time parsing
-                        # events.append will happen at the end of the try block
-                    else:
-                        # Process regular time (not a dictionary)
-                        try:
-                            if isinstance(event['time'], int):
-                                # Handle integer time format (e.g., 1000 for 10:00)
-                                time_str = str(event['time']).zfill(4)
-                                hours = int(time_str[:-2])
-                                minutes = int(time_str[-2:])
-                                if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-                                    raise ValueError
-                                event['time'] = f"{hours:02d}:{minutes:02d}"
-                            else:
-                                # Try to parse as HH:MM format first
-                                try:
-                                    hours, minutes = map(int, str(event['time']).split(':'))
-                                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-                                        raise ValueError
-                                    event['time'] = f"{hours:02d}:{minutes:02d}"
-                                except (ValueError, TypeError):
-                                    # If that fails, try flexible parsing
-                                    parsed_time = dateparser.parse(str(event['time']), settings={
-                                        'TIMEZONE': timezone_name,
-                                        'RETURN_AS_TIMEZONE_AWARE': True
-                                    })
-                                    if parsed_time is None:
-                                        raise ValueError(f"Could not parse time: {event['time']}")
-                                    event['time'] = parsed_time.strftime('%H:%M')
-                        except (ValueError, TypeError) as e:
-                            raise ValueError(f"Invalid time format: {event['time']}")
-
-                        # Combine date and time for full datetime
-                        event_datetime = dateparser.parse(f"{event['date']} {event['time']}", settings={
-                            'TIMEZONE': timezone_name,
-                            'RETURN_AS_TIMEZONE_AWARE': True,
-                            'DATE_ORDER': 'YMD',
-                            'PREFER_DATES_FROM': 'future'
-                        })
-                        
-                        if event_datetime is None:
-                            raise ValueError(f"Could not parse combined date/time: {event['date']} {event['time']}")
-                        
-                        # Set standardized fields
-                        event['start_date'] = event_datetime.strftime('%Y-%m-%d')
-                        event['start_time'] = event_datetime.strftime('%H:%M')
-                    
-                    # Handle end date/time
-                    if 'end_date' in event and 'end_time' in event:
-                        # Normalize end date
-                        if isinstance(event['end_date'], date):
-                            event['end_date'] = event['end_date'].strftime('%Y-%m-%d')
-                        else:
-                            parsed_end_date = dateparser.parse(str(event['end_date']), settings={
-                                'TIMEZONE': timezone_name,
-                                'DATE_ORDER': 'YMD',
-                                'PREFER_DATES_FROM': 'future'
-                            })
-                            if parsed_end_date is None:
-                                event['end_date'] = event['date']  # Use start date if can't parse
-                            else:
-                                event['end_date'] = parsed_end_date.strftime('%Y-%m-%d')
-                        
-                        # Parse end time
-                        try:
-                            if isinstance(event['end_time'], int):
-                                time_str = str(event['end_time']).zfill(4)
-                                hours = int(time_str[:-2])
-                                minutes = int(time_str[-2:])
-                                if not (0 <= hours <= 23 and 0 <= minutes <= 59):
-                                    raise ValueError
-                                event['end_time'] = f"{hours:02d}:{minutes:02d}"
-                            else:
-                                parsed_time = dateparser.parse(str(event['end_time']), settings={
-                                    'TIMEZONE': timezone_name,
-                                    'RETURN_AS_TIMEZONE_AWARE': True
-                                })
-                                if parsed_time is None:
-                                    event['end_time'] = event['time']  # Use start time if can't parse
-                                else:
-                                    event['end_time'] = parsed_time.strftime('%H:%M')
-                        except (ValueError, TypeError):
-                            event['end_time'] = event['time']  # Use start time if invalid
-                        
-                        # Validate combined end date/time
-                        end_datetime = dateparser.parse(f"{event['end_date']} {event['end_time']}", settings={
-                            'TIMEZONE': timezone_name,
-                            'RETURN_AS_TIMEZONE_AWARE': True,
-                            'DATE_ORDER': 'YMD',
-                            'PREFER_DATES_FROM': 'future'
-                        })
-                        if end_datetime is None:
-                            end_datetime = event_datetime
-                    else:
-                        # Only set end_date and end_time if they were explicitly provided
-                        if 'end_date' in event and 'end_time' in event:
-                            event['end_date'] = end_datetime.strftime('%Y-%m-%d')
-                            event['end_time'] = end_datetime.strftime('%H:%M')
+                event_data = yaml.safe_load(f)
                 
-                events.append(event)
+            event_id = os.path.splitext(os.path.basename(file_path))[0]
+            parsed_event = parse_single_event_data(event_data, event_id, timezone_name)
+            
+            if parsed_event:
+                events.append(parsed_event)
         except Exception as e:
             print(f"Error loading event from {file_path}: {str(e)}")
 
     return events
+
+def parse_single_event_data(event, event_id, timezone_name):
+    """
+    Parse a single event dictionary, normalizing dates and times.
+    
+    Args:
+        event: Raw event dictionary from YAML
+        event_id: ID for the event (filename)
+        timezone_name: Timezone string to use for parsing
+        
+    Returns:
+        Processed event dictionary or None if parsing failed
+    """
+    # Add the event ID
+    event['id'] = event_id
+
+    # Map submitted_by to submitter_name and submitter_link
+    if 'submitted_by' in event:
+        if event['submitted_by'].lower() != 'anonymous':
+            event['submitter_name'] = event['submitted_by']
+            if 'submitter_link' in event:
+                event['submitter_link'] = event['submitter_link']
+
+    # Parse date and time using dateparser
+    if 'date' in event and 'time' in event:
+        # First normalize the date to YYYY-MM-DD format
+        if isinstance(event['date'], date):
+            event['date'] = event['date'].strftime('%Y-%m-%d')
+        else:
+            # Parse the date string flexibly
+            parsed_date = dateparser.parse(str(event['date']), settings={
+                'TIMEZONE': timezone_name,
+                'DATE_ORDER': 'YMD',
+                'PREFER_DATES_FROM': 'future',
+                'PREFER_DAY_OF_MONTH': 'first'
+            })
+            if parsed_date is None:
+                raise ValueError(f"Could not parse date: {event['date']}")
+            event['date'] = parsed_date.strftime('%Y-%m-%d')
+        
+        # Now handle the time
+        # Skip time validation if it's a dictionary (per-day times for multi-day events)
+        if isinstance(event['time'], dict):
+            # Validate each time in the dictionary
+            for day_key, day_time in event['time'].items():
+                try:
+                    if isinstance(day_time, int):
+                        # Handle integer time format (e.g., 1000 for 10:00)
+                        time_str = str(day_time).zfill(4)
+                        hours = int(time_str[:-2])
+                        minutes = int(time_str[-2:])
+                        if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                            raise ValueError
+                        event['time'][day_key] = f"{hours:02d}:{minutes:02d}"
+                    else:
+                        # Try to parse as HH:MM format first
+                        hours, minutes = map(int, str(day_time).split(':'))
+                        if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                            raise ValueError
+                        event['time'][day_key] = f"{hours:02d}:{minutes:02d}"
+                except (ValueError, TypeError) as e:
+                    raise ValueError(f"Invalid time format for {day_key}: {day_time}")
+            # Keep time as dictionary, skip combined date/time parsing
+            # events.append will happen at the end of the try block
+        else:
+            # Process regular time (not a dictionary)
+            try:
+                if isinstance(event['time'], int):
+                    # Handle integer time format (e.g., 1000 for 10:00)
+                    time_str = str(event['time']).zfill(4)
+                    hours = int(time_str[:-2])
+                    minutes = int(time_str[-2:])
+                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                        raise ValueError
+                    event['time'] = f"{hours:02d}:{minutes:02d}"
+                else:
+                    # Try to parse as HH:MM format first
+                    try:
+                        hours, minutes = map(int, str(event['time']).split(':'))
+                        if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                            raise ValueError
+                        event['time'] = f"{hours:02d}:{minutes:02d}"
+                    except (ValueError, TypeError):
+                        # If that fails, try flexible parsing
+                        parsed_time = dateparser.parse(str(event['time']), settings={
+                            'TIMEZONE': timezone_name,
+                            'RETURN_AS_TIMEZONE_AWARE': True
+                        })
+                        if parsed_time is None:
+                            raise ValueError(f"Could not parse time: {event['time']}")
+                        event['time'] = parsed_time.strftime('%H:%M')
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Invalid time format: {event['time']}")
+
+            # Combine date and time for full datetime
+            event_datetime = dateparser.parse(f"{event['date']} {event['time']}", settings={
+                'TIMEZONE': timezone_name,
+                'RETURN_AS_TIMEZONE_AWARE': True,
+                'DATE_ORDER': 'YMD',
+                'PREFER_DATES_FROM': 'future'
+            })
+            
+            if event_datetime is None:
+                raise ValueError(f"Could not parse combined date/time: {event['date']} {event['time']}")
+            
+            # Set standardized fields
+            event['start_date'] = event_datetime.strftime('%Y-%m-%d')
+            event['start_time'] = event_datetime.strftime('%H:%M')
+        
+        # Handle end date/time
+        if 'end_date' in event and 'end_time' in event:
+            # Normalize end date
+            if isinstance(event['end_date'], date):
+                event['end_date'] = event['end_date'].strftime('%Y-%m-%d')
+            else:
+                parsed_end_date = dateparser.parse(str(event['end_date']), settings={
+                    'TIMEZONE': timezone_name,
+                    'DATE_ORDER': 'YMD',
+                    'PREFER_DATES_FROM': 'future'
+                })
+                if parsed_end_date is None:
+                    event['end_date'] = event['date']  # Use start date if can't parse
+                else:
+                    event['end_date'] = parsed_end_date.strftime('%Y-%m-%d')
+            
+            # Parse end time
+            try:
+                if isinstance(event['end_time'], int):
+                    time_str = str(event['end_time']).zfill(4)
+                    hours = int(time_str[:-2])
+                    minutes = int(time_str[-2:])
+                    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+                        raise ValueError
+                    event['end_time'] = f"{hours:02d}:{minutes:02d}"
+                else:
+                    parsed_time = dateparser.parse(str(event['end_time']), settings={
+                        'TIMEZONE': timezone_name,
+                        'RETURN_AS_TIMEZONE_AWARE': True
+                    })
+                    if parsed_time is None:
+                        event['end_time'] = event['time']  # Use start time if can't parse
+                    else:
+                        event['end_time'] = parsed_time.strftime('%H:%M')
+            except (ValueError, TypeError):
+                event['end_time'] = event['time']  # Use start time if invalid
+            
+            # Validate combined end date/time
+            end_datetime = dateparser.parse(f"{event['end_date']} {event['end_time']}", settings={
+                'TIMEZONE': timezone_name,
+                'RETURN_AS_TIMEZONE_AWARE': True,
+                'DATE_ORDER': 'YMD',
+                'PREFER_DATES_FROM': 'future'
+            })
+            if end_datetime is None:
+                end_datetime = event_datetime
+        else:
+            # Only set end_date and end_time if they were explicitly provided
+            if 'end_date' in event and 'end_time' in event:
+                event['end_date'] = end_datetime.strftime('%Y-%m-%d')
+                event['end_time'] = end_datetime.strftime('%H:%M')
+    
+    return event
 
 def load_categories():
     """
@@ -654,6 +602,144 @@ def calculate_stats(groups, all_events):
         'active_groups': active_groups
     }
 
+def process_events(groups, categories, single_events, ical_events_map, allowed_states=None, today=None):
+    """
+    Process events from all sources, filter, deduplicate, and prepare for output.
+    
+    Args:
+        groups: List of group dictionaries
+        categories: Dictionary of categories
+        single_events: List of single event dictionaries
+        ical_events_map: Dictionary mapping group ID to list of cached iCal events
+        allowed_states: List of allowed state codes
+        today: Date to use as 'today' for filtering (optional)
+        
+    Returns:
+        List of processed and sorted events
+    """
+    if allowed_states is None:
+        allowed_states = []
+        
+    # Get current date if not provided
+    if today is None:
+        today = datetime.now(local_tz).date()
+    # Calculate date 90 days from now
+    max_future_date = today + timedelta(days=90)
+    
+    all_events = []
+    
+    # Process iCal events
+    for group in groups:
+        if not group.get('active', True):
+            continue
+
+        if group['id'] in ical_events_map:
+            try:
+                events = ical_events_map[group['id']]
+                group_events = []
+                for event in events:
+                    # Check if event URL is in suppress_urls list
+                    suppress_urls = group.get('suppress_urls', [])
+
+                    # Calculate event GUID hash for suppress_guid check
+                    event_hash = calculate_event_hash(
+                        event.get('date', ''),
+                        event.get('time', ''),
+                        event.get('title', ''),
+                        event.get('url')
+                    )
+                    suppress_guids = group.get('suppress_guid', [])
+
+                    # Skip event if URL or GUID is suppressed
+                    if event.get('url') not in suppress_urls and event_hash not in suppress_guids:
+                        # Apply site-wide state filter for iCal events
+                        if is_event_in_allowed_states(event, allowed_states):
+                            # Check for event override and merge if exists
+                            override = load_event_override(event_hash)
+                            if override:
+                                event = merge_event_with_override(event, override)
+                            
+                            # Add group information
+                            event['group'] = str(group.get('name', ''))
+                            event['group_website'] = str(group.get('website', ''))
+                            
+                            # Mark source as 'ical'
+                            event['source'] = 'ical'
+                            event['guid'] = event_hash
+                            
+                            # Resolve and add categories
+                            event_categories = resolve_event_categories(event, group, categories)
+                            if event_categories:
+                                event['categories'] = event_categories
+                            # For iCal+JSON-LD events, apply 90-day limit
+                            try:
+                                event_date = dateparser.parse(event['date'], settings={
+                                    'TIMEZONE': timezone_name,
+                                    'DATE_ORDER': 'YMD'
+                                }).date()
+                                if today <= event_date <= max_future_date:
+                                    group_events.append(event)
+                            except (ValueError, AttributeError):
+                                pass # Skip events with invalid dates
+                        else:
+                            print(f"Filtering out event '{event.get('title', 'Unknown')}' - location '{event.get('location', 'Unknown')}' not in allowed states {allowed_states}")
+
+                # Remove duplicates within this group's events
+                group_events = remove_duplicates(group_events)
+                all_events.extend(group_events)
+            except Exception as e:
+                print(f"Error processing iCal+JSON-LD events for group {group['id']}: {str(e)}")
+
+    # Add single events (include all future events regardless of date)
+    for event in single_events:
+        try:
+            event_date = dateparser.parse(event['date'], settings={
+                'TIMEZONE': timezone_name,
+                'DATE_ORDER': 'YMD'
+            }).date()
+            if today <= event_date:  # Only check that event is in the future
+                # Find the group for this event if it has one
+                event_group = None
+                if 'group' in event and event['group']:
+                    # Try to find the group by name
+                    for group in groups:
+                        if group.get('name', '') == event['group']:
+                            event_group = group
+                            break
+                
+                # Calculate event hash for single events
+                event_hash = calculate_event_hash(
+                    event.get('date', ''),
+                    event.get('time', ''),
+                    event.get('title', ''),
+                    event.get('url')
+                )
+                
+                # Check for event override and merge if exists
+                override = load_event_override(event_hash)
+                if override:
+                    event = merge_event_with_override(event, override)
+                
+                # Mark source as 'manual'
+                event['source'] = 'manual'
+                event['guid'] = event_hash
+                
+                # Resolve and add categories
+                event_categories = resolve_event_categories(event, event_group, categories)
+                if event_categories:
+                    event['categories'] = event_categories
+                all_events.append(event)
+        except (ValueError, AttributeError):
+            pass
+
+    # Remove duplicates across all events (keeps first occurrence)
+    all_events = remove_duplicates(all_events)
+    
+    # Sort events by date and time
+    all_events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
+    
+    return all_events
+
 def generate_yaml():
     """
     Generate YAML files from iCal and single events
@@ -662,12 +748,6 @@ def generate_yaml():
         True if any YAML files were updated, False otherwise
     """
     print("Generating YAML files...")
-
-    # Get current date at the start
-    today = datetime.now(local_tz).date()
-
-    # Calculate date 90 days from now
-    max_future_date = today + timedelta(days=90)
 
     # Load all groups
     groups = load_groups()
@@ -678,129 +758,23 @@ def generate_yaml():
     # Load all single events
     single_events = load_single_events()
     
-    # Collect all events
-    all_events = []
-    
-    # Process iCal events
+    # Load ical events cache
+    ical_events_map = {}
     for group in groups:
         if not group.get('active', True):
             continue
-
-        # Check for iCal with JSON-LD augmentation
+            
         if 'ical' in group and group['ical']:
             cache_file = os.path.join(ICAL_CACHE_DIR, f"{group['id']}.json")
             if os.path.exists(cache_file):
                 try:
                     with open(cache_file, 'r') as f:
-                        events = json.load(f)
-                        group_events = []
-                        for event in events:
-                            # Check if event URL is in suppress_urls list
-                            suppress_urls = group.get('suppress_urls', [])
-
-                            # Calculate event GUID hash for suppress_guid check
-                            event_hash = calculate_event_hash(
-                                event.get('date', ''),
-                                event.get('time', ''),
-                                event.get('title', ''),
-                                event.get('url')
-                            )
-                            suppress_guids = group.get('suppress_guid', [])
-
-                            # Skip event if URL or GUID is suppressed
-                            if event.get('url') not in suppress_urls and event_hash not in suppress_guids:
-                                # Apply site-wide state filter for iCal events
-                                if is_event_in_allowed_states(event, ALLOWED_STATES):
-                                    # Check for event override and merge if exists
-                                    override = load_event_override(event_hash)
-                                    if override:
-                                        event = merge_event_with_override(event, override)
-                                    
-                                    # Add group information
-                                    event['group'] = str(group.get('name', ''))
-                                    event['group_website'] = str(group.get('website', ''))
-                                    
-                                    # Mark source as 'ical'
-                                    event['source'] = 'ical'
-                                    event['guid'] = event_hash
-                                    
-                                    # Resolve and add categories
-                                    event_categories = resolve_event_categories(event, group, categories)
-                                    if event_categories:
-                                        event['categories'] = event_categories
-                                    # For iCal+JSON-LD events, apply 90-day limit
-                                    event_date = dateparser.parse(event['date'], settings={
-                                        'TIMEZONE': timezone_name,
-                                        'DATE_ORDER': 'YMD'
-                                    }).date()
-                                    if today <= event_date <= max_future_date:
-                                        group_events.append(event)
-                                else:
-                                    print(f"Filtering out event '{event.get('title', 'Unknown')}' - location '{event.get('location', 'Unknown')}' not in allowed states {ALLOWED_STATES}")
-
-                        # Remove duplicates within this group's events
-                        group_events = remove_duplicates(group_events)
-                        all_events.extend(group_events)
+                        ical_events_map[group['id']] = json.load(f)
                 except Exception as e:
-                    print(f"Error processing iCal+JSON-LD events for group {group['id']}: {str(e)}")
-
+                    print(f"Error loading cache for group {group['id']}: {str(e)}")
     
-    # Add single events (include all future events regardless of date)
-    for event in single_events:
-        event_date = dateparser.parse(event['date'], settings={
-            'TIMEZONE': timezone_name,
-            'DATE_ORDER': 'YMD'
-        }).date()
-        if today <= event_date:  # Only check that event is in the future
-            # Find the group for this event if it has one
-            event_group = None
-            if 'group' in event and event['group']:
-                # Try to find the group by name
-                for group in groups:
-                    if group.get('name', '') == event['group']:
-                        event_group = group
-                        break
-            
-            # Calculate event hash for single events
-            event_hash = calculate_event_hash(
-                event.get('date', ''),
-                event.get('time', ''),
-                event.get('title', ''),
-                event.get('url')
-            )
-            
-            # Check for event override and merge if exists
-            override = load_event_override(event_hash)
-            if override:
-                event = merge_event_with_override(event, override)
-            
-            # Mark source as 'manual'
-            event['source'] = 'manual'
-            event['guid'] = event_hash
-            
-            # Resolve and add categories
-            event_categories = resolve_event_categories(event, event_group, categories)
-            if event_categories:
-                event['categories'] = event_categories
-            all_events.append(event)
-    
-    # Remove duplicates across all events (keeps first occurrence)
-    all_events = remove_duplicates(all_events)
-    
-    # Sort events by date and time
-    all_events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
-    
-    # Get current month and year
-    current_month = today.month
-    current_year = today.year
-    
-    # Calculate next month
-    if current_month == 12:
-        next_month = 1
-        next_year = current_year + 1
-    else:
-        next_month = current_month + 1
-        next_year = current_year
+    # Process events
+    all_events = process_events(groups, categories, single_events, ical_events_map, ALLOWED_STATES)
     
     # Write all events to upcoming.yaml
     upcoming_file = os.path.join(DATA_DIR, 'upcoming.yaml')
