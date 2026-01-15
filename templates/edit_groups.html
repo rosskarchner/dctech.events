@@ -34,6 +34,15 @@
     <div id="groups-content" style="display: none;">
         <p>Select multiple groups to bulk assign categories, or click "Edit" to modify individual groups.</p>
 
+        <div id="status-message" class="status-message"></div>
+
+        <div id="success-message" class="success-message" style="display: none;">
+            <h3>✓ Pull Request Created!</h3>
+            <p>Your changes have been submitted successfully.</p>
+            <p><a id="pr-link" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+            <button id="continue-editing" class="btn btn-primary">Continue Editing</button>
+        </div>
+
         <div id="category-controls" style="display: none;" class="category-controls">
             <label for="category-select">Assign category to selected groups:</label>
             <select id="category-select">
@@ -372,6 +381,59 @@ window.CATEGORIES = {{ categories|tojson }};
 .btn-sm {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
+}
+
+/* Status and success messages */
+.status-message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.status-message.error {
+    display: block;
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+}
+
+.status-message.info {
+    display: block;
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+.status-message.success {
+    display: block;
+    background-color: #d1fae5;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.success-message {
+    background-color: #d1fae5;
+    border: 2px solid #10b981;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.success-message h3 {
+    color: #065f46;
+    margin-bottom: 1rem;
+}
+
+.success-message p {
+    margin-bottom: 1rem;
+}
+
+.success-message a {
+    color: #2563eb;
+    text-decoration: underline;
+    word-break: break-all;
 }
 
 /* Status overlay */

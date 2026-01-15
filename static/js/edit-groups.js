@@ -109,7 +109,7 @@ function setupAuthHandlers() {
  */
 function handleGitHubLogin() {
     if (!CONFIG.clientId || !CONFIG.callbackEndpoint) {
-        alert('GitHub OAuth is not configured.');
+        showError('GitHub OAuth is not configured.');
         return;
     }
 
@@ -143,7 +143,7 @@ async function loadGroups() {
         renderGroupsList();
     } catch (error) {
         console.error('Error loading groups:', error);
-        alert('Failed to load groups: ' + error.message);
+        showError('Failed to load groups: ' + error.message);
     }
 }
 
@@ -253,12 +253,12 @@ async function applyCategoryToGroups() {
     const groupIds = Array.from(selectedGroups);
 
     if (!category) {
-        alert('Please select a category');
+        showError('Please select a category');
         return;
     }
 
     if (groupIds.length === 0) {
-        alert('Please select at least one group');
+        showError('Please select at least one group');
         return;
     }
 
@@ -434,7 +434,6 @@ async function saveIndividualEdit(e) {
         );
 
         showSuccess(prUrl);
-        await loadGroups(); // Refresh list
     } catch (error) {
         showError(error.message);
     }
@@ -493,7 +492,12 @@ function updateGroupYAMLWithAllFields(existingYAML, updatedData) {
  * Show status overlay
  */
 function showStatus(message) {
-    document.getElementById('status-message').textContent = message;
+    const statusDiv = document.getElementById('status-message');
+    statusDiv.className = 'status-message info';
+    statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+
+    // Also show the overlay for longer operations
     document.getElementById('status-overlay').style.display = 'flex';
 }
 
@@ -501,17 +505,57 @@ function showStatus(message) {
  * Show success message
  */
 function showSuccess(prUrl) {
-    alert(`Pull request created successfully!\n\nView at: ${prUrl}`);
+    // Hide overlay
     document.getElementById('status-overlay').style.display = 'none';
-    window.open(prUrl, '_blank');
+
+    // Hide status message
+    const statusDiv = document.getElementById('status-message');
+    statusDiv.style.display = 'none';
+
+    // Show success box
+    const successDiv = document.getElementById('success-message');
+    const prLink = document.getElementById('pr-link');
+    prLink.href = prUrl;
+    prLink.textContent = prUrl;
+    successDiv.style.display = 'block';
+
+    // Hide the groups list and controls temporarily
+    document.getElementById('category-controls').style.display = 'none';
+    document.getElementById('groups-list').style.display = 'none';
+
+    // Scroll to top to show success message
+    window.scrollTo(0, 0);
 }
 
 /**
  * Show error message
  */
 function showError(message) {
-    alert(`Error: ${message}`);
+    // Hide overlay
     document.getElementById('status-overlay').style.display = 'none';
+
+    // Show error in status message
+    const statusDiv = document.getElementById('status-message');
+    statusDiv.className = 'status-message error';
+    statusDiv.textContent = '⚠ ' + message;
+    statusDiv.style.display = 'block';
+
+    // Scroll to top to show error
+    window.scrollTo(0, 0);
+}
+
+/**
+ * Continue editing after successful PR
+ */
+function continueEditing() {
+    // Hide success message
+    document.getElementById('success-message').style.display = 'none';
+
+    // Show groups list again
+    document.getElementById('groups-list').style.display = 'block';
+
+    // Reload groups to get fresh data
+    loadGroups();
 }
 
 /**
@@ -536,6 +580,7 @@ document.getElementById('select-all')?.addEventListener('click', () => {
     });
 });
 document.getElementById('clear-selection')?.addEventListener('click', clearState);
+document.getElementById('continue-editing')?.addEventListener('click', continueEditing);
 
 // Modal event listeners
 document.getElementById('edit-group-form')?.addEventListener('submit', saveIndividualEdit);
