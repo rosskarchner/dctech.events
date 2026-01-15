@@ -964,3 +964,60 @@ The /categories/edit/ page is fully functional and ready for use.
 
 Next task: Feature 2 - Filtering on /edit Page (Backend updates to app.py)
 ---
+
+## Iteration 34 - Add Filter Statistics to /edit Page Backend (Feature 2)
+- Updated edit_list() route in app.py (lines 1042-1055)
+- Implemented filter statistics calculation:
+  - events_without_categories: count of events with no categories assigned
+  - manual_events_count: count of events with source='manual'
+  - ical_events_count: count of events with source='ical'
+- Created filter_stats dict and passed to template
+- All counts are based on future_events (already filtered to upcoming events only)
+- All 61 tests pass successfully
+- Files changed: app.py, PRD.md
+
+Learnings for future iterations:
+- Filter stats use list comprehensions with sum() for clean counting logic
+- Stats are calculated on future_events list (already filtered by date)
+- events_without_categories checks if categories field is falsy (empty list or missing)
+- source field is used to distinguish manual vs iCal events
+- filter_stats dict structure matches PRD requirements exactly
+- Next task: Feature 2 Frontend Template - Update templates/edit_list.html
+---
+
+## Iteration 35 - Add Filtering Controls to /edit Page (Feature 2 Frontend)
+- Updated templates/edit_list.html with complete filtering functionality
+- Added filter controls section after auth section:
+  - "Show only events without categories" checkbox with count
+  - "Show only manual events (hide iCal)" checkbox with count
+  - "Clear Filters" button
+  - Filtered status message span
+- Added comprehensive CSS styles:
+  - .filter-controls container with gray background and border
+  - .filter-count badge styling with gray color
+  - .filtered-status message in green
+  - .time-slot-group.filtered-out display:none rule
+- Updated event checkbox template to include data-event-categories attribute
+- Implemented JavaScript filter logic:
+  - Added activeFilters state object tracking noCategories and manualOnly
+  - Updated showAuthenticatedState() to call setupFilterHandlers()
+  - Implemented setupFilterHandlers() for checkbox changes and clear button
+  - Implemented applyFilters() with full logic:
+    - Iterates through all time slot groups and event rows
+    - Applies noCategories filter (hides events with categories)
+    - Applies manualOnly filter (hides non-manual events)
+    - Uses AND logic for combined filters
+    - Hides time slots with no visible events
+    - Updates filtered status message with "Showing X of Y events"
+- All 61 tests pass successfully
+- Files changed: templates/edit_list.html, PRD.md
+
+Learnings for future iterations:
+- Filter controls show badge counts using filter_stats passed from backend
+- Data attributes on checkboxes enable client-side filtering without API calls
+- CSS .filtered-out class combined with display:none hides entire time slot groups
+- AND logic: both filters must pass for event to be visible
+- Status message only shows when filters are active (clears when all filters off)
+- Filters reset on page reload (no localStorage persistence as per PRD)
+- Next task: Feature 3 Backend - Update edit_groups() route with filter statistics
+---
