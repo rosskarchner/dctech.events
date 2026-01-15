@@ -2,3 +2,5 @@ name: NoVABeerSec
 website: https://www.meetup.com/nova-beer-sec
 ical: https://www.meetup.com/nova-beer-sec/events/ical/
 active: true
+categories:
+  - cybersecurity
