@@ -101,10 +101,10 @@ Implement three features following existing patterns from `/edit` and `/groups/e
 ## Feature 3: Filtering on /groups/edit Page
 
 ### Backend
-- [ ] Update `edit_groups()` route in `app.py` (line 1105)
-  - [ ] Load groups with `get_approved_groups()`
-  - [ ] Calculate `groups_without_categories` count
-  - [ ] Pass `filter_stats` dict to template
+- [x] Update `edit_groups()` route in `app.py` (line 1105)
+  - [x] Load groups with `get_approved_groups()`
+  - [x] Calculate `groups_without_categories` count
+  - [x] Pass `filter_stats` dict to template
 
 ### Frontend Template
 - [ ] Update `templates/edit_groups.html`
