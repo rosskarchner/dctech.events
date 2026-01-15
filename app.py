@@ -1102,6 +1102,21 @@ def groups_json():
     groups = get_approved_groups()
     return Response(json.dumps(groups, indent=2), mimetype='application/json')
 
+@app.route("/categories.json")
+def categories_json():
+    """Serve categories data as JSON for client-side editing"""
+    categories = get_categories()
+    # Convert dict to list format
+    categories_list = [
+        {
+            'slug': slug,
+            'name': cat.get('name', ''),
+            'description': cat.get('description', '')
+        }
+        for slug, cat in categories.items()
+    ]
+    return Response(json.dumps(categories_list, indent=2), mimetype='application/json')
+
 @app.route("/groups/edit/")
 def edit_groups():
     """Bulk edit page for groups"""
