@@ -107,28 +107,28 @@ Implement three features following existing patterns from `/edit` and `/groups/e
   - [x] Pass `filter_stats` dict to template
 
 ### Frontend Template
-- [ ] Update `templates/edit_groups.html`
-  - [ ] Add filter controls section (after line 58, after category controls):
+- [x] Update `templates/edit_groups.html`
+  - [x] Add filter controls section (after line 58, after category controls):
     - "Show only groups without categories" checkbox
     - "Clear Filter" button
     - Filtered status message span
-  - [ ] Add CSS styles for filter controls (in existing `<style>` block):
+  - [x] Add CSS styles for filter controls (in existing `<style>` block):
     - `.filter-controls` container styling
     - `.filter-count` badge styling
     - `.filtered-status` message styling
     - `.group-row.filtered-out` hide rule
 
 ### Frontend JavaScript
-- [ ] Update `static/js/edit-groups.js`
-  - [ ] Add `filterNoCategories` state variable
-  - [ ] Update `showAuthenticatedState()` to show filter controls and setup handlers
-  - [ ] Implement `setupFilterHandlers()` for checkbox change and clear button
-  - [ ] Implement `applyFilter()`:
+- [x] Update `static/js/edit-groups.js`
+  - [x] Add `filterNoCategories` state variable
+  - [x] Update `showAuthenticatedState()` to show filter controls and setup handlers
+  - [x] Implement `setupFilterHandlers()` for checkbox change and clear button
+  - [x] Implement `applyFilter()`:
     - Iterate through group rows
     - Check if group has categories
     - Hide/show based on filter state
     - Update filtered status message
-  - [ ] Update `renderGroupsList()` to call `applyFilter()` after rendering
+  - [x] Update `renderGroupsList()` to call `applyFilter()` after rendering
 
 ## Implementation Guidelines
 

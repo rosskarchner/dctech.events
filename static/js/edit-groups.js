@@ -11,6 +11,7 @@ let octokit = null;
 let userData = null;
 let groupsData = [];
 const selectedGroups = new Set();
+let filterNoCategories = false;
 
 // GitHub OAuth Configuration
 const CONFIG = {
@@ -70,6 +71,7 @@ function showAuthenticatedState() {
     const authStatus = document.getElementById('auth-status');
     const groupsContent = document.getElementById('groups-content');
     const authSectionP = document.querySelector('#auth-section > p');
+    const filterControls = document.getElementById('filter-controls');
 
     authStatus.className = 'auth-status authenticated';
     authStatus.innerHTML = `
@@ -82,6 +84,11 @@ function showAuthenticatedState() {
         authSectionP.style.display = 'none';
     }
     groupsContent.style.display = 'block';
+
+    if (filterControls) {
+        filterControls.style.display = 'flex';
+        setupFilterHandlers();
+    }
 }
 
 /**
@@ -213,6 +220,9 @@ function renderGroupsList() {
 
         container.appendChild(row);
     }
+
+    // Apply any active filters after rendering
+    applyFilter();
 }
 
 /**
@@ -593,3 +603,66 @@ document.getElementById('edit-modal')?.addEventListener('click', (e) => {
         closeEditModal();
     }
 });
+
+/**
+ * Setup filter handlers
+ */
+function setupFilterHandlers() {
+    const filterNoCategoriesCheckbox = document.getElementById('filter-no-categories');
+    const clearFilterBtn = document.getElementById('clear-filter');
+
+    if (filterNoCategoriesCheckbox) {
+        filterNoCategoriesCheckbox.addEventListener('change', (e) => {
+            filterNoCategories = e.target.checked;
+            applyFilter();
+        });
+    }
+
+    if (clearFilterBtn) {
+        clearFilterBtn.addEventListener('click', () => {
+            filterNoCategories = false;
+            if (filterNoCategoriesCheckbox) filterNoCategoriesCheckbox.checked = false;
+            applyFilter();
+        });
+    }
+}
+
+/**
+ * Apply active filter to groups list
+ */
+function applyFilter() {
+    const groupRows = document.querySelectorAll('.group-row');
+    const filteredStatus = document.getElementById('filtered-status');
+    let visibleGroupsCount = 0;
+    const totalGroupsCount = groupRows.length;
+
+    groupRows.forEach(row => {
+        const groupId = row.dataset.groupId;
+        const group = groupsData.find(g => g.id === groupId);
+
+        let shouldShow = true;
+
+        // Apply noCategories filter
+        if (filterNoCategories && group) {
+            // Hide groups that have categories
+            if (group.categories && group.categories.length > 0) {
+                shouldShow = false;
+            }
+        }
+
+        // Show/hide the group row
+        if (shouldShow) {
+            row.classList.remove('filtered-out');
+            visibleGroupsCount++;
+        } else {
+            row.classList.add('filtered-out');
+        }
+    });
+
+    // Update filtered status message
+    if (filterNoCategories) {
+        filteredStatus.textContent = `Showing ${visibleGroupsCount} of ${totalGroupsCount} groups`;
+    } else {
+        filteredStatus.textContent = '';
+    }
+}
