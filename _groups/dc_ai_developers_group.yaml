@@ -4,3 +4,5 @@ ical: https://www.meetup.com/dc-ai-llms/events/ical/
 active: true
 suppress_urls:
   - https://www.meetup.com/dc-ai-llms/events/307166051/
+categories:
+  - ai
