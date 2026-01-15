@@ -74,23 +74,23 @@ Implement three features following existing patterns from `/edit` and `/groups/e
   - [x] Pass `filter_stats` dict to template
 
 ### Frontend Template
-- [ ] Update `templates/edit_list.html`
-  - [ ] Add filter controls section (after line 36, after auth section):
+- [x] Update `templates/edit_list.html`
+  - [x] Add filter controls section (after line 36, after auth section):
     - "Show only events without categories" checkbox
     - "Show only manual events (hide iCal)" checkbox
     - "Clear Filters" button
     - Filtered status message span
-  - [ ] Add CSS styles for filter controls (in existing `<style>` block):
+  - [x] Add CSS styles for filter controls (in existing `<style>` block):
     - `.filter-controls` container styling
     - `.filter-count` badge styling
     - `.filtered-status` message styling
     - `.time-slot-group.filtered-out` hide rule
-  - [ ] Update event checkbox template to add `data-event-categories` attribute
-  - [ ] Add JavaScript filter logic (in existing `<script type="module">` block):
-    - [ ] Add `activeFilters` state object
-    - [ ] Update `showAuthenticatedState()` to show filter controls and setup handlers
-    - [ ] Implement `setupFilterHandlers()` for checkbox changes and clear button
-    - [ ] Implement `applyFilters()`:
+  - [x] Update event checkbox template to add `data-event-categories` attribute
+  - [x] Add JavaScript filter logic (in existing `<script type="module">` block):
+    - [x] Add `activeFilters` state object
+    - [x] Update `showAuthenticatedState()` to show filter controls and setup handlers
+    - [x] Implement `setupFilterHandlers()` for checkbox changes and clear button
+    - [x] Implement `applyFilters()`:
       - Iterate through time slot groups and event rows
       - Apply noCategories filter (hide if has categories)
       - Apply manualOnly filter (hide if source !== 'manual')
