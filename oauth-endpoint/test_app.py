@@ -234,6 +234,21 @@ def test_decode_state_parameter_valid_edit_with_hash():
     assert result['csrf_token'] == 'random_token_hash'
     assert result['return_url'] == '/edit/event/#abc123'
 
+def test_decode_state_parameter_valid_groups_edit():
+    """Test decoding valid state parameter for /groups/edit/ path"""
+    state_data = {
+        'csrf_token': 'random_token_groups',
+        'return_url': '/groups/edit/'
+    }
+    state_json = json.dumps(state_data)
+    state_base64 = base64.b64encode(state_json.encode('utf-8')).decode('utf-8')
+
+    result = decode_state_parameter(state_base64)
+
+    assert result is not None
+    assert result['csrf_token'] == 'random_token_groups'
+    assert result['return_url'] == '/groups/edit/'
+
 @patch('app.get_github_secret')
 @patch('requests.post')
 def test_oauth_callback_with_valid_state_submit(mock_post, mock_secret, test_client):

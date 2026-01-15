@@ -78,7 +78,7 @@ def decode_state_parameter(state):
 
         # Validate return_url is one of the allowed paths
         # Allow /edit/ paths including those with hash fragments (e.g., /edit/event/#abc123)
-        allowed_paths = ['/submit/', '/submit-group/']
+        allowed_paths = ['/submit/', '/submit-group/', '/groups/edit/']
         return_url = state_data['return_url']
         is_edit_path = return_url.startswith('/edit/') and (return_url.endswith('/') or '#' in return_url)
         if return_url not in allowed_paths and not is_edit_path:
