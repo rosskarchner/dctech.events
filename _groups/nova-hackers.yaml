@@ -2,3 +2,5 @@ name: NoVA Hackers
 website: https://www.meetup.com/nova-hackers
 ical: https://www.meetup.com/nova-hackers/events/ical/
 active: true
+categories:
+  - cybersecurity
