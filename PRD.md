@@ -17,20 +17,20 @@ Implement three features following existing patterns from `/edit` and `/groups/e
   - Render `edit_categories.html` template
 
 ### Frontend Template
-- [ ] Create `templates/edit_categories.html`
-  - [ ] Copy OAuth authentication section from `edit_groups.html`
-  - [ ] Add categories list view showing name, slug (badge), description
-  - [ ] Add "Create New Category" button at top
-  - [ ] Add Edit/Delete action buttons for each category
-  - [ ] Create edit/create modal with fields:
+- [x] Create `templates/edit_categories.html`
+  - [x] Copy OAuth authentication section from `edit_groups.html`
+  - [x] Add categories list view showing name, slug (badge), description
+  - [x] Add "Create New Category" button at top
+  - [x] Add Edit/Delete action buttons for each category
+  - [x] Create edit/create modal with fields:
     - Name (text input, required)
     - Description (textarea, optional)
     - Slug (read-only display for edits, auto-shown for creates)
-  - [ ] Create delete confirmation modal with usage stats
-  - [ ] Add status overlay for GitHub operations
-  - [ ] Add success modal with PR link
-  - [ ] Add CSS styles matching edit_groups.html pattern
-  - [ ] Add inline JavaScript to inject OAuth config and categories data
+  - [x] Create delete confirmation modal with usage stats
+  - [x] Add status overlay for GitHub operations
+  - [x] Add success modal with PR link
+  - [x] Add CSS styles matching edit_groups.html pattern
+  - [x] Add inline JavaScript to inject OAuth config and categories data
 
 ### Frontend JavaScript
 - [ ] Create `static/js/edit-categories.js`
