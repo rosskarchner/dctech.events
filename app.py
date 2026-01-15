@@ -1117,6 +1117,23 @@ def categories_json():
     ]
     return Response(json.dumps(categories_list, indent=2), mimetype='application/json')
 
+@app.route("/categories/edit/")
+def edit_categories():
+    """Edit page for category management"""
+    categories = get_categories()
+
+    # Get OAuth configuration from environment or config
+    github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
+    oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
+                                            config.get('oauth_callback_endpoint', ''))
+    is_dev_mode = app.debug or os.environ.get('FLASK_ENV') == 'development'
+
+    return render_template('edit_categories.html',
+                          categories=categories,
+                          is_dev_mode=is_dev_mode,
+                          github_client_id=github_client_id,
+                          oauth_callback_endpoint=oauth_callback_endpoint)
+
 @app.route("/groups/edit/")
 def edit_groups():
     """Bulk edit page for groups"""

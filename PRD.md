@@ -12,7 +12,7 @@ Implement three features following existing patterns from `/edit` and `/groups/e
 - [x] Add `/categories.json` endpoint in `app.py` (after line 1103)
   - Convert categories dict to list format
   - Include slug, name, description for each category
-- [ ] Add `/categories/edit/` route in `app.py` (after line 1120)
+- [x] Add `/categories/edit/` route in `app.py` (after line 1120)
   - Pass categories, OAuth config, dev mode flag
   - Render `edit_categories.html` template
 
