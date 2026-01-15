@@ -1039,17 +1039,29 @@ def edit_list():
 
         current_group['events'].append(event)
 
+    # Calculate filter statistics
+    events_without_categories = sum(1 for e in future_events if not e.get('categories'))
+    manual_events_count = sum(1 for e in future_events if e.get('source') == 'manual')
+    ical_events_count = sum(1 for e in future_events if e.get('source') == 'ical')
+
+    filter_stats = {
+        'events_without_categories': events_without_categories,
+        'manual_events_count': manual_events_count,
+        'ical_events_count': ical_events_count
+    }
+
     # Check if in dev mode (Flask debug mode or FLASK_ENV=development)
     is_dev_mode = app.debug or os.environ.get('FLASK_ENV') == 'development'
-    
+
     # Get OAuth configuration from environment or config
     github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
     oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
                                             config.get('oauth_callback_endpoint', ''))
-    
+
     return render_template('edit_list.html',
                           grouped_events=grouped_events,
                           categories=get_categories(),
+                          filter_stats=filter_stats,
                           is_dev_mode=is_dev_mode,
                           github_client_id=github_client_id,
                           oauth_callback_endpoint=oauth_callback_endpoint)

@@ -67,11 +67,11 @@ Implement three features following existing patterns from `/edit` and `/groups/e
 ## Feature 2: Filtering on /edit Page
 
 ### Backend
-- [ ] Update `edit_list()` route in `app.py` (line 1010)
-  - [ ] Calculate `events_without_categories` count
-  - [ ] Calculate `manual_events_count`
-  - [ ] Calculate `ical_events_count`
-  - [ ] Pass `filter_stats` dict to template
+- [x] Update `edit_list()` route in `app.py` (line 1010)
+  - [x] Calculate `events_without_categories` count
+  - [x] Calculate `manual_events_count`
+  - [x] Calculate `ical_events_count`
+  - [x] Pass `filter_stats` dict to template
 
 ### Frontend Template
 - [ ] Update `templates/edit_list.html`
