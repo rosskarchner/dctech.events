@@ -29,6 +29,12 @@ instance/
 venv/
 ENV/
 
+# Testing
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
 # Project specific
 _cache/
 _data/*.yaml

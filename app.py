@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, send_from_directory
 from datetime import date, datetime, timedelta, time
 import os
 import yaml
@@ -797,6 +797,11 @@ def generate_week_calendar_image(week_start, week_end, events):
                  fill=event_color, font=url_font)
 
     return img
+
+@app.route("/robots.txt")
+def robots_txt():
+    """Serve robots.txt from the static folder"""
+    return send_from_directory(app.static_folder, 'robots.txt')
 
 @app.route("/")
 def homepage():

@@ -410,20 +410,20 @@ This event was submitted via the web form by @${eventData.submitted_by}.`
  * Generate YAML content from event data
  */
 function generateYAML(data) {
-    let yaml = `title: ${data.title}\n`;
+    let yaml = `title: "${data.title}"\n`;
     yaml += `date: '${data.date}'\n`;
     if (data.time) {
         yaml += `time: '${data.time}'\n`;
     }
     yaml += `url: ${data.url}\n`;
     if (data.location) {
-        yaml += `location: ${data.location}\n`;
+        yaml += `location: "${data.location}"\n`;
     }
     if (data.end_date) {
         yaml += `end_date: '${data.end_date}'\n`;
     }
     if (data.cost) {
-        yaml += `cost: '${data.cost}'\n`;
+        yaml += `cost: "${data.cost}"\n`;
     }
     yaml += `submitted_by: ${data.submitted_by}\n`;
 

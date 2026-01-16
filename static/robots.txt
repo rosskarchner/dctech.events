@@ -1,0 +1,6 @@
+# robots.txt for dctech.events
+User-agent: *
+Disallow: /edit/
+Disallow: /edit/event/
+Disallow: /categories/edit/
+Disallow: /groups/edit/

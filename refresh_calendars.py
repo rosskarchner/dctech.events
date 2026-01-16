@@ -27,6 +27,9 @@ if os.path.exists(CONFIG_FILE):
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
 
+# User agent for HTTP requests
+USER_AGENT = 'dctech.events/1.0 (+https://dctech.events)'
+
 # Constants - data paths
 GROUPS_DIR = '_groups'
 DATA_DIR = '_data'
@@ -88,7 +91,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 pass
 
         # Prepare headers for conditional GET
-        headers = {}
+        headers = {
+            'User-Agent': USER_AGENT
+        }
         meta_data = {}
 
         # Check if we have cached metadata
@@ -181,7 +186,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 event_data = None
                 if not using_fallback and scan_for_metadata:
                     # Fetch the event page
-                    event_response = requests.get(event_url)
+                    event_response = requests.get(event_url, headers={'User-Agent': USER_AGENT})
                     event_response.raise_for_status()
 
                     # Extract JSON-LD data
