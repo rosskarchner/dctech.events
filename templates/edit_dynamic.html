@@ -743,7 +743,17 @@
             document.getElementById('url').closest('.form-group').style.display = 'none';
             document.querySelector('.form-row').style.display = 'none'; // Hides date and timing
             document.querySelectorAll('.form-row')[1].style.display = 'none'; // Hides city and state
-            document.querySelector('.optional-details').style.display = 'none'; // Hides all optional fields
+
+            // Hide specific optional fields but keep categories visible
+            document.getElementById('end_date').closest('.form-group').style.display = 'none';
+            document.getElementById('cost').closest('.form-group').style.display = 'none';
+            document.getElementById('description').closest('.form-group').style.display = 'none';
+
+            // Make sure optional details is open so categories are visible
+            const optionalDetails = document.querySelector('.optional-details');
+            optionalDetails.open = true;
+            // Hide the summary since we're always showing it
+            optionalDetails.querySelector('summary').style.display = 'none';
 
             // Show both "Submit Changes" (for title/category edits) and "Remove from Calendar"
             document.getElementById('submit-btn').style.display = 'inline-block';
