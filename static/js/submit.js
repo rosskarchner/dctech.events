@@ -285,7 +285,7 @@ async function handleFormSubmit(e) {
         // Collect form data
          const city = document.getElementById('city').value.trim();
          const state = document.getElementById('state').value;
-         
+
          const formData = {
              title: document.getElementById('title').value.trim(),
              date: document.getElementById('date').value,
@@ -293,8 +293,7 @@ async function handleFormSubmit(e) {
              url: document.getElementById('url').value.trim(),
              location: city && state ? `${city}, ${state}` : '',
              end_date: document.getElementById('end_date').value || '',
-             cost: document.getElementById('cost').value.trim() || '',
-             submitted_by: userData.login
+             cost: document.getElementById('cost').value.trim() || ''
          };
 
         // Validate data
@@ -400,7 +399,7 @@ async function createPullRequest(eventData) {
 **Date:** ${eventData.date}${eventData.time ? ' at ' + eventData.time : ''}
 ${eventData.end_date ? `**End Date:** ${eventData.end_date}\n` : ''}**URL:** ${eventData.url}
 ${eventData.location ? `**Location:** ${eventData.location}\n` : ''}${eventData.cost ? `**Cost:** ${eventData.cost}\n` : ''}
-This event was submitted via the web form by @${eventData.submitted_by}.`
+This event was submitted via the web form.`
     });
 
     return pr.html_url;
@@ -425,7 +424,6 @@ function generateYAML(data) {
     if (data.cost) {
         yaml += `cost: "${data.cost}"\n`;
     }
-    yaml += `submitted_by: ${data.submitted_by}\n`;
 
     return yaml;
 }

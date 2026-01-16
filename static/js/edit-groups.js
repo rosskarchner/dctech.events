@@ -474,14 +474,10 @@ function updateGroupYAMLWithAllFields(existingYAML, updatedData) {
         }
     }
 
-    // Preserve fields we don't edit (submitted_by, submitter_link, suppress_urls)
+    // Preserve fields we don't edit (suppress_urls)
     const existingLines = existingYAML.split('\n');
     for (const line of existingLines) {
-        if (line.match(/^submitted_by:/)) {
-            yaml += line + '\n';
-        } else if (line.match(/^submitter_link:/)) {
-            yaml += line + '\n';
-        } else if (line.match(/^suppress_urls:/)) {
+        if (line.match(/^suppress_urls:/)) {
             // Copy suppress_urls and all its items
             yaml += line + '\n';
             const idx = existingLines.indexOf(line);

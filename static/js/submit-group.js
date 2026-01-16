@@ -230,9 +230,7 @@ async function handleFormSubmit(e) {
             name: document.getElementById('name').value.trim(),
             website: document.getElementById('website').value.trim(),
             ical: document.getElementById('ical').value.trim() || '',
-            fallback_url: document.getElementById('fallback_url').value.trim() || '',
-            submitter_link: document.getElementById('submitter_link').value.trim() || '',
-            submitted_by: userData.login
+            fallback_url: document.getElementById('fallback_url').value.trim() || ''
         };
 
         // Validate data
@@ -336,9 +334,8 @@ async function createPullRequest(groupData) {
 
 **Name:** ${groupData.name}
 **Website:** ${groupData.website}
-${groupData.ical ? `**iCal Feed:** ${groupData.ical}\n` : ''}${groupData.fallback_url ? `**Fallback URL:** ${groupData.fallback_url}\n` : ''}${groupData.submitter_link ? `**Submitted by:** ${groupData.submitter_link}\n` : ''}
-
-This group was submitted via the web form by @${groupData.submitted_by}.`
+${groupData.ical ? `**iCal Feed:** ${groupData.ical}\n` : ''}${groupData.fallback_url ? `**Fallback URL:** ${groupData.fallback_url}\n` : ''}
+This group was submitted via the web form.`
     });
 
     return pr.html_url;

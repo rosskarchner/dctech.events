@@ -320,13 +320,6 @@ def parse_single_event_data(event, event_id, timezone_name):
     # Add the event ID
     event['id'] = event_id
 
-    # Map submitted_by to submitter_name and submitter_link
-    if 'submitted_by' in event:
-        if event['submitted_by'].lower() != 'anonymous':
-            event['submitter_name'] = event['submitted_by']
-            if 'submitter_link' in event:
-                event['submitter_link'] = event['submitter_link']
-
     # Parse date and time using dateparser
     if 'date' in event and 'time' in event:
         # First normalize the date to YYYY-MM-DD format

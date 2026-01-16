@@ -26,16 +26,7 @@
                                                 {{ event.location }}
                                             </div>
                                         {% endif %}
-                                        {% if event.submitter_name and event.submitter_name != 'anonymous' %}
-                                            <div>submitted by
-                                            {% if event.submitter_link %}
-                                                <a href="{{ event.submitter_link }}" target="_blank" rel="noopener noreferrer" class="p-author h-card">{{ event.submitter_name }}</a>
-                                            {% else %}
-                                                <span class="p-author">{{ event.submitter_name }}</span>
-                                            {% endif %}
-                                            </div>
-
-                                        {% elif event.group %}
+                                        {% if event.group %}
                                            <div class="p-organizer h-card">
                                             {% if event.group_website %}
                                                 <a class="u-url p-name" href="{{ event.group_website }}" target="_blank" rel="noopener noreferrer">{{ event.group }}</a>

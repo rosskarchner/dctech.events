@@ -579,67 +579,6 @@ class TestApp(unittest.TestCase):
             except:
                 pass
 
-    def test_microformats2_with_submitter(self):
-        """Test microformats2 markup with event submitter instead of organizer"""
-        from app import app
-        import os
-        import yaml
-        
-        # Create test client
-        client = app.test_client()
-        
-        # Create test data directory
-        data_dir = '_data'
-        os.makedirs(data_dir, exist_ok=True)
-        test_file = os.path.join(data_dir, 'upcoming.yaml')
-        
-        # Create test event with submitter
-        today_str = self.today.strftime('%Y-%m-%d')
-        test_events = [
-            {
-                'date': today_str,
-                'time': '14:30',
-                'title': 'Community Submitted Event',
-                'location': 'Arlington VA',
-                'url': 'http://community-event.example.com',
-                'submitter_name': 'Jane Doe',
-                'submitter_link': 'http://janedoe.example.com'
-            }
-        ]
-        
-        try:
-            # Write test data
-            with open(test_file, 'w') as f:
-                yaml.dump(test_events, f)
-            
-            # Get homepage
-            response = client.get('/')
-            self.assertEqual(response.status_code, 200)
-            
-            # Convert response to string
-            html = response.data.decode()
-            
-            # Check for h-event class
-            self.assertIn('class="h-event event"', html)
-            
-            # Check for p-author with h-card (for submitter)
-            self.assertIn('class="p-author h-card"', html)
-            self.assertIn('Jane Doe', html)
-            self.assertIn('http://janedoe.example.com', html)
-            
-            # Verify event details
-            self.assertIn('Community Submitted Event', html)
-            self.assertIn('Arlington VA', html)
-            
-        finally:
-            # Cleanup
-            if os.path.exists(test_file):
-                os.remove(test_file)
-            try:
-                os.rmdir(data_dir)
-            except:
-                pass
-
     def test_microformats2_all_day_event(self):
         """Test microformats2 markup for all-day events (no time specified)"""
         from app import app
