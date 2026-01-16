@@ -231,19 +231,27 @@ function openCreateModal() {
     document.getElementById('modal-mode').value = 'create';
     document.getElementById('edit-category-slug').value = '';
     document.getElementById('edit-name').value = '';
+    document.getElementById('edit-slug').value = '';
     document.getElementById('edit-description').value = '';
     document.getElementById('save-button').textContent = 'Create Category';
 
-    // Show slug preview, hide slug display
+    // Show slug input and preview, hide slug display
     document.getElementById('slug-display-group').style.display = 'none';
+    document.getElementById('slug-input-group').style.display = 'block';
     document.getElementById('slug-preview-group').style.display = 'block';
 
-    // Update slug preview as user types
+    // Update slug preview as user types in name field
     const nameInput = document.getElementById('edit-name');
+    const slugInput = document.getElementById('edit-slug');
+    
     const updateSlugPreview = () => {
-        const slug = slugify(nameInput.value);
-        document.getElementById('slug-preview').textContent = slug || '(empty)';
+        // If slug input is empty, show auto-generated preview
+        if (!slugInput.value.trim()) {
+            const slug = slugify(nameInput.value);
+            document.getElementById('slug-preview').textContent = slug || '(empty)';
+        }
     };
+    
     nameInput.removeEventListener('input', updateSlugPreview);
     nameInput.addEventListener('input', updateSlugPreview);
     updateSlugPreview();
@@ -300,7 +308,21 @@ async function saveCategoryForm(e) {
     }
 
     if (mode === 'create') {
-        await createCategory(name, description);
+        let slug = document.getElementById('edit-slug').value.trim();
+        
+        // If slug is empty, auto-generate from name
+        if (!slug) {
+            slug = slugify(name);
+        } else {
+            // Validate custom slug
+            slug = slug.toLowerCase().replace(/[^\w-]/g, '').replace(/[\s_]+/g, '-');
+            if (!slug) {
+                showError('Invalid slug - must contain at least one alphanumeric character');
+                return;
+            }
+        }
+        
+        await createCategory(name, description, slug);
     } else {
         const slug = document.getElementById('edit-category-slug').value;
         await editCategory(slug, name, description);
@@ -310,8 +332,10 @@ async function saveCategoryForm(e) {
 /**
  * Create new category
  */
-async function createCategory(name, description) {
-    const slug = slugify(name);
+async function createCategory(name, description, slug) {
+    if (!slug) {
+        slug = slugify(name);
+    }
 
     if (!slug) {
         showError('Invalid category name - cannot generate slug');
