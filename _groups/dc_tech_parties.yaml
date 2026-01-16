@@ -3,3 +3,5 @@ website: https://www.dctechparties.com/
 ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-mxkaa29dR0YNlaJ
 fallback_url: https://lu.ma/dctechparties
 active: true
+categories:
+  - social
