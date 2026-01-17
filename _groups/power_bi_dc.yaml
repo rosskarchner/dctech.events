@@ -2,3 +2,5 @@ name: Power BI DC
 website: https://www.meetup.com/power-bi-dc/
 ical: https://www.meetup.com/power-bi-dc/events/ical/
 active: true
+categories:
+  - microsoft
