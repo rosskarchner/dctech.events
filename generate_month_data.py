@@ -321,7 +321,7 @@ def parse_single_event_data(event, event_id, timezone_name):
     event['id'] = event_id
 
     # Parse date and time using dateparser
-    if 'date' in event and 'time' in event:
+    if 'date' in event and 'time' in event and event['time']:
         # First normalize the date to YYYY-MM-DD format
         if isinstance(event['date'], date):
             event['date'] = event['date'].strftime('%Y-%m-%d')
@@ -457,7 +457,44 @@ def parse_single_event_data(event, event_id, timezone_name):
             if 'end_date' in event and 'end_time' in event:
                 event['end_date'] = end_datetime.strftime('%Y-%m-%d')
                 event['end_time'] = end_datetime.strftime('%H:%M')
-    
+
+    elif 'date' in event:
+        # Handle all-day events (date but no time)
+        # Normalize the date to YYYY-MM-DD format
+        if isinstance(event['date'], date):
+            event['date'] = event['date'].strftime('%Y-%m-%d')
+        else:
+            # Parse the date string flexibly
+            parsed_date = dateparser.parse(str(event['date']), settings={
+                'TIMEZONE': timezone_name,
+                'DATE_ORDER': 'YMD',
+                'PREFER_DATES_FROM': 'future',
+                'PREFER_DAY_OF_MONTH': 'first'
+            })
+            if parsed_date is None:
+                raise ValueError(f"Could not parse date: {event['date']}")
+            event['date'] = parsed_date.strftime('%Y-%m-%d')
+
+        # Set start_date for all-day events (no start_time since no time specified)
+        event['start_date'] = event['date']
+
+        # Handle end_date if present
+        if 'end_date' in event:
+            if isinstance(event['end_date'], date):
+                event['end_date'] = event['end_date'].strftime('%Y-%m-%d')
+            else:
+                parsed_end_date = dateparser.parse(str(event['end_date']), settings={
+                    'TIMEZONE': timezone_name,
+                    'DATE_ORDER': 'YMD',
+                    'PREFER_DATES_FROM': 'future'
+                })
+                if parsed_end_date is None:
+                    event['end_date'] = event['date']  # Use start date if can't parse
+                else:
+                    event['end_date'] = parsed_end_date.strftime('%Y-%m-%d')
+        else:
+            event['end_date'] = event['date']
+
     return event
 
 def load_categories():
