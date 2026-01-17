@@ -5,3 +5,5 @@ fallback_url: https://lu.ma/pydistrict
 active: true
 suppress_urls:
   - https://lu.ma/e/evt-PrnKuOUHph8Fgjg
+categories:
+  - open-source-community
