@@ -2,3 +2,5 @@ name: Capital Area .NET Users Group
 website: https://www.meetup.com/caparea-net
 ical: https://www.meetup.com/caparea-net/events/ical/
 active: true
+categories:
+  - microsoft
