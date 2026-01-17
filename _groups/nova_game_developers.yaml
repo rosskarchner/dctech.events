@@ -2,3 +2,5 @@ name: NOVA Game Developers
 website: https://www.meetup.com/novagamedevs/
 ical: https://www.meetup.com/novagamedevs/events/ical/
 active: true
+categories:
+  - gaming
