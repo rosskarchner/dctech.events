@@ -1157,16 +1157,6 @@ def edit_groups():
     categories = get_categories()
     groups = get_approved_groups()
 
-    # Calculate filter statistics
-    groups_without_categories = sum(
-        1 for g in groups
-        if not g.get('categories')
-    )
-
-    filter_stats = {
-        'groups_without_categories': groups_without_categories
-    }
-
     # Get OAuth configuration from environment or config
     github_client_id = os.environ.get('GITHUB_CLIENT_ID', config.get('github_client_id', ''))
     oauth_callback_endpoint = os.environ.get('OAUTH_CALLBACK_ENDPOINT',
@@ -1175,7 +1165,6 @@ def edit_groups():
 
     return render_template('edit_groups.html',
                           categories=categories,
-                          filter_stats=filter_stats,
                           is_dev_mode=is_dev_mode,
                           github_client_id=github_client_id,
                           oauth_callback_endpoint=oauth_callback_endpoint)
