@@ -2,3 +2,5 @@ name: Microsoft Cloud & AI Meetup
 website: https://www.meetup.com/microsoft-cloud
 ical: https://www.meetup.com/microsoft-cloud/events/ical/
 active: true
+categories:
+  - microsoft
