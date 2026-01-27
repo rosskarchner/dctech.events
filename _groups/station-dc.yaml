@@ -1,0 +1,5 @@
+name: STATION DC
+website: https://luma.com/stationdc
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-AAO2oyuqOv3LHFu
+fallback_url: https://luma.com/stationdc
+active: true
