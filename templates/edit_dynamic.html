@@ -837,9 +837,8 @@
 
             if (isManualEvent) {
                 // Delete the manual event file
-                // Manual events use id (filename) not slug
-                const eventId = event.slug || event.id;
-                const filePath = `_single_events/${eventId}.yaml`;
+                // Manual events use id (the filename without extension)
+                const filePath = `_single_events/${event.id}.yaml`;
                 statusDiv.innerHTML = '<strong>Deleting event file...</strong>';
 
                 await deleteFile(
