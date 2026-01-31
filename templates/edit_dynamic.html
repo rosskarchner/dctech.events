@@ -588,7 +588,7 @@
             // Find the matching event
             const event = events.find(e =>
                 e.guid === eventId ||
-                (e.source === 'manual' && e.slug === eventId)
+                (e.source === 'manual' && e.id === eventId)
             );
 
             if (!event) {
@@ -837,7 +837,9 @@
 
             if (isManualEvent) {
                 // Delete the manual event file
-                const filePath = `_single_events/${event.slug}.yaml`;
+                // Manual events use id (filename) not slug
+                const eventId = event.slug || event.id;
+                const filePath = `_single_events/${eventId}.yaml`;
                 statusDiv.innerHTML = '<strong>Deleting event file...</strong>';
 
                 await deleteFile(
@@ -862,7 +864,8 @@ Submitted via web interface by @${userData.login}`;
 
             } else {
                 // Create override file with hidden: true
-                const eventId = event.guid || event.slug;
+                // Use guid for iCal events, fallback to id for any edge cases
+                const eventId = event.guid || event.id;
                 const filePath = `_event_overrides/${eventId}.yaml`;
                 const yamlContent = generateHiddenOverrideYAML();
 
