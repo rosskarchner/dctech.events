@@ -90,7 +90,7 @@
                         <input type="checkbox"
                                class="event-checkbox"
                                data-slot="{{ group.slot_key }}"
-                               data-event-id="{{ event.guid or event.slug }}"
+                               data-event-id="{{ event.guid or event.id }}"
                                data-event-title="{{ event.title }}"
                                data-event-source="{{ event.source|default('unknown') }}"
                                data-event-categories="{{ event.categories|default([])|join(',') }}">
@@ -114,7 +114,7 @@
                     </div>
 
                     <div class="event-actions">
-                        <a href="/edit/event/{% if is_dev_mode %}?dev=true{% endif %}#{{ event.guid or event.slug }}"
+                        <a href="/edit/event/{% if is_dev_mode %}?dev=true{% endif %}#{{ event.guid or event.id }}"
                            class="btn btn-sm btn-primary">Edit</a>
                     </div>
                 </div>
@@ -815,7 +815,7 @@ async function executeMerge() {
 
             // Get full event data
             const events = Array.from(eventIds).map(id => {
-                const event = allEvents.find(e => (e.guid || e.slug) === id);
+                const event = allEvents.find(e => (e.guid || e.id) === id);
                 const checkbox = document.querySelector(`input[data-event-id="${id}"]`);
                 return {
                     id,
