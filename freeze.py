@@ -113,6 +113,20 @@ def ical_feed():
     yield {}
 
 @freezer.register_generator
+def category_ical_feed():
+    """Generate iCal feeds for each category"""
+    categories = get_categories()
+    for slug in categories.keys():
+        yield {'slug': slug}
+
+@freezer.register_generator
+def location_ical_feed():
+    """Generate iCal feeds for each location"""
+    yield {'state': 'dc'}
+    yield {'state': 'va'}
+    yield {'state': 'md'}
+
+@freezer.register_generator
 def rss_feed():
     """Generate the RSS feed"""
     yield {}
