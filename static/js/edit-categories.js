@@ -356,7 +356,7 @@ async function createCategory(name, description, slug) {
     }
 
     closeEditModal();
-    const hideOverlayFn = showOverlay('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
@@ -397,7 +397,7 @@ async function createCategory(name, description, slug) {
  */
 async function editCategory(slug, newName, newDescription) {
     closeEditModal();
-    const hideOverlayFn = showOverlay('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
@@ -446,7 +446,7 @@ async function openDeleteModal(slug) {
     document.getElementById('delete-category-slug').value = slug;
 
     // Fetch usage stats
-    const hideOverlayFn = showOverlay('Checking category usage...');
+    showOverlay('Checking category usage...');
     try {
         const [eventsRes, groupsRes] = await Promise.all([
             fetch('/events.json'),
@@ -503,7 +503,7 @@ async function deleteCategory() {
     }
 
     closeDeleteModal();
-    const hideOverlayFn = showOverlay('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);

@@ -279,7 +279,7 @@ async function applyCategoryToGroups() {
         return;
     }
 
-    const hideOverlayFn = showOverlay('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
@@ -416,7 +416,7 @@ async function saveIndividualEdit(e) {
     };
 
     closeEditModal();
-    const hideOverlayFn = showOverlay('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
