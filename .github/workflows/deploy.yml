@@ -122,6 +122,11 @@ jobs:
             --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
 
+      - name: Track events and persist to S3
+        run: |
+          echo "Tracking events..."
+          python track_events.py
+
       - name: Deployment summary
         if: success()
         run: |

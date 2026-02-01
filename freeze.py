@@ -105,6 +105,11 @@ def ical_feed():
     """Generate the iCal feed"""
     yield {}
 
+@freezer.register_generator
+def rss_feed():
+    """Generate the RSS feed"""
+    yield {}
+
 # Image generation temporarily disabled
 # @freezer.register_generator
 # def week_image():

@@ -1382,5 +1382,65 @@ def ical_feed():
     # Return calendar as text/calendar
     return Response(cal.to_ical(), mimetype='text/calendar')
 
+@app.route("/events-feed.xml")
+def rss_feed():
+    """
+    Generate RSS feed of recently added events.
+    
+    This route generates the RSS feed dynamically by calling the
+    generate_rss_feed.py script which reads from S3.
+    """
+    import subprocess
+    
+    # Check if S3_BUCKET is configured
+    s3_bucket = os.environ.get('S3_BUCKET', '')
+    if not s3_bucket:
+        # If S3 is not configured, return an empty feed
+        from xml.etree import ElementTree as ET
+        rss = ET.Element('rss', version='2.0')
+        channel = ET.SubElement(rss, 'channel')
+        ET.SubElement(channel, 'title').text = f"{SITE_NAME} - New Events"
+        ET.SubElement(channel, 'link').text = BASE_URL
+        ET.SubElement(channel, 'description').text = "RSS feed not yet available"
+        
+        tree = ET.ElementTree(rss)
+        ET.indent(tree, space='  ')
+        
+        import io
+        output = io.BytesIO()
+        tree.write(output, encoding='utf-8', xml_declaration=True)
+        
+        return Response(output.getvalue(), mimetype='application/rss+xml')
+    
+    try:
+        # Run the generate_rss_feed.py script
+        result = subprocess.run(
+            ['python', 'generate_rss_feed.py'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            return Response(result.stdout, mimetype='application/rss+xml')
+        else:
+            # Log error and return empty feed
+            print(f"Error generating RSS feed: {result.stderr}")
+            return Response(
+                '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Error</title></channel></rss>',
+                mimetype='application/rss+xml'
+            )
+    except subprocess.TimeoutExpired:
+        return Response(
+            '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Timeout</title></channel></rss>',
+            mimetype='application/rss+xml'
+        )
+    except Exception as e:
+        print(f"Exception generating RSS feed: {e}")
+        return Response(
+            '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Error</title></channel></rss>',
+            mimetype='application/rss+xml'
+        )
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
