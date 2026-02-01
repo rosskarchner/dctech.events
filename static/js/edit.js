@@ -701,11 +701,10 @@ This edit was submitted via the web form by @${formData.edited_by}.`
 
 /**
  * Generate YAML content for event edit
- * For override files, only includes fields that actually changed from the original
- * For manual events, includes all non-empty fields
+ * Only includes fields that actually changed from the original event
+ * Never adds end_date unless the user explicitly set one
  */
 function generateEditYAML(formData, originalEvent) {
-    const isOverride = originalEvent.source !== 'manual';
     let yaml = '';
     
     // Helper to check if a field changed
@@ -715,50 +714,50 @@ function generateEditYAML(formData, originalEvent) {
         return original !== updated;
     };
     
-    // For manual events, include all fields; for overrides, only changed fields
-    if (!isOverride || hasChanged('title')) {
+    // Only include fields that have actually changed
+    if (hasChanged('title')) {
         if (formData.title) {
             yaml += `title: "${formData.title.replace(/"/g, '\\"')}"\n`;
         }
     }
     
-    if (!isOverride || hasChanged('date')) {
+    if (hasChanged('date')) {
         if (formData.date) {
             yaml += `date: '${formData.date}'\n`;
         }
     }
     
-    if (!isOverride || hasChanged('time')) {
+    if (hasChanged('time')) {
         if (formData.time) {
             yaml += `time: '${formData.time}'\n`;
         }
     }
     
-    if (!isOverride || hasChanged('url')) {
+    if (hasChanged('url')) {
         if (formData.url) {
             yaml += `url: ${formData.url}\n`;
         }
     }
     
-    if (!isOverride || hasChanged('location')) {
+    if (hasChanged('location')) {
         if (formData.location) {
             yaml += `location: ${formData.location}\n`;
         }
     }
     
-    if (!isOverride || hasChanged('end_date')) {
-        if (formData.end_date) {
-            yaml += `end_date: '${formData.end_date}'\n`;
-        }
+    // Only include end_date if it changed AND is not empty
+    // This ensures we never add end_date unless the user explicitly set one
+    if (hasChanged('end_date') && formData.end_date) {
+        yaml += `end_date: '${formData.end_date}'\n`;
     }
     
-    if (!isOverride || hasChanged('cost')) {
+    if (hasChanged('cost')) {
         if (formData.cost) {
             yaml += `cost: '${formData.cost}'\n`;
         }
     }
     
-    if (!isOverride || hasChanged('description')) {
+    if (hasChanged('description')) {
         if (formData.description) {
             yaml += `description: |\n  ${formData.description.replace(/\n/g, '\n  ')}\n`;
         }
@@ -769,7 +768,7 @@ function generateEditYAML(formData, originalEvent) {
     const updatedCats = (formData.categories || []).sort();
     const catsChanged = JSON.stringify(originalCats) !== JSON.stringify(updatedCats);
     
-    if (!isOverride || catsChanged) {
+    if (catsChanged) {
         if (formData.categories && formData.categories.length > 0) {
             yaml += `categories:\n`;
             for (const cat of formData.categories) {
