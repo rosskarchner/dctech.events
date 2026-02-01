@@ -105,6 +105,20 @@ def ical_feed():
     """Generate the iCal feed"""
     yield {}
 
+@freezer.register_generator
+def category_ical_feed():
+    """Generate iCal feeds for each category"""
+    categories = get_categories()
+    for slug in categories.keys():
+        yield {'slug': slug}
+
+@freezer.register_generator
+def location_ical_feed():
+    """Generate iCal feeds for each location"""
+    yield {'state': 'dc'}
+    yield {'state': 'va'}
+    yield {'state': 'md'}
+
 # Image generation temporarily disabled
 # @freezer.register_generator
 # def week_image():

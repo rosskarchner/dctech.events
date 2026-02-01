@@ -1247,6 +1247,20 @@ def ical_feed():
     # Get upcoming events
     events = get_events()
     
+    return generate_ical_feed(events, SITE_NAME, TAGLINE)
+
+def generate_ical_feed(filtered_events, calendar_name, calendar_description):
+    """
+    Helper function to generate an iCal feed for a filtered set of events
+    
+    Args:
+        filtered_events: List of event dictionaries to include in the feed
+        calendar_name: Name for the calendar (X-WR-CALNAME)
+        calendar_description: Description for the calendar (X-WR-CALDESC)
+    
+    Returns:
+        Response object with iCal content
+    """
     # Build group name to website mapping
     groups = get_approved_groups()
     group_websites = {group.get('name'): group.get('website') for group in groups if group.get('website')}
@@ -1255,11 +1269,11 @@ def ical_feed():
     cal = Calendar()
     cal.add('prodid', f'-//{SITE_NAME}//dctech.events//')
     cal.add('version', '2.0')
-    cal.add('x-wr-calname', SITE_NAME)
-    cal.add('x-wr-caldesc', TAGLINE)
+    cal.add('x-wr-calname', calendar_name)
+    cal.add('x-wr-caldesc', calendar_description)
     
     # Add events to calendar
-    for event in events:
+    for event in filtered_events:
         # Parse event date
         event_date_str = event.get('date')
         if not event_date_str:
@@ -1381,6 +1395,38 @@ def ical_feed():
     
     # Return calendar as text/calendar
     return Response(cal.to_ical(), mimetype='text/calendar')
+
+@app.route("/categories/<slug>/feed.ics")
+def category_ical_feed(slug):
+    """Generate an iCal feed for a specific category"""
+    categories = get_categories()
+    if slug not in categories:
+        return "Category not found", 404
+    
+    events = get_events()
+    filtered_events = [e for e in events if slug in e.get('categories', [])]
+    
+    category = categories[slug]
+    calendar_name = f"{category['name']} Events - {SITE_NAME}"
+    calendar_description = f"{category['name']} technology events in and around Washington, DC"
+    
+    return generate_ical_feed(filtered_events, calendar_name, calendar_description)
+
+@app.route("/locations/<state>/feed.ics")
+def location_ical_feed(state):
+    """Generate an iCal feed for a specific location"""
+    state = state.upper()
+    if state not in ['DC', 'VA', 'MD']:
+        return "Region not found", 404
+    
+    events = get_events()
+    filtered_events = filter_events_by_location(events, state=state)
+    
+    region_name = get_region_name(state)
+    calendar_name = f"{region_name} Events - {SITE_NAME}"
+    calendar_description = f"Technology events in {region_name}"
+    
+    return generate_ical_feed(filtered_events, calendar_name, calendar_description)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
