@@ -715,34 +715,24 @@ function generateEditYAML(formData, originalEvent) {
     };
     
     // Only include fields that have actually changed
-    if (hasChanged('title')) {
-        if (formData.title) {
-            yaml += `title: "${formData.title.replace(/"/g, '\\"')}"\n`;
-        }
+    if (hasChanged('title') && formData.title) {
+        yaml += `title: "${formData.title.replace(/"/g, '\\"')}"\n`;
     }
     
-    if (hasChanged('date')) {
-        if (formData.date) {
-            yaml += `date: '${formData.date}'\n`;
-        }
+    if (hasChanged('date') && formData.date) {
+        yaml += `date: '${formData.date}'\n`;
     }
     
-    if (hasChanged('time')) {
-        if (formData.time) {
-            yaml += `time: '${formData.time}'\n`;
-        }
+    if (hasChanged('time') && formData.time) {
+        yaml += `time: '${formData.time}'\n`;
     }
     
-    if (hasChanged('url')) {
-        if (formData.url) {
-            yaml += `url: ${formData.url}\n`;
-        }
+    if (hasChanged('url') && formData.url) {
+        yaml += `url: ${formData.url}\n`;
     }
     
-    if (hasChanged('location')) {
-        if (formData.location) {
-            yaml += `location: ${formData.location}\n`;
-        }
+    if (hasChanged('location') && formData.location) {
+        yaml += `location: ${formData.location}\n`;
     }
     
     // Only include end_date if it changed AND is not empty
@@ -751,16 +741,12 @@ function generateEditYAML(formData, originalEvent) {
         yaml += `end_date: '${formData.end_date}'\n`;
     }
     
-    if (hasChanged('cost')) {
-        if (formData.cost) {
-            yaml += `cost: '${formData.cost}'\n`;
-        }
+    if (hasChanged('cost') && formData.cost) {
+        yaml += `cost: '${formData.cost}'\n`;
     }
     
-    if (hasChanged('description')) {
-        if (formData.description) {
-            yaml += `description: |\n  ${formData.description.replace(/\n/g, '\n  ')}\n`;
-        }
+    if (hasChanged('description') && formData.description) {
+        yaml += `description: |\n  ${formData.description.replace(/\n/g, '\n  ')}\n`;
     }
     
     // Handle categories - check if they changed
