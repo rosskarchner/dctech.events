@@ -149,9 +149,40 @@ When you push to `main`:
 3. Authenticates to AWS using OIDC federation
 4. Syncs built files to S3 bucket
 5. Invalidates CloudFront cache (instant deployment)
-6. Site is live at https://dctech.events
+6. Tracks new events and persists to S3
+7. Site is live at https://dctech.events
 
 **No long-lived AWS credentials are stored in GitHub.**
+
+## 📰 RSS Feed and Event Tracking
+
+The site provides an RSS feed of recently added events and posts daily summaries to micro.blog.
+
+### RSS Feed
+
+- **Feed URL**: `https://dctech.events/events-feed.xml`
+- **Content**: Events added in the last 30 days
+- **Format**: Standard RSS 2.0
+- **Subscribe**: Use any RSS reader
+
+### Daily Summaries
+
+When new events are added, an automatic summary is posted daily to micro.blog with:
+- Count of new events
+- List of event titles and dates
+- Links to event details
+
+Format: "X new events added on [Month Day, Year]"
+
+### How It Works
+
+1. After each deployment, `upcoming.yaml` is persisted to S3 with a timestamp
+2. New events are detected by comparing with the previous version
+3. Metadata tracks when each event was first seen
+4. RSS feed shows recently added events
+5. Daily workflow posts summaries to micro.blog at 1 PM ET
+
+See [EVENT_TRACKING.md](./EVENT_TRACKING.md) for technical details.
 
 ### Manual Deployment
 
