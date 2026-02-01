@@ -142,7 +142,7 @@ Tests cover:
 
 ## AWS Permissions
 
-The GitHub Actions role needs these S3 permissions:
+The GitHub Actions role needs these S3 permissions (already included in CDK stack):
 ```json
 {
   "Version": "2012-10-17",
@@ -152,6 +152,7 @@ The GitHub Actions role needs these S3 permissions:
       "Action": [
         "s3:GetObject",
         "s3:PutObject",
+        "s3:DeleteObject",
         "s3:ListBucket"
       ],
       "Resource": [
@@ -161,6 +162,13 @@ The GitHub Actions role needs these S3 permissions:
     }
   ]
 }
+```
+
+**Note**: The CDK stack (`infrastructure/lib/dctech-events-stack.ts`) has been updated to include `s3:GetObject` permission for the GitHub Actions role. If the infrastructure was deployed before this change, you'll need to redeploy it:
+
+```bash
+cd infrastructure
+npm run cdk deploy
 ```
 
 ## Troubleshooting
