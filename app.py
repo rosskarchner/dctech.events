@@ -182,12 +182,6 @@ def get_upcoming_months():
     
     # Return sorted by year and month
     return [months[k] for k in sorted(months.keys())]
-            months[month_key]['count'] += 1
-        except ValueError:
-            continue
-    
-    # Return sorted by year and month
-    return [months[k] for k in sorted(months.keys())]
 
 def get_categories_with_event_counts():
     """
@@ -221,7 +215,6 @@ def get_categories_with_event_counts():
     
     return categories_with_counts
 
->>>>>>> main
 def calculate_event_hash(date, time, title, url=None):
     """
     Calculate MD5 hash for event identification.
