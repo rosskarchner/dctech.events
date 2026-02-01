@@ -1,5 +1,9 @@
 // Import Octokit from npm package
 import { Octokit } from 'octokit';
+import {
+    showError,
+    showSuccess
+} from './notifications.js';
 
 // GitHub OAuth Configuration
 // These values are passed from the Flask template via window.GITHUB_CONFIG
@@ -394,27 +398,6 @@ function showAuthError(message) {
     errorDiv.style.color = '#991b1b';
 }
 
-/**
- * Show error message
- */
-function showError(message) {
-    const statusMessage = document.getElementById('status-message');
-    statusMessage.className = 'status-message error';
-    statusMessage.textContent = '⚠ ' + message;
-    statusMessage.style.display = 'block';
-}
-
-/**
- * Show success message with PR link
- */
-function showSuccess(prUrl) {
-    document.getElementById('group-form').style.display = 'none';
-    document.getElementById('success-message').style.display = 'block';
-
-    const prLink = document.getElementById('pr-link');
-    prLink.href = prUrl;
-    prLink.textContent = prUrl;
-}
 
 /**
  * Reset form

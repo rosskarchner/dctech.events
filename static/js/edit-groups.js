@@ -6,6 +6,13 @@ import {
     createOrUpdateFile,
     createPullRequest
 } from './github-utils.js';
+import {
+    showError,
+    showSuccess,
+    showStatus,
+    showOverlay,
+    hideOverlay
+} from './notifications.js';
 
 let octokit = null;
 let userData = null;
@@ -272,16 +279,16 @@ async function applyCategoryToGroups() {
         return;
     }
 
-    showStatus('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
 
-        showStatus('Creating branch...');
+        showOverlay('Creating branch...');
         const branchName = `categorize-groups-${Date.now()}`;
         await createBranch(octokit, userData, branchName);
 
-        showStatus('Updating group files...');
+        showOverlay('Updating group files...');
         const updatedGroups = [];
 
         for (const groupId of groupIds) {
@@ -307,7 +314,7 @@ async function applyCategoryToGroups() {
             updatedGroups.push(group.name);
         }
 
-        showStatus('Creating pull request...');
+        showOverlay('Creating pull request...');
         const prBody = `## Bulk Group Categorization\n\nAssigned category **${category}** to ${updatedGroups.length} group(s):\n\n${updatedGroups.map(n => `- ${n}`).join('\n')}\n\n---\nSubmitted via web interface by @${userData.login}`;
 
         const prUrl = await createPullRequest(
@@ -316,9 +323,11 @@ async function applyCategoryToGroups() {
             prBody
         );
 
+        hideOverlay();
         showSuccess(prUrl);
         clearState();
     } catch (error) {
+        hideOverlay();
         showError(error.message);
     }
 }
@@ -407,16 +416,16 @@ async function saveIndividualEdit(e) {
     };
 
     closeEditModal();
-    showStatus('Creating fork...');
+    showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
 
-        showStatus('Creating branch...');
+        showOverlay('Creating branch...');
         const branchName = `edit-group-${groupId}-${Date.now()}`;
         await createBranch(octokit, userData, branchName);
 
-        showStatus('Updating group file...');
+        showOverlay('Updating group file...');
 
         // Fetch existing file to get all fields
         const { data: file } = await octokit.rest.repos.getContent({
@@ -434,7 +443,7 @@ async function saveIndividualEdit(e) {
             `Update ${updatedData.name} group details`
         );
 
-        showStatus('Creating pull request...');
+        showOverlay('Creating pull request...');
         const prBody = `## Edit Group: ${updatedData.name}\n\nUpdated group details via web interface.\n\n---\nSubmitted by @${userData.login}`;
 
         const prUrl = await createPullRequest(
@@ -443,8 +452,10 @@ async function saveIndividualEdit(e) {
             prBody
         );
 
+        hideOverlay();
         showSuccess(prUrl);
     } catch (error) {
+        hideOverlay();
         showError(error.message);
     }
 }
@@ -494,73 +505,12 @@ function updateGroupYAMLWithAllFields(existingYAML, updatedData) {
     return yaml;
 }
 
-/**
- * Show status overlay
- */
-function showStatus(message) {
-    const statusDiv = document.getElementById('status-message');
-    statusDiv.className = 'status-message info';
-    statusDiv.textContent = message;
-    statusDiv.style.display = 'block';
-
-    // Also show the overlay for longer operations
-    document.getElementById('status-overlay').style.display = 'flex';
-}
-
-/**
- * Show success message
- */
-function showSuccess(prUrl) {
-    // Hide overlay
-    document.getElementById('status-overlay').style.display = 'none';
-
-    // Hide status message
-    const statusDiv = document.getElementById('status-message');
-    statusDiv.style.display = 'none';
-
-    // Show success box
-    const successDiv = document.getElementById('success-message');
-    const prLink = document.getElementById('pr-link');
-    prLink.href = prUrl;
-    prLink.textContent = prUrl;
-    successDiv.style.display = 'block';
-
-    // Hide the groups list and controls temporarily
-    document.getElementById('category-controls').style.display = 'none';
-    document.getElementById('groups-list').style.display = 'none';
-
-    // Scroll to top to show success message
-    window.scrollTo(0, 0);
-}
-
-/**
- * Show error message
- */
-function showError(message) {
-    // Hide overlay
-    document.getElementById('status-overlay').style.display = 'none';
-
-    // Show error in status message
-    const statusDiv = document.getElementById('status-message');
-    statusDiv.className = 'status-message error';
-    statusDiv.textContent = '⚠ ' + message;
-    statusDiv.style.display = 'block';
-
-    // Scroll to top to show error
-    window.scrollTo(0, 0);
-}
 
 /**
  * Continue editing after successful PR
  */
 function continueEditing() {
-    // Hide success message
-    document.getElementById('success-message').style.display = 'none';
-
-    // Show groups list again
-    document.getElementById('groups-list').style.display = 'block';
-
-    // Reload groups to get fresh data
+    // Just reload groups to get fresh data
     loadGroups();
 }
 
