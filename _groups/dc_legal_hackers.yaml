@@ -2,3 +2,5 @@ name: DC Legal Hackers
 website: https://www.meetup.com/DCLegalHackers/
 ical: https://www.meetup.com/DCLegalHackers/events/ical/
 active: true
+categories:
+- legal-tech
