@@ -5,8 +5,7 @@
 {% block content %}
 <div class="home-container">
     <section class="events-section">
-        <h2>{{ stats.upcoming_events }} Upcoming Events in {{ location_name }}
-            <a href="feed.ics" style="font-size: 0.7em; margin-left: 10px;">📅 iCal Feed</a>
+        <h2>Upcoming Events in {{ location_name }}
         </h2>
         
         {% if stats.upcoming_events == 0 %}
