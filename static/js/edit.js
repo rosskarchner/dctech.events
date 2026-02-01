@@ -1,5 +1,9 @@
 // Import Octokit from npm package
 import { Octokit } from 'octokit';
+import {
+    showError,
+    showSuccess
+} from './notifications.js';
 
 // GitHub OAuth Configuration
 const CONFIG = {
@@ -778,16 +782,6 @@ function generateEditYAML(formData, originalEvent) {
 }
 
 /**
- * Show error message
- */
-function showError(message) {
-    const statusMessage = document.getElementById('status-message');
-    statusMessage.className = 'status-message error';
-    statusMessage.textContent = '⚠ ' + message;
-    statusMessage.style.display = 'block';
-}
-
-/**
  * Show error in auth section
  */
 function showAuthError(message) {
@@ -806,18 +800,6 @@ function showAuthError(message) {
     errorDiv.style.border = '1px solid #fca5a5';
     errorDiv.style.borderRadius = 'var(--border-radius)';
     errorDiv.style.color = '#991b1b';
-}
-
-/**
- * Show success message with PR link
- */
-function showSuccess(prUrl) {
-    document.getElementById('edit-form').style.display = 'none';
-    document.getElementById('success-message').style.display = 'block';
-
-    const prLink = document.getElementById('pr-link');
-    prLink.href = prUrl;
-    prLink.textContent = prUrl;
 }
 
 /**

@@ -7,6 +7,13 @@ import {
     deleteFile,
     createPullRequest
 } from './github-utils.js';
+import {
+    showError,
+    showSuccess,
+    showStatus,
+    showOverlay,
+    hideOverlay
+} from './notifications.js';
 
 let octokit = null;
 let userData = null;
@@ -349,16 +356,16 @@ async function createCategory(name, description, slug) {
     }
 
     closeEditModal();
-    showStatus('Creating fork...');
+    const hideOverlayFn = showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
 
-        showStatus('Creating branch...');
+        showOverlay('Creating branch...');
         const branchName = `create-category-${slug}-${Date.now()}`;
         await createBranch(octokit, userData, branchName);
 
-        showStatus('Creating category file...');
+        showOverlay('Creating category file...');
         const filePath = `_categories/${slug}.yaml`;
         const yamlContent = generateCategoryYAML(name, description);
 
@@ -367,7 +374,7 @@ async function createCategory(name, description, slug) {
             `Create category: ${name}`
         );
 
-        showStatus('Creating pull request...');
+        showOverlay('Creating pull request...');
         const prBody = `## Create Category: ${name}\n\nSlug: \`${slug}\`\n\n${description ? `Description: ${description}\n\n` : ''}---\nSubmitted via web interface by @${userData.login}`;
 
         const prUrl = await createPullRequest(
@@ -376,9 +383,11 @@ async function createCategory(name, description, slug) {
             prBody
         );
 
+        hideOverlay();
         showSuccess(prUrl);
     } catch (error) {
         console.error('Error creating category:', error);
+        hideOverlay();
         showError(error.message);
     }
 }
@@ -388,16 +397,16 @@ async function createCategory(name, description, slug) {
  */
 async function editCategory(slug, newName, newDescription) {
     closeEditModal();
-    showStatus('Creating fork...');
+    const hideOverlayFn = showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
 
-        showStatus('Creating branch...');
+        showOverlay('Creating branch...');
         const branchName = `edit-category-${slug}-${Date.now()}`;
         await createBranch(octokit, userData, branchName);
 
-        showStatus('Updating category file...');
+        showOverlay('Updating category file...');
         const filePath = `_categories/${slug}.yaml`;
         const yamlContent = generateCategoryYAML(newName, newDescription);
 
@@ -406,7 +415,7 @@ async function editCategory(slug, newName, newDescription) {
             `Update category: ${newName}`
         );
 
-        showStatus('Creating pull request...');
+        showOverlay('Creating pull request...');
         const prBody = `## Edit Category: ${newName}\n\nSlug: \`${slug}\` (unchanged)\n\nUpdated name and/or description.\n\n---\nSubmitted via web interface by @${userData.login}`;
 
         const prUrl = await createPullRequest(
@@ -415,9 +424,11 @@ async function editCategory(slug, newName, newDescription) {
             prBody
         );
 
+        hideOverlay();
         showSuccess(prUrl);
     } catch (error) {
         console.error('Error editing category:', error);
+        hideOverlay();
         showError(error.message);
     }
 }
@@ -435,7 +446,7 @@ async function openDeleteModal(slug) {
     document.getElementById('delete-category-slug').value = slug;
 
     // Fetch usage stats
-    showStatus('Checking category usage...');
+    const hideOverlayFn = showOverlay('Checking category usage...');
     try {
         const [eventsRes, groupsRes] = await Promise.all([
             fetch('/events.json'),
@@ -461,14 +472,13 @@ async function openDeleteModal(slug) {
             </ul>
         `;
 
-        // Hide status overlay
-        document.getElementById('status-overlay').style.display = 'none';
-        document.getElementById('status-message').style.display = 'none';
+        hideOverlay();
 
         // Show delete modal
         document.getElementById('delete-modal').classList.add('active');
     } catch (error) {
         console.error('Error fetching usage stats:', error);
+        hideOverlay();
         showError('Failed to load usage stats: ' + error.message);
     }
 }
@@ -493,16 +503,16 @@ async function deleteCategory() {
     }
 
     closeDeleteModal();
-    showStatus('Creating fork...');
+    const hideOverlayFn = showOverlay('Creating fork...');
 
     try {
         await ensureFork(octokit, userData);
 
-        showStatus('Creating branch...');
+        showOverlay('Creating branch...');
         const branchName = `delete-category-${slug}-${Date.now()}`;
         await createBranch(octokit, userData, branchName);
 
-        showStatus('Deleting category file...');
+        showOverlay('Deleting category file...');
         const filePath = `_categories/${slug}.yaml`;
 
         await deleteFile(
@@ -510,7 +520,7 @@ async function deleteCategory() {
             `Delete category: ${category.name}`
         );
 
-        showStatus('Creating pull request...');
+        showOverlay('Creating pull request...');
 
         // Get usage stats for PR body
         const [eventsRes, groupsRes] = await Promise.all([
@@ -536,9 +546,11 @@ async function deleteCategory() {
             prBody
         );
 
+        hideOverlay();
         showSuccess(prUrl);
     } catch (error) {
         console.error('Error deleting category:', error);
+        hideOverlay();
         showError(error.message);
     }
 }
@@ -573,74 +585,13 @@ function generateCategoryYAML(name, description) {
     return yaml;
 }
 
-/**
- * Show status overlay
- */
-function showStatus(message) {
-    const statusDiv = document.getElementById('status-message');
-    statusDiv.className = 'status-message info';
-    statusDiv.textContent = message;
-    statusDiv.style.display = 'block';
 
-    // Also show the overlay for longer operations
-    const overlay = document.getElementById('status-overlay');
-    overlay.style.display = 'flex';
-    document.getElementById('status-overlay-message').textContent = message;
-}
-
-/**
- * Show success message
- */
-function showSuccess(prUrl) {
-    // Hide overlay
-    document.getElementById('status-overlay').style.display = 'none';
-
-    // Hide status message
-    const statusDiv = document.getElementById('status-message');
-    statusDiv.style.display = 'none';
-
-    // Show success box
-    const successDiv = document.getElementById('success-message');
-    const prLink = document.getElementById('pr-link');
-    prLink.href = prUrl;
-    prLink.textContent = prUrl;
-    successDiv.style.display = 'block';
-
-    // Hide the categories list temporarily
-    document.getElementById('categories-list').style.display = 'none';
-
-    // Scroll to top to show success message
-    window.scrollTo(0, 0);
-}
-
-/**
- * Show error message
- */
-function showError(message) {
-    // Hide overlay
-    document.getElementById('status-overlay').style.display = 'none';
-
-    // Show error in status message
-    const statusDiv = document.getElementById('status-message');
-    statusDiv.className = 'status-message error';
-    statusDiv.textContent = '⚠ ' + message;
-    statusDiv.style.display = 'block';
-
-    // Scroll to top to show error
-    window.scrollTo(0, 0);
-}
 
 /**
  * Continue editing after successful PR
  */
 function continueEditing() {
-    // Hide success message
-    document.getElementById('success-message').style.display = 'none';
-
-    // Show categories list again
-    document.getElementById('categories-list').style.display = 'block';
-
-    // Reload categories to get fresh data
+    // Just reload categories to get fresh data
     loadCategories();
 }
 

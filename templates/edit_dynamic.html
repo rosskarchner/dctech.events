@@ -532,6 +532,49 @@
     let octokit = null;
     let userData = null;
 
+    // Simple notification system (inline version)
+    function showNotification(message, type = 'info') {
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; max-width: 400px;';
+            document.body.appendChild(container);
+        }
+        
+        const colors = {
+            error: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', icon: '⚠' },
+            success: { bg: '#f0fdf4', border: '#86efac', text: '#166534', icon: '✓' },
+            info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af', icon: 'ℹ' },
+            warning: { bg: '#fffbeb', border: '#fcd34d', text: '#92400e', icon: '⚠' }
+        };
+        
+        const scheme = colors[type] || colors.info;
+        
+        const notification = document.createElement('div');
+        notification.style.cssText = `background: ${scheme.bg}; border: 2px solid ${scheme.border}; color: ${scheme.text}; padding: 1rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); display: flex; align-items: start; gap: 0.75rem; animation: slideIn 0.3s ease-out; min-width: 300px;`;
+        notification.innerHTML = `<span style="font-size: 1.25rem;">${scheme.icon}</span><div style="flex: 1;">${message}</div><button style="background: none; border: none; font-size: 1.25rem; cursor: pointer; padding: 0; color: inherit; opacity: 0.7;">&times;</button>`;
+        
+        const closeBtn = notification.querySelector('button');
+        closeBtn.onclick = () => {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
+        };
+        
+        container.appendChild(notification);
+        
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = '@keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } } @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }';
+            document.head.appendChild(style);
+        }
+        
+        if (type === 'info') {
+            setTimeout(() => closeBtn.click(), 5000);
+        }
+    }
+
     // Initialize GitHub auth
     initializeGitHubAuth();
 
@@ -800,7 +843,7 @@
 
         // Check authentication
         if (!octokit || !userData) {
-            alert('Please sign in with GitHub to remove/hide events.');
+            showNotification('Please sign in with GitHub to remove/hide events.', 'warning');
             // Redirect to OAuth
             if (window.GITHUB_CONFIG.clientId) {
                 const authUrl = new URL('https://github.com/login/oauth/authorize');
