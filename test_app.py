@@ -2137,6 +2137,266 @@ class TestIntegrationEndToEnd(unittest.TestCase):
             if os.path.exists(test_file):
                 os.remove(test_file)
 
+    def test_category_rss_feed(self):
+        """Test that category RSS feeds are generated correctly"""
+        from app import app
+        import os
+        import yaml
+        from xml.etree import ElementTree as ET
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        # Create test events with categories
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'AI Conference',
+                'location': 'Washington DC',
+                'url': 'http://ai-event.example.com',
+                'categories': ['ai']
+            },
+            {
+                'date': today_str,
+                'time': '14:00',
+                'title': 'Python Workshop',
+                'location': 'Arlington VA',
+                'url': 'http://python-event.example.com',
+                'categories': ['programming-languages']
+            }
+        ]
+
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+
+            # Get AI category RSS feed
+            response = client.get('/categories/ai/feed.xml')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content_type, 'application/rss+xml; charset=utf-8')
+
+            # Parse RSS XML
+            root = ET.fromstring(response.data)
+            self.assertEqual(root.tag, 'rss')
+            self.assertEqual(root.get('version'), '2.0')
+
+            # Find channel
+            channel = root.find('channel')
+            self.assertIsNotNone(channel)
+
+            # Verify channel metadata
+            title = channel.find('title').text
+            self.assertIn('AI', title)
+            
+            link = channel.find('link').text
+            self.assertIn('/categories/ai/', link)
+
+            description = channel.find('description').text
+            self.assertIsNotNone(description)
+
+            # Verify items (should only have AI event)
+            items = channel.findall('item')
+            self.assertEqual(len(items), 1)
+            
+            item_title = items[0].find('title').text
+            self.assertIn('AI Conference', item_title)
+
+            # Test invalid category returns 404
+            response = client.get('/categories/invalid/feed.xml')
+            self.assertEqual(response.status_code, 404)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except (OSError, FileNotFoundError):
+                pass
+
+    def test_location_rss_feed(self):
+        """Test that location RSS feeds are generated correctly"""
+        from app import app
+        import os
+        import yaml
+        from xml.etree import ElementTree as ET
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        # Create test events with locations
+        today_str = self.today.strftime('%Y-%m-%d')
+        test_events = [
+            {
+                'date': today_str,
+                'time': '09:00',
+                'title': 'DC Meetup',
+                'location': 'Washington DC',
+                'url': 'http://dc-event.example.com',
+                'categories': ['ai']
+            },
+            {
+                'date': today_str,
+                'time': '14:00',
+                'title': 'VA Workshop',
+                'location': 'Arlington VA',
+                'url': 'http://va-event.example.com',
+                'categories': ['python']
+            }
+        ]
+
+        try:
+            # Write test data
+            with open(test_file, 'w') as f:
+                yaml.dump(test_events, f)
+
+            # Get DC location RSS feed
+            response = client.get('/locations/dc/feed.xml')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content_type, 'application/rss+xml; charset=utf-8')
+
+            # Parse RSS XML
+            root = ET.fromstring(response.data)
+            self.assertEqual(root.tag, 'rss')
+            self.assertEqual(root.get('version'), '2.0')
+
+            # Find channel
+            channel = root.find('channel')
+            self.assertIsNotNone(channel)
+
+            # Verify channel metadata
+            title = channel.find('title').text
+            self.assertIn('Washington DC', title)
+            
+            link = channel.find('link').text
+            self.assertIn('/locations/dc/', link)
+
+            description = channel.find('description').text
+            self.assertIsNotNone(description)
+
+            # Verify items (should only have DC event)
+            items = channel.findall('item')
+            self.assertEqual(len(items), 1)
+            
+            item_title = items[0].find('title').text
+            self.assertIn('DC Meetup', item_title)
+
+            # Test case insensitivity (DC vs dc)
+            response = client.get('/locations/DC/feed.xml')
+            self.assertEqual(response.status_code, 200)
+
+            # Test invalid location returns 404
+            response = client.get('/locations/invalid/feed.xml')
+            self.assertEqual(response.status_code, 404)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except (OSError, FileNotFoundError):
+                pass
+
+    def test_category_page_has_feed_links(self):
+        """Test that category pages include rel=alternate links for RSS and iCal feeds"""
+        from app import app
+        import os
+        import yaml
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        try:
+            # Write minimal test data
+            with open(test_file, 'w') as f:
+                yaml.dump([], f)
+
+            # Get category page
+            response = client.get('/categories/ai/')
+            self.assertEqual(response.status_code, 200)
+
+            html = response.data.decode()
+            
+            # Verify rel=alternate link for RSS feed
+            self.assertIn('rel="alternate"', html)
+            self.assertIn('type="application/rss+xml"', html)
+            self.assertIn('href="feed.xml"', html)
+            
+            # Verify rel=alternate link for iCal feed
+            self.assertIn('type="text/calendar"', html)
+            self.assertIn('href="feed.ics"', html)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except (OSError, FileNotFoundError):
+                pass
+
+    def test_location_page_has_feed_links(self):
+        """Test that location pages include rel=alternate links for RSS and iCal feeds"""
+        from app import app
+        import os
+        import yaml
+
+        # Create test client
+        client = app.test_client()
+
+        # Create test data directory
+        data_dir = '_data'
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, 'upcoming.yaml')
+
+        try:
+            # Write minimal test data
+            with open(test_file, 'w') as f:
+                yaml.dump([], f)
+
+            # Get location page
+            response = client.get('/locations/dc/')
+            self.assertEqual(response.status_code, 200)
+
+            html = response.data.decode()
+            
+            # Verify rel=alternate link for RSS feed
+            self.assertIn('rel="alternate"', html)
+            self.assertIn('type="application/rss+xml"', html)
+            self.assertIn('href="feed.xml"', html)
+            
+            # Verify rel=alternate link for iCal feed
+            self.assertIn('type="text/calendar"', html)
+            self.assertIn('href="feed.ics"', html)
+
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
+            try:
+                os.rmdir(data_dir)
+            except (OSError, FileNotFoundError):
+                pass
+
 
 if __name__ == '__main__':
     unittest.main()
