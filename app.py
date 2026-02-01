@@ -173,7 +173,7 @@ def get_upcoming_months():
                     'month': event_date.month,
                     'name': f"{month_name} {event_date.year}",
                     'count': 0,
-                    'url': f"/{event_date.year}/{event_date.month:02d}/"
+                    'url': f"/{event_date.year}/{event_date.month}/"
                 }
             
             months[month_key]['count'] += 1
@@ -1083,9 +1083,9 @@ def month_page(year, month):
                           stats=stats,
                           month_name=month_name,
                           year=year,
-                          prev_month=f"{prev_month:02d}",
+                          prev_month=prev_month,
                           prev_year=prev_year,
-                          next_month=f"{next_month:02d}",
+                          next_month=next_month,
                           next_year=next_year)
 
 @app.route("/locations/")
