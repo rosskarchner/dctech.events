@@ -716,7 +716,9 @@ function generateEditYAML(formData, originalEvent) {
     
     // Only include fields that have actually changed
     if (hasChanged('title') && formData.title) {
-        yaml += `title: "${formData.title.replace(/"/g, '\\"')}"\n`;
+        // Escape backslashes first, then double quotes to prevent injection
+        const escapedTitle = formData.title.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        yaml += `title: "${escapedTitle}"\n`;
     }
     
     if (hasChanged('date') && formData.date) {
