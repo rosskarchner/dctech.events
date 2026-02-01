@@ -142,6 +142,79 @@ def get_categories():
 
     return categories
 
+def get_upcoming_months():
+    """
+    Get a list of upcoming months that have events.
+    
+    Returns:
+        List of dictionaries with month information:
+        - year: Year (int)
+        - month: Month number (int)
+        - name: Month name (e.g., "February 2026")
+        - count: Number of events in that month
+        - url: URL to the month page
+    """
+    events = get_events()
+    months = {}
+    
+    for event in events:
+        event_date_str = event.get('date')
+        if not event_date_str:
+            continue
+        
+        try:
+            event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+            month_key = (event_date.year, event_date.month)
+            
+            if month_key not in months:
+                month_name = calendar.month_name[event_date.month]
+                months[month_key] = {
+                    'year': event_date.year,
+                    'month': event_date.month,
+                    'name': f"{month_name} {event_date.year}",
+                    'count': 0,
+                    'url': f"/{event_date.year}/{event_date.month:02d}/"
+                }
+            
+            months[month_key]['count'] += 1
+        except:
+            continue
+    
+    # Return sorted by year and month
+    return [months[k] for k in sorted(months.keys())]
+
+def get_categories_with_event_counts():
+    """
+    Get categories that have upcoming events, sorted by event count.
+    
+    Returns:
+        List of dictionaries with category information:
+        - slug: Category slug
+        - name: Category name
+        - count: Number of upcoming events
+        - url: URL to the category page
+    """
+    categories = get_categories()
+    events = get_events()
+    
+    categories_with_counts = []
+    for slug, category in categories.items():
+        filtered_events = [e for e in events if slug in e.get('categories', [])]
+        count = len(filtered_events)
+        
+        if count > 0:
+            categories_with_counts.append({
+                'slug': slug,
+                'name': category['name'],
+                'count': count,
+                'url': f"/categories/{slug}/"
+            })
+    
+    # Sort by count descending
+    categories_with_counts.sort(key=lambda x: x['count'], reverse=True)
+    
+    return categories_with_counts
+
 def calculate_event_hash(date, time, title, url=None):
     """
     Calculate MD5 hash for event identification.
@@ -466,6 +539,43 @@ def filter_events_by_week(events, week_start, week_end):
 
             # Include event if it overlaps with the week
             if (event_date <= week_end and end_date >= week_start):
+                filtered.append(event)
+        except:
+            continue
+
+    return filtered
+
+def filter_events_by_month(events, month_start, month_end):
+    """
+    Filter events that occur within a specific month.
+
+    Args:
+        events: List of event dictionaries
+        month_start: First day of the month
+        month_end: Last day of the month
+
+    Returns:
+        Filtered list of events
+    """
+    filtered = []
+    for event in events:
+        event_date_str = event.get('date')
+        if not event_date_str:
+            continue
+
+        try:
+            event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date()
+
+            # Check if event has an end date
+            end_date = event_date
+            if 'end_date' in event:
+                try:
+                    end_date = datetime.strptime(event['end_date'], '%Y-%m-%d').date()
+                except:
+                    pass
+
+            # Include event if it overlaps with the month
+            if (event_date <= month_end and end_date >= month_start):
                 filtered.append(event)
         except:
             continue
@@ -817,19 +927,37 @@ def homepage():
     # Get upcoming events and filter out virtual events
     all_events = get_events()
     events = filter_in_person_events(all_events)
-    days = prepare_events_by_day(events, add_week_links=True)
+    
+    # Filter to next two weeks
+    today = date.today()
+    two_weeks_from_now = today + timedelta(days=14)
+    two_week_events = [
+        e for e in events 
+        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
+    ]
+    
+    days = prepare_events_by_day(two_week_events, add_week_links=True)
 
     # Get base URL from config or use a default
     base_url = BASE_URL
 
-    # Get stats - count only in-person events
+    # Get stats - count only in-person events in next two weeks
     stats = get_stats()
-    stats['upcoming_events'] = len(events)
+    stats['upcoming_events'] = len(two_week_events)
+    stats['total_upcoming_events'] = len(events)
+    
+    # Get upcoming months with event counts
+    upcoming_months = get_upcoming_months()
+    
+    # Get categories with event counts
+    categories_with_counts = get_categories_with_event_counts()
     
     return render_template('homepage.html',
                           days=days,
                           stats=stats,
-                          base_url=base_url)
+                          base_url=base_url,
+                          upcoming_months=upcoming_months,
+                          categories_with_counts=categories_with_counts)
 
 @app.route("/virtual/")
 def virtual_events_page():
@@ -906,7 +1034,59 @@ def week_page(week_id):
 #
 #     return Response(img_io.getvalue(), mimetype='image/png')
 
-# Month view route removed - all events are now in upcoming.yaml
+@app.route("/<int:year>/<int:month>/")
+def month_page(year, month):
+    """Show events for a specific month"""
+    try:
+        # Validate month
+        if month < 1 or month > 12:
+            return "Invalid month", 404
+        
+        # Get the first and last day of the month
+        first_day = date(year, month, 1)
+        if month == 12:
+            last_day = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            last_day = date(year, month + 1, 1) - timedelta(days=1)
+        
+    except ValueError:
+        return "Invalid date", 404
+    
+    # Get all events and filter by month
+    events = get_events()
+    month_events = filter_events_by_month(events, first_day, last_day)
+    days = prepare_events_by_day(month_events)
+    
+    # Get month name
+    month_name = calendar.month_name[month]
+    
+    # Get stats
+    stats = {'upcoming_events': len(month_events)}
+    
+    # Calculate previous and next month
+    if month == 1:
+        prev_month = 12
+        prev_year = year - 1
+    else:
+        prev_month = month - 1
+        prev_year = year
+    
+    if month == 12:
+        next_month = 1
+        next_year = year + 1
+    else:
+        next_month = month + 1
+        next_year = year
+    
+    return render_template('month_page.html',
+                          days=days,
+                          stats=stats,
+                          month_name=month_name,
+                          year=year,
+                          prev_month=f"{prev_month:02d}",
+                          prev_year=prev_year,
+                          next_month=f"{next_month:02d}",
+                          next_year=next_year)
 
 @app.route("/locations/")
 def locations_index():

@@ -7,7 +7,7 @@
 <div class="home-container">
 
     <section class="events-section">
-        <h2>{{ stats.upcoming_events }} Upcoming Events</h2>
+        <h2>{{ stats.upcoming_events }} Events in the Next Two Weeks</h2>
 
         <div id="subscribe">
             <div>
@@ -16,6 +16,44 @@
         </div>
 
     {% include "partials/events_by_day.html" %}
+
+    </section>
+
+    <section class="browse-section">
+        <div class="browse-columns">
+            <div class="browse-column">
+                <h3>Browse by Month</h3>
+                {% if upcoming_months %}
+                    <ul class="month-list">
+                    {% for month in upcoming_months %}
+                        <li>
+                            <a href="{{ month.url }}">{{ month.name }}</a>
+                            <span class="count">({{ month.count }} event{% if month.count != 1 %}s{% endif %})</span>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No upcoming months with events.</p>
+                {% endif %}
+            </div>
+            
+            <div class="browse-column">
+                <h3>Browse by Category</h3>
+                {% if categories_with_counts %}
+                    <ul class="category-list">
+                    {% for category in categories_with_counts %}
+                        <li>
+                            <a href="{{ category.url }}">{{ category.name }}</a>
+                            <span class="count">({{ category.count }} event{% if category.count != 1 %}s{% endif %})</span>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No categorized events.</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
 
 </div>
 

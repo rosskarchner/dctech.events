@@ -6,13 +6,20 @@ from datetime import datetime, timedelta
 
 # Import app
 from app import app
-from app import local_tz, get_events, get_upcoming_weeks, get_categories
+from app import local_tz, get_events, get_upcoming_weeks, get_categories, get_upcoming_months
 
 # Configure Freezer output destination
 app.config['FREEZER_DESTINATION'] = 'build'
 app.config['FREEZER_RELATIVE_URLS'] = True
 
 freezer = Freezer(app)
+
+@freezer.register_generator
+def month_page():
+    """Generate URLs for month pages"""
+    months = get_upcoming_months()
+    for month_data in months:
+        yield {'year': month_data['year'], 'month': month_data['month']}
 
 @freezer.register_generator
 def region_page():
