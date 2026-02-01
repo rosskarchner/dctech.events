@@ -127,6 +127,20 @@ def location_ical_feed():
     yield {'state': 'md'}
 
 @freezer.register_generator
+def category_rss_feed():
+    """Generate RSS feeds for each category"""
+    categories = get_categories()
+    for slug in categories.keys():
+        yield {'slug': slug}
+
+@freezer.register_generator
+def location_rss_feed():
+    """Generate RSS feeds for each location"""
+    yield {'state': 'dc'}
+    yield {'state': 'va'}
+    yield {'state': 'md'}
+
+@freezer.register_generator
 def rss_feed():
     """Generate the RSS feed"""
     yield {}

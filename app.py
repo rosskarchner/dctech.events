@@ -10,6 +10,8 @@ from location_utils import extract_location_info, get_region_name
 import io
 from icalendar import Calendar, Event as ICalEvent
 import hashlib
+from xml.etree import ElementTree as ET
+from email.utils import formatdate
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -1607,6 +1609,147 @@ def location_ical_feed(state):
     calendar_description = f"Technology events in {region_name}"
     
     return generate_ical_feed(filtered_events, calendar_name, calendar_description)
+
+def generate_rss_feed_from_events(events, feed_title, feed_description, feed_link):
+    """
+    Generate RSS 2.0 feed from a list of events.
+    
+    Args:
+        events: List of event dictionaries
+        feed_title: Title of the RSS feed
+        feed_description: Description of the RSS feed
+        feed_link: URL of the page this feed represents
+        
+    Returns:
+        Response object with RSS XML
+    """
+    # Create RSS root element
+    rss = ET.Element('rss', version='2.0')
+    rss.set('xmlns:atom', 'http://www.w3.org/2005/Atom')
+    
+    channel = ET.SubElement(rss, 'channel')
+    
+    # Channel metadata
+    ET.SubElement(channel, 'title').text = feed_title
+    ET.SubElement(channel, 'link').text = feed_link
+    ET.SubElement(channel, 'description').text = feed_description
+    ET.SubElement(channel, 'language').text = 'en-us'
+    
+    # Self-referencing atom link (will be set by caller)
+    # Note: This is added by the route handler
+    
+    # Build date (now)
+    now_timestamp = datetime.now(pytz.UTC).timestamp()
+    now_rfc822 = formatdate(timeval=now_timestamp, usegmt=True)
+    ET.SubElement(channel, 'lastBuildDate').text = now_rfc822
+    
+    # Add items (limit to 50 most recent events)
+    for event in events[:50]:
+        item = ET.SubElement(channel, 'item')
+        
+        title = event.get('title', 'Untitled Event')
+        event_date = event.get('date', '')
+        event_time = event.get('time', '')
+        url = event.get('url', '')
+        
+        # Title with date
+        if event_date:
+            try:
+                date_obj = datetime.strptime(event_date, '%Y-%m-%d').date()
+                date_str = date_obj.strftime('%B %-d, %Y')
+                full_title = f"{title} ({date_str})"
+            except (ValueError, AttributeError):
+                full_title = title
+        else:
+            full_title = title
+        
+        ET.SubElement(item, 'title').text = full_title
+        
+        # Link (use event URL or base URL)
+        link_url = url if url else BASE_URL
+        ET.SubElement(item, 'link').text = link_url
+        
+        # Description
+        desc_parts = []
+        if event_date:
+            try:
+                date_obj = datetime.strptime(event_date, '%Y-%m-%d').date()
+                date_str = date_obj.strftime('%B %-d, %Y')
+                if event_time:
+                    desc_parts.append(f"Event Date: {date_str} at {event_time}")
+                else:
+                    desc_parts.append(f"Event Date: {date_str}")
+            except (ValueError, AttributeError):
+                pass
+        
+        if url:
+            desc_parts.append(f'<a href="{url}">Event Details</a>')
+        
+        description = '<br/>'.join(desc_parts) if desc_parts else title
+        ET.SubElement(item, 'description').text = description
+        
+        # GUID (unique identifier using same hash as iCal)
+        guid_text = f"{event_date}-{event_time}-{title}-{url}"
+        guid_hash = hashlib.md5(guid_text.encode('utf-8')).hexdigest()
+        guid = ET.SubElement(item, 'guid')
+        guid.set('isPermaLink', 'false')
+        guid.text = guid_hash
+        
+        # Publication date (use event date as pub date)
+        if event_date:
+            try:
+                date_obj = datetime.strptime(event_date, '%Y-%m-%d')
+                # Use midnight in local timezone, convert to UTC for RSS
+                local_dt = local_tz.localize(date_obj)
+                pub_timestamp = local_dt.astimezone(pytz.UTC).timestamp()
+                pub_date_rfc822 = formatdate(timeval=pub_timestamp, usegmt=True)
+                ET.SubElement(item, 'pubDate').text = pub_date_rfc822
+            except (ValueError, AttributeError):
+                pass
+    
+    # Convert to XML string with declaration
+    tree = ET.ElementTree(rss)
+    ET.indent(tree, space='  ')
+    
+    # Generate XML string
+    output = io.BytesIO()
+    tree.write(output, encoding='utf-8', xml_declaration=True)
+    
+    return Response(output.getvalue(), mimetype='application/rss+xml')
+
+@app.route("/categories/<slug>/feed.xml")
+def category_rss_feed(slug):
+    """Generate an RSS feed for a specific category"""
+    categories = get_categories()
+    if slug not in categories:
+        return "Category not found", 404
+    
+    events = get_events()
+    filtered_events = [e for e in events if slug in e.get('categories', [])]
+    
+    category = categories[slug]
+    feed_title = f"{category['name']} Events - {SITE_NAME}"
+    feed_description = f"Upcoming {category['name']} technology events in and around Washington, DC"
+    feed_link = f"{BASE_URL}/categories/{slug}/"
+    
+    return generate_rss_feed_from_events(filtered_events, feed_title, feed_description, feed_link)
+
+@app.route("/locations/<state>/feed.xml")
+def location_rss_feed(state):
+    """Generate an RSS feed for a specific location"""
+    state = state.upper()
+    if state not in ['DC', 'VA', 'MD']:
+        return "Region not found", 404
+    
+    events = get_events()
+    filtered_events = filter_events_by_location(events, state=state)
+    
+    region_name = get_region_name(state)
+    feed_title = f"{region_name} Events - {SITE_NAME}"
+    feed_description = f"Upcoming technology events in {region_name}"
+    feed_link = f"{BASE_URL}/locations/{state.lower()}/"
+    
+    return generate_rss_feed_from_events(filtered_events, feed_title, feed_description, feed_link)
 
 @app.route("/events-feed.xml")
 def rss_feed():
