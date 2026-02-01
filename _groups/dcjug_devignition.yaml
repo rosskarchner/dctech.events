@@ -2,3 +2,5 @@ name: DCJUG/DevIgnition
 website: https://www.meetup.com/dc-jug/
 ical: https://www.meetup.com/dc-jug/events/ical/
 active: true
+categories:
+- open-source-community

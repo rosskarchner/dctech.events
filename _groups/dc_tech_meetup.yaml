@@ -3,3 +3,5 @@ website: https://www.dctechmeetup.com/
 ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-GzmqNpNKPBSmYdl
 fallback_url: https://lu.ma/DCTechMeetup
 active: true
+categories:
+- social
