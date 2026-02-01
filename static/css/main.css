@@ -368,3 +368,68 @@ footer {
     margin: 0;
     font-size: 0.95rem;
 }
+
+/* Browse section (months and categories) */
+.browse-section {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 2px solid var(--color-border);
+}
+
+.browse-columns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+}
+
+@media (min-width: 768px) {
+    .browse-columns {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-xl);
+    }
+}
+
+.browse-column h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--color-text);
+}
+
+.month-list,
+.category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.month-list li,
+.category-list li {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.month-list li:last-child,
+.category-list li:last-child {
+    border-bottom: none;
+}
+
+.month-list a,
+.category-list a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.month-list a:hover,
+.category-list a:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.month-list .count,
+.category-list .count {
+    color: var(--color-text-lighter);
+    font-size: 0.875rem;
+    margin-left: var(--spacing-xs);
+}
