@@ -177,7 +177,7 @@ def get_upcoming_months():
                 }
             
             months[month_key]['count'] += 1
-        except:
+        except ValueError:
             continue
     
     # Return sorted by year and month
@@ -263,7 +263,7 @@ def prepare_events_by_day(events, add_week_links=False):
         if 'end_date' in event:
             try:
                 end_date = datetime.strptime(event['end_date'], '%Y-%m-%d').date()
-            except:
+            except ValueError:
                 pass
 
         # Generate list of dates for this event
@@ -534,13 +534,13 @@ def filter_events_by_week(events, week_start, week_end):
             if 'end_date' in event:
                 try:
                     end_date = datetime.strptime(event['end_date'], '%Y-%m-%d').date()
-                except:
+                except ValueError:
                     pass
 
             # Include event if it overlaps with the week
             if (event_date <= week_end and end_date >= week_start):
                 filtered.append(event)
-        except:
+        except ValueError:
             continue
 
     return filtered
@@ -571,13 +571,13 @@ def filter_events_by_month(events, month_start, month_end):
             if 'end_date' in event:
                 try:
                     end_date = datetime.strptime(event['end_date'], '%Y-%m-%d').date()
-                except:
+                except ValueError:
                     pass
 
             # Include event if it overlaps with the month
             if (event_date <= month_end and end_date >= month_start):
                 filtered.append(event)
-        except:
+        except ValueError:
             continue
 
     return filtered
