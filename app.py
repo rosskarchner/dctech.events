@@ -1811,5 +1811,12 @@ def rss_feed():
             mimetype='application/rss+xml'
         )
 
+@app.route('/404.html')
+def not_found_page():
+    """Serve the 404 error page"""
+    # Return 200 during freeze/static generation
+    # CloudFront will serve this with 404 status via errorResponses config
+    return render_template('404.html')
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
