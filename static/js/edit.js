@@ -714,11 +714,18 @@ function generateEditYAML(formData, originalEvent) {
         return original !== updated;
     };
     
+    // Helper to escape strings for YAML double-quoted strings
+    const escapeYAMLString = (str) => {
+        return str
+            .replace(/\\/g, '\\\\')  // Escape backslashes first
+            .replace(/"/g, '\\"')     // Escape double quotes
+            .replace(/\n/g, '\\n')    // Escape newlines
+            .replace(/\r/g, '\\r');   // Escape carriage returns
+    };
+    
     // Only include fields that have actually changed
     if (hasChanged('title') && formData.title) {
-        // Escape backslashes first, then double quotes to prevent injection
-        const escapedTitle = formData.title.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-        yaml += `title: "${escapedTitle}"\n`;
+        yaml += `title: "${escapeYAMLString(formData.title)}"\n`;
     }
     
     if (hasChanged('date') && formData.date) {
