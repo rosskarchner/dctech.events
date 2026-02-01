@@ -1,0 +1,48 @@
+name: Post Weekly Newsletter to Micro.blog
+
+on:
+  # Run every Monday at 12:00 PM UTC (7:00 AM EST)
+  schedule:
+    - cron: '0 12 * * 1'
+
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Test without posting (dry run)'
+        required: false
+        type: boolean
+        default: false
+
+# Permissions needed to read repository contents
+permissions:
+  contents: read
+
+jobs:
+  post-newsletter:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 pytz pyyaml
+
+      - name: Post newsletter to micro.blog
+        env:
+          MB_TOKEN: ${{ secrets.MB_TOKEN }}
+          MICROBLOG_DESTINATION: ${{ vars.MICROBLOG_DESTINATION }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            python post_newsletter_to_microblog.py --dry-run
+          else
+            python post_newsletter_to_microblog.py
+          fi
