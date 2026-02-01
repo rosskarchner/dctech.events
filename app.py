@@ -73,19 +73,28 @@ def load_yaml_data(file_path):
         print(f"Error loading YAML from {file_path}: {str(e)}")
         return []
 
-def get_events():
+def get_events(include_hidden=False):
     """
     Get events from the upcoming.yaml file
-    
+
+    Args:
+        include_hidden: If True, include events marked as hidden. Default False.
+
     Returns:
         A list of events
     """
     file_path = os.path.join(DATA_DIR, 'upcoming.yaml')
-    
+
     if not os.path.exists(file_path):
         return []
-    
-    return load_yaml_data(file_path) or []
+
+    events = load_yaml_data(file_path) or []
+
+    # Filter out hidden events unless explicitly requested
+    if not include_hidden:
+        events = [e for e in events if not e.get('hidden', False)]
+
+    return events
 
 def get_approved_groups():
     """
@@ -1015,7 +1024,7 @@ def category_page(slug):
 @app.route("/edit/")
 def edit_list():
     """List of upcoming events for editing, grouped by date/time slot"""
-    events = get_events()
+    events = get_events(include_hidden=True)
     # Filter to only future events
     today = date.today()
     future_events = [e for e in events if e.get('start_date') and

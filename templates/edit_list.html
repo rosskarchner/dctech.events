@@ -99,6 +99,9 @@
                     <div class="event-details">
                         <div class="event-title">
                             {{ event.title }}
+                            {% if event.hidden %}
+                            <span class="hidden-indicator">HIDDEN</span>
+                            {% endif %}
                             {% if event.duplicate_of %}
                             <span class="duplicate-indicator">(duplicate of {{ event.duplicate_of[:8] }}...)</span>
                             {% endif %}
@@ -313,6 +316,19 @@
     font-size: 0.875rem;
     font-weight: normal;
     font-style: italic;
+}
+
+.hidden-indicator {
+    display: inline-block;
+    background-color: #fee2e2;
+    color: #dc2626;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+    border: 1px solid #dc2626;
 }
 
 .event-meta {
