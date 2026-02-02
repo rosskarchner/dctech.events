@@ -187,11 +187,12 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
 
     # Prepare JSON payload using Microformats 2 structure
     # According to W3C Micropub spec: https://www.w3.org/TR/micropub/
+    # For HTML content, use an object with 'html' key per spec section 3.3.2
     payload = {
         'type': ['h-entry'],
         'properties': {
             'name': [title],
-            'content': [content],
+            'content': [{'html': content}],
         }
     }
 

@@ -272,9 +272,11 @@ class TestPostDailyEventSummary:
         assert result is True
         assert mock_post.called
         call_args = mock_post.call_args
-        assert call_args[1]['data']['h'] == 'entry'
-        assert call_args[1]['data']['name'] == 'Test Title'
-        assert call_args[1]['data']['content'] == '<p>Test Content</p>'
+        # Check JSON payload structure
+        payload = call_args[1]['json']
+        assert payload['type'] == ['h-entry']
+        assert payload['properties']['name'] == ['Test Title']
+        assert payload['properties']['content'] == [{'html': '<p>Test Content</p>'}]
 
 
 if __name__ == '__main__':
