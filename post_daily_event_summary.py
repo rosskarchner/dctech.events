@@ -200,7 +200,7 @@ def generate_title(count, target_date):
 
 def post_to_microblog(title, content, token, destination=None, dry_run=False):
     """
-    Post content to micro.blog using Micropub API.
+    Post content to micro.blog using Micropub API with JSON syntax.
     
     Args:
         title: Post title
@@ -228,22 +228,27 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
     
     headers = {
         'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
     }
     
-    data = {
-        'h': 'entry',
-        'name': title,
-        'content': content,
+    # Prepare JSON payload using Microformats 2 structure
+    # According to W3C Micropub spec: https://www.w3.org/TR/micropub/
+    # For HTML content, use an object with 'html' key per spec section 3.3.2
+    payload = {
+        'type': ['h-entry'],
+        'properties': {
+            'name': [title],
+            'content': [{'html': content}],
+        }
     }
     
     if destination:
-        data['mp-destination'] = destination
+        payload['properties']['mp-destination'] = [destination]
     
     try:
         response = requests.post(
             MICROPUB_ENDPOINT,
-            data=data,
+            json=payload,
             headers=headers,
             timeout=30
         )
