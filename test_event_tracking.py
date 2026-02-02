@@ -257,26 +257,47 @@ class TestPostDailyEventSummary:
     
     @patch('post_daily_event_summary.requests.post')
     def test_post_to_microblog_success(self, mock_post):
-        """Test successful posting to microblog"""
+        """Test successful posting to microblog with form-encoded payload"""
         mock_response = Mock()
         mock_response.headers = {'Location': 'https://micro.blog/posts/123'}
         mock_post.return_value = mock_response
-        
+
         result = post_daily_event_summary.post_to_microblog(
             title='Test Title',
             content='<p>Test Content</p>',
             token='fake-token',
             dry_run=False
         )
-        
+
         assert result is True
         assert mock_post.called
         call_args = mock_post.call_args
-        # Check JSON payload structure
-        payload = call_args[1]['json']
-        assert payload['type'] == ['h-entry']
-        assert payload['properties']['name'] == ['Test Title']
-        assert payload['properties']['content'] == [{'html': '<p>Test Content</p>'}]
+        # Check form-encoded payload
+        data = call_args[1]['data']
+        assert data['h'] == 'entry'
+        assert data['name'] == 'Test Title'
+        assert data['content[html]'] == '<p>Test Content</p>'
+        # Should use data= not json=
+        assert 'json' not in call_args[1]
+
+    @patch('post_daily_event_summary.requests.post')
+    def test_post_to_microblog_with_destination(self, mock_post):
+        """Test posting with mp-destination as form param"""
+        mock_response = Mock()
+        mock_response.headers = {'Location': 'https://micro.blog/posts/123'}
+        mock_post.return_value = mock_response
+
+        result = post_daily_event_summary.post_to_microblog(
+            title='Test Title',
+            content='<p>Test Content</p>',
+            token='fake-token',
+            destination='https://updates.dctech.events/',
+            dry_run=False
+        )
+
+        assert result is True
+        data = mock_post.call_args[1]['data']
+        assert data['mp-destination'] == 'https://updates.dctech.events/'
 
 
 if __name__ == '__main__':

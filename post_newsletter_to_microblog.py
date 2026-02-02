@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 """
-Post weekly newsletter to micro.blog using Micropub API.
+Post weekly newsletter note to micro.blog using Micropub API.
 
-This script fetches the weekly newsletter from the live deployed site
-and posts it to micro.blog every Monday at 7:00 AM EST.
+This script posts a short note linking to the weekly events page
+on micro.blog every Monday at 7:00 AM EST.
 
 Micropub API Details:
 - Endpoint: https://micro.blog/micropub
 - Authentication: Bearer token in Authorization header
-- Standard: W3C Micropub (https://www.w3.org/TR/micropub/)
-- Content-Type: application/json
-- Format: Microformats 2 JSON structure
-- Required: type (h-entry), properties.content (HTML body), properties.name (title)
-- Optional: properties.mp-destination (for multi-blog accounts)
+- Format: Form-encoded (h=entry, content=..., mp-destination=...)
+- No 'name' field → creates a "note" (not an "article")
 
 Environment Variables Required:
 - MB_TOKEN: App token from micro.blog (Account → App tokens)
@@ -31,9 +28,7 @@ import yaml
 import argparse
 from datetime import datetime, timedelta
 import requests
-from bs4 import BeautifulSoup
 import pytz
-from pathlib import Path
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -54,105 +49,72 @@ BASE_URL = config.get('base_url', 'https://dctech.events')
 MB_TOKEN = os.environ.get('MB_TOKEN')
 MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION')
 
-# Newsletter URL
-NEWSLETTER_URL = f"{BASE_URL}/newsletter.html"
-
 # Micropub endpoint
 MICROPUB_ENDPOINT = "https://micro.blog/micropub"
 
 
-def get_ordinal_suffix(day):
+def get_week_identifier(target_date):
     """
-    Get the ordinal suffix for a day number (1st, 2nd, 3rd, 4th, etc.).
+    Get the ISO week identifier (YYYY-Www) for a given date.
 
     Args:
-        day: Integer day of month (1-31)
+        target_date: A date object
 
     Returns:
-        String suffix: "st", "nd", "rd", or "th"
+        String in format YYYY-Www (e.g., "2026-W06")
     """
-    if 10 <= day % 100 <= 20:
-        suffix = 'th'
-    else:
-        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
-    return suffix
+    iso_year, iso_week, _ = target_date.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
 
 
-def generate_newsletter_title(target_date):
+def get_week_url(target_date):
     """
-    Generate the newsletter title for the given date.
-
-    Format: "DC Tech Events for the week of [Month] [Day][ordinal]"
-    Example: "DC Tech Events for the week of February 3rd"
+    Get the full URL for the weekly events page.
 
     Args:
-        target_date: Date object for Monday of the target week
+        target_date: A date object (typically Monday of the week)
 
     Returns:
-        String title
+        URL string like "https://dctech.events/week/2026-W06/"
     """
-    month_name = target_date.strftime('%B')
-    day = target_date.day
-    ordinal = get_ordinal_suffix(day)
-
-    return f"{SITE_NAME} for the week of {month_name} {day}{ordinal}"
+    week_id = get_week_identifier(target_date)
+    return f"{BASE_URL}/week/{week_id}/"
 
 
-def fetch_newsletter_html(url):
+def format_short_date(target_date):
     """
-    Fetch the newsletter HTML from the deployed site.
+    Format a date as M/D/YY (no leading zeros).
 
     Args:
-        url: Newsletter URL to fetch
+        target_date: A date object
 
     Returns:
-        Tuple of (success: bool, content: str or error message)
+        String like "2/3/26"
     """
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        return (True, response.text)
-    except requests.exceptions.Timeout:
-        return (False, f"Timeout fetching newsletter from {url}")
-    except requests.exceptions.ConnectionError:
-        return (False, f"Connection error fetching newsletter from {url}")
-    except requests.exceptions.RequestException as e:
-        return (False, f"Error fetching newsletter: {e}")
+    return f"{target_date.month}/{target_date.day}/{target_date.strftime('%y')}"
 
 
-def extract_body_content(html):
+def generate_note_content(target_date):
     """
-    Extract the innerHTML of the <body> tag from the newsletter HTML.
+    Generate the note content for the weekly post.
 
     Args:
-        html: Full HTML string from newsletter page
+        target_date: A date object (Monday of the week)
 
     Returns:
-        String containing body innerHTML, or None if body not found
+        String like "DC Tech Events for the week of 2/3/26: https://dctech.events/week/2026-W06/"
     """
-    try:
-        soup = BeautifulSoup(html, 'html.parser')
-        body = soup.find('body')
-
-        if not body:
-            return None
-
-        # Get innerHTML by extracting all children as strings
-        # This preserves all HTML tags within the body
-        return ''.join(str(child) for child in body.children)
-
-    except Exception as e:
-        print(f"Error parsing HTML: {e}")
-        return None
+    short_date = format_short_date(target_date)
+    week_url = get_week_url(target_date)
+    return f"{SITE_NAME} for the week of {short_date}: {week_url}"
 
 
-def post_to_microblog(title, content, token, destination=None, dry_run=False):
+def post_to_microblog(content, token, destination=None, dry_run=False):
     """
-    Post content to micro.blog using Micropub API with JSON syntax.
+    Post a note to micro.blog using form-encoded Micropub.
 
     Args:
-        title: Post title (h-entry name)
-        content: Post HTML content (h-entry content)
+        content: Plain text note content
         token: Micro.blog app token
         destination: Optional destination URL for multi-blog accounts
         dry_run: If True, print what would be posted without actually posting
@@ -163,15 +125,10 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
     if dry_run:
         print("\n=== DRY RUN - Would post to micro.blog ===")
         print(f"Endpoint: {MICROPUB_ENDPOINT}")
-        print(f"Title: {title}")
-        print(f"Content length: {len(content)} characters")
+        print(f"Content: {content}")
         if destination:
             print(f"Destination: {destination}")
-        print(f"\nContent preview (first 500 chars):")
-        print(content[:500])
-        if len(content) > 500:
-            print("...")
-        print("\n=== End of dry run ===\n")
+        print("=== End of dry run ===\n")
         return True
 
     if not token:
@@ -179,45 +136,34 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
         print("Get your app token from: https://micro.blog/account/apps")
         return False
 
-    # Prepare headers with Bearer token for JSON request
     headers = {
         'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json',
     }
 
-    # Prepare JSON payload using Microformats 2 structure
-    # According to W3C Micropub spec: https://www.w3.org/TR/micropub/
-    # For HTML content, use an object with 'html' key per spec section 3.3.2
-    payload = {
-        'type': ['h-entry'],
-        'properties': {
-            'name': [title],
-            'content': [{'html': content}],
-        }
+    # Form-encoded payload — no 'name' so it posts as a note
+    data = {
+        'h': 'entry',
+        'content': content,
     }
 
-    # Add destination if provided (for multi-blog accounts)
     if destination:
-        payload['properties']['mp-destination'] = [destination]
+        data['mp-destination'] = destination
 
     try:
-        # Make POST request to Micropub endpoint with JSON payload
         response = requests.post(
             MICROPUB_ENDPOINT,
-            json=payload,
+            data=data,
             headers=headers,
             timeout=30
         )
         response.raise_for_status()
 
-        # Get the Location header with the new post URL
         post_url = response.headers.get('Location', 'posted successfully')
-
-        print(f"✓ Successfully posted to micro.blog: {post_url}")
+        print(f"Successfully posted to micro.blog: {post_url}")
         return True
 
     except requests.exceptions.RequestException as e:
-        print(f"✗ Error posting to micro.blog: {e}")
+        print(f"Error posting to micro.blog: {e}")
         if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response body: {e.response.text}")
@@ -225,9 +171,9 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
 
 
 def main():
-    """Main function to post weekly newsletter to micro.blog."""
+    """Main function to post weekly newsletter note to micro.blog."""
     parser = argparse.ArgumentParser(
-        description='Post weekly newsletter to micro.blog',
+        description='Post weekly newsletter note to micro.blog',
         epilog='Requires MB_TOKEN environment variable. Optional: MICROBLOG_DESTINATION'
     )
     parser.add_argument(
@@ -241,43 +187,19 @@ def main():
     # Get current date in configured timezone (should be a Monday)
     current_date = datetime.now(local_tz).date()
 
-    # Calculate the Monday of this week (for the title)
+    # Calculate the Monday of this week
     days_since_monday = current_date.weekday()  # 0 = Monday, 6 = Sunday
     monday_date = current_date - timedelta(days=days_since_monday)
 
-    print(f"Posting newsletter for the week of {monday_date.strftime('%A, %B %-d, %Y')}...")
+    print(f"Posting newsletter note for the week of {monday_date.strftime('%A, %B %-d, %Y')}...")
 
-    # Generate title
-    title = generate_newsletter_title(monday_date)
-    print(f"Title: {title}")
-
-    # Fetch newsletter HTML
-    print(f"Fetching newsletter from {NEWSLETTER_URL}...")
-    success, html = fetch_newsletter_html(NEWSLETTER_URL)
-
-    if not success:
-        print(f"Error: {html}")
-        return 1
-
-    print("✓ Newsletter fetched successfully")
-
-    # Extract body content
-    body_content = extract_body_content(html)
-
-    if not body_content:
-        print("Error: Could not find <body> tag in newsletter HTML")
-        return 1
-
-    if not body_content.strip():
-        print("Warning: Newsletter body is empty. Skipping post.")
-        return 0
-
-    print(f"✓ Extracted body content ({len(body_content)} characters)")
+    # Generate note content
+    content = generate_note_content(monday_date)
+    print(f"Content: {content}")
 
     # Post to micro.blog
     success = post_to_microblog(
-        title=title,
-        content=body_content,
+        content=content,
         token=MB_TOKEN,
         destination=MICROBLOG_DESTINATION,
         dry_run=args.dry_run

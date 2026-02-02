@@ -200,15 +200,15 @@ def generate_title(count, target_date):
 
 def post_to_microblog(title, content, token, destination=None, dry_run=False):
     """
-    Post content to micro.blog using Micropub API with JSON syntax.
-    
+    Post content to micro.blog using form-encoded Micropub.
+
     Args:
-        title: Post title
+        title: Post title (h-entry name)
         content: Post HTML content
         token: Micro.blog app token
         destination: Optional destination URL
         dry_run: If True, print what would be posted
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -221,45 +221,40 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
             print(f"Destination: {destination}")
         print("=== End of dry run ===\n")
         return True
-    
+
     if not token:
         print("Error: MB_TOKEN environment variable must be set")
         return False
-    
+
     headers = {
         'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json',
     }
-    
-    # Prepare JSON payload using Microformats 2 structure
-    # According to W3C Micropub spec: https://www.w3.org/TR/micropub/
-    # For HTML content, use an object with 'html' key per spec section 3.3.2
-    payload = {
-        'type': ['h-entry'],
-        'properties': {
-            'name': [title],
-            'content': [{'html': content}],
-        }
+
+    # Form-encoded payload
+    data = {
+        'h': 'entry',
+        'name': title,
+        'content[html]': content,
     }
-    
+
     if destination:
-        payload['properties']['mp-destination'] = [destination]
-    
+        data['mp-destination'] = destination
+
     try:
         response = requests.post(
             MICROPUB_ENDPOINT,
-            json=payload,
+            data=data,
             headers=headers,
             timeout=30
         )
         response.raise_for_status()
-        
+
         post_url = response.headers.get('Location', 'posted successfully')
-        print(f"✓ Successfully posted to micro.blog: {post_url}")
+        print(f"Successfully posted to micro.blog: {post_url}")
         return True
-        
+
     except requests.exceptions.RequestException as e:
-        print(f"✗ Error posting to micro.blog: {e}")
+        print(f"Error posting to micro.blog: {e}")
         if hasattr(e, 'response') and e.response is not None:
             print(f"Response status: {e.response.status_code}")
             print(f"Response body: {e.response.text}")
