@@ -114,6 +114,20 @@ function handler(event) {
       enableIpv6: true,
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       webAclId: stackConfig.cloudfront.webAclId,
+      errorResponses: [
+        {
+          httpStatus: 403,
+          responseHttpStatus: 404,
+          responsePagePath: '/404.html',
+          ttl: cdk.Duration.minutes(5),
+        },
+        {
+          httpStatus: 404,
+          responseHttpStatus: 404,
+          responsePagePath: '/404.html',
+          ttl: cdk.Duration.minutes(5),
+        },
+      ],
     });
 
     // Add bucket policy to allow CloudFront OAC to access S3

@@ -145,6 +145,11 @@ def rss_feed():
     """Generate the RSS feed"""
     yield {}
 
+@freezer.register_generator
+def not_found_page():
+    """Generate the 404 error page"""
+    yield {}
+
 # Image generation temporarily disabled
 # @freezer.register_generator
 # def week_image():
