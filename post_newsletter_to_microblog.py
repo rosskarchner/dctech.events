@@ -9,9 +9,10 @@ Micropub API Details:
 - Endpoint: https://micro.blog/micropub
 - Authentication: Bearer token in Authorization header
 - Standard: W3C Micropub (https://www.w3.org/TR/micropub/)
-- Content-Type: application/x-www-form-urlencoded
-- Required parameters: h=entry, name (title), content (HTML body)
-- Optional parameters: mp-destination (for multi-blog accounts)
+- Content-Type: application/json
+- Format: Microformats 2 JSON structure
+- Required: type (h-entry), properties.content (HTML body), properties.name (title)
+- Optional: properties.mp-destination (for multi-blog accounts)
 
 Environment Variables Required:
 - MB_TOKEN: App token from micro.blog (Account → App tokens)
@@ -147,7 +148,7 @@ def extract_body_content(html):
 
 def post_to_microblog(title, content, token, destination=None, dry_run=False):
     """
-    Post content to micro.blog using Micropub API.
+    Post content to micro.blog using Micropub API with JSON syntax.
 
     Args:
         title: Post title (h-entry name)
@@ -178,28 +179,31 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
         print("Get your app token from: https://micro.blog/account/apps")
         return False
 
-    # Prepare headers with Bearer token
+    # Prepare headers with Bearer token for JSON request
     headers = {
         'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
     }
 
-    # Prepare form data for Micropub
-    data = {
-        'h': 'entry',
-        'name': title,
-        'content': content,
+    # Prepare JSON payload using Microformats 2 structure
+    # According to W3C Micropub spec: https://www.w3.org/TR/micropub/
+    payload = {
+        'type': ['h-entry'],
+        'properties': {
+            'name': [title],
+            'content': [content],
+        }
     }
 
-    # Add destination if provided
+    # Add destination if provided (for multi-blog accounts)
     if destination:
-        data['mp-destination'] = destination
+        payload['properties']['mp-destination'] = [destination]
 
     try:
-        # Make POST request to Micropub endpoint
+        # Make POST request to Micropub endpoint with JSON payload
         response = requests.post(
             MICROPUB_ENDPOINT,
-            data=data,
+            json=payload,
             headers=headers,
             timeout=30
         )
