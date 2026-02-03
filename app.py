@@ -1203,6 +1203,35 @@ def category_page(slug):
                          category_name=category['name'],
                          category_description=category.get('description', ''))
 
+@app.route("/feeds/")
+def feeds_page():
+    """Show a page listing all available RSS and iCal feeds"""
+    categories = get_categories()
+    events = get_events()
+    
+    # Get categories with event counts
+    categories_with_counts = []
+    for slug, category in sorted(categories.items(), key=lambda x: x[1]['name']):
+        filtered_events = [e for e in events if slug in e.get('categories', [])]
+        count = len(filtered_events)
+        if count > 0:
+            categories_with_counts.append({
+                'slug': slug,
+                'name': category['name'],
+                'count': count
+            })
+    
+    # Define locations
+    locations = [
+        {'state': 'dc', 'name': 'District of Columbia'},
+        {'state': 'md', 'name': 'Maryland'},
+        {'state': 'va', 'name': 'Virginia'}
+    ]
+    
+    return render_template('feeds.html',
+                         categories=categories_with_counts,
+                         locations=locations)
+
 @app.route("/edit/")
 def edit_list():
     """List of upcoming events for editing, grouped by date/time slot"""

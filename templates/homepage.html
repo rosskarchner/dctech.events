@@ -59,6 +59,10 @@
 {% endblock %}
 
 {% block extra_head %}
+<!-- Feed links -->
+<link rel="alternate" type="application/rss+xml" title="{{ site_name }} RSS Feed" href="/events-feed.xml">
+<link rel="alternate" type="text/calendar" title="{{ site_name }} iCal Feed" href="/events.ics">
+
 <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 
 <!-- JSON-LD Structured Data -->
