@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}RSS & iCal Feeds - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>RSS & iCal Feeds</h2>
+        <p>Subscribe to our feeds to stay up-to-date with DC tech events. Choose from calendar feeds (iCal) or RSS feeds for your preferred reader.</p>
+
+        <!-- Main Feeds -->
+        <div style="margin-top: 2rem;">
+            <h3>Main Feeds</h3>
+            <div class="feed-list" style="margin-left: 1rem;">
+                <div class="feed-item" style="margin-bottom: 1rem;">
+                    <strong>All Upcoming Events (iCal)</strong>
+                    <br>
+                    <a href="{{ base_url }}/events.ics" style="font-family: monospace; font-size: 0.9em;">{{ base_url }}/events.ics</a>
+                    <p style="margin: 0.5rem 0 0 0; color: #666;">Subscribe to this calendar feed to see all upcoming tech events in your calendar app.</p>
+                </div>
+                
+                <div class="feed-item" style="margin-bottom: 1rem;">
+                    <strong>Recently Added Events (RSS)</strong>
+                    <br>
+                    <a href="{{ base_url }}/events-feed.xml" style="font-family: monospace; font-size: 0.9em;">{{ base_url }}/events-feed.xml</a>
+                    <p style="margin: 0.5rem 0 0 0; color: #666;">RSS feed of the most recently added events.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Feeds -->
+        {% if categories %}
+        <div style="margin-top: 2rem;">
+            <h3>Category Feeds</h3>
+            <p>Subscribe to feeds for specific technology categories:</p>
+            <div class="feed-list" style="margin-left: 1rem;">
+                {% for category in categories %}
+                <div class="feed-item" style="margin-bottom: 1.5rem;">
+                    <strong>{{ category.name }}</strong> ({{ category.count }} upcoming event{% if category.count != 1 %}s{% endif %})
+                    <br>
+                    <span style="margin-left: 1rem;">iCal:</span> 
+                    <a href="{{ base_url }}/categories/{{ category.slug }}/feed.ics" style="font-family: monospace; font-size: 0.9em;">{{ base_url }}/categories/{{ category.slug }}/feed.ics</a>
+                    <br>
+                    <span style="margin-left: 1rem;">RSS:</span> 
+                    <a href="{{ base_url }}/categories/{{ category.slug }}/feed.xml" style="font-family: monospace; font-size: 0.9em;">{{ base_url }}/categories/{{ category.slug }}/feed.xml</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Location Feeds -->
+        {% if locations %}
+        <div style="margin-top: 2rem;">
+            <h3>Location Feeds</h3>
+            <p>Subscribe to feeds for events in specific locations:</p>
+            <div class="feed-list" style="margin-left: 1rem;">
+                {% for location in locations %}
+                <div class="feed-item" style="margin-bottom: 1.5rem;">
+                    <strong>{{ location.name }}</strong>
+                    <br>
+                    <span style="margin-left: 1rem;">iCal:</span> 
+                    <a href="{{ base_url }}/locations/{{ location.state }}/feed.ics" style="font-family: monospace; font-size: 0.9em;">{{ base_url }}/locations/{{ location.state }}/feed.ics</a>
+                    <br>
+                    <span style="margin-left: 1rem;">RSS:</span> 
+                    <a href="{{ base_url }}/locations/{{ location.state }}/feed.xml" style="font-family: monospace; font-size: 0.9em;">{{ base_url }}/locations/{{ location.state }}/feed.xml</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Usage Instructions -->
+        <div style="margin-top: 2rem; padding: 1rem; background-color: #f5f5f5; border-left: 4px solid #007bff;">
+            <h4 style="margin-top: 0;">How to Use These Feeds</h4>
+            <ul style="margin-bottom: 0;">
+                <li><strong>iCal feeds:</strong> Copy the iCal link and add it to your calendar app (Google Calendar, Apple Calendar, Outlook, etc.) to see events directly in your calendar.</li>
+                <li><strong>RSS feeds:</strong> Use an RSS reader (Feedly, Inoreader, NetNewsWire, etc.) to subscribe to updates and be notified when new events are added or updated.</li>
+            </ul>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+    <meta property="og:title" content="RSS & iCal Feeds - {{ site_name }}">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Subscribe to RSS and iCal feeds for DC tech events">
+    <meta property="og:site_name" content="{{ site_name }}">
+{% endblock %}
