@@ -1121,9 +1121,9 @@ class TestApp(unittest.TestCase):
             {
                 'date': today_str,
                 'time': '09:00',
-                'title': 'Python Workshop',
+                'title': 'Data Workshop',
                 'location': 'Washington DC',
-                'categories': ['python', 'data']
+                'categories': ['data', 'cloud']
             },
             {
                 'date': today_str,
@@ -1146,13 +1146,13 @@ class TestApp(unittest.TestCase):
             with open(test_file, 'w') as f:
                 yaml.dump(test_events, f)
 
-            # Test Python category page
-            response = client.get('/categories/python/')
+            # Test Data category page
+            response = client.get('/categories/data/')
             self.assertEqual(response.status_code, 200)
             html = response.data.decode()
 
-            # Should include Python Workshop
-            self.assertIn('Python Workshop', html)
+            # Should include Data Workshop
+            self.assertIn('Data Workshop', html)
             # Should NOT include AI Conference or Gaming Night
             self.assertNotIn('AI Conference', html)
             self.assertNotIn('Gaming Night', html)
@@ -1164,17 +1164,17 @@ class TestApp(unittest.TestCase):
 
             # Should include AI Conference
             self.assertIn('AI Conference', html)
-            # Should NOT include Python Workshop or Gaming Night
-            self.assertNotIn('Python Workshop', html)
+            # Should NOT include Data Workshop or Gaming Night
+            self.assertNotIn('Data Workshop', html)
             self.assertNotIn('Gaming Night', html)
 
-            # Test data category page (Python Workshop has both python and data)
-            response = client.get('/categories/data/')
+            # Test cloud category page (Data Workshop has both data and cloud)
+            response = client.get('/categories/cloud/')
             self.assertEqual(response.status_code, 200)
             html = response.data.decode()
 
-            # Should include Python Workshop (has data category)
-            self.assertIn('Python Workshop', html)
+            # Should include Data Workshop (has cloud category)
+            self.assertIn('Data Workshop', html)
 
         finally:
             # Cleanup
@@ -1221,8 +1221,8 @@ class TestApp(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             html = response.data.decode()
 
-            # Should show empty state message (template shows "no upcoming {category} events")
-            self.assertIn('no upcoming gaming events', html.lower())
+            # Should show empty state message (template shows "no upcoming {category_name} events found")
+            self.assertIn('no upcoming gaming &amp; gamedev events', html.lower())
             # Should NOT include the Python Workshop
             self.assertNotIn('Python Workshop', html)
 
@@ -1358,13 +1358,13 @@ class TestDataPipelineIntegration(unittest.TestCase):
         
         categories = load_categories()
         
-        # Should have all 16 expected categories
+        # Should have at least 15 expected categories
         self.assertGreaterEqual(len(categories), 15)
         
         # Check a known category
-        self.assertIn('python', categories)
-        self.assertEqual(categories['python']['name'], 'Python')
-        self.assertIn('description', categories['python'])
+        self.assertIn('ai', categories)
+        self.assertEqual(categories['ai']['name'], 'AI & Machine Learning')
+        self.assertIn('description', categories['ai'])
     
     def test_load_event_override_nonexistent(self):
         """Test that nonexistent override returns None"""
@@ -1814,13 +1814,13 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         test_event = {
             'date': future_date,
             'time': '18:00',
-            'title': 'DC Python Meetup',
+            'title': 'DC Data Meetup',
             'location': 'Washington DC',
-            'url': 'https://dcpython.example.com',
+            'url': 'https://dcdata.example.com',
             'source': 'manual',
-            'slug': 'dc-python-meetup',
-            'guid': calculate_event_hash(future_date, '18:00', 'DC Python Meetup', 'https://dcpython.example.com'),
-            'categories': ['python']
+            'slug': 'dc-data-meetup',
+            'guid': calculate_event_hash(future_date, '18:00', 'DC Data Meetup', 'https://dcdata.example.com'),
+            'categories': ['data']
         }
         
         try:
@@ -1830,12 +1830,12 @@ class TestIntegrationEndToEnd(unittest.TestCase):
             # 1. Verify event appears in listings
             response = client.get('/')
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b'DC Python Meetup', response.data)
+            self.assertIn(b'DC Data Meetup', response.data)
             
             # 2. Verify event appears in category page
-            response = client.get('/categories/python/')
+            response = client.get('/categories/data/')
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b'DC Python Meetup', response.data)
+            self.assertIn(b'DC Data Meetup', response.data)
             
             # 3. Verify edit list page loads (event may not show if missing start_date)
             response = client.get('/edit/')
@@ -1993,11 +1993,11 @@ class TestIntegrationEndToEnd(unittest.TestCase):
             # Verify each category page shows empty state
             response = client.get('/categories/gaming/')
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b'no upcoming gaming events', response.data.lower())
+            self.assertIn(b'no upcoming gaming &amp; gamedev events', response.data.lower())
             
-            response = client.get('/categories/python/')
+            response = client.get('/categories/ai/')
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b'no upcoming python events', response.data.lower())
+            self.assertIn(b'no upcoming ai &amp; machine learning events', response.data.lower())
             
         finally:
             if os.path.exists(test_file):
@@ -2039,13 +2039,13 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         
         # Group with categories
         group_with_categories = {
-            'name': 'Python DC',
-            'categories': ['python', 'data']
+            'name': 'Data DC',
+            'categories': ['data', 'cloud']
         }
         
         # Resolve should use group categories
         resolved = resolve_event_categories(event_without_categories, group_with_categories, categories)
-        self.assertEqual(sorted(resolved), ['data', 'python'])
+        self.assertEqual(sorted(resolved), ['cloud', 'data'])
         
         # Event with own categories (should override group)
         event_with_categories = {
@@ -2114,10 +2114,10 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         test_event = {
             'date': future_date,
             'time': '19:00',
-            'title': 'Python ML Workshop',
+            'title': 'Data ML Workshop',
             'location': 'Arlington VA',
             'url': 'https://example.com/ml',
-            'categories': ['python', 'ai']
+            'categories': ['data', 'ai']
         }
         
         try:
@@ -2130,7 +2130,7 @@ class TestIntegrationEndToEnd(unittest.TestCase):
             
             # Should contain category badge links
             self.assertIn(b'category-badge', response.data)
-            self.assertIn(b'/categories/python/', response.data)
+            self.assertIn(b'/categories/data/', response.data)
             self.assertIn(b'/categories/ai/', response.data)
             
         finally:
