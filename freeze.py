@@ -88,6 +88,11 @@ def category_page():
         yield {'slug': slug}
 
 @freezer.register_generator
+def feeds_page():
+    """Generate the feeds listing page"""
+    yield {}
+
+@freezer.register_generator
 def newsletter_html():
     """Generate the HTML newsletter page"""
     yield {}
