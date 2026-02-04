@@ -1122,27 +1122,63 @@ def approved_groups_list():
 def newsletter_html():
     # Get upcoming events
     events = get_events()
-    days = prepare_events_by_day(events)
+    
+    # Filter to next two weeks (14 days)
+    today = date.today()
+    two_weeks_from_now = today + timedelta(days=14)
+    two_week_events = [
+        e for e in events 
+        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
+    ]
+    
+    days = prepare_events_by_day(two_week_events)
     
     # Get stats
     stats = get_stats()
+    stats['upcoming_events'] = len(two_week_events)
+    
+    # Get upcoming months with event counts
+    upcoming_months = get_upcoming_months()
+    
+    # Get categories with event counts
+    categories_with_counts = get_categories_with_event_counts()
     
     return render_template('newsletter.html',
                           days=days,
-                          stats=stats)
+                          stats=stats,
+                          upcoming_months=upcoming_months,
+                          categories_with_counts=categories_with_counts)
 
 @app.route("/newsletter.txt")
 def newsletter_text():
     # Get upcoming events
     events = get_events()
-    days = prepare_events_by_day(events)
+    
+    # Filter to next two weeks (14 days)
+    today = date.today()
+    two_weeks_from_now = today + timedelta(days=14)
+    two_week_events = [
+        e for e in events 
+        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
+    ]
+    
+    days = prepare_events_by_day(two_week_events)
     
     # Get stats
     stats = get_stats()
+    stats['upcoming_events'] = len(two_week_events)
+    
+    # Get upcoming months with event counts
+    upcoming_months = get_upcoming_months()
+    
+    # Get categories with event counts
+    categories_with_counts = get_categories_with_event_counts()
     
     response = render_template('newsletter.txt',
                              days=days,
-                             stats=stats)
+                             stats=stats,
+                             upcoming_months=upcoming_months,
+                             categories_with_counts=categories_with_counts)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route("/locations/<state>/")
