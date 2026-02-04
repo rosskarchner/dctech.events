@@ -1153,6 +1153,7 @@ def newsletter_html():
     return render_template('newsletter.html',
                           days=days,
                           stats=stats,
+                          base_url=BASE_URL,
                           upcoming_months=upcoming_months,
                           categories_with_counts=categories_with_counts)
 
@@ -1179,6 +1180,7 @@ def newsletter_text():
     response = render_template('newsletter.txt',
                              days=days,
                              stats=stats,
+                             base_url=BASE_URL,
                              upcoming_months=upcoming_months,
                              categories_with_counts=categories_with_counts)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
