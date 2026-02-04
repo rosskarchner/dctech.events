@@ -217,6 +217,23 @@ def get_categories_with_event_counts():
     
     return categories_with_counts
 
+def filter_events_to_next_two_weeks(events):
+    """
+    Filter events to the next 14 days.
+    
+    Args:
+        events: List of event dictionaries
+    
+    Returns:
+        List of events occurring within the next 14 days
+    """
+    today = date.today()
+    two_weeks_from_now = today + timedelta(days=14)
+    return [
+        e for e in events 
+        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
+    ]
+
 def calculate_event_hash(date, time, title, url=None):
     """
     Calculate MD5 hash for event identification.
@@ -931,12 +948,7 @@ def homepage():
     events = filter_in_person_events(all_events)
     
     # Filter to next two weeks
-    today = date.today()
-    two_weeks_from_now = today + timedelta(days=14)
-    two_week_events = [
-        e for e in events 
-        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
-    ]
+    two_week_events = filter_events_to_next_two_weeks(events)
     
     days = prepare_events_by_day(two_week_events, add_week_links=True)
 
@@ -944,7 +956,7 @@ def homepage():
     base_url = BASE_URL
 
     # Get stats - count only in-person events in next two weeks
-    stats = get_stats()
+    stats = get_stats().copy()
     stats['upcoming_events'] = len(two_week_events)
     stats['total_upcoming_events'] = len(events)
     
@@ -1124,17 +1136,12 @@ def newsletter_html():
     events = get_events()
     
     # Filter to next two weeks (14 days)
-    today = date.today()
-    two_weeks_from_now = today + timedelta(days=14)
-    two_week_events = [
-        e for e in events 
-        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
-    ]
+    two_week_events = filter_events_to_next_two_weeks(events)
     
     days = prepare_events_by_day(two_week_events)
     
     # Get stats
-    stats = get_stats()
+    stats = get_stats().copy()
     stats['upcoming_events'] = len(two_week_events)
     
     # Get upcoming months with event counts
@@ -1155,17 +1162,12 @@ def newsletter_text():
     events = get_events()
     
     # Filter to next two weeks (14 days)
-    today = date.today()
-    two_weeks_from_now = today + timedelta(days=14)
-    two_week_events = [
-        e for e in events 
-        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
-    ]
+    two_week_events = filter_events_to_next_two_weeks(events)
     
     days = prepare_events_by_day(two_week_events)
     
     # Get stats
-    stats = get_stats()
+    stats = get_stats().copy()
     stats['upcoming_events'] = len(two_week_events)
     
     # Get upcoming months with event counts
