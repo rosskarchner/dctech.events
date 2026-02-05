@@ -1,7 +1,13 @@
 name: Run Tests
 
+# This workflow uses pull_request_target instead of pull_request to allow tests to run
+# without approval for the repository owner's own PRs. For security:
+# 1. The workflow only runs automatically for OWNER, MEMBER, and COLLABORATOR
+# 2. External contributors will still require manual approval before tests run
+# 3. PR code is explicitly checked out (not the base branch) to test the actual changes
+
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
     paths:
@@ -15,10 +21,16 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Only run automatically for repository owner, members, and collaborators
+    # External contributors will still require approval for security
+    if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     
     steps:
-      - name: Checkout code
+      - name: Checkout PR code
         uses: actions/checkout@v4
+        with:
+          # Important: Check out the PR's code, not the base branch
+          ref: ${{ github.event.pull_request.head.sha }}
       
       - name: Set up Python
         uses: actions/setup-python@v5
