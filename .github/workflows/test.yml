@@ -1,7 +1,7 @@
 name: Run Tests
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
     paths:
@@ -15,10 +15,19 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Only run automatically for repository owner, members, and collaborators
+    # External contributors will still require approval for security
+    if: |
+      github.event.pull_request.author_association == 'OWNER' ||
+      github.event.pull_request.author_association == 'MEMBER' ||
+      github.event.pull_request.author_association == 'COLLABORATOR'
     
     steps:
-      - name: Checkout code
+      - name: Checkout PR code
         uses: actions/checkout@v4
+        with:
+          # Important: Check out the PR's code, not the base branch
+          ref: ${{ github.event.pull_request.head.sha }}
       
       - name: Set up Python
         uses: actions/setup-python@v5
