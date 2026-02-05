@@ -95,7 +95,7 @@ jobs:
       - name: Sync built site to S3 bucket
         id: s3-sync
         run: |
-          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ --delete
+          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ --delete --exclude 'upcoming-history/*'
         continue-on-error: true
 
       - name: Retry S3 sync on failure
@@ -103,7 +103,7 @@ jobs:
         run: |
           echo "Retrying S3 sync..."
           sleep 5
-          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ --delete
+          aws s3 sync build/ s3://${{ env.S3_BUCKET }}/ --delete --exclude 'upcoming-history/*'
 
       - name: Invalidate CloudFront cache
         id: cf-invalidate
