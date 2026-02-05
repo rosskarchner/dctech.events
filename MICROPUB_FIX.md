@@ -24,8 +24,10 @@ Switched `post_to_microblog()` from JSON to form-encoded Micropub:
 
 - `h=entry`
 - `name=<title>`
-- `content[html]=<html content>`
+- `content=<html content>` (HTML passed directly in content field, not content[html])
 - `mp-destination=<url>` as a top-level form parameter
+
+**Note**: While the Micropub spec supports `content[html]`, micro.blog appears to have better compatibility when HTML is passed directly in the `content` field, even when posting articles (with a `name` field).
 
 The rest of the script (S3 reads, event filtering, HTML generation) is unchanged.
 
@@ -39,7 +41,11 @@ Content-Type: application/x-www-form-urlencoded
 h=entry&content=Hello+world&mp-destination=https://updates.dctech.events/
 ```
 
-For HTML content, use `content[html]=<p>HTML here</p>`.
+**For HTML content**: While the Micropub spec defines `content[html]` for HTML content, micro.blog has better compatibility when HTML is passed directly in the `content` field:
+
+```
+h=entry&name=Article+Title&content=<p>HTML+here</p>&mp-destination=https://updates.dctech.events/
+```
 
 ## Testing
 ```bash

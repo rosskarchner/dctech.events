@@ -231,10 +231,12 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
     }
 
     # Form-encoded payload
+    # Note: Using 'content' instead of 'content[html]' for better compatibility
+    # The HTML will be passed as-is in the content field
     data = {
         'h': 'entry',
         'name': title,
-        'content[html]': content,
+        'content': content,
     }
 
     if destination:

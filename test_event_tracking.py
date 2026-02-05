@@ -276,7 +276,7 @@ class TestPostDailyEventSummary:
         data = call_args[1]['data']
         assert data['h'] == 'entry'
         assert data['name'] == 'Test Title'
-        assert data['content[html]'] == '<p>Test Content</p>'
+        assert data['content'] == '<p>Test Content</p>'
         # Should use data= not json=
         assert 'json' not in call_args[1]
 

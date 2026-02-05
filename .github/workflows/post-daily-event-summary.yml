@@ -1,9 +1,9 @@
 name: Post Daily Event Summary to Micro.blog
 
 on:
-  # Run every day at 6:00 PM UTC (1:00 PM EST / 2:00 PM EDT)
+  # Run every day at 11:00 PM UTC (6:00 PM EST / 7:00 PM EDT)
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '0 23 * * *'
 
   # Allow manual triggering
   workflow_dispatch:
