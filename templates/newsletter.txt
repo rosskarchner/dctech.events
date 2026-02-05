@@ -23,5 +23,27 @@
 No events found for this period.
 {% endif %}
 
+Browse by Month
+===============
+{% if upcoming_months %}
+{% for month in upcoming_months %}
+* {{ month.name }} ({{ month.count }} event{% if month.count != 1 %}s{% endif %})
+  {{ base_url }}{{ month.url }}
+{% endfor %}
+{% else %}
+No upcoming months with events.
+{% endif %}
+
+Browse by Category
+==================
+{% if categories_with_counts %}
+{% for category in categories_with_counts %}
+* {{ category.name }} ({{ category.count }} event{% if category.count != 1 %}s{% endif %})
+  {{ base_url }}{{ category.url }}
+{% endfor %}
+{% else %}
+No categorized events.
+{% endif %}
+
 ---
 View more events at https://dctech.events

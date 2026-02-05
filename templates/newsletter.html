@@ -53,6 +53,36 @@
         <p>No events found for this period.</p>
     {% endif %}
 
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">
+        <h3 style="color: #444; margin-top: 0;">Browse by Month</h3>
+        {% if upcoming_months %}
+            <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 0;">
+            {% for month in upcoming_months %}
+                <li style="margin-bottom: 8px;">
+                    <a href="{{ base_url }}{{ month.url }}" style="color: #0066cc; text-decoration: none;">{{ month.name }}</a>
+                    <span style="color: #666;">({{ month.count }} event{% if month.count != 1 %}s{% endif %})</span>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #666;">No upcoming months with events.</p>
+        {% endif %}
+
+        <h3 style="color: #444; margin-top: 20px;">Browse by Category</h3>
+        {% if categories_with_counts %}
+            <ul style="list-style-type: none; padding: 0; margin: 0;">
+            {% for category in categories_with_counts %}
+                <li style="margin-bottom: 8px;">
+                    <a href="{{ base_url }}{{ category.url }}" style="color: #0066cc; text-decoration: none;">{{ category.name }}</a>
+                    <span style="color: #666;">({{ category.count }} event{% if category.count != 1 %}s{% endif %})</span>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #666;">No categorized events.</p>
+        {% endif %}
+    </div>
+
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px; color: #666;">
         <p>View more events at <a href="https://dctech.events" style="color: #0066cc; text-decoration: none;">dctech.events</a></p>
     </div>
