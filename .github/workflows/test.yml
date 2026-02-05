@@ -23,10 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run automatically for repository owner, members, and collaborators
     # External contributors will still require approval for security
-    if: |
-      github.event.pull_request.author_association == 'OWNER' ||
-      github.event.pull_request.author_association == 'MEMBER' ||
-      github.event.pull_request.author_association == 'COLLABORATOR'
+    if: contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     
     steps:
       - name: Checkout PR code
