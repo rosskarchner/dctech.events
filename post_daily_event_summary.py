@@ -256,8 +256,16 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
     except requests.exceptions.RequestException as e:
         print(f"Error posting to micro.blog: {e}")
         if hasattr(e, 'response') and e.response is not None:
-            print(f"Response status: {e.response.status_code}")
+            status_code = e.response.status_code
+            print(f"Response status: {status_code}")
             print(f"Response body: {e.response.text}")
+            
+            # For 5xx server errors, treat as non-fatal (micro.blog issue, not ours)
+            if 500 <= status_code < 600:
+                print("Note: This is a server error on micro.blog's side.")
+                print("The workflow will succeed, but the post was not published.")
+                print("micro.blog may be experiencing temporary issues.")
+                return True  # Don't fail the workflow for micro.blog server errors
         return False
 
 
