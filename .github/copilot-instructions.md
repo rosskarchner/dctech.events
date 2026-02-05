@@ -209,7 +209,7 @@ All edit pages follow this pattern:
 ## Common Tasks
 
 ### Add OAuth Return URL
-1. Edit `oauth-endpoint/app.py` (line 81)
+1. Edit `oauth-endpoint/app.py` (add to ALLOWED_RETURN_URLS list)
 2. Add test in `oauth-endpoint/test_oauth_app.py`
 3. Redeploy: `cd oauth-endpoint && chalice deploy`
 
@@ -234,7 +234,7 @@ All edit pages follow this pattern:
 
 1. **Event Source Detection**: Always check `event.source` before determining file path
 2. **YAML Merging**: Preserve existing fields when updating YAML files
-3. **OAuth Return URLs**: Must be whitelisted in `oauth-endpoint/app.py:81`
+3. **OAuth Return URLs**: Must be whitelisted in `oauth-endpoint/app.py` (ALLOWED_RETURN_URLS list)
 4. **Category Format**: Always YAML list format, not single value
 5. **Fork Wait Time**: Creating fork needs ~3s delay before branch creation
 6. **Disable Pagers**: Use `git --no-pager` to avoid interactive output issues
