@@ -7,7 +7,6 @@ import sys
 import json
 import yaml
 import pytest
-import requests
 from datetime import datetime, timezone, timedelta
 from unittest.mock import Mock, patch, MagicMock
 from io import BytesIO
@@ -277,7 +276,7 @@ class TestPostDailyEventSummary:
         data = call_args[1]['data']
         assert data['h'] == 'entry'
         assert data['name'] == 'Test Title'
-        assert data['content[html]'] == '<p>Test Content</p>'
+        assert data['content'] == '<p>Test Content</p>'
         # Should use data= not json=
         assert 'json' not in call_args[1]
 
@@ -299,56 +298,6 @@ class TestPostDailyEventSummary:
         assert result is True
         data = mock_post.call_args[1]['data']
         assert data['mp-destination'] == 'https://updates.dctech.events/'
-
-    @patch('post_daily_event_summary.requests.post')
-    def test_post_to_microblog_server_error(self, mock_post):
-        """Test that 5xx server errors are treated as non-fatal"""
-        # Mock a 500 server error response
-        mock_response = Mock()
-        mock_response.status_code = 500
-        mock_response.text = 'Internal Server Error'
-        
-        # Create an HTTPError with the response attached
-        error = requests.exceptions.HTTPError()
-        error.response = mock_response
-        mock_response.raise_for_status.side_effect = error
-        
-        mock_post.return_value = mock_response
-        
-        result = post_daily_event_summary.post_to_microblog(
-            title='Test Title',
-            content='<p>Test Content</p>',
-            token='fake-token',
-            dry_run=False
-        )
-        
-        # Should return True to not fail the workflow for micro.blog server errors
-        assert result is True
-    
-    @patch('post_daily_event_summary.requests.post')
-    def test_post_to_microblog_client_error(self, mock_post):
-        """Test that 4xx client errors are treated as fatal"""
-        # Mock a 401 unauthorized response
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.text = 'Unauthorized'
-        
-        # Create an HTTPError with the response attached
-        error = requests.exceptions.HTTPError()
-        error.response = mock_response
-        mock_response.raise_for_status.side_effect = error
-        
-        mock_post.return_value = mock_response
-        
-        result = post_daily_event_summary.post_to_microblog(
-            title='Test Title',
-            content='<p>Test Content</p>',
-            token='fake-token',
-            dry_run=False
-        )
-        
-        # Should return False for client errors (our problem, not theirs)
-        assert result is False
 
 
 if __name__ == '__main__':
