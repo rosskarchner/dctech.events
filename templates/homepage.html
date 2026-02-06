@@ -18,7 +18,7 @@
         <div id="just-added-preview">
             Just added: 
             {% for event in recently_added %}
-                {% if event.url %}<a href="{{ event.url }}">{{ event.title }}</a>{% else %}{{ event.title }}{% endif %}{% if event.date %}({{ event.date[5:7]|int }}/{{ event.date[8:10]|int }}){% endif %}{% if not loop.last %}, {% endif %}
+                {% if event.url %}<a href="{{ event.url }}">{{ event.title }}</a>{% else %}{{ event.title }}{% endif %}{% if event.date %} ({{ event.date[5:7]|int }}/{{ event.date[8:10]|int }}){% endif %}{% if not loop.last %}, {% endif %}
             {% endfor %}
             and <a href="/just-added/">more</a>.
         </div>
