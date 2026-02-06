@@ -68,13 +68,18 @@ python generate_rss_feed.py --days 7 --max-items 20
 
 **How it works**:
 - Checks S3 metadata for events added today
-- If new events found, generates HTML summary
-- Posts to micro.blog using Micropub API
+- If new events found, generates a simple text post with link
+- Posts to micro.blog using Micropub API (untitled post)
 
 **Post format**: 
 ```
-Title: "X new events added on May 3rd 2026"
-Content: HTML list of event titles and dates with links
+Content: "X new events added today: https://dctech.events/just-added/#M-D-YYYY"
+(No title - creates an untitled post)
+```
+
+**Example**:
+```
+3 new events added today: https://dctech.events/just-added/#2-5-2026
 ```
 
 **Usage**:
@@ -88,11 +93,31 @@ python post_daily_event_summary.py --date 2026-02-01
 ```
 
 **When it runs**: 
-- Automatically daily at 1 PM ET / 6 PM UTC (via GitHub Actions)
+- Automatically daily at 11 PM UTC / 6 PM ET (via GitHub Actions)
+
+### 4. Just-Added Page (`/just-added/`)
+
+**Purpose**: Display the three most recent days with newly added events.
+
+**Features**:
+- Shows events grouped by the date they were added (not event date)
+- Excludes days with more than 100 events (likely bulk imports)
+- Each day has a date-based anchor (e.g., `#2-5-2026`)
+- Links from daily summary posts point to these anchors
+
+**URL Structure**:
+- Main page: `https://dctech.events/just-added/`
+- With anchor: `https://dctech.events/just-added/#2-5-2026`
+
+**Data Source**: S3 metadata (`upcoming-history/metadata.json`)
 
 ## GitHub Actions Workflows
 
 ### Deploy Workflow (`.github/workflows/deploy.yml`)
+
+**Schedules**:
+- Daily at 6 AM UTC (2 AM ET) - Main rebuild
+- Daily at 10:30 PM UTC - Pre-summary rebuild to update just-added page
 
 Added step after deployment:
 ```yaml
@@ -102,7 +127,7 @@ Added step after deployment:
 
 ### Daily Summary Workflow (`.github/workflows/post-daily-event-summary.yml`)
 
-Runs daily at 6 PM UTC to post summaries to micro.blog.
+Runs daily at 11 PM UTC (6 PM ET) to post summaries to micro.blog.
 
 **Manual triggers**: Can run manually with optional parameters:
 - `dry_run`: Test without posting
