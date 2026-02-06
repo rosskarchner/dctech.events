@@ -125,53 +125,38 @@ def get_todays_new_events(metadata, target_date=None):
     return new_events
 
 
-def generate_summary_html(new_events, target_date):
+def generate_summary_content(count, target_date):
     """
-    Generate HTML summary of new events.
+    Generate summary content with link to just-added page.
+    
+    Format: "X new events added today: https://dctech.events/just-added/#M-D-YYYY"
     
     Args:
-        new_events: List of new event data dicts
-        target_date: Date the events were added
+        count: Number of events
+        target_date: Date object
         
     Returns:
-        HTML string
+        Content string (plain text with link)
     """
-    # Sort events by date
-    sorted_events = sorted(new_events, key=lambda e: e.get('date', ''))
+    # Format the anchor (e.g., "2-5-2026" for Feb 5, 2026)
+    anchor = f"{target_date.month}-{target_date.day}-{target_date.year}"
     
-    # Build HTML
-    html_parts = [
-        f'<p>{len(new_events)} new events have been added to <a href="{BASE_URL}">{SITE_NAME}</a>:</p>',
-        '<ul>'
-    ]
+    # Build the URL with anchor
+    url = f"{BASE_URL}/just-added/#{anchor}"
     
-    for event in sorted_events:
-        title = event.get('title', 'Untitled Event')
-        date = event.get('date', '')
-        url = event.get('url', '')
-        
-        # Format date nicely if available
-        date_display = ''
-        if date:
-            try:
-                event_date = datetime.strptime(date, '%Y-%m-%d').date()
-                date_display = f" - {event_date.strftime('%B %-d, %Y')}"
-            except ValueError:
-                pass
-        
-        if url:
-            html_parts.append(f'  <li><a href="{url}">{title}</a>{date_display}</li>')
-        else:
-            html_parts.append(f'  <li>{title}{date_display}</li>')
+    # Pluralize "event" if needed
+    event_word = 'event' if count == 1 else 'events'
     
-    html_parts.append('</ul>')
-    
-    return '\n'.join(html_parts)
+    # Simple text with link
+    return f"{count} new {event_word} added today: {url}"
 
 
 def generate_title(count, target_date):
     """
     Generate post title.
+    
+    NOTE: This function is now unused as posts should be untitled.
+    Kept for backward compatibility.
     
     Format: "X new events added on May 3rd 2026"
     
@@ -198,13 +183,14 @@ def generate_title(count, target_date):
     return f"{count} new {event_word} added on {month} {day}{suffix} {year}"
 
 
-def post_to_microblog(title, content, token, destination=None, dry_run=False):
+def post_to_microblog(content, token, destination=None, dry_run=False):
     """
     Post content to micro.blog using form-encoded Micropub.
+    
+    NOTE: Updated to post without title (untitled posts).
 
     Args:
-        title: Post title (h-entry name)
-        content: Post HTML content
+        content: Post content (plain text or HTML)
         token: Micro.blog app token
         destination: Optional destination URL
         dry_run: If True, print what would be posted
@@ -215,7 +201,6 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
     if dry_run:
         print("\n=== DRY RUN - Would post to micro.blog ===")
         print(f"Endpoint: {MICROPUB_ENDPOINT}")
-        print(f"Title: {title}")
         print(f"Content:\n{content}")
         if destination:
             print(f"Destination: {destination}")
@@ -232,10 +217,10 @@ def post_to_microblog(title, content, token, destination=None, dry_run=False):
 
     # Form-encoded payload
     # Note: Using 'content' instead of 'content[html]' for better compatibility
-    # The HTML will be passed as-is in the content field
+    # The content will be passed as-is in the content field
+    # No 'name' field = untitled post
     data = {
         'h': 'entry',
-        'name': title,
         'content': content,
     }
 
@@ -322,15 +307,13 @@ def main():
     
     print(f"Found {len(new_events)} new events")
     
-    # Generate title and content
-    title = generate_title(len(new_events), target_date)
-    content = generate_summary_html(new_events, target_date)
+    # Generate content with link to just-added page
+    content = generate_summary_content(len(new_events), target_date)
     
-    print(f"Post title: {title}")
+    print(f"Post content: {content}")
     
-    # Post to micro.blog
+    # Post to micro.blog (untitled post)
     success = post_to_microblog(
-        title=title,
         content=content,
         token=MB_TOKEN,
         destination=MICROBLOG_DESTINATION,

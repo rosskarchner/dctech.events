@@ -199,7 +199,7 @@ class TestPostDailyEventSummary:
         assert todays_events[0]['title'] == 'Today Event'
     
     def test_generate_title(self):
-        """Test post title generation"""
+        """Test post title generation (kept for backward compatibility)"""
         from datetime import date
         
         # Test various dates for ordinal suffixes
@@ -215,39 +215,25 @@ class TestPostDailyEventSummary:
         title = post_daily_event_summary.generate_title(3, test_date)
         assert title == '3 new events added on May 22nd 2026'
     
-    def test_generate_summary_html(self):
-        """Test HTML summary generation"""
+    def test_generate_summary_content(self):
+        """Test summary content generation with link to just-added page"""
         from datetime import date
         
-        events = [
-            {
-                'title': 'Event 1',
-                'date': '2026-02-15',
-                'url': 'https://example.com/1'
-            },
-            {
-                'title': 'Event 2',
-                'date': '2026-02-20',
-                'url': 'https://example.com/2'
-            }
-        ]
+        test_date = date(2026, 2, 5)
+        content = post_daily_event_summary.generate_summary_content(3, test_date)
         
-        html = post_daily_event_summary.generate_summary_html(events, date(2026, 2, 1))
+        assert content == '3 new events added today: https://dctech.events/just-added/#2-5-2026'
         
-        assert '2 new events have been added' in html
-        assert 'Event 1' in html
-        assert 'Event 2' in html
-        assert 'https://example.com/1' in html
-        assert 'https://example.com/2' in html
-        assert '<ul>' in html
-        assert '</ul>' in html
+        test_date = date(2026, 12, 25)
+        content = post_daily_event_summary.generate_summary_content(1, test_date)
+        
+        assert content == '1 new event added today: https://dctech.events/just-added/#12-25-2026'
     
     @patch('post_daily_event_summary.requests.post')
     def test_post_to_microblog_dry_run(self, mock_post):
         """Test posting to microblog in dry run mode"""
         result = post_daily_event_summary.post_to_microblog(
-            title='Test Title',
-            content='<p>Test Content</p>',
+            content='Test content',
             token='fake-token',
             dry_run=True
         )
@@ -257,14 +243,13 @@ class TestPostDailyEventSummary:
     
     @patch('post_daily_event_summary.requests.post')
     def test_post_to_microblog_success(self, mock_post):
-        """Test successful posting to microblog with form-encoded payload"""
+        """Test successful posting to microblog with form-encoded payload (untitled)"""
         mock_response = Mock()
         mock_response.headers = {'Location': 'https://micro.blog/posts/123'}
         mock_post.return_value = mock_response
 
         result = post_daily_event_summary.post_to_microblog(
-            title='Test Title',
-            content='<p>Test Content</p>',
+            content='3 new events added today: https://dctech.events/just-added/#2-5-2026',
             token='fake-token',
             dry_run=False
         )
@@ -275,8 +260,9 @@ class TestPostDailyEventSummary:
         # Check form-encoded payload
         data = call_args[1]['data']
         assert data['h'] == 'entry'
-        assert data['name'] == 'Test Title'
-        assert data['content'] == '<p>Test Content</p>'
+        # Should NOT have 'name' field (untitled post)
+        assert 'name' not in data
+        assert data['content'] == '3 new events added today: https://dctech.events/just-added/#2-5-2026'
         # Should use data= not json=
         assert 'json' not in call_args[1]
 
@@ -288,8 +274,7 @@ class TestPostDailyEventSummary:
         mock_post.return_value = mock_response
 
         result = post_daily_event_summary.post_to_microblog(
-            title='Test Title',
-            content='<p>Test Content</p>',
+            content='Test content',
             token='fake-token',
             destination='https://updates.dctech.events/',
             dry_run=False

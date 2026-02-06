@@ -151,6 +151,11 @@ def rss_feed():
     yield {}
 
 @freezer.register_generator
+def just_added():
+    """Generate the recently added events page"""
+    yield {}
+
+@freezer.register_generator
 def not_found_page():
     """Generate the 404 error page"""
     yield {}

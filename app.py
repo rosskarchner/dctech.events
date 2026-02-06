@@ -1880,6 +1880,116 @@ def rss_feed():
             mimetype='application/rss+xml'
         )
 
+@app.route('/just-added/')
+def just_added():
+    """
+    Display the three most recent days with newly added events.
+    Events are grouped by the date they were added (not the event date).
+    Excludes days with more than 100 events (likely bulk loads or bug fixes).
+    """
+    # Try to get S3 metadata
+    s3_bucket = os.environ.get('S3_BUCKET', '')
+    
+    # If S3 is not configured, show a placeholder page
+    if not s3_bucket:
+        return render_template('just_added.html', 
+                             days_with_events=[],
+                             error_message="Event tracking not yet configured")
+    
+    try:
+        import boto3
+        from botocore.exceptions import ClientError, NoCredentialsError
+        import json
+        
+        # Get S3 client
+        aws_region = os.environ.get('AWS_REGION', 'us-east-1')
+        s3_client = boto3.client('s3', region_name=aws_region)
+        
+        # Download metadata
+        metadata_key = 'upcoming-history/metadata.json'
+        try:
+            response = s3_client.get_object(Bucket=s3_bucket, Key=metadata_key)
+            content = response['Body'].read().decode('utf-8')
+            metadata = json.loads(content)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == 'NoSuchKey':
+                return render_template('just_added.html',
+                                     days_with_events=[],
+                                     error_message="No event tracking data available yet")
+            raise
+        
+        # Group events by the date they were added (in local timezone)
+        events_by_date = {}
+        
+        for event_key, event_data in metadata.items():
+            first_seen = event_data.get('first_seen')
+            if not first_seen:
+                continue
+            
+            try:
+                # Parse the UTC timestamp
+                first_seen_dt = datetime.fromisoformat(first_seen.replace('Z', '+00:00'))
+                # Convert to local timezone
+                first_seen_local = first_seen_dt.astimezone(local_tz)
+                # Get just the date
+                first_seen_date = first_seen_local.date()
+                
+                # Add to the appropriate date bucket
+                if first_seen_date not in events_by_date:
+                    events_by_date[first_seen_date] = []
+                
+                events_by_date[first_seen_date].append(event_data)
+            except (ValueError, AttributeError) as e:
+                print(f"Warning: Could not parse timestamp for {event_key}: {e}")
+                continue
+        
+        # Filter out days with more than 100 events (bulk loads)
+        filtered_dates = {
+            date: events 
+            for date, events in events_by_date.items() 
+            if len(events) <= 100
+        }
+        
+        # Get the 3 most recent dates
+        sorted_dates = sorted(filtered_dates.keys(), reverse=True)[:3]
+        
+        # Prepare data for template
+        days_with_events = []
+        for added_date in sorted_dates:
+            events = filtered_dates[added_date]
+            
+            # Sort events by their event date
+            sorted_events = sorted(events, key=lambda e: e.get('date', ''))
+            
+            # Format the anchor (e.g., "2-5-2026" for Feb 5, 2026)
+            anchor = f"{added_date.month}-{added_date.day}-{added_date.year}"
+            
+            # Format the display date
+            date_display = added_date.strftime('%B %-d, %Y')
+            
+            days_with_events.append({
+                'date': added_date,
+                'date_display': date_display,
+                'anchor': anchor,
+                'count': len(events),
+                'events': sorted_events
+            })
+        
+        return render_template('just_added.html',
+                             days_with_events=days_with_events,
+                             error_message=None)
+        
+    except NoCredentialsError:
+        return render_template('just_added.html',
+                             days_with_events=[],
+                             error_message="AWS credentials not configured")
+    except Exception as e:
+        print(f"Error loading just-added data: {e}")
+        return render_template('just_added.html',
+                             days_with_events=[],
+                             error_message="Error loading event tracking data")
+
 @app.route('/404.html')
 def not_found_page():
     """Serve the 404 error page"""
