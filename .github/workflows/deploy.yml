@@ -81,11 +81,6 @@ jobs:
       - name: Build JavaScript bundles
         run: npm run build
 
-      - name: Generate static site
-        env:
-          GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
-        run: make all
-
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -93,6 +88,11 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-actions-deploy
           role-duration-seconds: 3600
+
+      - name: Generate static site
+        env:
+          GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
+        run: make all
 
       - name: Sync built site to S3 bucket
         id: s3-sync
