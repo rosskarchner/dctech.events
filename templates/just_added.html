@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Recently Added Events - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <h1>Recently Added Events</h1>
+    
+    {% if error_message %}
+        <div class="error-message">
+            <p>{{ error_message }}</p>
+        </div>
+    {% elif not days_with_events %}
+        <p>No recently added events found.</p>
+    {% else %}
+        <p class="intro">
+            Showing the most recent days when new events were added to {{ site_name }}.
+            Events are listed by the date they were added to the calendar, not by their event date.
+        </p>
+        
+        {% set month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+        
+        {% for day in days_with_events %}
+            <section class="added-day" id="{{ day.anchor }}">
+                <h2>
+                    <a href="#{{ day.anchor }}" class="anchor-link">🔗</a>
+                    {{ day.date_display }}
+                </h2>
+                <p class="event-count">
+                    {{ day.count }} event{% if day.count != 1 %}s{% endif %} added
+                </p>
+                
+                <ul class="event-list">
+                    {% for event in day.events %}
+                        <li>
+                            {% if event.url %}
+                                <a href="{{ event.url }}" class="event-title">{{ event.title }}</a>
+                            {% else %}
+                                <span class="event-title">{{ event.title }}</span>
+                            {% endif %}
+                            
+                            {% if event.date %}
+                                <span class="event-date">
+                                    {% set event_date = event.date %}
+                                    {% set date_obj = None %}
+                                    {% if event_date %}
+                                        {# Parse the date for display #}
+                                        {% set date_parts = event_date.split('-') %}
+                                        {% if date_parts|length == 3 %}
+                                            {% set year = date_parts[0]|int %}
+                                            {% set month = date_parts[1]|int %}
+                                            {% set day_num = date_parts[2]|int %}
+                                            - {{ month_names[month] }} {{ day_num }}, {{ year }}
+                                        {% else %}
+                                            - {{ event_date }}
+                                        {% endif %}
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<style>
+.content-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.intro {
+    color: #666;
+    font-style: italic;
+    margin-bottom: 2rem;
+}
+
+.added-day {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.added-day:last-child {
+    border-bottom: none;
+}
+
+.added-day h2 {
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.anchor-link {
+    text-decoration: none;
+    opacity: 0.3;
+    margin-right: 0.5rem;
+    font-size: 0.8em;
+}
+
+.anchor-link:hover {
+    opacity: 1;
+}
+
+.event-count {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.event-list {
+    list-style: none;
+    padding: 0;
+}
+
+.event-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.event-list li:last-child {
+    border-bottom: none;
+}
+
+.event-title {
+    font-weight: 500;
+    color: #2c5282;
+    text-decoration: none;
+}
+
+.event-title:hover {
+    text-decoration: underline;
+}
+
+.event-date {
+    color: #666;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+}
+
+.error-message {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+</style>
+{% endblock %}
