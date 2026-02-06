@@ -1260,6 +1260,87 @@ class TestApp(unittest.TestCase):
                 self.assertIn(category_url, sitemap_content,
                             f"Sitemap missing category page: {category_url}")
 
+    def test_get_recently_added_events(self):
+        """Test that get_recently_added_events returns correct number of events"""
+        from unittest.mock import patch, MagicMock
+        from app import get_recently_added_events
+        import json
+        
+        # Mock S3 data
+        mock_metadata = {
+            'event1': {
+                'title': 'Event 1',
+                'date': '2026-02-15',
+                'url': 'https://example.com/event1',
+                'first_seen': '2026-02-06T10:00:00Z'
+            },
+            'event2': {
+                'title': 'Event 2',
+                'date': '2026-02-16',
+                'url': 'https://example.com/event2',
+                'first_seen': '2026-02-06T11:00:00Z'
+            },
+            'event3': {
+                'title': 'Event 3',
+                'date': '2026-02-17',
+                'url': 'https://example.com/event3',
+                'first_seen': '2026-02-06T09:00:00Z'
+            },
+            'event4': {
+                'title': 'Event 4',
+                'date': '2026-02-18',
+                'url': 'https://example.com/event4',
+                'first_seen': '2026-02-05T15:00:00Z'
+            },
+            'event5': {
+                'title': 'Event 5',
+                'date': '2026-02-19',
+                'url': 'https://example.com/event5',
+                'first_seen': '2026-02-05T14:00:00Z'
+            },
+            'event6': {
+                'title': 'Event 6',
+                'date': '2026-02-20',
+                'url': 'https://example.com/event6',
+                'first_seen': '2026-02-04T12:00:00Z'
+            }
+        }
+        
+        # Mock boto3 client
+        mock_s3_client = MagicMock()
+        mock_s3_client.get_object.return_value = {
+            'Body': MagicMock(read=lambda: json.dumps(mock_metadata).encode('utf-8'))
+        }
+        
+        with patch.dict('os.environ', {'S3_BUCKET': 'test-bucket', 'AWS_REGION': 'us-east-1'}):
+            with patch('boto3.client', return_value=mock_s3_client):
+                # Test default limit (5 events)
+                events = get_recently_added_events()
+                
+                # Should return 5 most recent events
+                self.assertEqual(len(events), 5)
+                
+                # Should be sorted by first_seen timestamp (most recent first)
+                self.assertEqual(events[0]['title'], 'Event 2')  # 2026-02-06T11:00:00Z
+                self.assertEqual(events[1]['title'], 'Event 1')  # 2026-02-06T10:00:00Z
+                self.assertEqual(events[2]['title'], 'Event 3')  # 2026-02-06T09:00:00Z
+                self.assertEqual(events[3]['title'], 'Event 4')  # 2026-02-05T15:00:00Z
+                self.assertEqual(events[4]['title'], 'Event 5')  # 2026-02-05T14:00:00Z
+                
+                # Test custom limit
+                events = get_recently_added_events(limit=3)
+                self.assertEqual(len(events), 3)
+    
+    def test_get_recently_added_events_no_s3(self):
+        """Test that get_recently_added_events returns empty list when S3 is not configured"""
+        from app import get_recently_added_events
+        from unittest.mock import patch
+        
+        # Without S3_BUCKET env var
+        with patch.dict('os.environ', {}, clear=True):
+            events = get_recently_added_events()
+            self.assertEqual(events, [])
+
 class TestDataPipelineIntegration(unittest.TestCase):
     """Test cases for data pipeline - overrides, categories, and suppress_guid"""
     
