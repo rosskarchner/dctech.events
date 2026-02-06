@@ -1966,7 +1966,7 @@ def just_added():
             anchor = f"{added_date.month}-{added_date.day}-{added_date.year}"
             
             # Format the display date
-            date_display = added_date.strftime('%B %-d, %Y')
+            date_display = f"{added_date.strftime('%B')} {added_date.day}, {added_date.year}"
             
             days_with_events.append({
                 'date': added_date,

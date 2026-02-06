@@ -18,6 +18,8 @@
             Events are listed by the date they were added to the calendar, not by their event date.
         </p>
         
+        {% set month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
+        
         {% for day in days_with_events %}
             <section class="added-day" id="{{ day.anchor }}">
                 <h2>
@@ -48,7 +50,6 @@
                                             {% set year = date_parts[0]|int %}
                                             {% set month = date_parts[1]|int %}
                                             {% set day_num = date_parts[2]|int %}
-                                            {% set month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] %}
                                             - {{ month_names[month] }} {{ day_num }}, {{ year }}
                                         {% else %}
                                             - {{ event_date }}
