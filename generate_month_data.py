@@ -143,12 +143,12 @@ def is_event_in_allowed_states(event, allowed_states):
         else:
             # Invalid state code - check if it's likely a DC typo
             # Only assume DC if: (1) DC is in allowed states, AND
-            # (2) either the city is Washington or state looks like a DC typo
+            # (2) either the city is Washington or state is in DC_TYPO_CODES
             if 'DC' in allowed_states:
                 # If city is Washington, any invalid state -> assume DC
                 if city and city.lower() == 'washington':
                     return True
-                # Otherwise check if state looks like a common DC typo
+                # Otherwise check if state is in DC_TYPO_CODES
                 elif state in DC_TYPO_CODES:
                     return True
             # Invalid state, not a DC typo -> filter out

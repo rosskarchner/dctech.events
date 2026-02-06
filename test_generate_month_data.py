@@ -50,11 +50,11 @@ class TestGenerateMonthDataStandalone(unittest.TestCase):
         
         # Invalid state codes (typos) - should assume DC when:
         # 1. DC is in allowed states AND
-        # 2. City is Washington (any invalid state) OR state looks like a DC typo
+        # 2. City is Washington (any invalid state) OR state is in DC_TYPO_CODES
         self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed))
         self.assertTrue(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed))  # Washington + any invalid state
         self.assertTrue(is_event_in_allowed_states({'location': 'Washington, CD'}, allowed))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Anywhere, DI'}, allowed))  # DI is DC typo
+        self.assertTrue(is_event_in_allowed_states({'location': 'Anywhere, DI'}, allowed))  # DI in DC_TYPO_CODES
         
         # Invalid state codes that are NOT DC typos - should be rejected
         self.assertFalse(is_event_in_allowed_states({'location': 'Austin, TZ'}, allowed))
