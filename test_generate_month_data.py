@@ -47,6 +47,29 @@ class TestGenerateMonthDataStandalone(unittest.TestCase):
         # No location or unclear
         self.assertTrue(is_event_in_allowed_states({'location': ''}, allowed))
         self.assertTrue(is_event_in_allowed_states({'location': 'Online'}, allowed))
+        
+        # Invalid state codes (typos) - should assume DC when:
+        # 1. DC is in allowed states AND
+        # 2. City is Washington (any invalid state) OR state is in DC_TYPO_CODES
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed))  # Washington + any invalid state
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, CD'}, allowed))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Anywhere, DI'}, allowed))  # DI in DC_TYPO_CODES
+        
+        # Valid state codes are checked normally, even for Washington city
+        # (Note: There's a Washington state, but unlikely to be confused with Washington, DC)
+        allowed_dc_only = ['DC']
+        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, MD'}, allowed_dc_only))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DC'}, allowed_dc_only))
+        
+        # Invalid state codes that are NOT DC typos - should be rejected
+        self.assertFalse(is_event_in_allowed_states({'location': 'Austin, TZ'}, allowed))
+        self.assertFalse(is_event_in_allowed_states({'location': 'Seattle, XY'}, allowed))
+        
+        # Invalid state codes when DC is NOT in allowed states - should be rejected
+        allowed_no_dc = ['VA', 'MD']
+        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed_no_dc))
+        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed_no_dc))
 
     def test_are_events_duplicates(self):
         e1 = {'title': 'Event A', 'date': '2023-01-01', 'time': '10:00'}
