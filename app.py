@@ -966,12 +966,16 @@ def homepage():
     # Get categories with event counts
     categories_with_counts = get_categories_with_event_counts()
     
+    # Get recently added events for preview
+    recently_added = get_recently_added_events(limit=5)
+    
     return render_template('homepage.html',
                           days=days,
                           stats=stats,
                           base_url=base_url,
                           upcoming_months=upcoming_months,
-                          categories_with_counts=categories_with_counts)
+                          categories_with_counts=categories_with_counts,
+                          recently_added=recently_added)
 
 @app.route("/virtual/")
 def virtual_events_page():
@@ -1879,6 +1883,72 @@ def rss_feed():
             '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Error</title></channel></rss>',
             mimetype='application/rss+xml'
         )
+
+def get_recently_added_events(limit=5):
+    """
+    Get the N most recently added events from S3 metadata.
+    
+    Args:
+        limit: Number of events to return (default: 5)
+        
+    Returns:
+        List of event dictionaries, or empty list if unavailable
+    """
+    s3_bucket = os.environ.get('S3_BUCKET', '')
+    
+    # If S3 is not configured, return empty list
+    if not s3_bucket:
+        return []
+    
+    try:
+        import boto3
+        from botocore.exceptions import ClientError, NoCredentialsError
+        import json
+        
+        # Get S3 client
+        aws_region = os.environ.get('AWS_REGION', 'us-east-1')
+        s3_client = boto3.client('s3', region_name=aws_region)
+        
+        # Download metadata
+        metadata_key = 'upcoming-history/metadata.json'
+        try:
+            response = s3_client.get_object(Bucket=s3_bucket, Key=metadata_key)
+            content = response['Body'].read().decode('utf-8')
+            metadata = json.loads(content)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == 'NoSuchKey':
+                return []
+            raise
+        
+        # Collect all events with their first_seen timestamp
+        events_with_timestamps = []
+        
+        for event_key, event_data in metadata.items():
+            first_seen = event_data.get('first_seen')
+            if not first_seen:
+                continue
+            
+            try:
+                # Parse the UTC timestamp
+                first_seen_dt = datetime.fromisoformat(first_seen.replace('Z', '+00:00'))
+                events_with_timestamps.append({
+                    'event_data': event_data,
+                    'first_seen': first_seen_dt
+                })
+            except (ValueError, AttributeError) as e:
+                print(f"Warning: Could not parse timestamp for {event_key}: {e}")
+                continue
+        
+        # Sort by first_seen timestamp (most recent first) and take the top N
+        events_with_timestamps.sort(key=lambda x: x['first_seen'], reverse=True)
+        recent_events = [item['event_data'] for item in events_with_timestamps[:limit]]
+        
+        return recent_events
+        
+    except Exception as e:
+        print(f"Error loading recently added events: {e}")
+        return []
 
 @app.route('/just-added/')
 def just_added():

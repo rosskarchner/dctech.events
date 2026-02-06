@@ -433,3 +433,18 @@ footer {
     font-size: 0.875rem;
     margin-left: var(--spacing-xs);
 }
+
+/* Just Added Preview */
+#just-added-preview {
+    background-color: var(--color-background-alt);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--color-primary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+#just-added-preview a {
+    font-weight: 500;
+}
