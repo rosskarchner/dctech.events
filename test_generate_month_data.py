@@ -47,6 +47,15 @@ class TestGenerateMonthDataStandalone(unittest.TestCase):
         # No location or unclear
         self.assertTrue(is_event_in_allowed_states({'location': ''}, allowed))
         self.assertTrue(is_event_in_allowed_states({'location': 'Online'}, allowed))
+        
+        # Invalid state codes (typos) - should assume DC when DC is in allowed states
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed))
+        
+        # Invalid state codes when DC is NOT in allowed states - should be rejected
+        allowed_no_dc = ['VA', 'MD']
+        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed_no_dc))
+        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed_no_dc))
 
     def test_are_events_duplicates(self):
         e1 = {'title': 'Event A', 'date': '2023-01-01', 'time': '10:00'}

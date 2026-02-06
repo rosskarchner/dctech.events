@@ -133,8 +133,14 @@ def is_event_in_allowed_states(event, allowed_states):
     city, state = extract_location_info(location)
     
     if state:
-        # If we successfully extracted a state, check if it's in allowed list
-        return state in allowed_states
+        # If we successfully extracted a state code
+        if state in US_STATE_CODES:
+            # It's a valid state code, check if it's in allowed list
+            return state in allowed_states
+        else:
+            # Invalid state code (likely a typo like "DI" instead of "DC")
+            # Assume DC if 'DC' is in allowed states
+            return 'DC' in allowed_states
     
     # If structured extraction didn't work, try regex to find state codes
     matches = STATE_PATTERN.findall(location)
