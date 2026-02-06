@@ -89,6 +89,11 @@ jobs:
           role-session-name: github-actions-deploy
           role-duration-seconds: 3600
 
+      - name: Track events and persist to S3
+        run: |
+          echo "Tracking events..."
+          python track_events.py
+
       - name: Generate static site
         env:
           GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
@@ -123,11 +128,6 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
-
-      - name: Track events and persist to S3
-        run: |
-          echo "Tracking events..."
-          python track_events.py
 
       - name: Deployment summary
         if: success()

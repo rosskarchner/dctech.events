@@ -119,11 +119,26 @@ python post_daily_event_summary.py --date 2026-02-01
 - Daily at 6 AM UTC (2 AM ET) - Main rebuild
 - Daily at 10:30 PM UTC - Pre-summary rebuild to update just-added page
 
-Added step after deployment:
+**Critical Step Order**:
+
+The workflow must track events **before** generating the static site to ensure consistent counts:
+
 ```yaml
+- name: Configure AWS credentials via OIDC
+  # ... AWS setup
+
 - name: Track events and persist to S3
   run: python track_events.py
+
+- name: Generate static site
+  run: make all
 ```
+
+**Why this order matters**:
+1. `make all` includes `freeze.py` which generates the static `/just-added/` page
+2. The frozen page reads S3 metadata to display event counts
+3. `track_events.py` detects new events and updates the S3 metadata
+4. If tracking runs after freezing, the static page will show stale counts while `post_daily_event_summary.py` reports the updated count, causing a discrepancy
 
 ### Daily Summary Workflow (`.github/workflows/post-daily-event-summary.yml`)
 
