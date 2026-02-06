@@ -149,7 +149,7 @@ def is_event_in_allowed_states(event, allowed_states):
                 if city and city.lower() == 'washington':
                     return True
                 # Otherwise check if state is in DC_TYPO_CODES
-                elif state in DC_TYPO_CODES:
+                if state in DC_TYPO_CODES:
                     return True
             # Invalid state, not a DC typo -> filter out
             return False

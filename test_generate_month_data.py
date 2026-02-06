@@ -56,6 +56,12 @@ class TestGenerateMonthDataStandalone(unittest.TestCase):
         self.assertTrue(is_event_in_allowed_states({'location': 'Washington, CD'}, allowed))
         self.assertTrue(is_event_in_allowed_states({'location': 'Anywhere, DI'}, allowed))  # DI in DC_TYPO_CODES
         
+        # Valid state codes are checked normally, even for Washington city
+        # (Note: There's a Washington state, but unlikely to be confused with Washington, DC)
+        allowed_dc_only = ['DC']
+        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, MD'}, allowed_dc_only))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DC'}, allowed_dc_only))
+        
         # Invalid state codes that are NOT DC typos - should be rejected
         self.assertFalse(is_event_in_allowed_states({'location': 'Austin, TZ'}, allowed))
         self.assertFalse(is_event_in_allowed_states({'location': 'Seattle, XY'}, allowed))
