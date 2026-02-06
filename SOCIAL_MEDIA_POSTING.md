@@ -1,10 +1,55 @@
 # Social Media Posting Scripts Documentation
 
-This document provides a detailed explanation of the Mastodon and Bluesky posting scripts, the protocols they use, and how their output differs.
+## Current Implementation (2026)
 
-## Overview
+### Daily Posts to Micro.blog
 
-Two scripts are provided for posting daily event summaries to social media:
+The primary social media posting is now done via **`post_todays_events_to_microblog.py`**, which posts a daily summary of today's events to micro.blog.
+
+**Script:** `post_todays_events_to_microblog.py`
+
+**Features:**
+- Posts text-only content (no title) to micro.blog via Micropub
+- Keeps posts under 300 characters
+- Uses two format preferences (in order):
+  1. Full list: "DC Tech Events today: Event1, Event2, Event3  [URL]"
+  2. Truncated: "DC Tech Events today: Event1, Event2, and 3 more  [URL]"
+- Only posts in-person events (virtual events are filtered out)
+- Links to the weekly calendar page with date anchor
+
+**Environment Variables Required:**
+- `MB_TOKEN`: Micro.blog app token (from Account → App tokens)
+- `MICROBLOG_DESTINATION`: (Optional) Custom domain URL for multi-blog accounts
+
+**Usage:**
+```bash
+# Post today's events
+python post_todays_events_to_microblog.py
+
+# Test without posting (dry run)
+python post_todays_events_to_microblog.py --dry-run
+
+# Post events for a specific date
+python post_todays_events_to_microblog.py --date 2026-02-06
+```
+
+**Automated Posting:**
+The `.github/workflows/social-media-posts.yml` workflow runs daily at 8 AM Eastern (12:00 UTC) to automatically post today's events.
+
+**Example Post:**
+```
+DC Tech Events today: Python Meetup, JavaScript Workshop, Ruby Social  https://dctech.events/week/2026-W06/#2026-02-06
+```
+
+---
+
+## Legacy Scripts (Mastodon and Bluesky)
+
+This document provides a detailed explanation of the legacy Mastodon and Bluesky posting scripts, which are still available but no longer used in the automated daily workflow.
+
+### Overview
+
+Two legacy scripts are available for posting daily event summaries to social media:
 
 1. **`post_to_mastodon.py`** - Posts to Mastodon using ActivityPub
 2. **`post_to_bluesky.py`** - Posts to Bluesky using AT Protocol
