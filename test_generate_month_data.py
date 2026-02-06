@@ -48,9 +48,17 @@ class TestGenerateMonthDataStandalone(unittest.TestCase):
         self.assertTrue(is_event_in_allowed_states({'location': ''}, allowed))
         self.assertTrue(is_event_in_allowed_states({'location': 'Online'}, allowed))
         
-        # Invalid state codes (typos) - should assume DC when DC is in allowed states
+        # Invalid state codes (typos) - should assume DC when:
+        # 1. DC is in allowed states AND
+        # 2. City is Washington OR state looks like a DC typo
         self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed))
         self.assertTrue(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, CD'}, allowed))
+        self.assertTrue(is_event_in_allowed_states({'location': 'Anywhere, DI'}, allowed))  # DI is DC typo
+        
+        # Invalid state codes that are NOT DC typos - should be rejected
+        self.assertFalse(is_event_in_allowed_states({'location': 'Austin, TZ'}, allowed))
+        self.assertFalse(is_event_in_allowed_states({'location': 'Seattle, XY'}, allowed))
         
         # Invalid state codes when DC is NOT in allowed states - should be rejected
         allowed_no_dc = ['VA', 'MD']

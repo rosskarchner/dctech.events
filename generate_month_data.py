@@ -138,9 +138,18 @@ def is_event_in_allowed_states(event, allowed_states):
             # It's a valid state code, check if it's in allowed list
             return state in allowed_states
         else:
-            # Invalid state code (likely a typo like "DI" instead of "DC")
-            # Assume DC if 'DC' is in allowed states
-            return 'DC' in allowed_states
+            # Invalid state code - check if it's likely a DC typo
+            # Only assume DC if: (1) DC is in allowed states, AND
+            # (2) either the city is Washington or state looks like a DC typo
+            if 'DC' in allowed_states:
+                # Common DC typos: DI, CD, DC with extra chars
+                dc_typos = ['DI', 'CD', 'D', 'C']
+                if city and city.lower() == 'washington':
+                    return True  # Washington + invalid state -> assume DC
+                elif state.upper() in dc_typos:
+                    return True  # Looks like DC typo -> assume DC
+            # Invalid state, not a DC typo -> filter out
+            return False
     
     # If structured extraction didn't work, try regex to find state codes
     matches = STATE_PATTERN.findall(location)
