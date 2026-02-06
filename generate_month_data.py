@@ -54,6 +54,9 @@ US_STATE_CODES = [
 # Compile state matching regex pattern once
 STATE_PATTERN = re.compile(r'\b(' + '|'.join(US_STATE_CODES) + r')\b', re.IGNORECASE)
 
+# Common typos for DC state code
+DC_TYPO_CODES = ['DI', 'CD', 'D', 'C']
+
 # Custom YAML representer for icalendar.prop.vText objects
 def represent_vtext(dumper, data):
     return dumper.represent_scalar('tag:yaml.org,2002:str', str(data))
@@ -142,12 +145,12 @@ def is_event_in_allowed_states(event, allowed_states):
             # Only assume DC if: (1) DC is in allowed states, AND
             # (2) either the city is Washington or state looks like a DC typo
             if 'DC' in allowed_states:
-                # Common DC typos: DI, CD, DC with extra chars
-                dc_typos = ['DI', 'CD', 'D', 'C']
+                # If city is Washington, any invalid state -> assume DC
                 if city and city.lower() == 'washington':
-                    return True  # Washington + invalid state -> assume DC
-                elif state.upper() in dc_typos:
-                    return True  # Looks like DC typo -> assume DC
+                    return True
+                # Otherwise check if state looks like a common DC typo
+                elif state.upper() in DC_TYPO_CODES:
+                    return True
             # Invalid state, not a DC typo -> filter out
             return False
     
