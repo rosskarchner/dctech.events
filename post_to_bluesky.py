@@ -43,6 +43,7 @@ from datetime import datetime, date, timezone
 import requests
 import pytz
 from pathlib import Path
+import db_utils
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -73,14 +74,9 @@ BLUESKY_CHAR_LIMIT = 300
 
 
 def load_events():
-    """Load events from upcoming.yaml file."""
-    if not os.path.exists(UPCOMING_FILE):
-        print(f"Warning: {UPCOMING_FILE} not found. Run 'make generate-month-data' first.")
-        return []
-    
-    with open(UPCOMING_FILE, 'r', encoding='utf-8') as f:
-        events = yaml.safe_load(f)
-        return events if events else []
+    """Load events from DynamoDB."""
+    events = db_utils.get_future_events()
+    return events if events else []
 
 
 def is_virtual_event(event):

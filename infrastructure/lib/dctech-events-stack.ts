@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -21,6 +22,30 @@ export class DctechEventsStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For development; use RETAIN in production
       autoDeleteObjects: true,
+    });
+
+    // DynamoDB Table for Events
+    const eventsTable = new dynamodb.Table(this, 'EventsTable', {
+      tableName: stackConfig.dynamodb.tableName,
+      partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development
+    });
+
+    // GSI: Query by Date (Next 14 days, By Month)
+    eventsTable.addGlobalSecondaryIndex({
+      indexName: 'DateIndex',
+      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI: Query by Created Date (Recently Added)
+    eventsTable.addGlobalSecondaryIndex({
+      indexName: 'CreatedIndex',
+      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // Create Origin Access Control for CloudFront (modern replacement for OAI)
@@ -195,6 +220,18 @@ function handler(event) {
                 distribution.distributionId
               }`,
             ],
+          }),
+          new iam.PolicyStatement({
+            actions: [
+              'dynamodb:PutItem',
+              'dynamodb:GetItem',
+              'dynamodb:UpdateItem',
+              'dynamodb:DeleteItem',
+              'dynamodb:BatchWriteItem',
+              'dynamodb:Query',
+              'dynamodb:Scan',
+            ],
+            resources: [eventsTable.tableArn, `${eventsTable.tableArn}/index/*`],
           }),
         ],
       })

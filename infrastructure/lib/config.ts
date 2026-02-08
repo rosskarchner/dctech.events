@@ -21,6 +21,12 @@ export const stackConfig = {
     encryption: true,
   },
 
+  // DynamoDB configuration
+  dynamodb: {
+    tableName: 'DcTechEvents',
+    billingMode: 'PAY_PER_REQUEST',
+  },
+
   // CloudFront configuration
   cloudfront: {
     minTTL: 0,

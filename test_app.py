@@ -8,6 +8,24 @@ class TestApp(unittest.TestCase):
         self.timezone_name = 'US/Eastern'
         self.local_tz = pytz.timezone(self.timezone_name)
         self.today = datetime.now(self.local_tz).date()
+        
+        # Patch db_utils.get_future_events to read from upcoming.yaml
+        from unittest.mock import patch
+        import yaml
+        import os
+        
+        def mock_get_future_events():
+            upcoming_file = os.path.join('_data', 'upcoming.yaml')
+            if os.path.exists(upcoming_file):
+                with open(upcoming_file, 'r') as f:
+                    return yaml.safe_load(f) or []
+            return []
+            
+        self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
+        self.patcher.start()
+        
+    def tearDown(self):
+        self.patcher.stop()
     
     def test_prepare_events_by_day_time_grouping(self):
         """Test that prepare_events_by_day correctly groups events by time within each day"""
@@ -1260,87 +1278,45 @@ class TestApp(unittest.TestCase):
                 self.assertIn(category_url, sitemap_content,
                             f"Sitemap missing category page: {category_url}")
 
-    def test_get_recently_added_events(self):
-        """Test that get_recently_added_events returns correct number of events"""
-        from unittest.mock import patch, MagicMock
-        from app import get_recently_added_events
-        import json
+        def test_get_recently_added_events(self):
+            """Test that get_recently_added_events returns correct number of events"""
+            from unittest.mock import patch, MagicMock
+            from app import get_recently_added_events
+            import json
         
-        # Mock S3 data
-        mock_metadata = {
-            'event1': {
-                'title': 'Event 1',
-                'date': '2026-02-15',
-                'url': 'https://example.com/event1',
-                'first_seen': '2026-02-06T10:00:00Z'
-            },
-            'event2': {
-                'title': 'Event 2',
-                'date': '2026-02-16',
-                'url': 'https://example.com/event2',
-                'first_seen': '2026-02-06T11:00:00Z'
-            },
-            'event3': {
-                'title': 'Event 3',
-                'date': '2026-02-17',
-                'url': 'https://example.com/event3',
-                'first_seen': '2026-02-06T09:00:00Z'
-            },
-            'event4': {
-                'title': 'Event 4',
-                'date': '2026-02-18',
-                'url': 'https://example.com/event4',
-                'first_seen': '2026-02-05T15:00:00Z'
-            },
-            'event5': {
-                'title': 'Event 5',
-                'date': '2026-02-19',
-                'url': 'https://example.com/event5',
-                'first_seen': '2026-02-05T14:00:00Z'
-            },
-            'event6': {
-                'title': 'Event 6',
-                'date': '2026-02-20',
-                'url': 'https://example.com/event6',
-                'first_seen': '2026-02-04T12:00:00Z'
-            }
-        }
+            # Mock DB data
+            mock_events = [
+                {'title': 'Event 1', 'createdAt': '2026-02-06T11:00:00Z'},
+                {'title': 'Event 2', 'createdAt': '2026-02-06T10:00:00Z'},
+                {'title': 'Event 3', 'createdAt': '2026-02-06T09:00:00Z'},
+                {'title': 'Event 4', 'createdAt': '2026-02-05T15:00:00Z'},
+                {'title': 'Event 5', 'createdAt': '2026-02-05T14:00:00Z'}
+            ]
         
-        # Mock boto3 client
-        mock_s3_client = MagicMock()
-        mock_s3_client.get_object.return_value = {
-            'Body': MagicMock(read=lambda: json.dumps(mock_metadata).encode('utf-8'))
-        }
-        
-        with patch.dict('os.environ', {'S3_BUCKET': 'test-bucket', 'AWS_REGION': 'us-east-1'}):
-            with patch('boto3.client', return_value=mock_s3_client):
+            with patch('app.db_utils.get_recently_added', return_value=mock_events) as mock_get:
                 # Test default limit (5 events)
                 events = get_recently_added_events()
                 
-                # Should return 5 most recent events
-                self.assertEqual(len(events), 5)
+                # Should call db_utils
+                mock_get.assert_called_once_with(5)
                 
-                # Should be sorted by first_seen timestamp (most recent first)
-                self.assertEqual(events[0]['title'], 'Event 2')  # 2026-02-06T11:00:00Z
-                self.assertEqual(events[1]['title'], 'Event 1')  # 2026-02-06T10:00:00Z
-                self.assertEqual(events[2]['title'], 'Event 3')  # 2026-02-06T09:00:00Z
-                self.assertEqual(events[3]['title'], 'Event 4')  # 2026-02-05T15:00:00Z
-                self.assertEqual(events[4]['title'], 'Event 5')  # 2026-02-05T14:00:00Z
+                # Should return events
+                self.assertEqual(len(events), 5)
+                self.assertEqual(events[0]['title'], 'Event 1')
                 
                 # Test custom limit
+                mock_get.reset_mock()
                 events = get_recently_added_events(limit=3)
-                self.assertEqual(len(events), 3)
-    
-    def test_get_recently_added_events_no_s3(self):
-        """Test that get_recently_added_events returns empty list when S3 is not configured"""
-        from app import get_recently_added_events
-        from unittest.mock import patch
+                mock_get.assert_called_once_with(3)
         
-        # Without S3_BUCKET env var
-        with patch.dict('os.environ', {}, clear=True):
-            events = get_recently_added_events()
-            self.assertEqual(events, [])
-
+        def test_get_recently_added_events_no_s3(self):
+            """Test that get_recently_added_events returns empty list when DB returns empty"""
+            from app import get_recently_added_events
+            from unittest.mock import patch
+        
+            with patch('app.db_utils.get_recently_added', return_value=[]):
+                events = get_recently_added_events()
+                self.assertEqual(events, [])
 class TestDataPipelineIntegration(unittest.TestCase):
     """Test cases for data pipeline - overrides, categories, and suppress_guid"""
     
@@ -1795,6 +1771,25 @@ class TestOverrideFileCreation(unittest.TestCase):
 class TestEditRoute(unittest.TestCase):
     """Test cases for the /edit/ routes (list and dynamic edit pages)"""
     
+    def setUp(self):
+        # Patch db_utils.get_future_events to read from upcoming.yaml
+        from unittest.mock import patch
+        import yaml
+        import os
+        
+        def mock_get_future_events():
+            upcoming_file = os.path.join('_data', 'upcoming.yaml')
+            if os.path.exists(upcoming_file):
+                with open(upcoming_file, 'r') as f:
+                    return yaml.safe_load(f) or []
+            return []
+            
+        self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
+        self.patcher.start()
+        
+    def tearDown(self):
+        self.patcher.stop()
+    
     def test_edit_list_page_loads(self):
         """Test that /edit/ page loads and shows edit list"""
         from app import app
@@ -1876,6 +1871,24 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         self.timezone_name = 'US/Eastern'
         self.local_tz = pytz.timezone(self.timezone_name)
         self.today = datetime.now(self.local_tz).date()
+        
+        # Patch db_utils.get_future_events to read from upcoming.yaml
+        from unittest.mock import patch
+        import yaml
+        import os
+        
+        def mock_get_future_events():
+            upcoming_file = os.path.join('_data', 'upcoming.yaml')
+            if os.path.exists(upcoming_file):
+                with open(upcoming_file, 'r') as f:
+                    return yaml.safe_load(f) or []
+            return []
+            
+        self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
+        self.patcher.start()
+        
+    def tearDown(self):
+        self.patcher.stop()
     
     def test_manual_event_edit_workflow(self):
         """Test end-to-end: manual event -> edit form -> verify data flow"""

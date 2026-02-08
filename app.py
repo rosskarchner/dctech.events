@@ -12,6 +12,7 @@ from icalendar import Calendar, Event as ICalEvent
 import hashlib
 from xml.etree import ElementTree as ET
 from email.utils import formatdate
+import db_utils
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -77,7 +78,7 @@ def load_yaml_data(file_path):
 
 def get_events(include_hidden=False):
     """
-    Get events from the upcoming.yaml file
+    Get events from DynamoDB
 
     Args:
         include_hidden: If True, include events marked as hidden. Default False.
@@ -85,12 +86,11 @@ def get_events(include_hidden=False):
     Returns:
         A list of events
     """
-    file_path = os.path.join(DATA_DIR, 'upcoming.yaml')
+    events = db_utils.get_future_events()
 
-    if not os.path.exists(file_path):
-        return []
-
-    events = load_yaml_data(file_path) or []
+    # Sort by date and time (since DynamoDB only sorts by date)
+    # Ensure date and time are strings
+    events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
 
     # Filter out hidden events unless explicitly requested
     if not include_hidden:
@@ -966,8 +966,8 @@ def homepage():
     # Get categories with event counts
     categories_with_counts = get_categories_with_event_counts()
     
-    # Get recently added events for preview
-    recently_added = get_recently_added_events(limit=5)
+    # Get recently added events for preview - TEMPORARILY DISABLED
+    recently_added = [] # get_recently_added_events(limit=5)
     
     return render_template('homepage.html',
                           days=days,
@@ -1828,237 +1828,84 @@ def location_rss_feed(state):
 def rss_feed():
     """
     Generate RSS feed of recently added events.
-    
-    This route generates the RSS feed dynamically by calling the
-    generate_rss_feed.py script which reads from S3.
     """
-    import subprocess
+    recent_events = db_utils.get_recently_added(limit=50)
     
-    # Check if S3_BUCKET is configured
-    s3_bucket = os.environ.get('S3_BUCKET', '')
-    if not s3_bucket:
-        # If S3 is not configured, return an empty feed
-        from xml.etree import ElementTree as ET
-        rss = ET.Element('rss', version='2.0')
-        channel = ET.SubElement(rss, 'channel')
-        ET.SubElement(channel, 'title').text = f"{SITE_NAME} - New Events"
-        ET.SubElement(channel, 'link').text = BASE_URL
-        ET.SubElement(channel, 'description').text = "RSS feed not yet available"
-        
-        tree = ET.ElementTree(rss)
-        ET.indent(tree, space='  ')
-        
-        import io
-        output = io.BytesIO()
-        tree.write(output, encoding='utf-8', xml_declaration=True)
-        
-        return Response(output.getvalue(), mimetype='application/rss+xml')
+    feed_title = f"{SITE_NAME} - New Events"
+    feed_description = "Recently added events"
+    feed_link = BASE_URL
     
-    try:
-        # Run the generate_rss_feed.py script
-        result = subprocess.run(
-            ['python', 'generate_rss_feed.py'],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode == 0:
-            return Response(result.stdout, mimetype='application/rss+xml')
-        else:
-            # Log error and return empty feed
-            print(f"Error generating RSS feed: {result.stderr}")
-            return Response(
-                '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Error</title></channel></rss>',
-                mimetype='application/rss+xml'
-            )
-    except subprocess.TimeoutExpired:
-        return Response(
-            '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Timeout</title></channel></rss>',
-            mimetype='application/rss+xml'
-        )
-    except Exception as e:
-        print(f"Exception generating RSS feed: {e}")
-        return Response(
-            '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>Error</title></channel></rss>',
-            mimetype='application/rss+xml'
-        )
+    return generate_rss_feed_from_events(recent_events, feed_title, feed_description, feed_link)
 
 def get_recently_added_events(limit=5):
     """
-    Get the N most recently added events from S3 metadata.
+    Get the N most recently added events from DynamoDB.
     
     Args:
         limit: Number of events to return (default: 5)
         
     Returns:
-        List of event dictionaries, or empty list if unavailable
+        List of event dictionaries
     """
-    s3_bucket = os.environ.get('S3_BUCKET', '')
-    
-    # If S3 is not configured, return empty list
-    if not s3_bucket:
-        return []
-    
-    try:
-        import boto3
-        from botocore.exceptions import ClientError, NoCredentialsError
-        import json
-        
-        # Get S3 client
-        aws_region = os.environ.get('AWS_REGION', 'us-east-1')
-        s3_client = boto3.client('s3', region_name=aws_region)
-        
-        # Download metadata
-        metadata_key = 'upcoming-history/metadata.json'
-        try:
-            response = s3_client.get_object(Bucket=s3_bucket, Key=metadata_key)
-            content = response['Body'].read().decode('utf-8')
-            metadata = json.loads(content)
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == 'NoSuchKey':
-                return []
-            raise
-        
-        # Collect all events with their first_seen timestamp
-        events_with_timestamps = []
-        
-        for event_key, event_data in metadata.items():
-            first_seen = event_data.get('first_seen')
-            if not first_seen:
-                continue
-            
-            try:
-                # Parse the UTC timestamp
-                first_seen_dt = datetime.fromisoformat(first_seen.replace('Z', '+00:00'))
-                events_with_timestamps.append({
-                    'event_data': event_data,
-                    'first_seen': first_seen_dt
-                })
-            except (ValueError, AttributeError) as e:
-                print(f"Warning: Could not parse timestamp for {event_key}: {e}")
-                continue
-        
-        # Sort by first_seen timestamp (most recent first) and take the top N
-        events_with_timestamps.sort(key=lambda x: x['first_seen'], reverse=True)
-        recent_events = [item['event_data'] for item in events_with_timestamps[:limit]]
-        
-        return recent_events
-        
-    except Exception as e:
-        print(f"Error loading recently added events: {e}")
-        return []
+    return db_utils.get_recently_added(limit)
 
 @app.route('/just-added/')
 def just_added():
     """
     Display the three most recent days with newly added events.
-    Events are grouped by the date they were added (not the event date).
-    Excludes days with more than 100 events (likely bulk loads or bug fixes).
+    TEMPORARILY DISABLED.
     """
-    # Try to get S3 metadata
-    s3_bucket = os.environ.get('S3_BUCKET', '')
+    return "This page is temporarily disabled.", 200
+    recent_events = db_utils.get_recently_added(limit=100)
     
-    # If S3 is not configured, show a placeholder page
-    if not s3_bucket:
-        return render_template('just_added.html', 
+    if not recent_events:
+        return render_template('just_added.html',
                              days_with_events=[],
-                             error_message="Event tracking not yet configured")
+                             error_message="No recent events found")
+
+    # Group events by the date they were added (in local timezone)
+    events_by_date = {}
     
-    try:
-        import boto3
-        from botocore.exceptions import ClientError, NoCredentialsError
-        import json
+    for event in recent_events:
+        createdAt = event.get('createdAt')
+        if not createdAt:
+            continue
         
-        # Get S3 client
-        aws_region = os.environ.get('AWS_REGION', 'us-east-1')
-        s3_client = boto3.client('s3', region_name=aws_region)
-        
-        # Download metadata
-        metadata_key = 'upcoming-history/metadata.json'
         try:
-            response = s3_client.get_object(Bucket=s3_bucket, Key=metadata_key)
-            content = response['Body'].read().decode('utf-8')
-            metadata = json.loads(content)
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == 'NoSuchKey':
-                return render_template('just_added.html',
-                                     days_with_events=[],
-                                     error_message="No event tracking data available yet")
-            raise
-        
-        # Group events by the date they were added (in local timezone)
-        events_by_date = {}
-        
-        for event_key, event_data in metadata.items():
-            first_seen = event_data.get('first_seen')
-            if not first_seen:
-                continue
+            # Parse timestamp
+            created_dt = datetime.fromisoformat(createdAt.replace('Z', '+00:00'))
+            created_local = created_dt.astimezone(local_tz)
+            date_key = created_local.date()
             
-            try:
-                # Parse the UTC timestamp
-                first_seen_dt = datetime.fromisoformat(first_seen.replace('Z', '+00:00'))
-                # Convert to local timezone
-                first_seen_local = first_seen_dt.astimezone(local_tz)
-                # Get just the date
-                first_seen_date = first_seen_local.date()
-                
-                # Add to the appropriate date bucket
-                if first_seen_date not in events_by_date:
-                    events_by_date[first_seen_date] = []
-                
-                events_by_date[first_seen_date].append(event_data)
-            except (ValueError, AttributeError) as e:
-                print(f"Warning: Could not parse timestamp for {event_key}: {e}")
-                continue
-        
-        # Filter out days with more than 100 events (bulk loads)
-        filtered_dates = {
-            date: events 
-            for date, events in events_by_date.items() 
-            if len(events) <= 100
-        }
-        
-        # Get the 3 most recent dates
-        sorted_dates = sorted(filtered_dates.keys(), reverse=True)[:3]
-        
-        # Prepare data for template
-        days_with_events = []
-        for added_date in sorted_dates:
-            events = filtered_dates[added_date]
+            if date_key not in events_by_date:
+                events_by_date[date_key] = []
             
-            # Sort events by their event date
-            sorted_events = sorted(events, key=lambda e: e.get('date', ''))
+            # Add date_added_display for template
+            event['date_added_display'] = created_local.strftime('%b %d, %I:%M %p')
+            events_by_date[date_key].append(event)
+        except (ValueError, AttributeError):
+            continue
             
-            # Format the anchor (e.g., "2-5-2026" for Feb 5, 2026)
-            anchor = f"{added_date.month}-{added_date.day}-{added_date.year}"
+    # Convert to list of dicts for template
+    days_with_events = []
+    
+    for date_obj, day_events in sorted(events_by_date.items(), key=lambda x: x[0], reverse=True):
+        # Skip days with too many events (likely bulk load)
+        if len(day_events) > 100:
+            continue
             
-            # Format the display date
-            date_display = f"{added_date.strftime('%B')} {added_date.day}, {added_date.year}"
-            
-            days_with_events.append({
-                'date': added_date,
-                'date_display': date_display,
-                'anchor': anchor,
-                'count': len(events),
-                'events': sorted_events
-            })
+        days_with_events.append({
+            'date': date_obj,
+            'date_formatted': date_obj.strftime('%A, %B %-d, %Y'),
+            'events': sorted(day_events, key=lambda x: x.get('createdAt', ''), reverse=True)
+        })
         
-        return render_template('just_added.html',
-                             days_with_events=days_with_events,
-                             error_message=None)
-        
-    except NoCredentialsError:
-        return render_template('just_added.html',
-                             days_with_events=[],
-                             error_message="AWS credentials not configured")
-    except Exception as e:
-        print(f"Error loading just-added data: {e}")
-        return render_template('just_added.html',
-                             days_with_events=[],
-                             error_message="Error loading event tracking data")
+        # Limit to 3 days
+        if len(days_with_events) >= 3:
+            break
+            
+    return render_template('just_added.html', days_with_events=days_with_events)
+
 
 @app.route('/404.html')
 def not_found_page():

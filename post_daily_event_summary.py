@@ -3,20 +3,17 @@
 Post daily summary of newly added events to micro.blog.
 
 This script:
-1. Checks for new events added today by reading S3 metadata
+1. Checks for new events added today by reading DynamoDB
 2. Posts a summary to micro.blog if there are new events
 3. Format: "X new events added on [Month Day, Year]"
 
 Environment Variables Required:
 - MB_TOKEN: App token from micro.blog (Account → App tokens)
 - MICROBLOG_DESTINATION: (Optional) Custom domain URL for multi-blog accounts
-- S3_BUCKET: S3 bucket name for reading event metadata
-- AWS_REGION: AWS region (default: us-east-1)
 
 Usage:
     export MB_TOKEN="your-token-here"
     export MICROBLOG_DESTINATION="https://updates.dctech.events/"
-    export S3_BUCKET="your-bucket-name"
     python post_daily_event_summary.py
     python post_daily_event_summary.py --dry-run  # Test without posting
 """
@@ -28,14 +25,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import requests
 import pytz
-
-# AWS imports
-try:
-    import boto3
-    from botocore.exceptions import ClientError, NoCredentialsError
-except ImportError:
-    print("Error: boto3 not installed. Run: pip install boto3")
-    sys.exit(1)
+import db_utils
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -57,54 +47,20 @@ MB_TOKEN = os.environ.get('MB_TOKEN')
 MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION')
 MICROPUB_ENDPOINT = "https://micro.blog/micropub"
 
-# S3 configuration
-S3_BUCKET = os.environ.get('S3_BUCKET', '')
-AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
-METADATA_KEY = 'upcoming-history/metadata.json'
-
-
-def get_s3_client():
-    """Get configured S3 client."""
-    return boto3.client('s3', region_name=AWS_REGION)
-
-
-def download_metadata_from_s3(s3_client, bucket):
-    """Download metadata.json from S3."""
-    try:
-        response = s3_client.get_object(Bucket=bucket, Key=METADATA_KEY)
-        content = response['Body'].read().decode('utf-8')
-        import json
-        return json.loads(content)
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'NoSuchKey':
-            print("No metadata found in S3")
-            return {}
-        raise
-    except Exception as e:
-        print(f"Error downloading metadata: {e}")
-        return {}
-
-
-def get_todays_new_events(metadata, target_date=None):
+def get_todays_new_events(target_date=None):
     """
     Get events that were first seen on the target date.
-    
-    Args:
-        metadata: Event metadata dict from S3
-        target_date: Date to check (defaults to today in local timezone)
-        
-    Returns:
-        List of events added on target_date
     """
     if target_date is None:
         # Get current date in local timezone
         target_date = datetime.now(local_tz).date()
     
+    # Fetch 100 recent events (should be enough for a day)
+    recent_events = db_utils.get_recently_added(limit=100)
     new_events = []
     
-    for event_key, event_data in metadata.items():
-        first_seen = event_data.get('first_seen')
+    for event in recent_events:
+        first_seen = event.get('createdAt')
         if not first_seen:
             continue
         
@@ -117,9 +73,8 @@ def get_todays_new_events(metadata, target_date=None):
             first_seen_date = first_seen_local.date()
             
             if first_seen_date == target_date:
-                new_events.append(event_data)
+                new_events.append(event)
         except (ValueError, AttributeError) as e:
-            print(f"Warning: Could not parse timestamp for {event_key}: {e}")
             continue
     
     return new_events
@@ -128,15 +83,6 @@ def get_todays_new_events(metadata, target_date=None):
 def generate_summary_content(count, target_date):
     """
     Generate summary content with link to just-added page.
-    
-    Format: "X new events added today: https://dctech.events/just-added/#M-D-YYYY"
-    
-    Args:
-        count: Number of events
-        target_date: Date object
-        
-    Returns:
-        Content string (plain text with link)
     """
     # Format the anchor (e.g., "2-5-2026" for Feb 5, 2026)
     anchor = f"{target_date.month}-{target_date.day}-{target_date.year}"
@@ -151,52 +97,9 @@ def generate_summary_content(count, target_date):
     return f"{count} new {event_word} added today: {url}"
 
 
-def generate_title(count, target_date):
-    """
-    Generate post title.
-    
-    NOTE: This function is now unused as posts should be untitled.
-    Kept for backward compatibility.
-    
-    Format: "X new events added on May 3rd 2026"
-    
-    Args:
-        count: Number of events
-        target_date: Date object
-        
-    Returns:
-        Title string
-    """
-    # Get ordinal suffix for day
-    day = target_date.day
-    if 10 <= day % 100 <= 20:
-        suffix = 'th'
-    else:
-        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
-    
-    month = target_date.strftime('%B')
-    year = target_date.year
-    
-    # Pluralize "event" if needed
-    event_word = 'event' if count == 1 else 'events'
-    
-    return f"{count} new {event_word} added on {month} {day}{suffix} {year}"
-
-
 def post_to_microblog(content, token, destination=None, dry_run=False):
     """
     Post content to micro.blog using form-encoded Micropub.
-    
-    NOTE: Updated to post without title (untitled posts).
-
-    Args:
-        content: Post content (plain text or HTML)
-        token: Micro.blog app token
-        destination: Optional destination URL
-        dry_run: If True, print what would be posted
-
-    Returns:
-        True if successful, False otherwise
     """
     if dry_run:
         print("\n=== DRY RUN - Would post to micro.blog ===")
@@ -215,10 +118,6 @@ def post_to_microblog(content, token, destination=None, dry_run=False):
         'Authorization': f'Bearer {token}',
     }
 
-    # Form-encoded payload
-    # Note: Using 'content' instead of 'content[html]' for better compatibility
-    # The content will be passed as-is in the content field
-    # No 'name' field = untitled post
     data = {
         'h': 'entry',
         'content': content,
@@ -242,17 +141,15 @@ def post_to_microblog(content, token, destination=None, dry_run=False):
 
     except requests.exceptions.RequestException as e:
         print(f"Error posting to micro.blog: {e}")
-        if hasattr(e, 'response') and e.response is not None:
-            print(f"Response status: {e.response.status_code}")
-            print(f"Response body: {e.response.text}")
         return False
 
 
 def main():
-    """Main entry point."""
+    """Main entry point. TEMPORARILY DISABLED."""
+    print("Daily event summary posting is temporarily disabled.")
+    return 0
     parser = argparse.ArgumentParser(
-        description='Post daily summary of new events to micro.blog',
-        epilog='Requires MB_TOKEN and S3_BUCKET environment variables'
+        description='Post daily summary of new events to micro.blog'
     )
     parser.add_argument(
         '--dry-run',
@@ -279,26 +176,8 @@ def main():
     
     print(f"Checking for events added on {target_date.strftime('%Y-%m-%d')}...")
     
-    # Check S3 bucket is configured
-    if not S3_BUCKET:
-        print("Error: S3_BUCKET environment variable not set")
-        return 1
-    
-    # Get S3 client and download metadata
-    try:
-        s3_client = get_s3_client()
-    except NoCredentialsError:
-        print("Error: AWS credentials not configured")
-        return 1
-    
-    metadata = download_metadata_from_s3(s3_client, S3_BUCKET)
-    
-    if not metadata:
-        print("No metadata found, nothing to post")
-        return 0
-    
     # Get events added today
-    new_events = get_todays_new_events(metadata, target_date)
+    new_events = get_todays_new_events(target_date)
     
     if not new_events:
         print(f"No new events found for {target_date.strftime('%B %-d, %Y')}")

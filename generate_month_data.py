@@ -13,6 +13,7 @@ import dateparser
 import json
 import hashlib
 from location_utils import extract_location_info
+import db_utils
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -824,10 +825,10 @@ def generate_yaml():
     # Process events
     all_events = process_events(groups, categories, single_events, ical_events_map, ALLOWED_STATES)
     
-    # Write all events to upcoming.yaml
-    upcoming_file = os.path.join(DATA_DIR, 'upcoming.yaml')
-    with open(upcoming_file, 'w', encoding='utf-8') as f:
-        yaml.dump(all_events, f, sort_keys=False, allow_unicode=True)
+    # Write all events to DynamoDB
+    print("Syncing events to DynamoDB...")
+    db_utils.sync_events(all_events)
+    print("Events synced to DynamoDB successfully")
 
     # Write all events to events.json for client-side use
     events_json_file = os.path.join(DATA_DIR, 'events.json')
