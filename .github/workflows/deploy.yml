@@ -97,6 +97,7 @@ jobs:
       - name: Generate static site
         env:
           GITHUB_CLIENT_ID: ${{ vars.MY_GITHUB_CLIENT_ID }}
+          DATA_CACHE_BUCKET: dctech-events-data-cache
         run: make all
 
       - name: Sync built site to S3 bucket

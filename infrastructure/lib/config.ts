@@ -16,6 +16,7 @@ export const stackConfig = {
   // S3 bucket configuration
   s3: {
     bucketName: 'dctech-events-site-1768361440101',
+    dataCacheBucketName: 'dctech-events-data-cache',
     versioningEnabled: false,
     blockPublicAccess: true,
     encryption: true,

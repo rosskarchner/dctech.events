@@ -24,6 +24,16 @@ export class DctechEventsStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // Data Cache Bucket (for _cache and _data syncing)
+    const dataCacheBucket = new s3.Bucket(this, 'DataCacheBucket', {
+      bucketName: stackConfig.s3.dataCacheBucketName,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      versioned: false,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
     // DynamoDB Table for Events
     const eventsTable = new dynamodb.Table(this, 'EventsTable', {
       tableName: stackConfig.dynamodb.tableName,
@@ -211,7 +221,12 @@ function handler(event) {
               's3:DeleteObject',
               's3:ListBucket',
             ],
-            resources: [siteBucket.bucketArn, siteBucket.arnForObjects('*')],
+            resources: [
+              siteBucket.bucketArn,
+              siteBucket.arnForObjects('*'),
+              dataCacheBucket.bucketArn,
+              dataCacheBucket.arnForObjects('*'),
+            ],
           }),
           new iam.PolicyStatement({
             actions: ['cloudfront:CreateInvalidation'],
@@ -272,6 +287,12 @@ function handler(event) {
       value: siteBucket.bucketName,
       description: 'S3 bucket name for static site',
       exportName: 'DctechEventsBucketName',
+    });
+
+    new cdk.CfnOutput(this, 'DataCacheBucketName', {
+      value: dataCacheBucket.bucketName,
+      description: 'S3 bucket name for data cache',
+      exportName: 'DctechEventsDataCacheBucketName',
     });
 
     new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
