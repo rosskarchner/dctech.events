@@ -3,8 +3,7 @@ name: Daily Social Media Posts
 on:
   # Run daily at 8 AM Eastern (13:00 UTC during EST, 12:00 UTC during EDT)
   # Using 12:00 UTC to cover both EST and EDT
-  schedule:
-    - cron: '0 12 * * *'
+  workflow_call: 
   
   # Allow manual triggering
   workflow_dispatch:
