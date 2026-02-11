@@ -1853,9 +1853,7 @@ def get_recently_added_events(limit=5):
 def just_added():
     """
     Display the three most recent days with newly added events.
-    TEMPORARILY DISABLED.
     """
-    return "This page is temporarily disabled.", 200
     recent_events = db_utils.get_recently_added(limit=100)
     
     if not recent_events:
@@ -1893,10 +1891,15 @@ def just_added():
         # Skip days with too many events (likely bulk load)
         if len(day_events) > 100:
             continue
+        
+        # Create anchor in format "M-D-YYYY" (e.g., "2-5-2026")
+        anchor = f"{date_obj.month}-{date_obj.day}-{date_obj.year}"
             
         days_with_events.append({
             'date': date_obj,
-            'date_formatted': date_obj.strftime('%A, %B %-d, %Y'),
+            'date_display': date_obj.strftime('%A, %B %-d, %Y'),
+            'anchor': anchor,
+            'count': len(day_events),
             'events': sorted(day_events, key=lambda x: x.get('createdAt', ''), reverse=True)
         })
         
