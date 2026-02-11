@@ -1894,10 +1894,13 @@ def just_added():
         
         # Create anchor in format "M-D-YYYY" (e.g., "2-5-2026")
         anchor = f"{date_obj.month}-{date_obj.day}-{date_obj.year}"
+        
+        # Format date display manually for cross-platform compatibility
+        date_display = f"{date_obj.strftime('%A, %B')} {date_obj.day}, {date_obj.year}"
             
         days_with_events.append({
             'date': date_obj,
-            'date_display': date_obj.strftime('%A, %B %-d, %Y'),
+            'date_display': date_display,
             'anchor': anchor,
             'count': len(day_events),
             'events': sorted(day_events, key=lambda x: x.get('createdAt', ''), reverse=True)
