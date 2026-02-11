@@ -109,7 +109,7 @@ python post_daily_event_summary.py --date 2026-02-01
 - Main page: `https://dctech.events/just-added/`
 - With anchor: `https://dctech.events/just-added/#2-5-2026`
 
-**Data Source**: S3 metadata (`upcoming-history/metadata.json`)
+**Data Source**: DynamoDB table (via `db_utils.get_recently_added()`)
 
 ## GitHub Actions Workflows
 
