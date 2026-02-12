@@ -27,3 +27,7 @@ oauth_callback_endpoint: "https://add.dctech.events/oauth/callback"
 # Token is set via GITHUB_SPONSORS_TOKEN environment variable
 # Used for sponsor verification during build
 github_sponsors_token: ""  # Set via GITHUB_SPONSORS_TOKEN environment variable
+
+# DynamoDB Configuration
+# Table name for storing event tracking data
+dynamodb_table: "DcTechEvents"
