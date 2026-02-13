@@ -24,8 +24,13 @@ class TestApp(unittest.TestCase):
         self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
         self.patcher.start()
         
+        # Patch db_utils.get_recently_added to return empty list by default
+        self.recently_added_patcher = patch('app.db_utils.get_recently_added', return_value=[])
+        self.recently_added_patcher.start()
+        
     def tearDown(self):
         self.patcher.stop()
+        self.recently_added_patcher.stop()
     
     def test_prepare_events_by_day_time_grouping(self):
         """Test that prepare_events_by_day correctly groups events by time within each day"""

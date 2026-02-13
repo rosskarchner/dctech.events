@@ -966,8 +966,8 @@ def homepage():
     # Get categories with event counts
     categories_with_counts = get_categories_with_event_counts()
     
-    # Get recently added events for preview - TEMPORARILY DISABLED
-    recently_added = [] # get_recently_added_events(limit=5)
+    # Get recently added events for preview
+    recently_added = get_recently_added_events(limit=5)
     
     return render_template('homepage.html',
                           days=days,
