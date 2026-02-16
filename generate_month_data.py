@@ -14,6 +14,7 @@ import json
 import hashlib
 from location_utils import extract_location_info
 import db_utils
+import dynamo_data
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -279,11 +280,14 @@ def remove_duplicates(events):
 
 def load_groups():
     """
-    Load all groups from the _groups directory
+    Load all groups from DynamoDB (if USE_DYNAMO_DATA=1) or _groups directory.
 
     Returns:
         A list of group dictionaries
     """
+    if dynamo_data.USE_DYNAMO_DATA:
+        return dynamo_data.get_all_groups()
+
     groups = []
 
     # Load groups from local _groups directory
@@ -301,11 +305,21 @@ def load_groups():
 
 def load_single_events():
     """
-    Load all single events from the _single_events directory
+    Load all single events from DynamoDB (if USE_DYNAMO_DATA=1) or _single_events directory.
 
     Returns:
         A list of event dictionaries
     """
+    if dynamo_data.USE_DYNAMO_DATA:
+        raw_events = dynamo_data.get_single_events()
+        events = []
+        for event_data in raw_events:
+            event_id = event_data.get('id', '')
+            parsed = parse_single_event_data(event_data, event_id, timezone_name)
+            if parsed:
+                events.append(parsed)
+        return events
+
     events = []
 
     # Load events from local _single_events directory
@@ -313,10 +327,10 @@ def load_single_events():
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 event_data = yaml.safe_load(f)
-                
+
             event_id = os.path.splitext(os.path.basename(file_path))[0]
             parsed_event = parse_single_event_data(event_data, event_id, timezone_name)
-            
+
             if parsed_event:
                 events.append(parsed_event)
         except Exception as e:
@@ -518,11 +532,14 @@ def parse_single_event_data(event, event_id, timezone_name):
 
 def load_categories():
     """
-    Load all categories from the _categories directory
+    Load all categories from DynamoDB (if USE_DYNAMO_DATA=1) or _categories directory.
 
     Returns:
         A dictionary mapping category slugs to category metadata
     """
+    if dynamo_data.USE_DYNAMO_DATA:
+        return dynamo_data.get_all_categories()
+
     categories = {}
 
     # Load categories from local _categories directory
@@ -542,7 +559,7 @@ def load_categories():
 
 def load_event_override(event_hash):
     """
-    Load an event override file if it exists.
+    Load an event override from DynamoDB (if USE_DYNAMO_DATA=1) or file.
 
     Args:
         event_hash: MD5 hash identifying the event
@@ -550,6 +567,9 @@ def load_event_override(event_hash):
     Returns:
         Dictionary with override data, or None if no override exists
     """
+    if dynamo_data.USE_DYNAMO_DATA:
+        return dynamo_data.get_event_override(event_hash)
+
     override_file = os.path.join(EVENT_OVERRIDES_DIR, f"{event_hash}.yaml")
     if os.path.exists(override_file):
         try:

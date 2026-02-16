@@ -1,0 +1,10 @@
+boto3
+flask
+frozen-flask
+pyyaml
+pytz
+icalendar
+recurring-ical-events
+dateparser
+requests
+extruct

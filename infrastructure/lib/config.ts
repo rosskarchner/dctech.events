@@ -65,6 +65,49 @@ export const stackConfig = {
     sessionDuration: 3600, // 1 hour
   },
 
+  // Cognito configuration
+  cognito: {
+    userPoolName: 'dctech-events-users',
+    domainPrefix: 'dctech-events',
+    customDomain: 'login.dctech.events',
+    callbackUrls: [
+      'https://suggest.dctech.events/auth/callback',
+      'https://manage.dctech.events/auth/callback',
+      'http://localhost:5000/auth/callback',
+    ],
+    logoutUrls: [
+      'https://suggest.dctech.events/',
+      'https://manage.dctech.events/',
+      'http://localhost:5000/',
+    ],
+  },
+
+  // Secrets Manager configuration
+  secrets: {
+    cognitoClientSecret: 'dctech-events/cognito-client-secret',
+  },
+
+  // Chalice API configuration (legacy, used by lambda-api-stack)
+  chalice: {
+    mainApi: {
+      stageName: 'prod',
+    },
+  },
+
+  // Feature flags
+  features: {
+    enableCustomDomain: true,
+  },
+
+  // Rebuild pipeline configuration
+  rebuild: {
+    queueName: 'dctech-events-rebuild.fifo',
+    deduplicationWindowSeconds: 60,
+    visibilityTimeoutSeconds: 900,
+    lambdaTimeoutSeconds: 900,
+    lambdaMemoryMB: 2048,
+  },
+
   // Tags to apply to all resources
   tags: {
     project: 'dctech-events',

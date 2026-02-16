@@ -13,6 +13,7 @@ import hashlib
 from xml.etree import ElementTree as ET
 from email.utils import formatdate
 import db_utils
+import dynamo_data
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -100,11 +101,16 @@ def get_events(include_hidden=False):
 
 def get_approved_groups():
     """
-    Get all groups from the _groups directory
+    Get all groups from DynamoDB (if USE_DYNAMO_DATA=1) or _groups directory.
 
     Returns:
         A list of group dictionaries
     """
+    if dynamo_data.USE_DYNAMO_DATA:
+        groups = dynamo_data.get_all_groups()
+        groups.sort(key=lambda x: x.get('name', '').lower())
+        return groups
+
     groups = []
     for file_path in Path(GROUPS_DIR).glob('*.yaml'):
         try:
@@ -124,12 +130,15 @@ def get_approved_groups():
 
 def get_categories():
     """
-    Get all categories from the _categories directory
+    Get all categories from DynamoDB (if USE_DYNAMO_DATA=1) or _categories directory.
 
     Returns:
         A dict mapping category slugs to category metadata
         Example: {'python': {'name': 'Python', 'description': '...', 'slug': 'python'}, ...}
     """
+    if dynamo_data.USE_DYNAMO_DATA:
+        return dynamo_data.get_all_categories()
+
     categories = {}
     for file_path in Path(CATEGORIES_DIR).glob('*.yaml'):
         try:
