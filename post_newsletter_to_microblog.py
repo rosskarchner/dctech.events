@@ -48,8 +48,6 @@ BASE_URL = config.get('base_url', 'https://dctech.events')
 
 # Micro.blog API configuration
 MB_TOKEN = os.environ.get('MB_TOKEN')
-# Default to updates.dctech.events if not specified
-MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION', 'https://updates.dctech.events/')
 
 # Micropub endpoint
 MICROPUB_ENDPOINT = "https://micro.blog/micropub"
@@ -203,7 +201,7 @@ def main():
     success = post_to_microblog(
         content=content,
         token=MB_TOKEN,
-        destination=MICROBLOG_DESTINATION,
+        destination='https://updates.dctech.events',
         dry_run=args.dry_run
     )
 
