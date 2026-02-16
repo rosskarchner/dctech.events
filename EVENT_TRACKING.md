@@ -86,7 +86,7 @@ Content: "X new events added today: https://dctech.events/just-added/#M-D-YYYY"
 ```bash
 export S3_BUCKET=your-bucket-name
 export MB_TOKEN=your-microblog-token
-export MICROBLOG_DESTINATION=https://updates.dctech.events/
+# MICROBLOG_DESTINATION is no longer needed - defaults to https://updates.dctech.events/
 python post_daily_event_summary.py
 python post_daily_event_summary.py --dry-run
 python post_daily_event_summary.py --date 2026-02-01
@@ -156,7 +156,7 @@ Required for all scripts:
 
 Required for daily summary:
 - `MB_TOKEN`: Micro.blog app token
-- `MICROBLOG_DESTINATION`: (Optional) Custom domain for multi-blog accounts
+- ~~`MICROBLOG_DESTINATION`~~: **No longer used** - defaults to `https://updates.dctech.events/` (hardcoded in script)
 
 ## Event Identification
 

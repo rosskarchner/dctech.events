@@ -29,7 +29,7 @@ Check GitHub repository settings (Settings > Secrets and variables > Actions):
 - `S3_BUCKET`: S3 bucket name
 - `CLOUDFRONT_DISTRIBUTION_ID`: CloudFront distribution ID
 - `AWS_ROLE_ARN`: GitHub Actions IAM role ARN
-- `MICROBLOG_DESTINATION`: (Optional) Micro.blog destination URL - defaults to `https://updates.dctech.events/` if not set
+- ~~`MICROBLOG_DESTINATION`~~: **No longer used** - workflows always use the built-in default of `https://updates.dctech.events/`
 
 **Repository Secrets** (should already exist):
 - `MB_TOKEN`: Micro.blog app token

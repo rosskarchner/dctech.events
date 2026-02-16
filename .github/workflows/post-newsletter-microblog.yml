@@ -39,7 +39,6 @@ jobs:
       - name: Post newsletter to micro.blog
         env:
           MB_TOKEN: ${{ secrets.MB_TOKEN }}
-          MICROBLOG_DESTINATION: ${{ vars.MICROBLOG_DESTINATION }}
         run: |
           if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
             python post_newsletter_to_microblog.py --dry-run
