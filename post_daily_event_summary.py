@@ -10,10 +10,11 @@ This script:
 Environment Variables Required:
 - MB_TOKEN: App token from micro.blog (Account → App tokens)
 - MICROBLOG_DESTINATION: (Optional) Custom domain URL for multi-blog accounts
+                         Defaults to https://updates.dctech.events/
 
 Usage:
     export MB_TOKEN="your-token-here"
-    export MICROBLOG_DESTINATION="https://updates.dctech.events/"
+    # MICROBLOG_DESTINATION is optional - defaults to https://updates.dctech.events/
     python post_daily_event_summary.py
     python post_daily_event_summary.py --dry-run  # Test without posting
 """
@@ -44,7 +45,8 @@ BASE_URL = config.get('base_url', 'https://dctech.events')
 
 # Micro.blog API configuration
 MB_TOKEN = os.environ.get('MB_TOKEN')
-MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION')
+# Default to updates.dctech.events if not specified
+MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION', 'https://updates.dctech.events/')
 MICROPUB_ENDPOINT = "https://micro.blog/micropub"
 
 def get_todays_new_events(target_date=None):

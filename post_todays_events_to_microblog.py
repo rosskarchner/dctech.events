@@ -11,10 +11,11 @@ Posts are under 300 characters and use one of these formats (in order of prefere
 Environment Variables Required:
 - MB_TOKEN: App token from micro.blog (Account → App tokens)
 - MICROBLOG_DESTINATION: (Optional) Custom domain URL for multi-blog accounts
+                         Defaults to https://updates.dctech.events/
 
 Usage:
     export MB_TOKEN="your-token-here"
-    export MICROBLOG_DESTINATION="https://updates.dctech.events/"
+    # MICROBLOG_DESTINATION is optional - defaults to https://updates.dctech.events/
     python post_todays_events_to_microblog.py
     python post_todays_events_to_microblog.py --dry-run  # Test without posting
     python post_todays_events_to_microblog.py --date 2026-02-06  # Post for specific date
@@ -49,7 +50,8 @@ UPCOMING_FILE = os.path.join(DATA_DIR, 'upcoming.yaml')
 
 # Micro.blog API configuration
 MB_TOKEN = os.environ.get('MB_TOKEN')
-MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION')
+# Default to updates.dctech.events if not specified
+MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION', 'https://updates.dctech.events/')
 MICROPUB_ENDPOINT = "https://micro.blog/micropub"
 
 # Character limit for micro.blog posts
