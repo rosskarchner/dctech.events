@@ -3,6 +3,8 @@ import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
+import * as ses from 'aws-cdk-lib/aws-ses';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 export interface CognitoStackProps extends cdk.StackProps {
@@ -54,6 +56,23 @@ export interface CognitoStackProps extends cdk.StackProps {
    * @default ['http://localhost:5000/']
    */
   logoutUrls?: string[];
+
+  /**
+   * SES configuration for sending emails
+   */
+  ses?: {
+    fromEmail: string;
+    fromName?: string;
+    replyTo?: string;
+  };
+
+  /**
+   * Custom verification email settings
+   */
+  verificationEmail?: {
+    subject: string;
+    body: string;
+  };
 
   /**
    * Removal policy for the Cognito User Pool
@@ -127,7 +146,18 @@ export class CognitoStack extends cdk.Stack {
 
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
 
-      email: cognito.UserPoolEmail.withCognito(),
+      userVerification: props?.verificationEmail ? {
+        emailSubject: props.verificationEmail.subject,
+        emailBody: props.verificationEmail.body,
+        emailStyle: cognito.VerificationEmailStyle.CODE,
+      } : undefined,
+
+      email: props?.ses ? cognito.UserPoolEmail.withSES({
+        fromEmail: props.ses.fromEmail,
+        fromName: props.ses.fromName,
+        replyTo: props.ses.replyTo,
+        sesVerifiedDomain: props.zoneName, // Use the root domain for verification
+      }) : cognito.UserPoolEmail.withCognito(),
 
       mfa: cognito.Mfa.OPTIONAL,
       mfaSecondFactor: {
@@ -185,6 +215,16 @@ export class CognitoStack extends cdk.Stack {
       writeAttributes: new cognito.ClientAttributes()
         .withStandardAttributes({ fullname: true, email: true }),
     });
+
+    // Use existing SES identity if provided
+    if (props?.ses && props.hostedZoneId && props.zoneName) {
+      // Import existing SES Email Identity
+      const identity = ses.EmailIdentity.fromEmailIdentityName(this, 'SesIdentity', props.zoneName);
+
+      // We don't need to manually add IAM policies to UserPool for SES
+      // Cognito uses a Service Linked Role (AWSServiceRoleForCognitoIdp) or a custom role
+      // to send emails via SES. When we use withSES(), CDK handles the configuration.
+    }
 
     // Configure domain - prefer custom domain, fall back to prefix
     if (props?.customDomain && props?.certificateArn && props?.hostedZoneId && props?.zoneName) {

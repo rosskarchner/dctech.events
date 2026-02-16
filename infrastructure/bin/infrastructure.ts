@@ -11,7 +11,7 @@ const app = new cdk.App();
 const env = { region: stackConfig.region };
 
 // Existing main stack (S3, CloudFront, Route53, DcTechEvents table, GitHub OIDC)
-new DctechEventsStack(app, stackConfig.stackName, {
+const mainStack = new DctechEventsStack(app, stackConfig.stackName, {
   description: stackConfig.stackDescription,
   env,
 });
@@ -27,11 +27,13 @@ const cognitoStack = new CognitoStack(app, `${stackConfig.stackName}-cognito`, {
   env,
   userPoolName: stackConfig.cognito.userPoolName,
   customDomain: stackConfig.cognito.customDomain,
-  certificateArn: stackConfig.acm.existingCertificateArn || undefined,
+  certificateArn: stackConfig.acm.existingCertificateArn || mainStack.certificate.certificateArn,
   hostedZoneId: stackConfig.hostedZoneId,
   zoneName: stackConfig.domain,
   callbackUrls: stackConfig.cognito.callbackUrls,
   logoutUrls: stackConfig.cognito.logoutUrls,
+  ses: stackConfig.cognito.ses,
+  verificationEmail: stackConfig.cognito.verificationEmail,
 });
 
 // Secrets Manager

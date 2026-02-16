@@ -80,6 +80,15 @@ export const stackConfig = {
       'https://manage.dctech.events/',
       'http://localhost:5000/',
     ],
+    ses: {
+      fromEmail: 'noreply@dctech.events',
+      fromName: 'DC Tech Events',
+      replyTo: 'support@dctech.events',
+    },
+    verificationEmail: {
+      subject: 'Verify your email for DC Tech Events',
+      body: 'Welcome to DC Tech Events! Your verification code is {####}.',
+    },
   },
 
   // Secrets Manager configuration

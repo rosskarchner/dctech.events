@@ -11,6 +11,8 @@ import { Construct } from 'constructs';
 import { stackConfig } from './config';
 
 export class DctechEventsStack extends cdk.Stack {
+  public readonly certificate: acm.ICertificate;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -79,9 +81,8 @@ export class DctechEventsStack extends cdk.Stack {
 
     // Phase 1.4: SSL/TLS Certificate (reference existing or create new)
     // Note: Certificate MUST be in us-east-1 for CloudFront
-    let certificate: acm.ICertificate;
     if (stackConfig.acm.existingCertificateArn) {
-      certificate = acm.Certificate.fromCertificateArn(
+      this.certificate = acm.Certificate.fromCertificateArn(
         this,
         'DctechEventsCertificate',
         stackConfig.acm.existingCertificateArn
@@ -94,12 +95,14 @@ export class DctechEventsStack extends cdk.Stack {
       }
       // Create certificate with DNS validation using the hosted zone
       // This will automatically create the DNS validation records in Route53
-      certificate = new acm.Certificate(this, 'DctechEventsCertificate', {
+      this.certificate = new acm.Certificate(this, 'DctechEventsCertificate', {
         domainName: stackConfig.acm.domainName,
         subjectAlternativeNames: stackConfig.acm.alternativeNames,
         validation: acm.CertificateValidation.fromDns(hostedZone),
       });
     }
+
+    const certificate = this.certificate;
 
     // CloudFront Function to rewrite directory URLs to index.html
     // This allows /locations/dc/ to serve /locations/dc/index.html
