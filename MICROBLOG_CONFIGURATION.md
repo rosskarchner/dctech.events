@@ -8,30 +8,24 @@
 
 ## Solution (Fixed)
 
-**The default destination is now hardcoded in the scripts!**
+**The workflows no longer use the GitHub repository variable!**
 
-All posting scripts now default to `https://updates.dctech.events/` if the `MICROBLOG_DESTINATION` environment variable is not set or is empty.
+As of February 2026, all GitHub Actions workflows have been updated to NOT pass the `MICROBLOG_DESTINATION` environment variable to the posting scripts. The scripts now always use their built-in default of `https://updates.dctech.events/`.
 
 ### What This Means
 
-1. **No action required for correct operation** - Posts will go to the right blog by default
-2. **If the variable is set incorrectly**, either:
-   - Update it to `https://updates.dctech.events/`, OR
-   - Remove it entirely to use the default
+1. **No configuration required** - Posts will always go to the right blog
+2. **The GitHub variable has no effect** - Even if set, it won't be used by the workflows
+3. **Simpler and more reliable** - No risk of misconfiguration
 
-### Removing/Updating the GitHub Repository Variable (Optional)
+### GitHub Repository Variable (No Longer Used)
 
-Since the correct default is now in the code, you can either:
+The `MICROBLOG_DESTINATION` GitHub repository variable is **no longer used** by the workflows. You can safely delete it from the repository settings if it exists.
 
-**Option 1: Remove the variable** (recommended - simpler)
+To remove it:
 1. Go to GitHub repository Settings → Secrets and variables → Actions → Repository variables
 2. Find `MICROBLOG_DESTINATION`
-3. Delete it (posts will use the default)
-
-**Option 2: Update the variable**
-1. Go to GitHub repository Settings → Secrets and variables → Actions → Repository variables
-2. Find `MICROBLOG_DESTINATION`
-3. Update its value to: `https://updates.dctech.events/`
+3. Delete it (optional - it's ignored anyway)
 
 ## How Micro.blog Destination Works
 
@@ -43,13 +37,13 @@ All micro.blog posting scripts now default to posting to `https://updates.dctech
 
 ### GitHub Actions Workflows
 
-Three workflows use this variable:
+Three workflows post to micro.blog:
 
 1. `.github/workflows/post-newsletter-microblog.yml` - Weekly newsletter
 2. `.github/workflows/post-daily-event-summary.yml` - Daily summaries
 3. `.github/workflows/social-media-posts.yml` - Today's events
 
-Each workflow reads the variable as: `MICROBLOG_DESTINATION: ${{ vars.MICROBLOG_DESTINATION }}`
+**As of February 2026:** These workflows no longer pass the `MICROBLOG_DESTINATION` environment variable. The scripts always use their built-in default of `https://updates.dctech.events/`.
 
 ### Environment Variable in Scripts
 
@@ -101,22 +95,23 @@ To test via GitHub Actions with manual workflow dispatch:
 
 ## Verification Checklist
 
-After updating the variable, verify:
+After the fix, verify:
 
-- [ ] Variable `MICROBLOG_DESTINATION` is either not set (uses default) OR set to `https://updates.dctech.events/`
-- [ ] If variable is set, ensure trailing slash is present: `https://updates.dctech.events/`
-- [ ] Test with dry-run mode to see which blog would be posted to
+- [x] Workflows no longer pass `MICROBLOG_DESTINATION` environment variable
+- [ ] Test with dry-run mode to confirm destination is `https://updates.dctech.events/`
 - [ ] Check workflow logs to confirm the correct destination in use
 - [ ] Verify actual posts appear at https://updates.dctech.events/
 
-## Common Mistakes to Avoid
+## Common Mistakes to Avoid (Historical)
 
-1. **Setting wrong URL**: If `MICROBLOG_DESTINATION` is set, it must be `https://updates.dctech.events/` not `ross.karchner.com`
-2. **Missing trailing slash**: If set, always use `https://updates.dctech.events/` (with trailing slash)
-3. **Using secrets instead of variables**: `MICROBLOG_DESTINATION` is a repository **variable**, not a secret (but it's optional now)
-4. **Confusing with MB_TOKEN**: The token (`MB_TOKEN`) is separate from the destination URL
+These issues are no longer possible since the workflows don't use the variable:
 
-**Note:** Since the default is now correct, the easiest solution is to not set `MICROBLOG_DESTINATION` at all.
+1. ~~**Setting wrong URL**~~ - Variable is no longer used
+2. ~~**Missing trailing slash**~~ - Variable is no longer used
+3. ~~**Using secrets instead of variables**~~ - Variable is no longer used
+4. **MB_TOKEN must be a secret**: The token (`MB_TOKEN`) is still required as a repository **secret**
+
+**Note:** The workflows are now simpler and more reliable since they don't depend on repository variable configuration.
 
 ## Additional Resources
 

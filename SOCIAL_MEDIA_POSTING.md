@@ -19,7 +19,7 @@ The primary social media posting is now done via **`post_todays_events_to_microb
 
 **Environment Variables Required:**
 - `MB_TOKEN`: Micro.blog app token (from Account → App tokens)
-- `MICROBLOG_DESTINATION`: (Optional) Custom domain URL for multi-blog accounts
+- ~~`MICROBLOG_DESTINATION`~~: **No longer used** - defaults to `https://updates.dctech.events/` (hardcoded in script)
 
 **Usage:**
 ```bash
