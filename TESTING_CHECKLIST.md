@@ -29,10 +29,29 @@ Check GitHub repository settings (Settings > Secrets and variables > Actions):
 - `S3_BUCKET`: S3 bucket name
 - `CLOUDFRONT_DISTRIBUTION_ID`: CloudFront distribution ID
 - `AWS_ROLE_ARN`: GitHub Actions IAM role ARN
-- `MICROBLOG_DESTINATION`: Micro.blog destination URL
+- `MICROBLOG_DESTINATION`: Micro.blog destination URL (should be `https://updates.dctech.events/`)
 
 **Repository Secrets** (should already exist):
 - `MB_TOKEN`: Micro.blog app token
+
+**Validate Micro.blog Configuration:**
+
+Run the validation script locally to verify configuration:
+
+```bash
+export MB_TOKEN="your-token-here"
+export MICROBLOG_DESTINATION="https://updates.dctech.events/"
+python check_microblog_config.py
+```
+
+Expected output:
+```
+✅ MICROBLOG_DESTINATION is correctly configured
+✅ MB_TOKEN is set
+✅ All micro.blog configuration checks passed!
+```
+
+See `MICROBLOG_CONFIGURATION.md` for detailed documentation.
 
 ## Post-Deployment Testing
 

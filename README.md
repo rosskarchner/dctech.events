@@ -174,6 +174,14 @@ When new events are added, an automatic summary is posted daily to micro.blog wi
 
 Format: "X new events added on [Month Day, Year]"
 
+**Micro.blog Configuration**: Posts are sent to `https://updates.dctech.events/`. To validate the configuration:
+
+```bash
+python check_microblog_config.py
+```
+
+See [MICROBLOG_CONFIGURATION.md](./MICROBLOG_CONFIGURATION.md) for setup details.
+
 ### How It Works
 
 1. After each deployment, `upcoming.yaml` is persisted to S3 with a timestamp
