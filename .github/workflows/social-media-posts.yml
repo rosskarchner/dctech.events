@@ -64,7 +64,6 @@ jobs:
       - name: Post today's events to micro.blog
         env:
           MB_TOKEN: ${{ secrets.MB_TOKEN }}
-          MICROBLOG_DESTINATION: ${{ vars.MICROBLOG_DESTINATION }}
         run: |
           if [ -n "${{ github.event.inputs.date }}" ]; then
             python post_todays_events_to_microblog.py --date "${{ github.event.inputs.date }}"
