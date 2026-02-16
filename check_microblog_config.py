@@ -25,26 +25,30 @@ def check_microblog_destination():
     """
     Verify that MICROBLOG_DESTINATION is correctly configured.
     
+    Since the default is now set in the code, this checks if the environment
+    variable is set to a wrong value. If not set, it will use the correct default.
+    
     Returns:
-        int: 0 if valid, 1 if invalid or missing
+        int: 0 if valid, 1 if invalid
     """
     destination = os.environ.get('MICROBLOG_DESTINATION')
     
     if not destination:
-        print("❌ MICROBLOG_DESTINATION environment variable is not set")
-        print(f"   Expected: {EXPECTED_DESTINATION}")
-        print("\nTo fix:")
-        print(f'   export MICROBLOG_DESTINATION="{EXPECTED_DESTINATION}"')
-        return 1
+        print("ℹ️  MICROBLOG_DESTINATION environment variable is not set")
+        print(f"   Will use default: {EXPECTED_DESTINATION}")
+        print("   (This is correct - the default is now set in the code)")
+        return 0
     
     if destination in INCORRECT_DESTINATIONS:
         print(f"❌ MICROBLOG_DESTINATION is set to wrong blog: {destination}")
         print(f"   Expected: {EXPECTED_DESTINATION}")
         print(f"   Found:    {destination}")
         print("\nThis will cause posts to go to the wrong micro.blog blog!")
-        print("\nTo fix:")
-        print(f'   export MICROBLOG_DESTINATION="{EXPECTED_DESTINATION}"')
-        print("\nFor GitHub Actions, update the repository variable:")
+        print("\nTo fix, either:")
+        print(f'   1. export MICROBLOG_DESTINATION="{EXPECTED_DESTINATION}"')
+        print("   2. Unset the variable to use the default:")
+        print("      unset MICROBLOG_DESTINATION")
+        print("\nFor GitHub Actions, update or remove the repository variable:")
         print("   Settings → Secrets and variables → Actions → Repository variables")
         return 1
     

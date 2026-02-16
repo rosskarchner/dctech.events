@@ -38,13 +38,14 @@ class TestMicroblogConfig(unittest.TestCase):
             del os.environ['MB_TOKEN']
 
     def test_destination_not_set(self):
-        """Test behavior when MICROBLOG_DESTINATION is not set."""
+        """Test behavior when MICROBLOG_DESTINATION is not set (should use default)."""
         with patch('sys.stdout', new=StringIO()) as fake_out:
             result = check_microblog_config.check_microblog_destination()
             output = fake_out.getvalue()
         
-        self.assertEqual(result, 1)
+        self.assertEqual(result, 0)  # Changed from 1 to 0 - it's now OK to not set it
         self.assertIn('not set', output)
+        self.assertIn('Will use default', output)
         self.assertIn('https://updates.dctech.events/', output)
 
     def test_destination_correct(self):
@@ -136,15 +137,15 @@ class TestMicroblogConfig(unittest.TestCase):
         self.assertIn('All micro.blog configuration checks passed', output)
 
     def test_main_missing_destination(self):
-        """Test main function with missing destination."""
+        """Test main function with missing destination (should now pass with default)."""
         os.environ['MB_TOKEN'] = 'this-is-a-valid-token-with-enough-characters'
         
         with patch('sys.stdout', new=StringIO()) as fake_out:
             result = check_microblog_config.main()
             output = fake_out.getvalue()
         
-        self.assertEqual(result, 1)
-        self.assertIn('Some configuration checks failed', output)
+        self.assertEqual(result, 0)  # Changed from 1 to 0 - default is now used
+        self.assertIn('All micro.blog configuration checks passed', output)
 
     def test_main_wrong_destination(self):
         """Test main function with wrong destination."""

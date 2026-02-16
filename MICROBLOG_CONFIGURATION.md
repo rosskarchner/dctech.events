@@ -6,23 +6,36 @@
 
 **Root Cause:** The GitHub repository variable `MICROBLOG_DESTINATION` was set to the incorrect blog URL.
 
-## Solution
+## Solution (Fixed)
 
-### Update GitHub Repository Variable
+**The default destination is now hardcoded in the scripts!**
 
-The `MICROBLOG_DESTINATION` variable must be set to `https://updates.dctech.events/`
+All posting scripts now default to `https://updates.dctech.events/` if the `MICROBLOG_DESTINATION` environment variable is not set or is empty.
 
-**Steps to fix:**
+### What This Means
 
-1. Go to GitHub repository: https://github.com/rosskarchner/dctech.events
-2. Navigate to **Settings** → **Secrets and variables** → **Actions** → **Repository variables**
-3. Find the variable named `MICROBLOG_DESTINATION`
-4. Update its value to: `https://updates.dctech.events/`
-5. Save the change
+1. **No action required for correct operation** - Posts will go to the right blog by default
+2. **If the variable is set incorrectly**, either:
+   - Update it to `https://updates.dctech.events/`, OR
+   - Remove it entirely to use the default
+
+### Removing/Updating the GitHub Repository Variable (Optional)
+
+Since the correct default is now in the code, you can either:
+
+**Option 1: Remove the variable** (recommended - simpler)
+1. Go to GitHub repository Settings → Secrets and variables → Actions → Repository variables
+2. Find `MICROBLOG_DESTINATION`
+3. Delete it (posts will use the default)
+
+**Option 2: Update the variable**
+1. Go to GitHub repository Settings → Secrets and variables → Actions → Repository variables
+2. Find `MICROBLOG_DESTINATION`
+3. Update its value to: `https://updates.dctech.events/`
 
 ## How Micro.blog Destination Works
 
-All micro.blog posting scripts in this repository use the `MICROBLOG_DESTINATION` environment variable to specify which blog to post to:
+All micro.blog posting scripts now default to posting to `https://updates.dctech.events/`:
 
 - `post_newsletter_to_microblog.py` - Weekly newsletter posts (Mondays at 7 AM ET)
 - `post_daily_event_summary.py` - Daily summaries of new events (11 PM UTC)
@@ -40,12 +53,13 @@ Each workflow reads the variable as: `MICROBLOG_DESTINATION: ${{ vars.MICROBLOG_
 
 ### Environment Variable in Scripts
 
-All scripts check for the environment variable:
+All scripts now default to the correct destination:
 ```python
-MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION')
+# Default to updates.dctech.events if not specified
+MICROBLOG_DESTINATION = os.environ.get('MICROBLOG_DESTINATION', 'https://updates.dctech.events/')
 ```
 
-If set, this is passed to the Micropub API as the `mp-destination` parameter:
+This is always passed to the Micropub API as the `mp-destination` parameter:
 ```python
 data = {
     'h': 'entry',
@@ -59,11 +73,11 @@ if destination:
 
 ### Local Testing
 
-To test locally with the correct destination:
+To test locally (the default destination will be used):
 
 ```bash
 export MB_TOKEN="your-token-here"
-export MICROBLOG_DESTINATION="https://updates.dctech.events/"
+# MICROBLOG_DESTINATION is optional - defaults to https://updates.dctech.events/
 
 # Test newsletter post (dry run)
 python post_newsletter_to_microblog.py --dry-run
@@ -77,7 +91,7 @@ python post_todays_events_to_microblog.py --dry-run
 
 ### Manual Workflow Testing
 
-After updating the repository variable, test with manual workflow dispatch:
+To test via GitHub Actions with manual workflow dispatch:
 
 1. Go to **Actions** tab in GitHub
 2. Select the workflow to test (e.g., "Post Weekly Newsletter to Micro.blog")
@@ -89,18 +103,20 @@ After updating the repository variable, test with manual workflow dispatch:
 
 After updating the variable, verify:
 
-- [ ] Variable `MICROBLOG_DESTINATION` is set to `https://updates.dctech.events/`
-- [ ] No trailing slashes inconsistencies (both the variable and code use trailing slash)
+- [ ] Variable `MICROBLOG_DESTINATION` is either not set (uses default) OR set to `https://updates.dctech.events/`
+- [ ] If variable is set, ensure trailing slash is present: `https://updates.dctech.events/`
 - [ ] Test with dry-run mode to see which blog would be posted to
 - [ ] Check workflow logs to confirm the correct destination in use
 - [ ] Verify actual posts appear at https://updates.dctech.events/
 
 ## Common Mistakes to Avoid
 
-1. **Missing trailing slash**: Always use `https://updates.dctech.events/` (with trailing slash)
-2. **Wrong domain**: Should be `updates.dctech.events` not `ross.karchner.com`
-3. **Using secrets instead of variables**: `MICROBLOG_DESTINATION` is a repository **variable**, not a secret
+1. **Setting wrong URL**: If `MICROBLOG_DESTINATION` is set, it must be `https://updates.dctech.events/` not `ross.karchner.com`
+2. **Missing trailing slash**: If set, always use `https://updates.dctech.events/` (with trailing slash)
+3. **Using secrets instead of variables**: `MICROBLOG_DESTINATION` is a repository **variable**, not a secret (but it's optional now)
 4. **Confusing with MB_TOKEN**: The token (`MB_TOKEN`) is separate from the destination URL
+
+**Note:** Since the default is now correct, the easiest solution is to not set `MICROBLOG_DESTINATION` at all.
 
 ## Additional Resources
 
