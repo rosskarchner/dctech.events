@@ -18,6 +18,9 @@ COPY lambdas/rebuild_worker/handler.py ${LAMBDA_TASK_ROOT}/
 # (.dockerignore excludes .git, node_modules, infrastructure, lambdas, frontends, etc.)
 COPY . /opt/site/
 
+# Ensure all files are readable (some scripts may have restrictive permissions)
+RUN chmod -R a+rX /opt/site
+
 # Install Node.js dependencies for esbuild in the project copy
 RUN cd /opt/site && npm install --omit=dev 2>/dev/null || true
 
