@@ -33,11 +33,14 @@
       </div>
     </div>
 
+    <div id="form-response" class="response-area"></div>
+
     <form id="event-form" class="hidden" data-auth="logged-in"
           hx-post="/submit"
           hx-target="#form-response"
           hx-swap="innerHTML"
-          hx-indicator="#submit-indicator">
+          hx-indicator="#submit-indicator"
+          hx-on::after-request="if(event.detail.successful) this.reset()"
       <input type="hidden" name="type" value="event">
 
       <div class="event-section">
@@ -150,8 +153,6 @@
         </button>
       </div>
     </form>
-
-    <div id="form-response" class="response-area"></div>
   </main>
 
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>

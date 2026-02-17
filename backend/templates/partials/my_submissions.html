@@ -1,0 +1,27 @@
+{% if submissions %}
+<table class="submissions-table">
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Name</th>
+      <th>Status</th>
+      <th>Submitted</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in submissions %}
+    <tr>
+      <td>{{ s.draft_type | capitalize }}</td>
+      <td>{{ s.name | default(s.title | default('Untitled')) }}</td>
+      <td><span class="status-badge status-{{ s.status }}">{{ s.status | capitalize }}</span></td>
+      <td>{{ s.created_at[:10] if s.created_at else '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="message message-info">
+  <p>You haven't submitted anything yet.</p>
+  <p><a href="submit-event.html">Submit an event</a> or <a href="submit-group.html">submit a group</a> to get started.</p>
+</div>
+{% endif %}

@@ -82,6 +82,9 @@ def lambda_handler(event, context):
         if path == '/submit' and http_method == 'POST':
             return submit.submit_event(event, jinja_env)
 
+        if path == '/my-submissions' and http_method == 'GET':
+            return submit.my_submissions(event, jinja_env)
+
         # Admin routes (authenticated + admin group)
         if path == '/admin' and http_method == 'GET':
             return admin.dashboard(event, jinja_env)

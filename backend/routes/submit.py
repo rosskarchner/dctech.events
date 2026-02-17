@@ -5,7 +5,7 @@ Submission routes (authenticated users).
 import json
 
 from auth import get_user_from_event
-from db import create_draft, get_all_categories
+from db import create_draft, get_all_categories, get_drafts_by_submitter
 
 
 def _parse_body(event):
@@ -51,15 +51,22 @@ def submit_form(event, jinja_env):
 
 
 def submit_event(event, jinja_env):
-    """POST /submit — create a draft event submission."""
+    """POST /submit — create a draft event or group submission."""
     claims, err = get_user_from_event(event)
     if err:
         return err
 
     data = _parse_body(event)
     submitter = claims.get('email', 'unknown')
+    submission_type = data.get('type', 'event')
 
-    # Validate required fields
+    if submission_type == 'group':
+        return _submit_group(data, submitter, jinja_env)
+    return _submit_event(data, submitter, jinja_env)
+
+
+def _submit_event(data, submitter, jinja_env):
+    """Handle event submission."""
     title = data.get('title', '').strip()
     date_val = data.get('date', '').strip()
     if not title or not date_val:
@@ -71,22 +78,27 @@ def submit_event(event, jinja_env):
             'body': html,
         }
 
+    # Build time string from hour/minute/ampm fields
+    timing = data.get('timing', 'specific')
+    time_str = ''
+    if timing == 'specific':
+        hour = data.get('time_hour', '')
+        minute = data.get('time_minute', '')
+        ampm = data.get('time_ampm', '')
+        if hour and minute and ampm:
+            time_str = f'{hour}:{minute} {ampm}'
+
     draft_data = {
         'title': title,
         'date': date_val,
-        'time': data.get('time', ''),
-        'location': data.get('location', ''),
+        'time': time_str,
         'url': data.get('url', ''),
+        'city': data.get('city', ''),
+        'state': data.get('state', ''),
         'cost': data.get('cost', ''),
-        'description': data.get('description', ''),
-        'group_name': data.get('group_name', ''),
+        'end_date': data.get('end_date', ''),
+        'all_day': timing == 'allday',
     }
-
-    # Handle categories (may be list or comma-separated string)
-    categories = data.get('categories', [])
-    if isinstance(categories, str):
-        categories = [c.strip() for c in categories.split(',') if c.strip()]
-    draft_data['categories'] = categories
 
     draft_id = create_draft('event', draft_data, submitter)
 
@@ -95,6 +107,63 @@ def submit_event(event, jinja_env):
 
     return {
         'statusCode': 201,
+        'headers': {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+        },
+        'body': html,
+    }
+
+
+def _submit_group(data, submitter, jinja_env):
+    """Handle group submission."""
+    name = data.get('name', '').strip()
+    website = data.get('website', '').strip()
+    if not name or not website:
+        template = jinja_env.get_template('partials/submit_error.html')
+        html = template.render(error='Group name and website are required.')
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'text/html; charset=utf-8'},
+            'body': html,
+        }
+
+    draft_data = {
+        'name': name,
+        'website': website,
+        'ical_url': data.get('ical_url', ''),
+        'fallback_url': data.get('fallback_url', ''),
+    }
+
+    draft_id = create_draft('group', draft_data, submitter)
+
+    template = jinja_env.get_template('partials/submit_confirmation.html')
+    html = template.render(draft_id=draft_id, draft_type='group')
+
+    return {
+        'statusCode': 201,
+        'headers': {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+        },
+        'body': html,
+    }
+
+
+def my_submissions(event, jinja_env):
+    """GET /my-submissions — list user's own submissions."""
+    claims, err = get_user_from_event(event)
+    if err:
+        return err
+
+    submitter = claims.get('email', '')
+    drafts = get_drafts_by_submitter(submitter)
+
+    template = jinja_env.get_template('partials/my_submissions.html')
+    html = template.render(submissions=drafts)
+
+    return {
+        'statusCode': 200,
         'headers': {
             'Content-Type': 'text/html; charset=utf-8',
             'Access-Control-Allow-Origin': '*',

@@ -181,6 +181,12 @@ export class LambdaApiStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    const mySubmissions = api.root.addResource('my-submissions');
+    mySubmissions.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     // Admin routes
     const admin = api.root.addResource('admin');
     admin.addMethod('GET', lambdaIntegration, {

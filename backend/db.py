@@ -72,6 +72,27 @@ def get_drafts_by_status(status='pending'):
     return [_draft_item_to_dict(item) for item in items]
 
 
+def get_drafts_by_submitter(submitter_email):
+    """Get all drafts submitted by a specific user."""
+    table = _get_table()
+    items = []
+
+    response = table.scan(
+        FilterExpression=Attr('PK').begins_with('DRAFT#') & Attr('SK').eq('META') & Attr('submitter_email').eq(submitter_email),
+    )
+    items.extend(response.get('Items', []))
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression=Attr('PK').begins_with('DRAFT#') & Attr('SK').eq('META') & Attr('submitter_email').eq(submitter_email),
+            ExclusiveStartKey=response['LastEvaluatedKey'],
+        )
+        items.extend(response.get('Items', []))
+
+    drafts = [_draft_item_to_dict(item) for item in items]
+    drafts.sort(key=lambda d: d.get('created_at', ''), reverse=True)
+    return drafts
+
+
 def get_draft(draft_id):
     """Get a single draft by ID."""
     table = _get_table()

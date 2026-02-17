@@ -26,11 +26,7 @@
     <h2>My Submissions</h2>
     <p>Events and groups you have submitted.</p>
 
-    <div hx-get="https://next.dctech.events/my-submissions"
-         hx-trigger="load"
-         hx-target="#submissions-list"
-         hx-indicator="#loading-indicator">
-    </div>
+    <div id="submissions-trigger"></div>
 
     <div id="loading-indicator" class="htmx-indicator" style="text-align: center; padding: 2rem;">
       <span class="spinner"></span> Loading your submissions...
@@ -51,6 +47,15 @@
   <script src="js/auth.js"></script>
   <script>
     DctechAuth.requireAuth();
+    const token = DctechAuth.getIdToken();
+    document.getElementById('loading-indicator').style.display = 'block';
+    htmx.ajax('GET', 'https://next.dctech.events/my-submissions', {
+      target: '#submissions-list',
+      swap: 'innerHTML',
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).finally(() => {
+      document.getElementById('loading-indicator').style.display = 'none';
+    });
   </script>
 </body>
 </html>

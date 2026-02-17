@@ -230,10 +230,12 @@ function updateUserDisplay() {
 /**
  * Configure HTMX to include the Authorization header on every request
  * and set the API base URL.
+ * Registers on document so it fires even for hx-trigger="load" elements
+ * that fire before DOMContentLoaded completes.
  */
 function setupHtmx() {
   // Add Authorization header to all HTMX requests
-  document.body.addEventListener('htmx:configRequest', function (event) {
+  document.addEventListener('htmx:configRequest', function (event) {
     const token = getIdToken();
     if (token) {
       event.detail.headers['Authorization'] = 'Bearer ' + token;
@@ -247,13 +249,18 @@ function setupHtmx() {
   });
 
   // Handle 401 responses by redirecting to login
-  document.body.addEventListener('htmx:responseError', function (event) {
+  document.addEventListener('htmx:responseError', function (event) {
     if (event.detail.xhr && event.detail.xhr.status === 401) {
       clearTokens();
       redirectToLogin();
     }
   });
 }
+
+// Register HTMX listeners immediately (before body is parsed) so that
+// hx-trigger="load" requests fired by HTMX's DOMContentLoaded handler
+// already have auth headers attached.
+setupHtmx();
 
 /**
  * Initialize auth on page load.
@@ -263,7 +270,6 @@ function initAuth() {
   if (!requireAdmin()) {
     return false;
   }
-  setupHtmx();
   updateUserDisplay();
   return true;
 }
