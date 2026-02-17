@@ -191,29 +191,21 @@ def get_events_by_date(date_prefix=None):
     table = _get_table()
     items = []
 
+    # GSI1PK stores full dates like DATE#2026-02-19, so we scan with a filter
+    # for prefix matching (begins_with is not supported on partition keys in queries)
+    scan_kwargs = {
+        'FilterExpression': Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
+    }
     if date_prefix:
-        response = table.query(
-            IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').begins_with(f'DATE#{date_prefix}'),
-        )
-    else:
-        response = table.scan(
-            FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
+        scan_kwargs['FilterExpression'] = (
+            Attr('GSI1PK').begins_with(f'DATE#{date_prefix}') & Attr('SK').eq('META')
         )
 
+    response = table.scan(**scan_kwargs)
     items.extend(response.get('Items', []))
     while 'LastEvaluatedKey' in response:
-        if date_prefix:
-            response = table.query(
-                IndexName='GSI1',
-                KeyConditionExpression=Key('GSI1PK').begins_with(f'DATE#{date_prefix}'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-        else:
-            response = table.scan(
-                FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
+        scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        response = table.scan(**scan_kwargs)
         items.extend(response.get('Items', []))
 
     return [_event_item_to_dict(item) for item in items]

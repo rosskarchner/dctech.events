@@ -22,7 +22,10 @@ def get_events(event, jinja_env):
     date_prefix = params.get('date')
 
     events = get_events_by_date(date_prefix)
-    events.sort(key=lambda x: (x.get('date', ''), x.get('time', '')))
+    events.sort(key=lambda x: (
+        str(x.get('date', '')),
+        str(x.get('time', '')),
+    ))
 
     return {
         'statusCode': 200,
