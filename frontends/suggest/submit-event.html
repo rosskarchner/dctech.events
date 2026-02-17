@@ -159,6 +159,26 @@
   <script src="js/auth.js"></script>
   <script>
     DctechAuth.requireAuth();
+
+    // Set default values for the form
+    document.addEventListener('DOMContentLoaded', () => {
+      const dateInput = document.getElementById('date');
+      const hourInput = document.getElementById('time-hour');
+      const minuteInput = document.getElementById('time-minute');
+      const ampmInput = document.getElementById('time-ampm');
+
+      if (dateInput) {
+        // Default to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        dateInput.value = tomorrow.toISOString().split('T')[0];
+      }
+
+      // Default to 6:30 PM
+      if (hourInput) hourInput.value = '6';
+      if (minuteInput) minuteInput.value = '30';
+      if (ampmInput) ampmInput.value = 'PM';
+    });
   </script>
 </body>
 </html>

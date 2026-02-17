@@ -33,11 +33,19 @@ def submit_form(event, jinja_env):
     if err:
         return err
 
+    from datetime import datetime, timedelta
+    tomorrow = datetime.now() + timedelta(days=1)
+    default_date = tomorrow.strftime('%Y-%m-%d')
+
     categories = get_all_categories()
     template = jinja_env.get_template('partials/submit_form.html')
     html = template.render(
         categories=categories,
         user_email=claims.get('email', ''),
+        default_date=default_date,
+        default_hour='6',
+        default_minute='30',
+        default_ampm='PM',
     )
 
     return {
