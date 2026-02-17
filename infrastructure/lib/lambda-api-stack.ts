@@ -131,7 +131,10 @@ export class LambdaApiStack extends cdk.Stack {
         MATERIALIZED_TABLE_NAME: stackConfig.dynamodb.tableName,
         STAGE: stageName,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'ApiFunctionLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     });
 
     // Create API Gateway REST API

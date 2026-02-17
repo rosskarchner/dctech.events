@@ -92,7 +92,10 @@ export class RebuildStack extends cdk.Stack {
         REBUILD_QUEUE_URL: rebuildQueue.queueUrl,
         DEDUP_WINDOW_SECONDS: String(stackConfig.rebuild.deduplicationWindowSeconds),
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'StreamDispatcherLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     });
 
     // Grant dispatcher permission to send messages to queue
@@ -125,7 +128,10 @@ export class RebuildStack extends cdk.Stack {
         CONFIG_TABLE_NAME: 'dctech-events',
         CLOUDFRONT_DISTRIBUTION_ID: props.cloudFrontDistributionId || '',
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'RebuildWorkerLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     });
 
     // Connect rebuild worker to SQS queue

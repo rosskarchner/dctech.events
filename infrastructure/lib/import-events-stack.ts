@@ -122,7 +122,10 @@ export class ImportEventsStack extends cdk.Stack {
         GITHUB_REPO: githubRepo,
         GITHUB_BRANCH: githubBranch,
       },
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'ImportSingleEventsLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
       description: 'Imports single events from GitHub _single_events directory to DynamoDB',
     });
 

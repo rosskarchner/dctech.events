@@ -22,7 +22,7 @@ export class SocialPostingStack extends cdk.Stack {
       image: lambda.Runtime.PYTHON_3_12.bundlingImage,
       command: [
         'bash', '-c',
-        'pip install -r lambdas/newsletter_post/requirements.txt -t /asset-output && cp -r lambdas/* /asset-output/ && cp config.yaml /asset-output/ && cp db_utils.py /asset-output/',
+        'pip install -r lambdas/social_posting_requirements.txt -t /asset-output && cp -r lambdas/* /asset-output/ && cp config.yaml /asset-output/ && cp db_utils.py /asset-output/',
       ],
     };
 
@@ -41,7 +41,10 @@ export class SocialPostingStack extends cdk.Stack {
       }),
       timeout: cdk.Duration.seconds(60),
       environment: commonEnv,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'WeeklyNewsletterLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     });
 
     // 2. Daily Event Summary Lambda (8 AM EST daily)
@@ -55,7 +58,10 @@ export class SocialPostingStack extends cdk.Stack {
       }),
       timeout: cdk.Duration.seconds(60),
       environment: commonEnv,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'DailySummaryLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     });
 
     // 3. New Events Summary Lambda (9:30 PM EST daily)
@@ -69,7 +75,10 @@ export class SocialPostingStack extends cdk.Stack {
       }),
       timeout: cdk.Duration.seconds(60),
       environment: commonEnv,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'NewEventsSummaryLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     });
 
     // Grant permissions

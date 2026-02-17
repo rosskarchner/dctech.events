@@ -66,7 +66,9 @@ export class DynamoDBStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
 
       // Enable point-in-time recovery for production safety
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
 
       // Removal policy (RETAIN for production, DESTROY for dev/test)
       removalPolicy: removalPolicy,
