@@ -1,9 +1,0 @@
-active: true
-fallback_url: https://lu.ma/calendar/cal-tPiE7SLIv4FQ48E
-ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-tPiE7SLIv4FQ48E
-name: DC DAO Calendar
-submitted_by: anonymous
-submitter_link: ''
-website: https://lu.ma/calendar/cal-tPiE7SLIv4FQ48E
-categories:
-  - crypto

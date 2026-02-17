@@ -1,7 +1,0 @@
-name: PyAI
-website: https://luma.com/pyai
-ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-GlCkkQEjIVrtUxZ
-active: true
-categories:
-  - programming-languages
-  - ai

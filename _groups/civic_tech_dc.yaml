@@ -1,7 +1,0 @@
-name: Civic Tech DC
-website: https://www.meetup.com/Code-for-DC/
-ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-kgY3yq1wD2o9XxI
-active: true
-fallback_url: https://lu.ma/civic-tech-dc
-categories:
-- govtech

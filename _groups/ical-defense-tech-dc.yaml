@@ -1,9 +1,0 @@
-active: true
-fallback_url: https://lu.ma/defense-tech-dc
-ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-9cB78glcBH8tHvA
-name: Defense Tech DC
-submitted_by: anonymous
-submitter_link: ''
-website: https://lu.ma/defense-tech-dc
-categories:
-- govtech

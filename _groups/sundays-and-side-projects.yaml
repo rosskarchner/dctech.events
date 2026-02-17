@@ -1,7 +1,0 @@
-name: Sundays and Side Projects
-website: https://luma.com/sideprojectsdc
-ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-Df8WLvI8oV1oOEs
-fallback_url: https://luma.com/sideprojectsdc
-active: true
-categories:
-  - coworking

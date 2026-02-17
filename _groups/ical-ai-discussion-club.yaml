@@ -1,9 +1,0 @@
-active: true
-fallback_url: https://luma.com/ai-discussion-club
-ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-W06JcTHge80LKy3
-name: AI Discussion Club
-submitted_by: anonymous
-submitter_link: ''
-website: https://luma.com/ai-discussion-club
-categories:
-  - ai
