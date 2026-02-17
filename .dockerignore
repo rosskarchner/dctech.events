@@ -13,6 +13,5 @@ cdk.out
 .beads
 frontends
 migrations
-lambdas/rebuild_worker/Dockerfile
 backend
 next
