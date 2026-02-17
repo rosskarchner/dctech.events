@@ -46,9 +46,10 @@ Three GSIs: GSI1 (GSI1PK/GSI1SK), GSI2 (GSI2PK/GSI2SK), GSI3 (GSI3PK/GSI3SK).
 
 ### Data Access Layer (`dynamo_data.py`)
 
-Reads from the config table, provides same interfaces as the old YAML reads:
+Reads from the config table:
 - `get_all_groups()`, `get_all_categories()`, `get_single_events()`, `get_event_override(guid)`
-- Feature flag: `USE_DYNAMO_DATA=1` enables DynamoDB reads; defaults to YAML fallback for local dev
+- Feature flag: `USE_DYNAMO_DATA=1` enables DynamoDB reads (required in production; YAML fallback for local dev without AWS credentials)
+- YAML data files (`_groups/`, `_categories/`, etc.) have been archived — DynamoDB is the sole source of truth
 
 ## Rebuild Pipeline
 
@@ -83,6 +84,7 @@ DynamoDB Streams → Dispatcher Lambda → SQS FIFO (60s dedup window) → Docke
 - `GET /admin/groups` — group list (HTML table)
 - `GET /admin/groups/{slug}/edit` — group edit form (HTML fragment)
 - `PUT /admin/groups/{slug}` — update group
+- `GET /admin/events?date=YYYY-MM` — event list from config table (HTML table)
 - `GET /admin/overrides` — override list (HTML)
 
 ## Infrastructure (CDK)
@@ -107,10 +109,11 @@ Config: `infrastructure/lib/config.ts`
 
 ## Development Workflow
 
-1. **Start dev server**: `python app.py`
+1. **Start dev server**: `USE_DYNAMO_DATA=1 python app.py`
 2. **Test locally**: Visit `http://localhost:5000`
-3. **Build for production**: `make freeze`
+3. **Build for production**: `USE_DYNAMO_DATA=1 make freeze`
 4. **Deploy infrastructure**: `cd infrastructure && cdk deploy <stack-name>`
+5. **Trigger rebuild**: Write any item to `dctech-events` table — stream fires automatically
 
 ## File Checklist for Common Tasks
 
