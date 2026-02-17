@@ -1,4 +1,0 @@
-requests
-pytz
-PyYAML
-boto3

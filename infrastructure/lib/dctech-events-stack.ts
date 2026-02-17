@@ -13,6 +13,7 @@ import { stackConfig } from './config';
 export class DctechEventsStack extends cdk.Stack {
   public readonly certificate: acm.ICertificate;
   public readonly distribution: cloudfront.Distribution;
+  public readonly eventsTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -38,7 +39,7 @@ export class DctechEventsStack extends cdk.Stack {
     });
 
     // DynamoDB Table for Events
-    const eventsTable = new dynamodb.Table(this, 'EventsTable', {
+    this.eventsTable = new dynamodb.Table(this, 'EventsTable', {
       tableName: stackConfig.dynamodb.tableName,
       partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -46,7 +47,7 @@ export class DctechEventsStack extends cdk.Stack {
     });
 
     // GSI: Query by Date (Next 14 days, By Month)
-    eventsTable.addGlobalSecondaryIndex({
+    this.eventsTable.addGlobalSecondaryIndex({
       indexName: 'DateIndex',
       partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
@@ -54,7 +55,7 @@ export class DctechEventsStack extends cdk.Stack {
     });
 
     // GSI: Query by Created Date (Recently Added)
-    eventsTable.addGlobalSecondaryIndex({
+    this.eventsTable.addGlobalSecondaryIndex({
       indexName: 'CreatedIndex',
       partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
@@ -248,7 +249,7 @@ function handler(event) {
               'dynamodb:Query',
               'dynamodb:Scan',
             ],
-            resources: [eventsTable.tableArn, `${eventsTable.tableArn}/index/*`],
+            resources: [this.eventsTable.tableArn, `${this.eventsTable.tableArn}/index/*`],
           }),
           new iam.PolicyStatement({
             actions: [

@@ -7,7 +7,7 @@ import { SecretsStack } from '../lib/secrets-stack';
 import { RebuildStack } from '../lib/rebuild-stack';
 import { LambdaApiStack } from '../lib/lambda-api-stack';
 import { FrontendStack } from '../lib/frontend-stack';
-import { NewsletterStack } from '../lib/newsletter-stack';
+import { SocialPostingStack } from '../lib/social-posting-stack';
 import { stackConfig } from '../lib/config';
 
 const app = new cdk.App();
@@ -69,8 +69,9 @@ new FrontendStack(app, `${stackConfig.stackName}-frontend`, {
   certificate: mainStack.certificate,
 });
 
-// Newsletter automated posting
-new NewsletterStack(app, `${stackConfig.stackName}-newsletter`, {
+// Social media automated posting (Micro.blog)
+new SocialPostingStack(app, `${stackConfig.stackName}-social-posting`, {
   env,
   microblogTokenSecretArn: secretsStack.microblogTokenSecret.secretArn,
+  materializedTableArn: mainStack.eventsTable.tableArn,
 });
