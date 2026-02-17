@@ -234,7 +234,7 @@ function updateUserDisplay() {
 function setupHtmx() {
   // Add Authorization header to all HTMX requests
   document.body.addEventListener('htmx:configRequest', function (event) {
-    const token = getAccessToken();
+    const token = getIdToken();
     if (token) {
       event.detail.headers['Authorization'] = 'Bearer ' + token;
     }

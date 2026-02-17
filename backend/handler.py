@@ -26,7 +26,7 @@ def html_response(status_code, body, headers=None):
     resp_headers = {
         'Content-Type': 'text/html; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type,Authorization,HX-Request,HX-Trigger,HX-Trigger-Name,HX-Target,HX-Current-URL',
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     }
     if headers:
@@ -45,7 +45,7 @@ def json_response(status_code, body):
         'headers': {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+            'Access-Control-Allow-Headers': 'Content-Type,Authorization,HX-Request,HX-Trigger,HX-Trigger-Name,HX-Target,HX-Current-URL',
             'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         'body': json.dumps(body) if isinstance(body, (dict, list)) else body,

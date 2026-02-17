@@ -137,7 +137,7 @@ export class LambdaApiStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowHeaders: ['Content-Type', 'Authorization', 'HX-Request', 'HX-Trigger', 'HX-Trigger-Name', 'HX-Target', 'HX-Current-URL'],
       },
     });
 
@@ -269,6 +269,19 @@ export class LambdaApiStack extends cdk.Stack {
       });
 
       // Create CloudFront distribution for caching
+      // CORS response headers policy for API
+      const corsResponseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'ApiCorsResponseHeaders', {
+        responseHeadersPolicyName: 'DctechEventsApiCors',
+        comment: 'CORS headers for next.dctech.events API',
+        corsBehavior: {
+          accessControlAllowOrigins: ['https://suggest.dctech.events', 'https://manage.dctech.events', 'https://dctech.events'],
+          accessControlAllowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          accessControlAllowHeaders: ['Content-Type', 'Authorization', 'HX-Request', 'HX-Trigger', 'HX-Trigger-Name', 'HX-Target', 'HX-Current-URL'],
+          accessControlAllowCredentials: false,
+          originOverride: true,
+        },
+      });
+
       const distribution = new cloudfront.Distribution(this, 'ApiDistribution', {
         comment: 'CloudFront distribution for next.dctech.events API',
         domainNames: [apiDomain],
@@ -281,7 +294,8 @@ export class LambdaApiStack extends cdk.Stack {
           compress: true,
           // Default behavior: no caching for authenticated endpoints
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          responseHeadersPolicy: corsResponseHeadersPolicy,
         },
         additionalBehaviors: {
           // Cache /api/events* (public event list)
@@ -291,6 +305,7 @@ export class LambdaApiStack extends cdk.Stack {
             allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
             cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
             compress: true,
+            responseHeadersPolicy: corsResponseHeadersPolicy,
             cachePolicy: new cloudfront.CachePolicy(this, 'EventsCachePolicy', {
               cachePolicyName: 'DctechEventsApiEventsCache',
               comment: 'Cache policy for /api/events endpoints (1 hour TTL)',
@@ -309,6 +324,7 @@ export class LambdaApiStack extends cdk.Stack {
             allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
             cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
             compress: true,
+            responseHeadersPolicy: corsResponseHeadersPolicy,
             cachePolicy: new cloudfront.CachePolicy(this, 'OverridesCachePolicy', {
               cachePolicyName: 'DctechEventsApiOverridesCache',
               comment: 'Cache policy for /api/overrides endpoint (1 hour TTL)',

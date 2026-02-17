@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit a Group - DC Tech Events</title>
   <link rel="stylesheet" href="css/styles.css">
+  <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
 </head>
 <body>
   <header>
@@ -33,7 +34,7 @@
     </div>
 
     <form id="group-form" class="hidden" data-auth="logged-in"
-          hx-post="https://next.dctech.events/submit"
+          hx-post="/submit"
           hx-target="#form-response"
           hx-swap="innerHTML"
           hx-indicator="#submit-indicator">

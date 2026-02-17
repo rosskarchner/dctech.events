@@ -196,13 +196,18 @@ async function exchangeCodeForTokens(code) {
 // ---- HTMX Integration ----
 
 function setupHtmxAuth() {
-  // Attach Authorization header to all HTMX requests going to our API
-  document.addEventListener('htmx:configRequest', async function(event) {
-    const targetUrl = event.detail.path || '';
+  // Attach Authorization header and rewrite relative URLs to API base
+  document.addEventListener('htmx:configRequest', function(event) {
+    const path = event.detail.path || '';
 
-    // Only add auth header for requests to our API
-    if (targetUrl.startsWith(AUTH_CONFIG.apiBaseUrl) || targetUrl.startsWith('/')) {
-      const token = await ensureValidToken();
+    // Rewrite relative URLs to the API base
+    if (path.startsWith('/')) {
+      event.detail.path = AUTH_CONFIG.apiBaseUrl + path;
+    }
+
+    // Add auth header for API requests (use cached token synchronously)
+    if (event.detail.path.startsWith(AUTH_CONFIG.apiBaseUrl)) {
+      const token = getIdToken();
       if (token) {
         event.detail.headers['Authorization'] = 'Bearer ' + token;
       }
