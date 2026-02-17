@@ -259,7 +259,7 @@ def get_single_events():
             items.extend(response.get('Items', []))
 
         for item in items:
-            if item.get('source') == 'manual':
+            if item.get('source') in ('manual', 'submitted'):
                 events.append(_dynamo_item_to_event(item))
 
     except ClientError as e:
