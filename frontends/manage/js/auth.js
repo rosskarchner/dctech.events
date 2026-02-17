@@ -10,7 +10,7 @@
 
 const AUTH_CONFIG = {
   cognitoDomain: 'https://login.dctech.events',
-  clientId: 'YOUR_COGNITO_CLIENT_ID', // Replace with actual client ID
+  clientId: '58j1h73i72v1kaim503bk2amgb',
   apiBaseUrl: 'https://next.dctech.events',
   redirectUri: window.location.origin + '/auth/callback.html',
   logoutUri: window.location.origin + '/',

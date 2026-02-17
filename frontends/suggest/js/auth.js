@@ -6,7 +6,7 @@
  */
 
 const AUTH_CONFIG = {
-  userPoolClientId: 'YOUR_COGNITO_CLIENT_ID', // TODO: Replace with actual client ID
+  userPoolClientId: '58j1h73i72v1kaim503bk2amgb',
   cognitoDomain: 'https://login.dctech.events',
   redirectUri: 'https://suggest.dctech.events/auth/callback.html',
   logoutUri: 'https://suggest.dctech.events/',
