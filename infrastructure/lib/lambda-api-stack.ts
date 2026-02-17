@@ -233,6 +233,24 @@ export class LambdaApiStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    const adminGroups = admin.addResource('groups');
+    adminGroups.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const adminGroupSlug = adminGroups.addResource('{slug}');
+    adminGroupSlug.addMethod('PUT', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const adminGroupEdit = adminGroupSlug.addResource('edit');
+    adminGroupEdit.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const adminEvents = admin.addResource('events');
     adminEvents.addMethod('GET', lambdaIntegration, {
       authorizer: authorizer,
