@@ -71,8 +71,8 @@ export const stackConfig = {
     domainPrefix: 'dctech-events',
     customDomain: 'login.dctech.events',
     callbackUrls: [
-      'https://suggest.dctech.events/auth/callback',
-      'https://manage.dctech.events/auth/callback',
+      'https://suggest.dctech.events/auth/callback.html',
+      'https://manage.dctech.events/auth/callback.html',
       'http://localhost:5000/auth/callback',
     ],
     logoutUrls: [
