@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.12 AS base
+FROM public.ecr.aws/lambda/python:3.12
 
 # Install system dependencies
 RUN dnf install -y git && dnf clean all
@@ -7,16 +7,18 @@ RUN dnf install -y git && dnf clean all
 RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && \
     dnf install -y nodejs && dnf clean all
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt ${LAMBDA_TASK_ROOT}/
-RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+# Install Python dependencies
+COPY lambdas/rebuild_worker/requirements.txt /tmp/worker-requirements.txt
+RUN pip install --no-cache-dir -r /tmp/worker-requirements.txt
 
-# Copy the project source
-# Note: In production, the rebuild worker needs the full project.
-# The Docker build context should be the repo root (set via CDK asset path).
-COPY . ${LAMBDA_TASK_ROOT}/
+# Copy Lambda handler to task root
+COPY lambdas/rebuild_worker/handler.py ${LAMBDA_TASK_ROOT}/
 
-# Install Node.js dependencies for esbuild
-RUN cd ${LAMBDA_TASK_ROOT} && npm install --omit=dev 2>/dev/null || true
+# Copy full project source to /opt/site
+# (.dockerignore excludes .git, node_modules, infrastructure, lambdas, frontends, etc.)
+COPY . /opt/site/
+
+# Install Node.js dependencies for esbuild in the project copy
+RUN cd /opt/site && npm install --omit=dev 2>/dev/null || true
 
 CMD ["handler.lambda_handler"]

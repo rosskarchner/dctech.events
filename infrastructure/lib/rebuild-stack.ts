@@ -109,10 +109,12 @@ export class RebuildStack extends cdk.Stack {
     }));
 
     // Rebuild worker Lambda (Docker image)
+    // Build context is repo root so Dockerfile can COPY the full project
     const rebuildWorkerFn = new lambda.DockerImageFunction(this, 'RebuildWorker', {
       functionName: 'dctech-events-rebuild-worker',
       code: lambda.DockerImageCode.fromImageAsset(
-        path.join(__dirname, '../../lambdas/rebuild_worker')
+        path.join(__dirname, '../..'),  // repo root as build context
+        { file: 'lambdas/rebuild_worker/Dockerfile' }
       ),
       timeout: cdk.Duration.seconds(stackConfig.rebuild.lambdaTimeoutSeconds),
       memorySize: stackConfig.rebuild.lambdaMemoryMB,

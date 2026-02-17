@@ -26,6 +26,7 @@ SITE_BUCKET = os.environ['SITE_BUCKET']
 DATA_CACHE_BUCKET = os.environ['DATA_CACHE_BUCKET']
 CLOUDFRONT_DISTRIBUTION_ID = os.environ.get('CLOUDFRONT_DISTRIBUTION_ID', '')
 WORK_DIR = '/tmp/site'
+PROJECT_SOURCE = '/opt/site'  # baked into Docker image at build time
 
 
 def run_command(cmd, cwd=None, env=None):
@@ -126,8 +127,12 @@ def lambda_handler(event, context):
         body = json.loads(record.get('body', '{}'))
         print(f"Rebuild triggered: {json.dumps(body)}")
 
-    # Setup workspace
-    os.makedirs(WORK_DIR, exist_ok=True)
+    # Setup workspace: copy project source from /opt/site to writable /tmp/site
+    import shutil
+    if os.path.exists(WORK_DIR):
+        shutil.rmtree(WORK_DIR)
+    shutil.copytree(PROJECT_SOURCE, WORK_DIR, symlinks=False)
+    print(f"Copied project source from {PROJECT_SOURCE} to {WORK_DIR}")
 
     try:
         # 1. Sync iCal cache from S3
