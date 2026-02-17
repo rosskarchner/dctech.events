@@ -8,3 +8,5 @@ recurring-ical-events
 dateparser
 requests
 extruct
+usaddress
+w3lib
