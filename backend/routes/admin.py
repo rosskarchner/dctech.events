@@ -9,10 +9,11 @@ import json
 from auth import get_user_from_event, require_admin
 from db import (
     get_drafts_by_status, get_draft as db_get_draft, update_draft_status,
+    promote_draft_to_event,
     get_all_groups, get_group, put_group,
     get_all_overrides as db_get_all_overrides, get_override,
     put_override as db_put_override, delete_override as db_delete_override,
-    get_all_categories,
+    get_all_categories, get_events_by_date,
 )
 
 
@@ -113,6 +114,10 @@ def approve_draft(event, jinja_env, draft_id):
     reviewer = claims.get('email', '')
     update_draft_status(draft_id, 'approved', reviewer)
 
+    # Promote event drafts to EVENT# entities so they appear in the API
+    if draft.get('draft_type') == 'event':
+        promote_draft_to_event(draft)
+
     # Return empty string to remove the row via hx-swap="outerHTML"
     return _html(200, '')
 
@@ -193,6 +198,25 @@ def update_group(event, jinja_env, slug):
 
     template = jinja_env.get_template('partials/group_row.html')
     html = template.render(group=group)
+    return _html(200, html)
+
+
+# ─── Events ──────────────────────────────────────────────────────
+
+def get_events(event, jinja_env):
+    """GET /admin/events — HTML table of events in the config table."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    params = event.get('queryStringParameters') or {}
+    date_prefix = params.get('date', '').strip() or None
+
+    events = get_events_by_date(date_prefix)
+    events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
+
+    template = jinja_env.get_template('partials/admin_events.html')
+    html = template.render(events=events, date_filter=date_prefix or '')
     return _html(200, html)
 
 

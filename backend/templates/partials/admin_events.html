@@ -1,0 +1,30 @@
+{% if events %}
+<table class="table">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Date</th>
+      <th>Time</th>
+      <th>City/State</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in events %}
+    <tr>
+      <td>
+        {% if e.url %}<a href="{{ e.url }}" target="_blank">{{ e.title | default('Untitled') }}</a>
+        {% else %}{{ e.title | default('Untitled') }}{% endif %}
+      </td>
+      <td>{{ e.date | default('') }}{% if e.end_date %} – {{ e.end_date }}{% endif %}</td>
+      <td>{{ e.time | default('All day') }}</td>
+      <td>{{ e.city | default('') }}{% if e.state %}, {{ e.state }}{% endif %}</td>
+      <td><span class="badge">{{ e.source | default('unknown') }}</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="text-muted">{{ events | length }} event(s) found.</p>
+{% else %}
+<p class="text-muted">No events found{% if date_filter %} for "{{ date_filter }}"{% endif %}.</p>
+{% endif %}

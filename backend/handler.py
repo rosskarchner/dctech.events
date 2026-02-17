@@ -115,6 +115,9 @@ def lambda_handler(event, context):
             slug = path.split('/')[3]
             return admin.update_group(event, jinja_env, slug)
 
+        if path == '/admin/events' and http_method == 'GET':
+            return admin.get_events(event, jinja_env)
+
         if path == '/admin/overrides' and http_method == 'GET':
             return admin.get_overrides(event, jinja_env)
 

@@ -223,6 +223,12 @@ export class LambdaApiStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    const adminEvents = admin.addResource('events');
+    adminEvents.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const adminOverrides = admin.addResource('overrides');
     adminOverrides.addMethod('GET', lambdaIntegration, {
       authorizer: authorizer,

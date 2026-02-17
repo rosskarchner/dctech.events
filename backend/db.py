@@ -246,6 +246,32 @@ def _event_item_to_dict(item):
     return event
 
 
+def promote_draft_to_event(draft):
+    """Promote an approved event draft to an EVENT entity in the config table."""
+    table = _get_table()
+    now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    guid = draft['id']
+    date = draft.get('date', '')
+
+    item = {
+        'PK': f'EVENT#{guid}',
+        'SK': 'META',
+        'GSI1PK': f'DATE#{date}',
+        'GSI1SK': f'TIME#{draft.get("time", "00:00")}',
+        'source': 'submitted',
+        'submitted_by': draft.get('submitter_email', ''),
+        'created_at': now,
+    }
+
+    for field in ['title', 'url', 'date', 'time', 'end_date', 'cost',
+                  'city', 'state', 'all_day', 'categories']:
+        if draft.get(field) is not None:
+            item[field] = draft[field]
+
+    table.put_item(Item=item)
+    return guid
+
+
 # ─── OVERRIDE operations ──────────────────────────────────────────
 
 def get_all_overrides():
