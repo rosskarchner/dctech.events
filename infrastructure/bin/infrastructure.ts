@@ -7,6 +7,7 @@ import { SecretsStack } from '../lib/secrets-stack';
 import { RebuildStack } from '../lib/rebuild-stack';
 import { LambdaApiStack } from '../lib/lambda-api-stack';
 import { FrontendStack } from '../lib/frontend-stack';
+import { NewsletterStack } from '../lib/newsletter-stack';
 import { stackConfig } from '../lib/config';
 
 const app = new cdk.App();
@@ -42,6 +43,7 @@ const cognitoStack = new CognitoStack(app, `${stackConfig.stackName}-cognito`, {
 const secretsStack = new SecretsStack(app, `${stackConfig.stackName}-secrets`, {
   env,
   cognitoClientSecretName: stackConfig.secrets.cognitoClientSecret,
+  microblogTokenSecretName: stackConfig.secrets.microblogTokenSecret,
 });
 
 // Rebuild pipeline (DynamoDB Streams → SQS FIFO → Docker Lambda)
@@ -65,4 +67,10 @@ new LambdaApiStack(app, `${stackConfig.stackName}-api`, {
 new FrontendStack(app, `${stackConfig.stackName}-frontend`, {
   env,
   certificate: mainStack.certificate,
+});
+
+// Newsletter automated posting
+new NewsletterStack(app, `${stackConfig.stackName}-newsletter`, {
+  env,
+  microblogTokenSecretArn: secretsStack.microblogTokenSecret.secretArn,
 });

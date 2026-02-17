@@ -8,6 +8,12 @@ export interface SecretsStackProps extends cdk.StackProps {
    * @default 'dctech-events/cognito-client-secret'
    */
   cognitoClientSecretName?: string;
+
+  /**
+   * Name of the Micro.blog token secret
+   * @default 'dctech-events/microblog-token'
+   */
+  microblogTokenSecretName?: string;
 }
 
 /**
@@ -18,21 +24,24 @@ export interface SecretsStackProps extends cdk.StackProps {
  *
  * Secrets managed:
  * 1. Cognito Client Secret: Used for Cognito authentication
+ * 2. Micro.blog Token: Used for automated posting to Micro.blog
  *
  * After deploying this stack, populate secrets using:
  * ```bash
  * aws secretsmanager put-secret-value \
- *   --secret-id dctech-events/cognito-client-secret \
- *   --secret-string '{"client_secret":"YOUR_COGNITO_SECRET"}'
+ *   --secret-id dctech-events/microblog-token \
+ *   --secret-string "YOUR_TOKEN"
  * ```
  */
 export class SecretsStack extends cdk.Stack {
   public readonly cognitoClientSecret: secretsmanager.ISecret;
+  public readonly microblogTokenSecret: secretsmanager.ISecret;
 
   constructor(scope: Construct, id: string, props?: SecretsStackProps) {
     super(scope, id, props);
 
     const secretName = props?.cognitoClientSecretName || 'dctech-events/cognito-client-secret';
+    const mbTokenSecretName = props?.microblogTokenSecretName || 'dctech-events/microblog-token';
 
     // Create Cognito client secret
     this.cognitoClientSecret = new secretsmanager.Secret(this, 'CognitoClientSecret', {
@@ -44,11 +53,24 @@ export class SecretsStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // Create Micro.blog token secret
+    this.microblogTokenSecret = new secretsmanager.Secret(this, 'MicroblogTokenSecret', {
+      secretName: mbTokenSecretName,
+      description: 'API Token for Micro.blog automated posting',
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     // Stack outputs
     new cdk.CfnOutput(this, 'CognitoClientSecretArn', {
       value: this.cognitoClientSecret.secretArn,
       description: 'ARN of Cognito client secret',
       exportName: 'DctechEventsCognitoClientSecretArn',
+    });
+
+    new cdk.CfnOutput(this, 'MicroblogTokenSecretArn', {
+      value: this.microblogTokenSecret.secretArn,
+      description: 'ARN of Micro.blog token secret',
+      exportName: 'DctechEventsMicroblogTokenSecretArn',
     });
 
     // Apply tags

@@ -94,6 +94,18 @@ export const stackConfig = {
   // Secrets Manager configuration
   secrets: {
     cognitoClientSecret: 'dctech-events/cognito-client-secret',
+    microblogTokenSecret: 'dctech-events/microblog-token',
+  },
+
+  // Newsletter configuration
+  newsletter: {
+    // 7 AM EST is 12 PM UTC (standard) or 11 AM UTC (daylight)
+    // CRON format: (minute, hour, day-of-month, month, day-of-week)
+    schedule: {
+      minute: '0',
+      hour: '12',
+      day: 'MON',
+    },
   },
 
   // Chalice API configuration (legacy, used by lambda-api-stack)
