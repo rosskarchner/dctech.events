@@ -30,9 +30,41 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            infrastructure/package-lock.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and cache RebuildWorker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: lambdas/rebuild_worker/Dockerfile
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: dctech-events-rebuild-worker:latest
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          # Warm the pip cache with all relevant requirements files
+          python -m pip install --upgrade pip
+          for req in requirements.txt backend/requirements.txt lambdas/rebuild_worker/requirements.txt lambdas/social_posting_requirements.txt; do
+            if [ -f "$req" ]; then
+              echo "Warming cache for $req..."
+              pip install -r "$req"
+            fi
+          done
 
       - name: Build JavaScript bundles
         run: npm run build
@@ -45,10 +77,14 @@ jobs:
           role-session-name: github-actions-deploy
 
       - name: Install Infrastructure dependencies
-        run: cd infrastructure && npm ci
+        run: |
+          cd infrastructure
+          npm ci
 
       - name: Deploy Stacks via CDK
         id: cdk-deploy
+        env:
+          DOCKER_BUILDKIT: '1'
         run: |
           cd infrastructure
           npx cdk deploy --all --require-approval never
