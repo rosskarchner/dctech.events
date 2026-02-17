@@ -22,70 +22,63 @@
   </header>
 
   <main class="container">
-    <h2>Submit a Group</h2>
-    <p>Know of a tech group or organization in the DC area? Let us know so we can track their events.</p>
+    <h2>Submit a Group to DC Tech Events</h2>
+    <p>To submit a group, you'll need to sign in. This allows us to add your group to the calendar.</p>
 
-    <form hx-post="https://next.dctech.events/submit-group"
+    <div id="auth-section">
+      <div class="auth-status" id="auth-status" data-auth="logged-out">
+        <p>Not signed in</p>
+        <button class="btn btn-primary" onclick="DctechAuth.login()">Sign In</button>
+      </div>
+    </div>
+
+    <form id="group-form" class="hidden" data-auth="logged-in"
+          hx-post="https://next.dctech.events/submit"
           hx-target="#form-response"
           hx-swap="innerHTML"
           hx-indicator="#submit-indicator">
+      <input type="hidden" name="type" value="group">
 
-      <div class="form-group">
-        <label for="group-name">Group Name <span class="required">*</span></label>
-        <input type="text" id="group-name" name="name" required
-               placeholder="e.g., DC Python">
-      </div>
+      <div class="event-section">
+        <h3>Group Details</h3>
 
-      <div class="form-group">
-        <label for="group-website">Website <span class="required">*</span></label>
-        <input type="url" id="group-website" name="website" required
-               placeholder="https://www.meetup.com/dcpython/">
-        <div class="form-hint">Main website or Meetup page for the group</div>
-      </div>
-
-      <div class="form-group">
-        <label for="group-ical">iCal/Calendar Feed URL</label>
-        <input type="url" id="group-ical" name="ical_url"
-               placeholder="https://www.meetup.com/dcpython/events/ical/">
-        <div class="form-hint">If available, provide the iCal feed URL so events can be imported automatically</div>
-      </div>
-
-      <div class="form-group">
-        <label for="group-description">Description</label>
-        <textarea id="group-description" name="description"
-                  placeholder="What does this group focus on? How often do they meet?"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label>Categories</label>
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="categories" value="ai"> AI/ML</label>
-          <label><input type="checkbox" name="categories" value="cloud"> Cloud</label>
-          <label><input type="checkbox" name="categories" value="cybersecurity"> Cybersecurity</label>
-          <label><input type="checkbox" name="categories" value="data"> Data</label>
-          <label><input type="checkbox" name="categories" value="design"> Design</label>
-          <label><input type="checkbox" name="categories" value="devops"> DevOps</label>
-          <label><input type="checkbox" name="categories" value="frontend"> Frontend</label>
-          <label><input type="checkbox" name="categories" value="general"> General</label>
-          <label><input type="checkbox" name="categories" value="hardware"> Hardware</label>
-          <label><input type="checkbox" name="categories" value="mobile"> Mobile</label>
-          <label><input type="checkbox" name="categories" value="networking"> Networking</label>
-          <label><input type="checkbox" name="categories" value="open-source"> Open Source</label>
-          <label><input type="checkbox" name="categories" value="policy"> Policy</label>
-          <label><input type="checkbox" name="categories" value="programming"> Programming</label>
-          <label><input type="checkbox" name="categories" value="startup"> Startup</label>
-          <label><input type="checkbox" name="categories" value="web"> Web</label>
+        <div class="form-group">
+          <label for="name">Group Name <span class="required">*</span></label>
+          <input type="text" id="name" name="name" required maxlength="200"
+                 placeholder="e.g., DC Python User Group">
         </div>
+
+        <div class="form-group">
+          <label for="website">Group Website <span class="required">*</span></label>
+          <input type="url" id="website" name="website" required
+                 placeholder="https://example.com or https://meetup.com/your-group">
+          <small>Main website or Meetup.com page for your group</small>
+        </div>
+
+        <div class="form-group">
+          <label for="ical">iCal Feed URL</label>
+          <input type="url" id="ical" name="ical_url"
+                 placeholder="https://example.com/calendar.ics">
+          <small>Calendar feed URL (iCal format) - at least one feed type is recommended</small>
+        </div>
+
+        <details class="optional-details">
+          <summary>Optional Details</summary>
+          <div class="optional-fields">
+            <div class="form-group">
+              <label for="fallback_url">Fallback URL</label>
+              <input type="url" id="fallback_url" name="fallback_url"
+                     placeholder="https://example.com/events">
+              <small>Alternative URL to find events if feeds are unavailable</small>
+            </div>
+          </div>
+        </details>
       </div>
 
-      <div class="form-group">
-        <label for="group-notes">Additional Notes</label>
-        <textarea id="group-notes" name="notes"
-                  placeholder="Anything else we should know about this group?"></textarea>
-      </div>
+      <div id="status-message" class="status-message"></div>
 
-      <div class="form-group">
-        <button type="submit" class="btn btn-primary">
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn btn-primary">
           <span class="htmx-indicator" id="submit-indicator"><span class="spinner"></span></span>
           Submit Group
         </button>
