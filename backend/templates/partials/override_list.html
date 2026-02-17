@@ -1,0 +1,34 @@
+<div class="override-list">
+  <h2>Event Overrides ({{ overrides | length }})</h2>
+
+  <form hx-post="/admin/overrides"
+        hx-target="#override-list"
+        hx-swap="afterbegin"
+        class="new-override-form">
+    <fieldset>
+      <legend>Add Override</legend>
+      <input type="text" name="guid" placeholder="Event GUID" required>
+      <input type="text" name="categories" placeholder="Categories (comma-separated)">
+      <input type="text" name="title" placeholder="Override title (optional)">
+      <label><input type="checkbox" name="hidden" value="true"> Hidden</label>
+      <button type="submit">Add Override</button>
+    </fieldset>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>GUID</th>
+        <th>Categories</th>
+        <th>Title Override</th>
+        <th>Edited By</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="override-list">
+      {% for override in overrides %}
+      {% include "partials/override_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

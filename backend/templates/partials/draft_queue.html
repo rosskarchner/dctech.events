@@ -1,0 +1,23 @@
+<div class="draft-queue">
+  <h2>Pending Submissions</h2>
+  {% if drafts %}
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Title / Name</th>
+        <th>Submitted By</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="draft-list">
+      {% for draft in drafts %}
+      {% include "partials/draft_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No pending submissions.</p>
+  {% endif %}
+</div>

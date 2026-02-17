@@ -1,0 +1,32 @@
+<tr id="draft-{{ draft.id }}">
+  <td>{{ draft.draft_type }}</td>
+  <td>
+    {% if draft.draft_type == 'event' %}
+      {{ draft.title | default('Untitled') }}
+      {% if draft.date %}<br><small>{{ draft.date }}</small>{% endif %}
+    {% else %}
+      {{ draft.name | default(draft.title | default('Untitled')) }}
+    {% endif %}
+  </td>
+  <td>{{ draft.submitter_email | default('') }}</td>
+  <td>{{ draft.created_at | default('') }}</td>
+  <td>
+    <button hx-post="/admin/draft/{{ draft.id }}/approve"
+            hx-target="#draft-{{ draft.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Approve this submission?">
+      Approve
+    </button>
+    <button hx-post="/admin/draft/{{ draft.id }}/reject"
+            hx-target="#draft-{{ draft.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Reject this submission?">
+      Reject
+    </button>
+    <button hx-get="/admin/draft/{{ draft.id }}"
+            hx-target="#draft-detail"
+            hx-swap="innerHTML">
+      Details
+    </button>
+  </td>
+</tr>

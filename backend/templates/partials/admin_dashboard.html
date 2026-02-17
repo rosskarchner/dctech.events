@@ -1,0 +1,19 @@
+<div class="admin-dashboard">
+  <h2>Admin Dashboard</h2>
+  <p>Welcome, {{ user_email }}</p>
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-number">{{ pending_count }}</span>
+      <span class="stat-label">Pending Submissions</span>
+      <a href="/admin/queue" hx-get="/admin/queue" hx-target="#content" hx-push-url="true">Review Queue</a>
+    </div>
+    <div class="stat-card">
+      <span class="stat-number">{{ groups_count }}</span>
+      <span class="stat-label">Groups</span>
+      <a href="/admin/groups" hx-get="/admin/groups" hx-target="#content" hx-push-url="true">Manage Groups</a>
+    </div>
+    <div class="stat-card">
+      <a href="/admin/overrides" hx-get="/admin/overrides" hx-target="#content" hx-push-url="true">Manage Overrides</a>
+    </div>
+  </div>
+</div>

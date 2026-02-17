@@ -1,0 +1,19 @@
+<div class="group-list">
+  <h2>Groups ({{ groups | length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Active</th>
+        <th>Categories</th>
+        <th>iCal</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="group-list">
+      {% for group in groups %}
+      {% include "partials/group_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

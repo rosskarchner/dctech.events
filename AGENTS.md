@@ -3,162 +3,133 @@
 ## Core Architecture
 
 **Static Site Generator**: Flask + Frozen-Flask → S3/CloudFront
-- Development: Flask dev server
-- Production: Static HTML/CSS/JS files
-- All data changes via GitHub Pull Requests (no backend writes)
+- Development: Flask dev server (`python app.py`)
+- Production: Static HTML/CSS/JS files in `build/`
+- Data changes via admin UI trigger automated rebuilds
+
+**Admin/Submit UIs**: HTMX + Cognito Auth
+- `suggest.dctech.events` — public event/group submission (Cognito login)
+- `manage.dctech.events` — admin dashboard (Cognito `admins` group required)
+- Both served as static files from S3/CloudFront
+
+**API Backend**: Lambda + API Gateway
+- Returns HTML fragments for HTMX (not JSON)
+- Jinja2 server-side templates in `backend/templates/partials/`
+- Cognito JWT auth on protected routes
 
 ## Data Storage
 
-All content stored as YAML files in the repository:
+### Two DynamoDB Tables
 
-### Events (Two Types)
-1. **Manual Events** (`_single_events/*.yaml`)
-   - User-submitted via web form
-   - Identified by: `source: 'manual'`, has `id` field
-   - **Edit directly**: PRs modify the actual file in `_single_events/`
+1. **`dctech-events` (config/admin table)** — Single-table design
+   - Source of truth for groups, categories, overrides, drafts
+   - Changes trigger site rebuilds via DynamoDB Streams
+   - Managed by admin UI and data access layer
 
-2. **iCal Events** (imported from feeds)
-   - Imported from group calendar feeds
-   - Identified by: `source: 'ical'`, has `guid` field
-   - **Edit via overrides**: PRs create files in `_event_overrides/{guid}.yaml`
-   - Override fields merge with base event at render time
+2. **`DcTechEvents` (materialized event view)** — Existing table
+   - Written by `generate_month_data.py` (fetches iCal feeds, deduplicates)
+   - Read by `app.py` to render the static site
 
-### Groups (`_groups/*.yaml`)
-- One file per group (e.g., `_groups/tech-meetup.yaml`)
-- Contains: name, website, ical feed URL, categories, active status
-- **Edit directly**: PRs modify the actual group file
+### Config Table Key Patterns
 
-### Categories (`_categories/*.yaml`)
-- 16 predefined categories (ai, cybersecurity, etc.)
-- Rarely changed
+| Entity | PK | SK |
+|---|---|---|
+| GROUP | `GROUP#{slug}` | `META` |
+| CATEGORY | `CATEGORY#{slug}` | `META` |
+| EVENT | `EVENT#{guid}` | `META` |
+| OVERRIDE | `OVERRIDE#{guid}` | `META` |
+| DRAFT | `DRAFT#{id}` | `META` |
+| ICAL_CACHE | `ICAL#{group_id}` | `EVENT#{guid}` |
+| ICAL_META | `ICAL_META#{group_id}` | `META` |
 
-## GitHub OAuth Flow
+Three GSIs: GSI1 (GSI1PK/GSI1SK), GSI2 (GSI2PK/GSI2SK), GSI3 (GSI3PK/GSI3SK).
 
-**Client-Side Only** - No backend session management
+### Data Access Layer (`dynamo_data.py`)
 
-### Architecture
-- **OAuth App**: GitHub OAuth App (Client ID: `Ov23liSTVbSKSvkYW6yg`)
-- **Lambda Endpoint**: `/auth/callback` (AWS Lambda via Chalice)
-  - Source: `oauth-endpoint/app.py`
-  - Validates `state` parameter (CSRF token + return URL)
-  - Allowed return URLs: `/submit/`, `/submit-group/`, `/groups/edit/`, `/edit/*`
-  - Exchanges code for access token
-  - Redirects to return URL with `?access_token=xxx`
+Reads from the config table, provides same interfaces as the old YAML reads:
+- `get_all_groups()`, `get_all_categories()`, `get_single_events()`, `get_event_override(guid)`
+- Feature flag: `USE_DYNAMO_DATA=1` enables DynamoDB reads; defaults to YAML fallback for local dev
 
-### Client Flow
-1. User clicks "Sign in with GitHub"
-2. JS creates state object: `{csrf_token, return_url, city}`
-3. Redirect to `https://github.com/login/oauth/authorize`
-4. GitHub redirects to Lambda callback
-5. Lambda validates state, exchanges code for token
-6. Lambda redirects to return_url with `?access_token=xxx`
-7. Client JS stores token in `sessionStorage`, initializes Octokit
+## Rebuild Pipeline
 
-### Security
-- State parameter validates CSRF + return URL
-- Token stored in sessionStorage (cleared on tab close)
-- Lambda validates allowed return URLs to prevent open redirects
+DynamoDB Streams → Dispatcher Lambda → SQS FIFO (60s dedup window) → Docker Rebuild Worker Lambda
 
-## Edit Workflows
+1. Config table change triggers stream event
+2. `lambdas/stream_dispatcher/handler.py` sends SQS message with `DeduplicationId = floor(epoch/60)`
+3. `lambdas/rebuild_worker/handler.py` runs full rebuild:
+   - Sync cache from S3 → refresh calendars → generate month data → freeze → sync to S3 → CloudFront invalidation
 
-### Common Pattern (All Edit Pages)
-1. **Authenticate**: Get GitHub token via OAuth
-2. **Fork Check**: Ensure user has fork of `rosskarchner/dctech.events`
-3. **Create Branch**: New branch from `main` (e.g., `categorize-events-1234567890`)
-4. **Modify Files**: Create/update YAML files in user's fork
-5. **Create PR**: PR from `user:branch` to `rosskarchner:main`
-6. **Show Success**: Display PR URL, allow user to continue editing
+## Cognito Authentication
 
-### Event Categorization (`/edit/`)
-**Key Logic** (`templates/edit_list.html:909`):
-```javascript
-if (event.source === 'manual' && event.id) {
-    // Manual event: Edit _single_events/{id}.yaml directly
-    filePath = `_single_events/${event.id}.yaml`;
-} else {
-    // iCal event: Create override in _event_overrides/{guid}.yaml
-    filePath = `_event_overrides/${eventId}.yaml`;
-}
-```
+- **User Pool**: `dctech-events-users`
+- **Custom Domain**: `login.dctech.events`
+- **Groups**: `admins` (required for manage.dctech.events)
+- **OAuth Flow**: Authorization Code with PKCE → token exchange in callback pages
+- **Frontend Auth**: `js/auth.js` manages tokens, injects `Authorization` header into HTMX requests
 
-**Critical**: Must distinguish between manual and iCal events to use correct file path!
+## API Routes (backend/)
 
-### Group Editing (`/groups/edit/`)
-Two modes:
-1. **Bulk Categorization**: Select multiple groups, assign category
-2. **Individual Edit**: Modal form to edit all group fields
+### Public
+- `GET /health` — health check
+- `GET /api/events?date=YYYY-MM` — events by date prefix (HTML table)
+- `GET /api/overrides` — list overrides (HTML)
 
-Both create PRs modifying `_groups/*.yaml` files directly (no override mechanism).
+### Authenticated (Cognito JWT)
+- `POST /submit` — create draft event/group submission
+- `GET /admin/dashboard` — admin stats (HTML fragment)
+- `GET /admin/queue` — pending drafts (HTML table rows)
+- `POST /admin/draft/{id}/approve` — approve draft
+- `POST /admin/draft/{id}/reject` — reject draft
+- `GET /admin/groups` — group list (HTML table)
+- `GET /admin/groups/{slug}/edit` — group edit form (HTML fragment)
+- `PUT /admin/groups/{slug}` — update group
+- `GET /admin/overrides` — override list (HTML)
 
-## JavaScript Build System
+## Infrastructure (CDK)
 
-**esbuild** bundles ES modules:
-- Source: `static/js/*.js`
-- Output: `static/js/dist/*.bundle.js`
-- Bundles: `submit`, `submit-group`, `edit`, `edit-groups`
-- Run: `npm run build` (or `npm run build -- --watch`)
+All stacks in `infrastructure/lib/`:
+- `dctech-events-stack.ts` — S3, CloudFront, Route53, DcTechEvents table, GitHub OIDC
+- `dynamodb-stack.ts` — Config table with streams, GSIs, TTL
+- `cognito-stack.ts` — User pool, app client, custom domain, SES email
+- `secrets-stack.ts` — Cognito client secret in Secrets Manager
+- `rebuild-stack.ts` — Stream dispatcher → SQS FIFO → Docker rebuild worker
+- `lambda-api-stack.ts` — API Lambda + API Gateway + Cognito authorizer
+- `frontend-stack.ts` — S3 + CloudFront + Route53 for suggest/manage subdomains
 
-### Shared Utilities (`static/js/github-utils.js`)
-- `ensureFork()` - Check/create user's fork
-- `createBranch()` - Create branch in fork
-- `createOrUpdateFile()` - Commit file changes
-- `createPullRequest()` - Create PR to upstream
-- `generateCategoryOverride()` - YAML for event overrides
-- `updateSingleEventCategory()` - YAML for manual event edits
+Entry point: `infrastructure/bin/infrastructure.ts`
+Config: `infrastructure/lib/config.ts`
 
 ## Static Site Generation
 
 **Frozen-Flask** (`freeze.py`):
-- Crawls Flask routes and generates static HTML
-- Must register dynamic routes via `@freezer.register_generator`
-- Output: `build/` directory
-- Deploy: Sync to S3, invalidate CloudFront cache
+- Crawls Flask routes, generates static HTML to `build/`
+- Deploy: sync `build/` to S3, invalidate CloudFront
 
 ## Development Workflow
 
 1. **Start dev server**: `python app.py`
-2. **Watch JS changes**: `npm run build -- --watch` (separate terminal)
-3. **Test locally**: Visit `http://localhost:5000`
-4. **Build for production**:
-   - `npm run build` (JS bundles)
-   - `make freeze` (static HTML)
-5. **Deploy**: Sync `build/` to S3
-
-## OAuth Endpoint Deployment
-
-Separate Lambda function in `oauth-endpoint/`:
-1. **Test**: `pytest test_app.py`
-2. **Deploy**: `chalice deploy`
-3. **Update allowed URLs**: Edit `app.py` line 81, redeploy
-
-## Key Gotchas
-
-1. **Event Source Detection**: Always check `event.source` before determining file path
-2. **YAML Merging**: Preserve existing fields when updating (e.g., `submitted_by`, `suppress_urls`)
-3. **OAuth Return URLs**: Must be whitelisted in `oauth-endpoint/app.py:81`
-4. **Category Format**: Always YAML list format: `categories:\n  - slug\n`
-5. **Fork Wait Time**: Creating fork needs ~3s delay before branch creation
-6. **Inline Messages**: Use `showError()`, `showSuccess()`, `showStatus()` - never `alert()`
+2. **Test locally**: Visit `http://localhost:5000`
+3. **Build for production**: `make freeze`
+4. **Deploy infrastructure**: `cd infrastructure && cdk deploy <stack-name>`
 
 ## File Checklist for Common Tasks
 
-**Add OAuth return URL**:
-- `oauth-endpoint/app.py` (line 81)
-- `oauth-endpoint/test_app.py` (add test)
-- Redeploy: `chalice deploy`
+**Add new admin feature**:
+- `backend/routes/admin.py` (route handler)
+- `backend/templates/partials/` (HTML fragment template)
+- `backend/db.py` (DynamoDB operations if needed)
+- `frontends/manage/*.html` (admin page with HTMX)
 
-**Add new edit page**:
-- `app.py` (route + OAuth config)
-- `templates/your-page.html` (auth UI + message divs)
-- `static/js/your-page.js` (OAuth + PR logic)
-- `build.js` (esbuild config)
-- `freeze.py` (register generator)
-- `oauth-endpoint/app.py` (whitelist return URL)
+**Add new public submission type**:
+- `backend/routes/submit.py` (submission handler)
+- `backend/templates/partials/` (form + confirmation templates)
+- `frontends/suggest/*.html` (submission page)
 
-**Modify event categorization**:
-- `static/js/github-utils.js` (YAML utilities)
-- `templates/edit_list.html` (inline script)
-- Rebuild: `npm run build`
+**Modify config table schema**:
+- `infrastructure/lib/dynamodb-stack.ts` (table definition)
+- `backend/db.py` (CRUD operations)
+- `dynamo_data.py` (data access layer)
+- `migrations/` (migration script if needed)
 
 **Change static generation**:
 - `freeze.py` (route generators)

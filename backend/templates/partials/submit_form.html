@@ -1,0 +1,55 @@
+<div class="submit-form">
+  <h2>Submit an Event</h2>
+  <p>Logged in as {{ user_email }}</p>
+
+  <form hx-post="/submit"
+        hx-target="#submit-result"
+        hx-swap="innerHTML">
+    <div>
+      <label for="title">Event Title *</label>
+      <input type="text" id="title" name="title" required>
+    </div>
+    <div>
+      <label for="date">Date *</label>
+      <input type="date" id="date" name="date" required>
+    </div>
+    <div>
+      <label for="time">Time</label>
+      <input type="time" id="time" name="time">
+    </div>
+    <div>
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" placeholder="Venue, City, State">
+    </div>
+    <div>
+      <label for="url">Event URL</label>
+      <input type="url" id="url" name="url" placeholder="https://...">
+    </div>
+    <div>
+      <label for="cost">Cost</label>
+      <input type="text" id="cost" name="cost" placeholder="Free, $20, etc.">
+    </div>
+    <div>
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="3"></textarea>
+    </div>
+    <div>
+      <label for="group_name">Organizing Group</label>
+      <input type="text" id="group_name" name="group_name">
+    </div>
+    <div>
+      <label>Categories</label>
+      <div class="category-checkboxes">
+        {% for slug, cat in categories.items() %}
+        <label>
+          <input type="checkbox" name="categories" value="{{ slug }}">
+          {{ cat.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit">Submit Event</button>
+  </form>
+
+  <div id="submit-result"></div>
+</div>

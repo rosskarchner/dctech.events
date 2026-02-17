@@ -1,0 +1,22 @@
+<tr id="group-{{ group.id }}">
+  <td>
+    <strong>{{ group.name }}</strong>
+    <br><small>{{ group.id }}</small>
+  </td>
+  <td>{{ 'Yes' if group.active else 'No' }}</td>
+  <td>{{ (group.categories or []) | join(', ') }}</td>
+  <td>
+    {% if group.ical %}
+    <span title="{{ group.ical }}">Yes</span>
+    {% else %}
+    No
+    {% endif %}
+  </td>
+  <td>
+    <button hx-get="/admin/groups/{{ group.id }}/edit"
+            hx-target="#group-{{ group.id }}"
+            hx-swap="outerHTML">
+      Edit
+    </button>
+  </td>
+</tr>

@@ -1,0 +1,47 @@
+<div class="draft-detail">
+  <h3>Draft #{{ draft.id }} ({{ draft.draft_type }})</h3>
+  <dl>
+    <dt>Status</dt>
+    <dd>{{ draft.status }}</dd>
+    <dt>Submitted By</dt>
+    <dd>{{ draft.submitter_email | default('Unknown') }}</dd>
+    <dt>Created</dt>
+    <dd>{{ draft.created_at | default('') }}</dd>
+    {% if draft.title %}
+    <dt>Title</dt>
+    <dd>{{ draft.title }}</dd>
+    {% endif %}
+    {% if draft.name %}
+    <dt>Name</dt>
+    <dd>{{ draft.name }}</dd>
+    {% endif %}
+    {% if draft.date %}
+    <dt>Date</dt>
+    <dd>{{ draft.date }}</dd>
+    {% endif %}
+    {% if draft.time %}
+    <dt>Time</dt>
+    <dd>{{ draft.time }}</dd>
+    {% endif %}
+    {% if draft.location %}
+    <dt>Location</dt>
+    <dd>{{ draft.location }}</dd>
+    {% endif %}
+    {% if draft.url %}
+    <dt>URL</dt>
+    <dd><a href="{{ draft.url }}" target="_blank">{{ draft.url }}</a></dd>
+    {% endif %}
+    {% if draft.cost %}
+    <dt>Cost</dt>
+    <dd>{{ draft.cost }}</dd>
+    {% endif %}
+    {% if draft.description %}
+    <dt>Description</dt>
+    <dd>{{ draft.description }}</dd>
+    {% endif %}
+    {% if draft.categories %}
+    <dt>Categories</dt>
+    <dd>{{ draft.categories | join(', ') }}</dd>
+    {% endif %}
+  </dl>
+</div>

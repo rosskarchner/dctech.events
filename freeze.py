@@ -36,21 +36,6 @@ def week_page():
         yield {'week_id': week_id}
 
 @freezer.register_generator
-def edit_list():
-    """Generate the edit events list page"""
-    yield {}
-
-@freezer.register_generator
-def edit_event_dynamic():
-    """Generate the dynamic edit event page"""
-    yield {}
-
-@freezer.register_generator
-def submit():
-    """Generate the event submission page"""
-    yield {}
-
-@freezer.register_generator
 def locations_index():
     """Generate the locations index page"""
     yield {}
@@ -58,21 +43,6 @@ def locations_index():
 @freezer.register_generator
 def approved_groups_list():
     """Generate the groups page"""
-    yield {}
-
-@freezer.register_generator
-def submit_group():
-    """Generate the group submission page"""
-    yield {}
-
-@freezer.register_generator
-def groups_json():
-    """Generate the groups JSON endpoint"""
-    yield {}
-
-@freezer.register_generator
-def edit_groups():
-    """Generate the groups edit page"""
     yield {}
 
 @freezer.register_generator

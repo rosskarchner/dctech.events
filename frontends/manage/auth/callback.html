@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing In... - DC Tech Events Admin</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/auth.js"></script>
+</head>
+<body>
+  <main class="container" style="max-width: 500px; margin-top: 80px; text-align: center;">
+    <div class="card">
+      <div id="callback-status">
+        <span class="spinner"></span>
+        <p style="margin-top: 1rem;">Signing you in...</p>
+      </div>
+
+      <div id="callback-error" style="display: none;">
+        <h2>Sign-In Failed</h2>
+        <p id="error-message" class="text-muted mt-1"></p>
+        <button class="btn btn-primary mt-2" onclick="redirectToLogin()">Try Again</button>
+      </div>
+
+      <div id="callback-denied" style="display: none;">
+        <h2>Access Denied</h2>
+        <p class="text-muted mt-1">
+          Your account is not a member of the <strong>admins</strong> group.
+          Contact an administrator if you believe this is an error.
+        </p>
+        <button class="btn btn-outline mt-2" onclick="signOut()">Sign Out</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (async function handleCallback() {
+      var statusEl = document.getElementById('callback-status');
+      var errorEl = document.getElementById('callback-error');
+      var deniedEl = document.getElementById('callback-denied');
+      var errorMsg = document.getElementById('error-message');
+
+      function showError(message) {
+        statusEl.style.display = 'none';
+        errorMsg.textContent = message;
+        errorEl.style.display = 'block';
+      }
+
+      function showDenied() {
+        statusEl.style.display = 'none';
+        deniedEl.style.display = 'block';
+      }
+
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var code = params.get('code');
+        var state = params.get('state');
+        var error = params.get('error');
+        var errorDescription = params.get('error_description');
+
+        // Handle OAuth errors
+        if (error) {
+          showError(errorDescription || error);
+          return;
+        }
+
+        if (!code) {
+          showError('No authorization code received.');
+          return;
+        }
+
+        // Validate state parameter
+        var savedState = sessionStorage.getItem('oauth_state');
+        if (savedState && state !== savedState) {
+          showError('Invalid state parameter. Possible CSRF attack.');
+          return;
+        }
+        sessionStorage.removeItem('oauth_state');
+
+        // Exchange code for tokens
+        var tokens = await exchangeCodeForTokens(code);
+
+        if (!tokens.id_token || !tokens.access_token) {
+          showError('Incomplete token response from Cognito.');
+          return;
+        }
+
+        // Decode ID token and verify admin group
+        var payload = decodeIdToken(tokens.id_token);
+
+        if (!isAdmin(payload)) {
+          showDenied();
+          return;
+        }
+
+        // Store tokens with expiry
+        var expiresAt = Date.now() + (tokens.expires_in || 3600) * 1000;
+        setTokens({
+          access_token: tokens.access_token,
+          id_token: tokens.id_token,
+          refresh_token: tokens.refresh_token || null,
+          expires_at: expiresAt,
+        });
+
+        // Redirect to dashboard
+        window.location.href = '/';
+
+      } catch (err) {
+        console.error('Callback error:', err);
+        showError('An unexpected error occurred: ' + err.message);
+      }
+    })();
+  </script>
+</body>
+</html>

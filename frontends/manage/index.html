@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - DC Tech Events</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="/js/auth.js"></script>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">DC Tech Events Admin</a>
+    <ul class="nav-links">
+      <li><a href="/" class="active">Dashboard</a></li>
+      <li><a href="/queue.html">Queue</a></li>
+      <li><a href="/events.html">Events</a></li>
+      <li><a href="/groups.html">Groups</a></li>
+      <li><a href="/overrides.html">Overrides</a></li>
+    </ul>
+    <div class="nav-right">
+      <span id="user-info"></span>
+      <button class="btn-sign-out" onclick="signOut()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Overview of DC Tech Events activity.</p>
+    </div>
+
+    <div id="dashboard-content"
+         hx-get="/admin"
+         hx-trigger="load"
+         hx-indicator="#dashboard-loading">
+
+      <div id="dashboard-loading" class="htmx-indicator">
+        <span class="spinner"></span> Loading dashboard...
+      </div>
+
+      <!-- The API returns an HTML fragment with stat cards and recent activity.
+           If the API is not yet returning HTML fragments, the fallback below
+           provides a static skeleton. -->
+      <noscript>
+        <p>JavaScript is required for the admin dashboard.</p>
+      </noscript>
+    </div>
+
+    <!-- Fallback content shown until HTMX loads the real data -->
+    <div id="dashboard-fallback">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">--</div>
+          <div class="stat-label">Pending Submissions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">--</div>
+          <div class="stat-label">Total Events</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">--</div>
+          <div class="stat-label">Active Groups</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">--</div>
+          <div class="stat-label">Overrides</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (!initAuth()) return;
+
+      // Hide fallback once HTMX loads the real content
+      document.body.addEventListener('htmx:afterSwap', function (event) {
+        if (event.detail.target.id === 'dashboard-content') {
+          var fallback = document.getElementById('dashboard-fallback');
+          if (fallback) fallback.style.display = 'none';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

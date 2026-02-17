@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing in... - DC Tech Events</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1><a href="/">Suggest - DC Tech Events</a></h1>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-status">
+      <div id="auth-loading">
+        <p><span class="spinner"></span> Signing you in...</p>
+      </div>
+      <div id="auth-error" class="hidden">
+        <div class="message message-error">
+          <p id="auth-error-message">Authentication failed.</p>
+        </div>
+        <p><a href="/" class="btn btn-primary">Return to home</a></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    (async function handleCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+
+      if (error) {
+        showError(errorDescription || error);
+        return;
+      }
+
+      if (!code) {
+        showError('No authorization code received.');
+        return;
+      }
+
+      try {
+        await DctechAuth.exchangeCodeForTokens(code);
+
+        // Determine where to redirect
+        const returnPath = state || '/submit-event.html';
+
+        // Clean the URL (remove code/state params) and redirect
+        window.location.replace(returnPath);
+      } catch (err) {
+        console.error('Token exchange failed:', err);
+        showError('Failed to complete sign-in. Please try again. (' + err.message + ')');
+      }
+    })();
+
+    function showError(message) {
+      document.getElementById('auth-loading').classList.add('hidden');
+      document.getElementById('auth-error').classList.remove('hidden');
+      document.getElementById('auth-error-message').textContent = message;
+    }
+  </script>
+</body>
+</html>

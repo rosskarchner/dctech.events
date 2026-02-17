@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suggest - DC Tech Events</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1><a href="/">Suggest - DC Tech Events</a></h1>
+      <nav>
+        <span data-auth="logged-in" class="hidden">
+          <span class="user-bar">
+            <span data-user="email"></span>
+            <a href="#" onclick="DctechAuth.logout(); return false;">Sign out</a>
+          </span>
+        </span>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Logged-out view -->
+    <div data-auth="logged-out">
+      <div class="hero">
+        <h1>Submit events to DC Tech Events</h1>
+        <p>Help the DC tech community discover meetups, conferences, and other events happening in the area.</p>
+        <a class="btn btn-primary" href="#" id="login-btn">Sign in to get started</a>
+      </div>
+    </div>
+
+    <!-- Logged-in view -->
+    <div data-auth="logged-in" class="hidden">
+      <div class="container">
+        <h2>What would you like to do?</h2>
+        <div class="action-links">
+          <a class="card" href="submit-event.html">
+            <h3>Submit an Event</h3>
+            <p>Add a new tech event happening in the DC area.</p>
+          </a>
+          <a class="card" href="submit-group.html">
+            <h3>Submit a Group</h3>
+            <p>Add a new tech group or organization.</p>
+          </a>
+          <a class="card" href="my-submissions.html">
+            <h3>My Submissions</h3>
+            <p>View the status of your submitted events.</p>
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.getElementById('login-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      DctechAuth.login('/submit-event.html');
+    });
+  </script>
+</body>
+</html>

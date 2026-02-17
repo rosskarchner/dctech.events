@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overrides - DC Tech Events Admin</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="/js/auth.js"></script>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">DC Tech Events Admin</a>
+    <ul class="nav-links">
+      <li><a href="/">Dashboard</a></li>
+      <li><a href="/queue.html">Queue</a></li>
+      <li><a href="/events.html">Events</a></li>
+      <li><a href="/groups.html">Groups</a></li>
+      <li><a href="/overrides.html" class="active">Overrides</a></li>
+    </ul>
+    <div class="nav-right">
+      <span id="user-info"></span>
+      <button class="btn-sign-out" onclick="signOut()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header flex justify-between items-center">
+      <div>
+        <h1>Event Overrides</h1>
+        <p>Manage overrides for iCal-imported events (categories, title, visibility).</p>
+      </div>
+      <button class="btn btn-outline"
+              hx-get="/admin/overrides"
+              hx-target="#content"
+              hx-indicator="#overrides-loading">
+        Refresh
+      </button>
+    </div>
+
+    <div class="card">
+      <div id="overrides-loading" class="htmx-indicator">
+        <span class="spinner"></span> Loading overrides...
+      </div>
+
+      <div id="content"
+           hx-get="/admin/overrides"
+           hx-trigger="load"
+           hx-indicator="#overrides-loading">
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      initAuth();
+    });
+  </script>
+</body>
+</html>

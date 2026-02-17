@@ -5,6 +5,8 @@ import { DynamoDBStack } from '../lib/dynamodb-stack';
 import { CognitoStack } from '../lib/cognito-stack';
 import { SecretsStack } from '../lib/secrets-stack';
 import { RebuildStack } from '../lib/rebuild-stack';
+import { LambdaApiStack } from '../lib/lambda-api-stack';
+import { FrontendStack } from '../lib/frontend-stack';
 import { stackConfig } from '../lib/config';
 
 const app = new cdk.App();
@@ -37,7 +39,7 @@ const cognitoStack = new CognitoStack(app, `${stackConfig.stackName}-cognito`, {
 });
 
 // Secrets Manager
-new SecretsStack(app, `${stackConfig.stackName}-secrets`, {
+const secretsStack = new SecretsStack(app, `${stackConfig.stackName}-secrets`, {
   env,
   cognitoClientSecretName: stackConfig.secrets.cognitoClientSecret,
 });
@@ -48,4 +50,18 @@ new RebuildStack(app, `${stackConfig.stackName}-rebuild`, {
   dynamoStack,
   siteBucketName: stackConfig.s3.bucketName,
   dataCacheBucketName: stackConfig.s3.dataCacheBucketName,
+});
+
+// API backend (Lambda + API Gateway)
+new LambdaApiStack(app, `${stackConfig.stackName}-api`, {
+  env,
+  dynamoStack,
+  cognitoStack,
+  secretsStack,
+});
+
+// Frontend apps (suggest.dctech.events, manage.dctech.events)
+new FrontendStack(app, `${stackConfig.stackName}-frontend`, {
+  env,
+  certificate: mainStack.certificate,
 });

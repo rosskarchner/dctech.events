@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit an Event - DC Tech Events</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1><a href="/">Suggest - DC Tech Events</a></h1>
+      <nav>
+        <a href="submit-event.html">Submit Event</a>
+        <a href="submit-group.html">Submit Group</a>
+        <a href="my-submissions.html">My Submissions</a>
+        <span data-auth="logged-in" class="hidden">
+          <a href="#" onclick="DctechAuth.logout(); return false;">Sign out</a>
+        </span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Submit an Event</h2>
+    <p>Add a tech event happening in the DC area. Submissions are reviewed before publishing.</p>
+
+    <form hx-post="https://next.dctech.events/submit"
+          hx-target="#form-response"
+          hx-swap="innerHTML"
+          hx-indicator="#submit-indicator">
+
+      <div class="form-group">
+        <label for="event-name">Event Name <span class="required">*</span></label>
+        <input type="text" id="event-name" name="name" required
+               placeholder="e.g., DC Python Meetup - February 2026">
+      </div>
+
+      <div class="form-group">
+        <label for="event-url">Event URL <span class="required">*</span></label>
+        <input type="url" id="event-url" name="url" required
+               placeholder="https://www.meetup.com/...">
+        <div class="form-hint">Link to the event page (Meetup, Eventbrite, etc.)</div>
+      </div>
+
+      <div class="form-group">
+        <label for="event-description">Description</label>
+        <textarea id="event-description" name="description"
+                  placeholder="Brief description of the event..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="event-start">Start Date &amp; Time <span class="required">*</span></label>
+        <input type="datetime-local" id="event-start" name="start_datetime" required>
+      </div>
+
+      <div class="form-group">
+        <label for="event-end">End Date &amp; Time</label>
+        <input type="datetime-local" id="event-end" name="end_datetime">
+      </div>
+
+      <div class="form-group">
+        <label for="event-location">Location</label>
+        <input type="text" id="event-location" name="location"
+               placeholder="e.g., WeWork White House, 1440 G St NW, Washington, DC">
+        <div class="form-hint">Physical address or "Online" for virtual events</div>
+      </div>
+
+      <div class="form-group">
+        <label for="event-group">Organizing Group</label>
+        <input type="text" id="event-group" name="group_name"
+               placeholder="e.g., DC Python">
+      </div>
+
+      <div class="form-group">
+        <label>Categories</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="categories" value="ai"> AI/ML</label>
+          <label><input type="checkbox" name="categories" value="cloud"> Cloud</label>
+          <label><input type="checkbox" name="categories" value="cybersecurity"> Cybersecurity</label>
+          <label><input type="checkbox" name="categories" value="data"> Data</label>
+          <label><input type="checkbox" name="categories" value="design"> Design</label>
+          <label><input type="checkbox" name="categories" value="devops"> DevOps</label>
+          <label><input type="checkbox" name="categories" value="frontend"> Frontend</label>
+          <label><input type="checkbox" name="categories" value="general"> General</label>
+          <label><input type="checkbox" name="categories" value="hardware"> Hardware</label>
+          <label><input type="checkbox" name="categories" value="mobile"> Mobile</label>
+          <label><input type="checkbox" name="categories" value="networking"> Networking</label>
+          <label><input type="checkbox" name="categories" value="open-source"> Open Source</label>
+          <label><input type="checkbox" name="categories" value="policy"> Policy</label>
+          <label><input type="checkbox" name="categories" value="programming"> Programming</label>
+          <label><input type="checkbox" name="categories" value="startup"> Startup</label>
+          <label><input type="checkbox" name="categories" value="web"> Web</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <button type="submit" class="btn btn-primary">
+          <span class="htmx-indicator" id="submit-indicator"><span class="spinner"></span></span>
+          Submit Event
+        </button>
+      </div>
+    </form>
+
+    <div id="form-response" class="response-area"></div>
+  </main>
+
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Require authentication to access this page
+    DctechAuth.requireAuth();
+  </script>
+</body>
+</html>

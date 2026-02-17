@@ -1,0 +1,42 @@
+<tr id="group-{{ group.id }}">
+  <td colspan="5">
+    <form hx-put="/admin/groups/{{ group.id }}"
+          hx-target="#group-{{ group.id }}"
+          hx-swap="outerHTML">
+      <fieldset>
+        <legend>Edit: {{ group.name }}</legend>
+        <div>
+          <label for="name-{{ group.id }}">Name</label>
+          <input type="text" id="name-{{ group.id }}" name="name" value="{{ group.name }}" required>
+        </div>
+        <div>
+          <label for="website-{{ group.id }}">Website</label>
+          <input type="url" id="website-{{ group.id }}" name="website" value="{{ group.website | default('') }}">
+        </div>
+        <div>
+          <label for="ical-{{ group.id }}">iCal Feed URL</label>
+          <input type="url" id="ical-{{ group.id }}" name="ical" value="{{ group.ical | default('') }}">
+        </div>
+        <div>
+          <label for="categories-{{ group.id }}">Categories (comma-separated)</label>
+          <input type="text" id="categories-{{ group.id }}" name="categories"
+                 value="{{ (group.categories or []) | join(', ') }}">
+        </div>
+        <div>
+          <label>
+            <input type="checkbox" name="active" value="true"
+                   {{ 'checked' if group.active else '' }}>
+            Active
+          </label>
+        </div>
+        <div>
+          <button type="submit">Save</button>
+          <button type="button"
+                  hx-get="/admin/groups"
+                  hx-target="#content"
+                  hx-swap="innerHTML">Cancel</button>
+        </div>
+      </fieldset>
+    </form>
+  </td>
+</tr>
