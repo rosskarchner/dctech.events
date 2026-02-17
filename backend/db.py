@@ -284,7 +284,7 @@ def get_all_events(date_prefix=None):
 
     return sorted(
         [_materialized_event_to_dict(item) for item in items],
-        key=lambda x: (x.get('date', ''), x.get('time', '')),
+        key=lambda x: (str(x.get('date', '') or ''), str(x.get('time', '') or '')),
     )
 
 
