@@ -251,6 +251,13 @@ function handler(event) {
             resources: [eventsTable.tableArn, `${eventsTable.tableArn}/index/*`],
           }),
           new iam.PolicyStatement({
+            actions: [
+              'sqs:SendMessage',
+              'sqs:GetQueueUrl',
+            ],
+            resources: [`arn:aws:sqs:${this.region}:${this.account}:${stackConfig.rebuild.queueName}`],
+          }),
+          new iam.PolicyStatement({
             actions: ['sts:AssumeRole'],
             resources: [
               `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-deploy-role-${cdk.Stack.of(this).account}-*`,

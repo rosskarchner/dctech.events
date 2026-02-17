@@ -65,11 +65,18 @@ jobs:
         run: |
           # Trigger a rebuild to pick up any code/template changes
           # We do this by sending a message to the SQS queue
-          QUEUE_URL=$(aws sqs get-queue-url --queue-name dctech-events-rebuild.fifo --query "QueueUrl" --output text)
+          QUEUE_URL=$(aws sqs get-queue-url --queue-name dctech-events-rebuild.fifo --region ${{ env.AWS_REGION }} --query "QueueUrl" --output text)
+          
+          if [ -z "$QUEUE_URL" ]; then
+            echo "❌ Error: Could not find SQS queue 'dctech-events-rebuild.fifo'"
+            exit 1
+          fi
+          
           DEDUP_ID="gha-$(date +%s)"
           
           aws sqs send-message \
             --queue-url "$QUEUE_URL" \
+            --region ${{ env.AWS_REGION }} \
             --message-body "{\"trigger\": \"github_actions\", \"commit\": \"${{ github.sha }}\"}" \
             --message-group-id "rebuild" \
             --message-deduplication-id "$DEDUP_ID"
