@@ -54,6 +54,17 @@ def should_fetch(meta_data, group_id):
     return True
 
 
+def is_safe_url(url):
+    """
+    Check if a URL is safe to render in an href.
+    Only allows http:// and https:// schemes.
+    """
+    if not url:
+        return True
+    url = str(url).strip().lower()
+    return url.startswith('http://') or url.startswith('https://')
+
+
 def fetch_ical_and_extract_events(url, group_id, group=None):
     """
     Fetch an iCal file, visit each event link to extract JSON-LD event data, and cache it locally.
@@ -149,6 +160,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
 
                 if event_data:
                     final_url = group.get('url_override') if group and group.get('url_override') else event_url
+                    if not is_safe_url(final_url):
+                        final_url = ''
+
                     event = {
                         'title': event_data.get('name', str(component.get('summary', ''))),
                         'description': event_data.get('description', str(component.get('description', ''))),
@@ -238,6 +252,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     if city and state:
                         event_location = f"{city}, {state}"
                     final_url = group.get('url_override') if group and group.get('url_override') else event_url
+                    if not is_safe_url(final_url):
+                        final_url = ''
+
                     event = {
                         'title': str(component.get('summary', '')),
                         'description': str(component.get('description', '')),

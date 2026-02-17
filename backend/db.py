@@ -19,6 +19,17 @@ _table = None
 _materialized_table = None
 
 
+def is_safe_url(url):
+    """
+    Check if a URL is safe to render in an href.
+    Only allows http:// and https:// schemes.
+    """
+    if not url:
+        return True  # Empty is fine
+    url = str(url).strip().lower()
+    return url.startswith('http://') or url.startswith('https://')
+
+
 def _get_table():
     global _table
     if _table is None:
@@ -43,16 +54,24 @@ def create_draft(draft_type, data, submitter_email):
     draft_id = str(uuid.uuid4())[:8]
     now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 
+    # Sanitize URLs if present
+    sanitized_data = data.copy()
+    for field in ['url', 'website', 'ical', 'ical_url', 'fallback_url']:
+        if field in sanitized_data and not is_safe_url(sanitized_data[field]):
+            sanitized_data[field] = ''
+
     item = {
         'PK': f'DRAFT#{draft_id}',
         'SK': 'META',
         'GSI1PK': 'STATUS#pending',
         'GSI1SK': now,
+        'GSI3PK': f'USER#{submitter_email}',  # For querying by submitter
+        'GSI3SK': now,  # Sort by creation time
         'draft_type': draft_type,
         'submitter_email': submitter_email,
         'created_at': now,
         'status': 'pending',
-        **{k: v for k, v in data.items() if v is not None},
+        **{k: v for k, v in sanitized_data.items() if v is not None},
     }
 
     table.put_item(Item=item)
@@ -87,20 +106,24 @@ def get_drafts_by_submitter(submitter_email):
     table = _get_table()
     items = []
 
-    response = table.scan(
-        FilterExpression=Attr('PK').begins_with('DRAFT#') & Attr('SK').eq('META') & Attr('submitter_email').eq(submitter_email),
+    # Use GSI3 to efficiently query by submitter email
+    response = table.query(
+        IndexName='GSI3',
+        KeyConditionExpression=Key('GSI3PK').eq(f'USER#{submitter_email}'),
+        ScanIndexForward=False,  # Most recent first
     )
     items.extend(response.get('Items', []))
+    
     while 'LastEvaluatedKey' in response:
-        response = table.scan(
-            FilterExpression=Attr('PK').begins_with('DRAFT#') & Attr('SK').eq('META') & Attr('submitter_email').eq(submitter_email),
+        response = table.query(
+            IndexName='GSI3',
+            KeyConditionExpression=Key('GSI3PK').eq(f'USER#{submitter_email}'),
+            ScanIndexForward=False,
             ExclusiveStartKey=response['LastEvaluatedKey'],
         )
         items.extend(response.get('Items', []))
 
-    drafts = [_draft_item_to_dict(item) for item in items]
-    drafts.sort(key=lambda d: d.get('created_at', ''), reverse=True)
-    return drafts
+    return [_draft_item_to_dict(item) for item in items]
 
 
 def get_draft(draft_id):
@@ -188,12 +211,18 @@ def put_group(slug, data):
     active = data.get('active', True)
     name = data.get('name', '')
 
+    # Sanitize URLs
+    sanitized_data = data.copy()
+    for field in ['website', 'ical', 'fallback_url', 'url_override']:
+        if field in sanitized_data and not is_safe_url(sanitized_data[field]):
+            sanitized_data[field] = ''
+
     item = {
         'PK': f'GROUP#{slug}',
         'SK': 'META',
         'GSI1PK': f'ACTIVE#{1 if active else 0}',
         'GSI1SK': f'NAME#{name}',
-        **{k: v for k, v in data.items() if v is not None},
+        **{k: v for k, v in sanitized_data.items() if v is not None},
     }
 
     categories = data.get('categories', [])
@@ -336,10 +365,14 @@ def update_event(guid, data):
                         'hidden', 'duplicate_of']
     for field in updatable_fields:
         if field in data and data[field] is not None:
+            val = data[field]
+            if field == 'url' and not is_safe_url(val):
+                val = ''
+            
             safe_key = f'#f_{field}'
             expr_names[safe_key] = field
             update_parts.append(f'{safe_key} = :{field}')
-            expr_values[f':{field}'] = data[field]
+            expr_values[f':{field}'] = val
 
     update_expr = 'SET ' + ', '.join(update_parts)
     kwargs = {
@@ -372,7 +405,10 @@ def promote_draft_to_event(draft):
     for field in ['title', 'url', 'date', 'time', 'end_date', 'cost',
                   'city', 'state', 'all_day', 'categories']:
         if draft.get(field) is not None:
-            item[field] = draft[field]
+            val = draft[field]
+            if field == 'url' and not is_safe_url(val):
+                val = ''
+            item[field] = val
 
     table.put_item(Item=item)
     return guid
@@ -410,10 +446,16 @@ def get_override(guid):
 def put_override(guid, data):
     """Create or update an OVERRIDE entity."""
     table = _get_table()
+
+    # Sanitize URL
+    sanitized_data = data.copy()
+    if 'url' in sanitized_data and not is_safe_url(sanitized_data['url']):
+        sanitized_data['url'] = ''
+
     item = {
         'PK': f'OVERRIDE#{guid}',
         'SK': 'META',
-        **{k: v for k, v in data.items() if v is not None},
+        **{k: v for k, v in sanitized_data.items() if v is not None},
     }
     table.put_item(Item=item)
 

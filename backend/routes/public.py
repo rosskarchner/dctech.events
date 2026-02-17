@@ -30,7 +30,6 @@ def get_events(event, jinja_env):
         'statusCode': 200,
         'headers': {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
         },
         'body': json.dumps(events),
     }
@@ -44,7 +43,6 @@ def get_overrides(event, jinja_env):
         'statusCode': 200,
         'headers': {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
         },
         'body': json.dumps(overrides),
     }

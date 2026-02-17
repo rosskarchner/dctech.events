@@ -290,6 +290,25 @@ export class LambdaApiStack extends cdk.Stack {
 
     this.apiEndpoint = api.url;
 
+    // Add usage plan with rate limiting and throttling
+    const usagePlan = api.addUsagePlan('ApiUsagePlan', {
+      name: 'dctech-events-api-usage-plan',
+      description: 'Rate limiting for DC Tech Events API',
+      throttle: {
+        rateLimit: 100,    // Requests per second
+        burstLimit: 200,   // Maximum concurrent requests
+      },
+      quota: {
+        limit: 10000,      // Total requests per day
+        period: apigateway.Period.DAY,
+      },
+    });
+
+    // Associate usage plan with the API stage
+    usagePlan.addApiStage({
+      stage: api.deploymentStage,
+    });
+
     // Setup custom domain if hosted zone is available
     if (stackConfig.features.enableCustomDomain && stackConfig.hostedZoneId) {
       const hostedZone = route53.HostedZone.fromHostedZoneAttributes(

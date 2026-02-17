@@ -29,12 +29,18 @@ WORK_DIR = '/tmp/site'
 PROJECT_SOURCE = '/opt/site'  # baked into Docker image at build time
 
 
-def run_command(cmd, cwd=None, env=None):
-    """Run a shell command and return stdout. Raises on failure."""
+def run_command(cmd_list, cwd=None, env=None):
+    """Run a command and return stdout. Raises on failure.
+    
+    Args:
+        cmd_list: List of command arguments (e.g., ['python', 'script.py'])
+        cwd: Working directory (defaults to WORK_DIR)
+        env: Additional environment variables
+    """
     merged_env = {**os.environ, **(env or {})}
-    print(f"Running: {cmd}")
+    print(f"Running: {' '.join(cmd_list)}")
     result = subprocess.run(
-        cmd, shell=True, cwd=cwd or WORK_DIR,
+        cmd_list, shell=False, cwd=cwd or WORK_DIR,
         capture_output=True, text=True, env=merged_env,
         timeout=600,
     )
@@ -42,7 +48,7 @@ def run_command(cmd, cwd=None, env=None):
         print(result.stdout[-2000:])  # Truncate long output
     if result.returncode != 0:
         print(f"STDERR: {result.stderr[-2000:]}")
-        raise RuntimeError(f"Command failed (exit {result.returncode}): {cmd}")
+        raise RuntimeError(f"Command failed (exit {result.returncode}): {' '.join(cmd_list)}")
     return result.stdout
 
 
@@ -141,19 +147,19 @@ def lambda_handler(event, context):
 
         # 2. Refresh calendars
         print("Step 2: Refreshing calendars...")
-        run_command('python refresh_calendars.py')
+        run_command(['python', 'refresh_calendars.py'])
 
         # 3. Generate month data
         print("Step 3: Generating month data...")
-        run_command('python generate_month_data.py')
+        run_command(['python', 'generate_month_data.py'])
 
         # 4. Build JS assets
         print("Step 4: Building JS assets...")
-        run_command('npm run build')
+        run_command(['npm', 'run', 'build'])
 
         # 5. Freeze static site
         print("Step 5: Freezing static site...")
-        run_command('python freeze.py')
+        run_command(['python', 'freeze.py'])
 
         # 6. Sync build to S3
         print("Step 6: Syncing build to S3...")
