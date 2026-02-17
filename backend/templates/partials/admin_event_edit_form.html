@@ -3,36 +3,51 @@
     <form hx-put="/admin/events/{{ event.guid }}"
           hx-target="closest tr"
           hx-swap="outerHTML"
-          style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem; align-items: end; padding: 0.5rem 0;">
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Title
-        <input type="text" name="title" value="{{ event.title | default('') }}" class="form-control form-control-sm" required>
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Date
-        <input type="date" name="date" value="{{ event.date | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Time
-        <input type="time" name="time" value="{{ event.time | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        End Date
-        <input type="date" name="end_date" value="{{ event.end_date | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        URL
-        <input type="url" name="url" value="{{ event.url | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Location
-        <input type="text" name="location" value="{{ event.location | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Cost
-        <input type="text" name="cost" value="{{ event.cost | default('') }}" class="form-control form-control-sm">
-      </label>
-      <div style="display:flex;gap:0.5rem;align-self:end;">
+          style="padding: 0.5rem 0;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem;">
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Title
+          <input type="text" name="title" value="{{ event.title | default('') }}" class="form-control form-control-sm" required>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Date
+          <input type="date" name="date" value="{{ event.date | default('') }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Time
+          <input type="time" name="time" value="{{ event.time | default('') }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          End Date
+          <input type="date" name="end_date" value="{{ event.end_date | default('') }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          URL
+          <input type="url" name="url" value="{{ event.url | default('') }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Location
+          <input type="text" name="location" value="{{ event.location | default('') }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Cost
+          <input type="text" name="cost" value="{{ event.cost | default('') }}" class="form-control form-control-sm">
+        </label>
+      </div>
+      <fieldset style="border:1px solid #ddd;border-radius:4px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">
+        <legend style="font-size:0.85rem;font-weight:600;padding:0 0.25rem;">Categories</legend>
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1rem;">
+          {% for slug in all_categories | sort %}
+          {% set cat = all_categories[slug] %}
+          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer;">
+            <input type="checkbox" name="categories" value="{{ slug }}"
+              {% if slug in (event.categories or []) %}checked{% endif %}>
+            {{ cat.name or slug }}
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <div style="display:flex;gap:0.5rem;">
         <button type="submit" class="btn btn-primary btn-sm">Save</button>
         <button type="button" class="btn btn-sm"
           hx-get="/admin/events"

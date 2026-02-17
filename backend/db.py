@@ -302,6 +302,14 @@ def _materialized_event_to_dict(item):
     return event
 
 
+def get_materialized_event(guid):
+    """Get a single event from the DcTechEvents table by eventId."""
+    table = _get_materialized_table()
+    response = table.get_item(Key={'eventId': guid})
+    item = response.get('Item')
+    return _materialized_event_to_dict(item) if item else None
+
+
 def get_event_from_config(guid):
     """Get an EVENT#{guid} entity from the config table, or None if not found."""
     table = _get_table()

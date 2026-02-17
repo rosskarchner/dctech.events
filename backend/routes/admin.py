@@ -15,6 +15,7 @@ from db import (
     put_override as db_put_override, delete_override as db_delete_override,
     get_all_categories, get_events_by_date,
     get_all_events, get_event_from_config, update_event as db_update_event,
+    get_materialized_event,
 )
 
 
@@ -226,14 +227,17 @@ def get_event_edit_form(event, jinja_env, guid):
     if err:
         return err
 
+    all_categories = get_all_categories()
     manual = get_event_from_config(guid)
     if manual:
         template = jinja_env.get_template('partials/admin_event_edit_form.html')
-        html = template.render(event=manual)
+        html = template.render(event=manual, all_categories=all_categories)
     else:
+        mat_event = get_materialized_event(guid) or {}
         override = get_override(guid) or {}
         template = jinja_env.get_template('partials/admin_event_override_form.html')
-        html = template.render(guid=guid, override=override)
+        html = template.render(guid=guid, event=mat_event, override=override,
+                               all_categories=all_categories)
     return _html(200, html)
 
 
@@ -244,21 +248,31 @@ def save_event_edit(event, jinja_env, guid):
         return err
 
     data = _parse_body(event)
+
+    # Normalize categories: checkboxes send repeated values or nothing
+    cats = data.get('categories', [])
+    if isinstance(cats, str):
+        cats = [cats] if cats else []
+    data['categories'] = cats
+
     manual = get_event_from_config(guid)
 
     if manual:
         db_update_event(guid, data)
-        # Re-fetch to get latest state
         updated = get_event_from_config(guid) or {}
         updated['guid'] = guid
     else:
-        override_data = {}
-        for field in ['title', 'url', 'location', 'time', 'hidden', 'duplicate_of', 'categories']:
-            if field in data:
-                override_data[field] = data[field]
-        override_data['edited_by'] = claims.get('email', '')
+        override_data = {'edited_by': claims.get('email', '')}
+        for field in ['title', 'location', 'categories']:
+            override_data[field] = data.get(field) or ([] if field == 'categories' else '')
         db_put_override(guid, override_data)
-        updated = {'guid': guid, **override_data}
+        # Merge materialized event with override for display
+        updated = dict(get_materialized_event(guid) or {})
+        for field in ['title', 'location', 'categories']:
+            val = override_data.get(field)
+            if val:
+                updated[field] = val
+        updated['guid'] = guid
 
     template = jinja_env.get_template('partials/admin_event_row.html')
     html = template.render(event=updated)

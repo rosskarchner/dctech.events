@@ -1,40 +1,39 @@
+{% set current_title = override.title if override.title else event.title | default('') %}
+{% set current_location = override.location if override.location else event.location | default('') %}
+{% set current_cats = override.categories if override.categories else event.categories or [] %}
 <tr id="event-row-{{ guid }}">
   <td colspan="6">
     <p style="font-size:0.8rem;color:#888;margin:0 0 0.5rem;">
-      iCal-sourced event — changes create/update an OVERRIDE entry.
+      iCal-sourced event — saves an override (title, location, categories only).
     </p>
     <form hx-put="/admin/events/{{ guid }}"
           hx-target="closest tr"
           hx-swap="outerHTML"
-          style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem; align-items: end; padding: 0.5rem 0;">
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Title override
-        <input type="text" name="title" value="{{ override.title | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Time override
-        <input type="time" name="time" value="{{ override.time | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        URL override
-        <input type="url" name="url" value="{{ override.url | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Location override
-        <input type="text" name="location" value="{{ override.location | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Duplicate of (GUID)
-        <input type="text" name="duplicate_of" value="{{ override.duplicate_of | default('') }}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
-        Categories (comma-sep)
-        <input type="text" name="categories" value="{% if override.categories %}{{ override.categories | join(', ') }}{% endif %}" class="form-control form-control-sm">
-      </label>
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;">
-        <input type="checkbox" name="hidden" value="true" {% if override.hidden %}checked{% endif %}> Hidden
-      </label>
-      <div style="display:flex;gap:0.5rem;align-self:end;">
+          style="padding: 0.5rem 0;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Title
+          <input type="text" name="title" value="{{ current_title }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Location
+          <input type="text" name="location" value="{{ current_location }}" class="form-control form-control-sm">
+        </label>
+      </div>
+      <fieldset style="border:1px solid #ddd;border-radius:4px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">
+        <legend style="font-size:0.85rem;font-weight:600;padding:0 0.25rem;">Categories</legend>
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1rem;">
+          {% for slug in all_categories | sort %}
+          {% set cat = all_categories[slug] %}
+          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer;">
+            <input type="checkbox" name="categories" value="{{ slug }}"
+              {% if slug in current_cats %}checked{% endif %}>
+            {{ cat.name or slug }}
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <div style="display:flex;gap:0.5rem;">
         <button type="submit" class="btn btn-primary btn-sm">Save</button>
         <button type="button" class="btn btn-sm"
           hx-get="/admin/events"

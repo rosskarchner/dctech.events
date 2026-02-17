@@ -34,7 +34,7 @@
     <div class="card">
       <div class="form-inline mb-2">
         <div class="form-group">
-          <label for="date-filter">Filter by date prefix</label>
+          <label for="date-filter">Filter by month</label>
           <input type="text" id="date-filter" name="date" class="form-control"
                  placeholder="e.g. 2026-03" style="width:200px">
         </div>
@@ -43,7 +43,7 @@
                 hx-target="#events-table"
                 hx-include="#date-filter"
                 hx-indicator="#events-loading">
-          Search
+          Filter
         </button>
       </div>
 
@@ -51,8 +51,10 @@
         <span class="spinner"></span> Loading events...
       </div>
 
-      <div id="events-table">
-        <p class="text-muted">Use the filter above to search events, or browse all.</p>
+      <div id="events-table"
+           hx-get="/admin/events"
+           hx-trigger="load"
+           hx-indicator="#events-loading">
       </div>
     </div>
   </main>
