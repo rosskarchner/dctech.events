@@ -1,7 +1,17 @@
 <tr id="event-row-{{ event.guid }}">
   <td>
+    <input type="checkbox" name="guids" value="{{ event.guid }}" class="event-checkbox">
+  </td>
+  <td>
     {% if event.url %}<a href="{{ event.url }}" target="_blank">{{ event.title | default('Untitled') }}</a>
     {% else %}{{ event.title | default('Untitled') }}{% endif %}
+    {% if event.categories %}
+      <div style="margin-top:4px;">
+        {% for cat in event.categories %}
+          <span style="font-size:0.7rem; background:#eee; padding:1px 4px; border-radius:3px; margin-right:2px;">{{ cat }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
   </td>
   <td>{{ event.date | default('') }}{% if event.end_date %} – {{ event.end_date }}{% endif %}</td>
   <td>{{ event.time | default('All day') }}</td>

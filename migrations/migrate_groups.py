@@ -51,7 +51,6 @@ def main():
         return 0
 
     # Force DynamoDB mode for writing
-    os.environ['USE_DYNAMO_DATA'] = '1'
     dynamo_data._table = None  # Reset cached table
 
     success = 0

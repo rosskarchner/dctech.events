@@ -72,7 +72,6 @@ def main():
             print(f"  EVENT#{guid} - {event.get('title', '?')} ({event.get('date', '?')})")
         return 0
 
-    os.environ['USE_DYNAMO_DATA'] = '1'
     dynamo_data._table = None
 
     success = 0

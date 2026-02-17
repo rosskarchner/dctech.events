@@ -48,8 +48,8 @@ Three GSIs: GSI1 (GSI1PK/GSI1SK), GSI2 (GSI2PK/GSI2SK), GSI3 (GSI3PK/GSI3SK).
 
 Reads from the config table:
 - `get_all_groups()`, `get_all_categories()`, `get_single_events()`, `get_event_override(guid)`
-- Feature flag: `USE_DYNAMO_DATA=1` enables DynamoDB reads (required in production; YAML fallback for local dev without AWS credentials)
-- YAML data files (`_groups/`, `_categories/`, etc.) have been archived — DynamoDB is the sole source of truth
+- DynamoDB is the sole source of truth for site configuration and content.
+- YAML data files (`_groups/`, `_categories/`, etc.) have been archived.
 
 ## Rebuild Pipeline
 
@@ -109,9 +109,9 @@ Config: `infrastructure/lib/config.ts`
 
 ## Development Workflow
 
-1. **Start dev server**: `USE_DYNAMO_DATA=1 python app.py`
+1. **Start dev server**: `python app.py`
 2. **Test locally**: Visit `http://localhost:5000`
-3. **Build for production**: `USE_DYNAMO_DATA=1 make freeze`
+3. **Build for production**: `make freeze`
 4. **Deploy infrastructure**: `cd infrastructure && cdk deploy <stack-name>`
 5. **Trigger rebuild**: Write any item to `dctech-events` table — stream fires automatically
 

@@ -332,7 +332,8 @@ def update_event(guid, data):
     expr_names = {}
 
     updatable_fields = ['title', 'url', 'date', 'time', 'end_date', 'cost',
-                        'city', 'state', 'all_day', 'categories', 'location']
+                        'city', 'state', 'all_day', 'categories', 'location',
+                        'hidden', 'duplicate_of']
     for field in updatable_fields:
         if field in data and data[field] is not None:
             safe_key = f'#f_{field}'
@@ -421,6 +422,61 @@ def delete_override(guid):
     """Delete an override by GUID."""
     table = _get_table()
     table.delete_item(Key={'PK': f'OVERRIDE#{guid}', 'SK': 'META'})
+
+
+def bulk_delete_events(guids, actor_email):
+    """Hide multiple events by creating overrides or deleting manual records."""
+    for guid in guids:
+        manual = get_event_from_config(guid)
+        if manual:
+            # For manual events, we just set hidden=True in the record
+            update_event(guid, {'hidden': True})
+        else:
+            # For iCal events, create/update override
+            override = get_override(guid) or {}
+            override['hidden'] = True
+            override['edited_by'] = actor_email
+            put_override(guid, override)
+
+
+def bulk_set_category(guids, category_slug, actor_email):
+    """Add a category to multiple events."""
+    for guid in guids:
+        manual = get_event_from_config(guid)
+        if manual:
+            cats = manual.get('categories', [])
+            if category_slug not in cats:
+                cats.append(category_slug)
+                update_event(guid, {'categories': cats})
+        else:
+            override = get_override(guid) or {}
+            # We might need the materialized event to see existing categories
+            mat = get_materialized_event(guid) or {}
+            cats = override.get('categories')
+            if cats is None:
+                cats = mat.get('categories', [])
+            
+            if category_slug not in cats:
+                cats.append(category_slug)
+                override['categories'] = cats
+                override['edited_by'] = actor_email
+                put_override(guid, override)
+
+
+def bulk_combine_events(guids, target_guid, actor_email):
+    """Mark multiple events as duplicates of a target event."""
+    if target_guid in guids:
+        guids = [g for g in guids if g != target_guid]
+    
+    for guid in guids:
+        manual = get_event_from_config(guid)
+        if manual:
+            update_event(guid, {'duplicate_of': target_guid})
+        else:
+            override = get_override(guid) or {}
+            override['duplicate_of'] = target_guid
+            override['edited_by'] = actor_email
+            put_override(guid, override)
 
 
 def _override_item_to_dict(item):

@@ -118,6 +118,9 @@ def lambda_handler(event, context):
         if path == '/admin/events' and http_method == 'GET':
             return admin.get_events(event, jinja_env)
 
+        if path == '/admin/events/bulk' and http_method == 'POST':
+            return admin.handle_bulk_action(event, jinja_env)
+
         if resource == '/admin/events/{guid}/edit' and http_method == 'GET':
             guid = event.get('pathParameters', {}).get('guid', '')
             return admin.get_event_edit_form(event, jinja_env, guid)

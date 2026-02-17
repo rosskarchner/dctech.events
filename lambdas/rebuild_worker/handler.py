@@ -141,11 +141,11 @@ def lambda_handler(event, context):
 
         # 2. Refresh calendars
         print("Step 2: Refreshing calendars...")
-        run_command('python refresh_calendars.py', env={'USE_DYNAMO_DATA': '1'})
+        run_command('python refresh_calendars.py')
 
         # 3. Generate month data
         print("Step 3: Generating month data...")
-        run_command('python generate_month_data.py', env={'USE_DYNAMO_DATA': '1'})
+        run_command('python generate_month_data.py')
 
         # 4. Build JS assets
         print("Step 4: Building JS assets...")
@@ -153,7 +153,7 @@ def lambda_handler(event, context):
 
         # 5. Freeze static site
         print("Step 5: Freezing static site...")
-        run_command('python freeze.py', env={'USE_DYNAMO_DATA': '1'})
+        run_command('python freeze.py')
 
         # 6. Sync build to S3
         print("Step 6: Syncing build to S3...")

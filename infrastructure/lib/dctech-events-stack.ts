@@ -12,6 +12,7 @@ import { stackConfig } from './config';
 
 export class DctechEventsStack extends cdk.Stack {
   public readonly certificate: acm.ICertificate;
+  public readonly distribution: cloudfront.Distribution;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -130,7 +131,7 @@ function handler(event) {
 
     // Phase 1.3: CloudFront Distribution
     // Web ACL must be explicitly declared to prevent CloudFormation from trying to remove it
-    const distribution = new cloudfront.Distribution(this, 'DctechEventsDistribution', {
+    this.distribution = new cloudfront.Distribution(this, 'DctechEventsDistribution', {
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket, {
           originAccessControl: oac,
@@ -177,7 +178,7 @@ function handler(event) {
         conditions: {
           StringEquals: {
             'AWS:SourceArn': `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${
-              distribution.distributionId
+              this.distribution.distributionId
             }`,
           },
         },
@@ -225,17 +226,15 @@ function handler(event) {
               's3:ListBucket',
             ],
             resources: [
-              siteBucket.bucketArn,
-              siteBucket.arnForObjects('*'),
-              dataCacheBucket.bucketArn,
-              dataCacheBucket.arnForObjects('*'),
+              `arn:aws:s3:::dctech-events-*`,
+              `arn:aws:s3:::dctech-events-*/*`,
             ],
           }),
           new iam.PolicyStatement({
             actions: ['cloudfront:CreateInvalidation'],
             resources: [
               `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${
-                distribution.distributionId
+                this.distribution.distributionId
               }`,
             ],
           }),
@@ -251,6 +250,32 @@ function handler(event) {
             ],
             resources: [eventsTable.tableArn, `${eventsTable.tableArn}/index/*`],
           }),
+          new iam.PolicyStatement({
+            actions: ['sts:AssumeRole'],
+            resources: [
+              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-deploy-role-${cdk.Stack.of(this).account}-*`,
+              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-file-publishing-role-${cdk.Stack.of(this).account}-*`,
+              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-image-publishing-role-${cdk.Stack.of(this).account}-*`,
+              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-lookup-role-${cdk.Stack.of(this).account}-*`,
+            ],
+          }),
+          new iam.PolicyStatement({
+            actions: [
+              'ecr:GetAuthorizationToken',
+              'ecr:BatchCheckLayerAvailability',
+              'ecr:GetDownloadUrlForLayer',
+              'ecr:GetRepositoryPolicy',
+              'ecr:DescribeRepositories',
+              'ecr:ListImages',
+              'ecr:DescribeImages',
+              'ecr:BatchGetImage',
+              'ecr:InitiateLayerUpload',
+              'ecr:UploadLayerPart',
+              'ecr:CompleteLayerUpload',
+              'ecr:PutImage',
+            ],
+            resources: ['*'], // Standard for CDK ECR access
+          }),
         ],
       })
     );
@@ -262,7 +287,7 @@ function handler(event) {
       new route53.ARecord(this, 'DctechEventsARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
-          new route53targets.CloudFrontTarget(distribution)
+          new route53targets.CloudFrontTarget(this.distribution)
         ),
         recordName: stackConfig.domain,
         comment: 'IPv4 record for dctech.events pointing to CloudFront',
@@ -272,7 +297,7 @@ function handler(event) {
       new route53.AaaaRecord(this, 'DctechEventsAAAARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
-          new route53targets.CloudFrontTarget(distribution)
+          new route53targets.CloudFrontTarget(this.distribution)
         ),
         recordName: stackConfig.domain,
         comment: 'IPv6 record for dctech.events pointing to CloudFront',
@@ -299,13 +324,13 @@ function handler(event) {
     });
 
     new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
-      value: distribution.distributionId,
+      value: this.distribution.distributionId,
       description: 'CloudFront distribution ID',
       exportName: 'DctechEventsDistributionId',
     });
 
     new cdk.CfnOutput(this, 'CloudFrontDomainName', {
-      value: distribution.domainName,
+      value: this.distribution.domainName,
       description: 'CloudFront domain name',
       exportName: 'DctechEventsCloudFrontDomain',
     });

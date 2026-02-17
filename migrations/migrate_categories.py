@@ -47,7 +47,6 @@ def main():
             print(f"  CATEGORY#{slug} - {cat.get('name', '?')}")
         return 0
 
-    os.environ['USE_DYNAMO_DATA'] = '1'
     dynamo_data._table = None
 
     success = 0

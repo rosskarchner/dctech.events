@@ -124,7 +124,6 @@ export class RebuildStack extends cdk.Stack {
         MATERIALIZED_TABLE_NAME: materializedTableName,
         CONFIG_TABLE_NAME: 'dctech-events',
         CLOUDFRONT_DISTRIBUTION_ID: props.cloudFrontDistributionId || '',
-        USE_DYNAMO_DATA: '1',
       },
       logRetention: logs.RetentionDays.ONE_WEEK,
     });

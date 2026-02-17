@@ -48,6 +48,25 @@ _groups/test_group.yaml
 .vscode/
 *.swp
 *.swo
+.claude/
+
+# Shell/Personal
+.bash_profile
+.bashrc
+.gitconfig
+.profile
+.zprofile
+.zshrc
+.ripgreprc
+
+# Playwright MCP Logs
+.playwright-mcp/
+
+# Temporary and legacy
+plan.md
+*.old
+categorize_groups.py
+extract_links.py
 
 # OS
 .DS_Store

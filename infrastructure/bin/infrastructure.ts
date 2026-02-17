@@ -50,6 +50,7 @@ new RebuildStack(app, `${stackConfig.stackName}-rebuild`, {
   dynamoStack,
   siteBucketName: stackConfig.s3.bucketName,
   dataCacheBucketName: stackConfig.s3.dataCacheBucketName,
+  cloudFrontDistributionId: mainStack.distribution.distributionId,
 });
 
 // API backend (Lambda + API Gateway)

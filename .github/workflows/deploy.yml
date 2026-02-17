@@ -1,0 +1,85 @@
+name: Deploy Infrastructure and Site
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: "deploy"
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build JavaScript bundles
+        run: npm run build
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-deploy
+
+      - name: Install Infrastructure dependencies
+        run: cd infrastructure && npm ci
+
+      - name: Deploy Stacks via CDK
+        id: cdk-deploy
+        run: |
+          cd infrastructure
+          npx cdk deploy --all --require-approval never
+
+      - name: Sync Frontend Apps to S3
+        run: |
+          echo "Syncing suggest.dctech.events..."
+          aws s3 sync frontends/suggest/ s3://dctech-events-suggest-frontend/ --delete
+          
+          echo "Syncing manage.dctech.events..."
+          aws s3 sync frontends/manage/ s3://dctech-events-manage-frontend/ --delete
+
+      - name: Trigger Main Site Rebuild
+        run: |
+          # Trigger a rebuild to pick up any code/template changes
+          # We do this by sending a message to the SQS queue
+          QUEUE_URL=$(aws sqs get-queue-url --queue-name dctech-events-rebuild.fifo --query "QueueUrl" --output text)
+          DEDUP_ID="gha-$(date +%s)"
+          
+          aws sqs send-message \
+            --queue-url "$QUEUE_URL" \
+            --message-body "{\"trigger\": \"github_actions\", \"commit\": \"${{ github.sha }}\"}" \
+            --message-group-id "rebuild" \
+            --message-deduplication-id "$DEDUP_ID"
+          
+          echo "Sent rebuild trigger to SQS (dedup_id: $DEDUP_ID)"
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🌐 Site: https://dctech.events"
+          echo "🛠️ Admin: https://manage.dctech.events"
+          echo "📝 Suggest: https://suggest.dctech.events"

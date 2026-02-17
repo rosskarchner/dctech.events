@@ -68,7 +68,7 @@ def main():
         if not args.dry_run:
             print("\nNext steps:")
             print("  1. Verify: query DynamoDB table 'dctech-events' and confirm counts")
-            print("  2. Test: USE_DYNAMO_DATA=1 python generate_month_data.py")
+            print("  2. Test: python generate_month_data.py")
             print("  3. Compare output against YAML-based run")
     else:
         print("\nSome migrations failed. Check output above for details.")

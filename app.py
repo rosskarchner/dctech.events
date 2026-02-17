@@ -35,8 +35,6 @@ NEWSLETTER_SIGNUP_LINK = config.get('newsletter_signup_link', 'https://newslette
 
 # Constants - data paths
 DATA_DIR = '_data'
-GROUPS_DIR = '_groups'
-CATEGORIES_DIR = '_categories'
 SPONSORS_FILE = os.path.join(DATA_DIR, 'sponsors.json')
 
 app = Flask(__name__, template_folder='templates')
@@ -68,15 +66,6 @@ def inject_config():
 
     return context
 
-def load_yaml_data(file_path):
-    """Load data from a YAML file"""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        print(f"Error loading YAML from {file_path}: {str(e)}")
-        return []
-
 def get_events(include_hidden=False):
     """
     Get events from DynamoDB
@@ -101,57 +90,24 @@ def get_events(include_hidden=False):
 
 def get_approved_groups():
     """
-    Get all groups from DynamoDB (if USE_DYNAMO_DATA=1) or _groups directory.
+    Get all groups from DynamoDB.
 
     Returns:
         A list of group dictionaries
     """
-    if dynamo_data.USE_DYNAMO_DATA:
-        groups = dynamo_data.get_all_groups()
-        groups.sort(key=lambda x: x.get('name', '').lower())
-        return groups
-
-    groups = []
-    for file_path in Path(GROUPS_DIR).glob('*.yaml'):
-        try:
-            with open(file_path, 'r') as f:
-                group = yaml.safe_load(f)
-                # Add the group ID (filename without extension)
-                group['id'] = file_path.stem
-
-                groups.append(group)
-        except Exception as e:
-            print(f"Error loading group from {file_path}: {str(e)}")
-
-    # Sort groups by name
+    groups = dynamo_data.get_all_groups()
     groups.sort(key=lambda x: x.get('name', '').lower())
-
     return groups
 
 def get_categories():
     """
-    Get all categories from DynamoDB (if USE_DYNAMO_DATA=1) or _categories directory.
+    Get all categories from DynamoDB.
 
     Returns:
         A dict mapping category slugs to category metadata
         Example: {'python': {'name': 'Python', 'description': '...', 'slug': 'python'}, ...}
     """
-    if dynamo_data.USE_DYNAMO_DATA:
-        return dynamo_data.get_all_categories()
-
-    categories = {}
-    for file_path in Path(CATEGORIES_DIR).glob('*.yaml'):
-        try:
-            with open(file_path, 'r') as f:
-                category = yaml.safe_load(f)
-                # Add the slug (filename without extension)
-                slug = file_path.stem
-                category['slug'] = slug
-                categories[slug] = category
-        except Exception as e:
-            print(f"Error loading category from {file_path}: {str(e)}")
-
-    return categories
+    return dynamo_data.get_all_categories()
 
 def get_upcoming_months():
     """
@@ -399,17 +355,6 @@ def prepare_events_by_day(events, add_week_links=False):
 
     return days_data
 
-def get_future_months_with_events():
-    """
-    This function is no longer used as we don't break down events by month anymore.
-    Returns an empty dictionary.
-    
-    Returns:
-        An empty dictionary
-    """
-    return {}
-
-
 def get_stats():
     """
     Load statistics from stats.yaml
@@ -420,7 +365,13 @@ def get_stats():
     stats_file = os.path.join(DATA_DIR, 'stats.yaml')
     if not os.path.exists(stats_file):
         return {}
-    return load_yaml_data(stats_file) or {}
+    
+    try:
+        with open(stats_file, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        print(f"Error loading stats: {e}")
+        return {}
 
 def filter_events_by_location(events, city=None, state=None):
     """
@@ -613,20 +564,6 @@ def filter_events_by_month(events, month_start, month_end):
 def get_upcoming_weeks(num_weeks=12):
     """
     Get a list of upcoming ISO week identifiers.
-    
-    Returns week identifiers for:
-    1. The next num_weeks from today (rolling window)
-    2. All weeks containing events from get_events()
-    
-    This ensures all weeks with events are included, regardless of how far
-    in the future they are, while also providing a rolling window of weeks
-    even if they have no events yet.
-
-    Args:
-        num_weeks: Number of weeks from today to include (default 12)
-
-    Returns:
-        Sorted list of unique week identifier strings
     """
     weeks = set()
     current_date = date.today()
@@ -660,290 +597,11 @@ def get_upcoming_weeks(num_weeks=12):
                             weeks.add(week_id)
                             current += timedelta(days=1)
                     except (ValueError, TypeError):
-                        # Skip invalid end_date
                         pass
             except (ValueError, TypeError):
-                # Skip invalid date
                 pass
 
-    # Return sorted list
     return sorted(list(weeks))
-
-def generate_week_calendar_image(week_start, week_end, events):
-    """
-    Generate a calendar image for a week showing events as a list.
-
-    Args:
-        week_start: Start date of the week (Monday)
-        week_end: End date of the week (Sunday)
-        events: List of events for the week
-
-    Returns:
-        PIL Image object
-    """
-    # Image dimensions
-    width = 1200
-    height = 630  # Standard OG image size
-
-    # Colors - light, professional theme
-    bg_color = '#f8f9fa'
-    text_color = '#1f2937'
-    brand_color = '#2563eb'
-    day_color = '#374151'
-    event_color = '#4b5563'
-    url_color = '#6b7280'
-    accent_bg = '#e0e7ff'
-
-    # Create image
-    img = Image.new('RGB', (width, height), bg_color)
-    draw = ImageDraw.Draw(img)
-
-    # Get bundled font paths
-    font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
-    dejavu_bold = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
-    dejavu_regular = os.path.join(font_dir, 'DejaVuSans.ttf')
-    noto_emoji = os.path.join(font_dir, 'NotoColorEmoji.ttf')
-
-    # Fallback to system fonts if bundled fonts not found
-    if not os.path.exists(dejavu_bold):
-        dejavu_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    if not os.path.exists(dejavu_regular):
-        dejavu_regular = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    if not os.path.exists(noto_emoji):
-        noto_emoji = "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"
-
-    # Try to load fonts, fall back to default if not available
-    try:
-        title_font = ImageFont.truetype(dejavu_bold, 50)
-        url_font = ImageFont.truetype(dejavu_regular, 20)
-        day_font = ImageFont.truetype(dejavu_bold, 22)
-        event_font = ImageFont.truetype(dejavu_regular, 20)
-        small_font = ImageFont.truetype(dejavu_regular, 17)
-    except:
-        title_font = ImageFont.load_default()
-        url_font = ImageFont.load_default()
-        day_font = ImageFont.load_default()
-        event_font = ImageFont.load_default()
-        small_font = ImageFont.load_default()
-
-    # Try to load emoji font for emoji support
-    emoji_font = None
-    emoji_font_event = None
-    emoji_font_day = None
-    try:
-        emoji_font = ImageFont.truetype(noto_emoji, 50)
-        emoji_font_event = ImageFont.truetype(noto_emoji, 20)
-        emoji_font_day = ImageFont.truetype(noto_emoji, 22)
-    except:
-        pass
-
-    # Helper to draw text with emoji support
-    def draw_text_with_emoji(xy, text, fill, font, emoji_font_override=None):
-        """Draw text with emoji support using bundled Noto Color Emoji font"""
-        import re
-
-        # Check if text contains emoji
-        emoji_pattern = re.compile("["
-            u"\U0001F600-\U0001F64F"  # emoticons
-            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-            u"\U0001F680-\U0001F6FF"  # transport & map symbols
-            u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-            u"\U00002702-\U000027B0"
-            u"\U000024C2-\U0001F251"
-            "]+", flags=re.UNICODE)
-
-        has_emoji = bool(emoji_pattern.search(text))
-
-        # PIL 10+ supports embedded_color for color emoji fonts
-        if has_emoji and emoji_font_override:
-            try:
-                # Use emoji font with embedded_color for text containing emoji
-                # Note: This renders the entire text with the emoji font
-                draw.text(xy, text, font=emoji_font_override, fill=fill, embedded_color=True)
-                return
-            except:
-                # If embedded_color fails, fallthrough
-                pass
-
-        # Use regular font (emoji may not render but text will)
-        draw.text(xy, text, fill=fill, font=font)
-
-    # Helper function to get ordinal suffix
-    def get_ordinal_suffix(day):
-        if 10 <= day % 100 <= 20:
-            suffix = 'th'
-        else:
-            suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
-        return suffix
-
-    # Draw header background bar
-    header_height = 90
-    draw.rectangle([0, 0, width, header_height], fill=accent_bg)
-
-    # Draw combined title
-    day_num = int(week_start.strftime('%-d'))
-    ordinal_suffix = get_ordinal_suffix(day_num)
-    title_text = f"DC Tech Events for the week of {week_start.strftime('%B %-d')}{ordinal_suffix}, {week_start.strftime('%Y')}"
-    draw_text_with_emoji((30, 15), title_text, fill=brand_color, font=title_font, emoji_font_override=emoji_font)
-
-    # Draw URL below in smaller text
-    url_text = "dctech.events"
-    draw_text_with_emoji((30, 68), url_text, fill=url_color, font=url_font)
-
-    # Prepare events by day
-    days_data = prepare_events_by_day(events)
-    events_by_date = {day['date']: day for day in days_data}
-
-    # Calculate how many events we have and determine layout
-    total_events = sum(
-        len([e for ts in day['time_slots'] for e in ts['events']])
-        for day in days_data if day.get('has_events', False)
-    )
-    days_with_events_count = sum(1 for day in days_data if day.get('has_events', False))
-
-    # Available vertical space
-    available_height = height - header_height - 40  # 40px margin at bottom
-
-    # Estimate space needed per event and day header
-    base_day_header_space = 32
-    base_event_space = 28
-    base_day_spacing = 10
-
-    # Calculate if we need two columns
-    estimated_space_needed = (days_with_events_count * (base_day_header_space + base_day_spacing)) + (total_events * base_event_space)
-    use_two_columns = estimated_space_needed > available_height
-
-    # Adjust spacing and max events based on layout
-    if use_two_columns:
-        max_events_per_day = 4
-        line_height = 26
-        day_spacing = 6
-    else:
-        # Calculate dynamic spacing for single column
-        if estimated_space_needed > available_height:
-            # Need to compress
-            scale_factor = available_height / estimated_space_needed
-            line_height = max(22, int(base_event_space * scale_factor))
-            day_spacing = max(4, int(base_day_spacing * scale_factor))
-            max_events_per_day = 3
-        else:
-            line_height = 28
-            day_spacing = 8
-            max_events_per_day = 5
-
-    # Layout configuration
-    margin_left = 30
-    margin_right = 30
-    y_position = header_height + 20
-    max_text_width = width - margin_left - margin_right
-
-    if use_two_columns:
-        column_width = (width - 3 * margin_left) // 2
-        max_text_width = column_width
-
-    # Helper function to truncate text
-    def truncate_text(text, font, max_width):
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        if text_width <= max_width:
-            return text
-        while len(text) > 0:
-            test_text = text + '...'
-            bbox = draw.textbbox((0, 0), test_text, font=font)
-            if bbox[2] - bbox[0] <= max_width:
-                return test_text
-            text = text[:-1]
-        return '...'
-
-    # Draw events by day
-    current_date = week_start
-    days_with_events = 0
-
-    # Two-column setup if needed
-    if use_two_columns:
-        left_column_x = 30
-        right_column_x = 30 * 2 + column_width
-        initial_y = y_position
-        in_left_column = True
-
-    for i in range(7):
-        date_key = current_date.strftime('%Y-%m-%d')
-
-        # Check if this day has events
-        if date_key in events_by_date and events_by_date[date_key]['has_events']:
-            days_with_events += 1
-
-            # Check if we need to switch to right column or are out of space
-            bottom_threshold = height - 50
-            if y_position > bottom_threshold:
-                if use_two_columns and in_left_column:
-                    # Switch to right column
-                    y_position = initial_y
-                    margin_left = right_column_x
-                    max_text_width = column_width
-                    in_left_column = False
-                else:
-                    # Out of space - truncate remaining
-                    if y_position < height - 30:
-                        draw_text_with_emoji((margin_left, y_position), "...", fill=event_color, font=small_font)
-                    break
-
-            # Draw day header
-            day_header = current_date.strftime('%a, %b %-d')
-            draw_text_with_emoji((margin_left, y_position), day_header, fill=day_color, font=day_font, emoji_font_override=emoji_font_day)
-            y_position += line_height + 2
-
-            # Collect all events for this day
-            all_events = []
-            for time_slot in events_by_date[date_key]['time_slots']:
-                for event in time_slot['events']:
-                    all_events.append(event)
-
-            # Draw events (limit to max_events_per_day)
-            events_shown = 0
-            for event in all_events:
-                # Check if we have space for another event
-                if y_position + line_height > bottom_threshold:
-                    if events_shown < len(all_events):
-                        remaining = len(all_events) - events_shown
-                        if y_position < height - 30:
-                            draw_text_with_emoji((margin_left + 15, y_position),
-                                     f"+ {remaining} more",
-                                     fill=event_color, font=small_font)
-                    break
-
-                if events_shown >= max_events_per_day:
-                    remaining = len(all_events) - events_shown
-                    draw_text_with_emoji((margin_left + 15, y_position),
-                             f"+ {remaining} more",
-                             fill=event_color, font=small_font)
-                    y_position += line_height
-                    break
-
-                # Truncate long event titles
-                event_title = truncate_text(event.get('title', 'Untitled'), event_font, max_text_width - 25)
-
-                # Draw bullet and event
-                draw_text_with_emoji((margin_left + 5, y_position), "•", fill=brand_color, font=event_font)
-                draw_text_with_emoji((margin_left + 20, y_position), event_title, fill=text_color, font=event_font, emoji_font_override=emoji_font_event)
-                y_position += line_height
-                events_shown += 1
-
-            # Add spacing after this day
-            y_position += day_spacing
-
-        current_date += timedelta(days=1)
-
-    # If no events found, show message
-    if days_with_events == 0:
-        y_position = header_height + 100
-        draw_text_with_emoji((margin_left, y_position), "No events scheduled this week",
-                 fill=event_color, font=event_font)
-        y_position += line_height + 10
-        draw_text_with_emoji((margin_left, y_position), "Check back soon or add your event!",
-                 fill=event_color, font=url_font)
-
-    return img
 
 @app.route("/robots.txt")
 def robots_txt():
@@ -1036,30 +694,6 @@ def week_page(week_id):
                           week_end=week_end,
                           week_start_formatted=week_start_formatted,
                           base_url=base_url)
-
-# Image generation temporarily disabled
-# @app.route("/week/<week_id>/image.png")
-# def week_image(week_id):
-#     """Generate and serve the calendar image for a specific week"""
-#     try:
-#         year, week_num = parse_week_identifier(week_id)
-#         week_start, week_end = get_iso_week_dates(year, week_num)
-#     except:
-#         return "Invalid week identifier", 404
-#
-#     # Get all events and filter by week
-#     events = get_events()
-#     week_events = filter_events_by_week(events, week_start, week_end)
-#
-#     # Generate the image
-#     img = generate_week_calendar_image(week_start, week_end, week_events)
-#
-#     # Convert to bytes
-#     img_io = io.BytesIO()
-#     img.save(img_io, 'PNG')
-#     img_io.seek(0)
-#
-#     return Response(img_io.getvalue(), mimetype='image/png')
 
 @app.route("/<int:year>/<int:month>/")
 def month_page(year, month):
@@ -1288,10 +922,8 @@ def feeds_page():
 @app.route("/sitemap.xml")
 def sitemap():
     """Generate an XML sitemap of the site's main pages"""
-    # Get base URL from config or use a default
     base_url = config.get('base_url', 'https://dctech.events')
 
-    # Create list of URLs with last modified dates
     urls = [
         {'loc': f"{base_url}/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
         {'loc': f"{base_url}/virtual/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
@@ -1303,7 +935,6 @@ def sitemap():
         {'loc': f"{base_url}/locations/md/", 'lastmod': datetime.now().strftime('%Y-%m-%d')},
     ]
 
-    # Add category pages
     categories = get_categories()
     for slug in categories.keys():
         urls.append({
@@ -1312,7 +943,6 @@ def sitemap():
             'changefreq': 'daily'
         })
 
-    # Add upcoming week pages
     upcoming_weeks = get_upcoming_weeks(12)
     for week_id in upcoming_weeks:
         urls.append({
@@ -1321,7 +951,6 @@ def sitemap():
             'changefreq': 'daily'
         })
 
-    # Generate XML sitemap
     xml = ['<?xml version="1.0" encoding="UTF-8"?>']
     xml.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
 
@@ -1351,37 +980,23 @@ def events_json():
 @app.route("/events.ics")
 def ical_feed():
     """Generate an iCal feed of upcoming events"""
-    # Get upcoming events
     events = get_events()
-    
     return generate_ical_feed(events, SITE_NAME, TAGLINE)
 
 def generate_ical_feed(filtered_events, calendar_name, calendar_description):
     """
     Helper function to generate an iCal feed for a filtered set of events
-    
-    Args:
-        filtered_events: List of event dictionaries to include in the feed
-        calendar_name: Name for the calendar (X-WR-CALNAME)
-        calendar_description: Description for the calendar (X-WR-CALDESC)
-    
-    Returns:
-        Response object with iCal content
     """
-    # Build group name to website mapping
     groups = get_approved_groups()
     group_websites = {group.get('name'): group.get('website') for group in groups if group.get('website')}
     
-    # Create calendar
     cal = Calendar()
     cal.add('prodid', f'-//{SITE_NAME}//dctech.events//')
     cal.add('version', '2.0')
     cal.add('x-wr-calname', calendar_name)
     cal.add('x-wr-caldesc', calendar_description)
     
-    # Add events to calendar
     for event in filtered_events:
-        # Parse event date
         event_date_str = event.get('date')
         if not event_date_str:
             continue
@@ -1391,71 +1006,54 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
         except (ValueError, TypeError):
             continue
         
-        # Parse event time to determine if this is an all-day event
         event_time_str = event.get('time', '')
         is_all_day = not (event_time_str and isinstance(event_time_str, str) and ':' in event_time_str)
         
         if is_all_day:
-            # All-day event: use date objects (VALUE=DATE)
             event_datetime = event_date
-            
-            # Handle end date for all-day events
             end_date_str = event.get('end_date')
             if end_date_str:
                 try:
                     end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                    # For all-day events, dtend must be the day after the last day (exclusive)
                     end_datetime = end_date + timedelta(days=1)
                 except (ValueError, TypeError):
-                    # If end_date is invalid, default to next day
                     end_datetime = event_date + timedelta(days=1)
             else:
-                # Single all-day event: end is next day
                 end_datetime = event_date + timedelta(days=1)
         else:
-            # Timed event: use datetime objects with UTC
             try:
                 event_time = datetime.strptime(event_time_str.strip(), '%H:%M').time()
             except ValueError:
-                # If time parsing fails, treat as all-day
                 event_datetime = event_date
                 end_datetime = event_date + timedelta(days=1)
                 is_all_day = True
             
             if not is_all_day:
-                # Combine date and time, localize to Eastern, then convert to UTC
                 event_datetime_local = datetime.combine(event_date, event_time)
                 event_datetime_local = local_tz.localize(event_datetime_local)
                 event_datetime = event_datetime_local.astimezone(pytz.UTC)
                 
-                # Handle end date/time
                 end_date_str = event.get('end_date')
                 if end_date_str:
                     try:
                         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                        # For multi-day events, use 23:59 on the end date
                         end_time = datetime.strptime('23:59', '%H:%M').time()
                         end_datetime_local = datetime.combine(end_date, end_time)
                         end_datetime_local = local_tz.localize(end_datetime_local)
                         end_datetime = end_datetime_local.astimezone(pytz.UTC)
                     except (ValueError, TypeError):
-                        # If end_date is invalid, default to 1 hour duration
                         end_datetime = event_datetime + timedelta(hours=1)
                 else:
-                    # Default to 1 hour duration for single-day events
                     end_datetime = event_datetime + timedelta(hours=1)
         
-        # Create iCal event
         ical_event = ICalEvent()
         ical_event.add('summary', event.get('title', 'Untitled Event'))
         ical_event.add('dtstart', event_datetime)
         ical_event.add('dtend', end_datetime)
         
-        # Add location if available
         if event.get('location'):
             ical_event.add('location', event['location'])
         
-        # Add description with URL and other details
         description_parts = []
         if event.get('url'):
             description_parts.append(f"Event URL: {event['url']}")
@@ -1466,26 +1064,16 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
         if description_parts:
             ical_event.add('description', '\n'.join(description_parts))
         
-        # Add URL if available
         if event.get('url'):
             ical_event.add('url', event['url'])
         
-        # Add organizer if available (must be a URI)
         if event.get('group'):
             group_name = event['group']
             group_website = group_websites.get(group_name)
             if group_website:
-                # Use website URL as ORGANIZER with CN parameter for group name
                 ical_event.add('organizer', group_website, parameters={'CN': group_name})
         
-        # Generate a unique ID for the event
-        # Always include date, time, and title to ensure uniqueness
-        # Include URL if available for additional stability
-        uid_parts = [
-            event_date_str,
-            event_time_str,
-            event.get('title', 'event')
-        ]
+        uid_parts = [event_date_str, event_time_str, event.get('title', 'event')]
         if event.get('url'):
             uid_parts.append(event['url'])
 
@@ -1493,14 +1081,9 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
         uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
         uid = f"{uid_hash}@dctech.events"
         ical_event.add('uid', uid)
-        
-        # Add creation timestamp
         ical_event.add('dtstamp', datetime.now(pytz.UTC))
-        
-        # Add event to calendar
         cal.add_component(ical_event)
     
-    # Return calendar as text/calendar
     return Response(cal.to_ical(), mimetype='text/calendar')
 
 @app.route("/categories/<slug>/feed.ics")
@@ -1538,37 +1121,20 @@ def location_ical_feed(state):
 def generate_rss_feed_from_events(events, feed_title, feed_description, feed_link):
     """
     Generate RSS 2.0 feed from a list of events.
-    
-    Args:
-        events: List of event dictionaries
-        feed_title: Title of the RSS feed
-        feed_description: Description of the RSS feed
-        feed_link: URL of the page this feed represents
-        
-    Returns:
-        Response object with RSS XML
     """
-    # Create RSS root element
     rss = ET.Element('rss', version='2.0')
     rss.set('xmlns:atom', 'http://www.w3.org/2005/Atom')
     
     channel = ET.SubElement(rss, 'channel')
-    
-    # Channel metadata
     ET.SubElement(channel, 'title').text = feed_title
     ET.SubElement(channel, 'link').text = feed_link
     ET.SubElement(channel, 'description').text = feed_description
     ET.SubElement(channel, 'language').text = 'en-us'
     
-    # Self-referencing atom link (will be set by caller)
-    # Note: This is added by the route handler
-    
-    # Build date (now)
     now_timestamp = datetime.now(pytz.UTC).timestamp()
     now_rfc822 = formatdate(timeval=now_timestamp, usegmt=True)
     ET.SubElement(channel, 'lastBuildDate').text = now_rfc822
     
-    # Add items (limit to 50 most recent events)
     for event in events[:50]:
         item = ET.SubElement(channel, 'item')
         
@@ -1577,7 +1143,6 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
         event_time = event.get('time', '')
         url = event.get('url', '')
         
-        # Title with date
         if event_date:
             try:
                 date_obj = datetime.strptime(event_date, '%Y-%m-%d').date()
@@ -1589,12 +1154,9 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
             full_title = title
         
         ET.SubElement(item, 'title').text = full_title
-        
-        # Link (use event URL or base URL)
         link_url = url if url else BASE_URL
         ET.SubElement(item, 'link').text = link_url
         
-        # Description
         desc_parts = []
         if event_date:
             try:
@@ -1613,18 +1175,15 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
         description = '<br/>'.join(desc_parts) if desc_parts else title
         ET.SubElement(item, 'description').text = description
         
-        # GUID (unique identifier using same hash as iCal)
         guid_text = f"{event_date}-{event_time}-{title}-{url}"
         guid_hash = hashlib.md5(guid_text.encode('utf-8')).hexdigest()
         guid = ET.SubElement(item, 'guid')
         guid.set('isPermaLink', 'false')
         guid.text = guid_hash
         
-        # Publication date (use event date as pub date)
         if event_date:
             try:
                 date_obj = datetime.strptime(event_date, '%Y-%m-%d')
-                # Use midnight in local timezone, convert to UTC for RSS
                 local_dt = local_tz.localize(date_obj)
                 pub_timestamp = local_dt.astimezone(pytz.UTC).timestamp()
                 pub_date_rfc822 = formatdate(timeval=pub_timestamp, usegmt=True)
@@ -1632,14 +1191,10 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
             except (ValueError, AttributeError):
                 pass
     
-    # Convert to XML string with declaration
     tree = ET.ElementTree(rss)
     ET.indent(tree, space='  ')
-    
-    # Generate XML string
     output = io.BytesIO()
     tree.write(output, encoding='utf-8', xml_declaration=True)
-    
     return Response(output.getvalue(), mimetype='application/rss+xml')
 
 @app.route("/categories/<slug>/feed.xml")
@@ -1682,22 +1237,14 @@ def rss_feed():
     Generate RSS feed of recently added events.
     """
     recent_events = db_utils.get_recently_added(limit=50)
-    
     feed_title = f"{SITE_NAME} - New Events"
     feed_description = "Recently added events"
     feed_link = BASE_URL
-    
     return generate_rss_feed_from_events(recent_events, feed_title, feed_description, feed_link)
 
 def get_recently_added_events(limit=5):
     """
     Get the N most recently added events from DynamoDB.
-    
-    Args:
-        limit: Number of events to return (default: 5)
-        
-    Returns:
-        List of event dictionaries
     """
     return db_utils.get_recently_added(limit)
 
@@ -1713,43 +1260,29 @@ def just_added():
                              days_with_events=[],
                              error_message="No recent events found")
 
-    # Group events by the date they were added (in local timezone)
     events_by_date = {}
-    
     for event in recent_events:
         createdAt = event.get('createdAt')
         if not createdAt:
             continue
         
         try:
-            # Parse timestamp
             created_dt = datetime.fromisoformat(createdAt.replace('Z', '+00:00'))
             created_local = created_dt.astimezone(local_tz)
             date_key = created_local.date()
-            
             if date_key not in events_by_date:
                 events_by_date[date_key] = []
-            
-            # Add date_added_display for template
             event['date_added_display'] = created_local.strftime('%b %d, %I:%M %p')
             events_by_date[date_key].append(event)
         except (ValueError, AttributeError):
             continue
             
-    # Convert to list of dicts for template
     days_with_events = []
-    
     for date_obj, day_events in sorted(events_by_date.items(), key=lambda x: x[0], reverse=True):
-        # Skip days with too many events (likely bulk load)
         if len(day_events) > 100:
             continue
         
-        # Create anchor in format "M-D-YYYY" (e.g., "2-5-2026")
-        # This matches the format used in post_daily_event_summary.py line 88
         anchor = f"{date_obj.month}-{date_obj.day}-{date_obj.year}"
-        
-        # Format date display manually for cross-platform compatibility
-        # Using f-string instead of strftime('%-d') which fails on Windows
         date_display = f"{date_obj.strftime('%A, %B')} {date_obj.day}, {date_obj.year}"
             
         days_with_events.append({
@@ -1760,7 +1293,6 @@ def just_added():
             'events': sorted(day_events, key=lambda x: x.get('createdAt', ''), reverse=True)
         })
         
-        # Limit to 3 days
         if len(days_with_events) >= 3:
             break
             
@@ -1770,8 +1302,6 @@ def just_added():
 @app.route('/404.html')
 def not_found_page():
     """Serve the 404 error page"""
-    # Return 200 during freeze/static generation
-    # CloudFront will serve this with 404 status via errorResponses config
     return render_template('404.html')
 
 if __name__ == "__main__":

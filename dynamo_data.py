@@ -1,11 +1,8 @@
 """
 DynamoDB Data Access Layer for the config table (dctech-events).
 
-Provides the same interfaces as YAML file reads, enabling gradual
-migration from YAML-based CMS to DynamoDB single-table design.
-
-Feature flag: Set USE_DYNAMO_DATA=1 env var to enable DynamoDB reads.
-When disabled, falls back to YAML file reads for local development.
+Provides interfaces for reading and writing site configuration and content
+from the single-table DynamoDB design.
 
 Entity key patterns:
 | Entity     | PK                  | SK   | GSI1PK          | GSI1SK         | GSI2PK           | GSI2SK          |
@@ -20,23 +17,12 @@ Entity key patterns:
 """
 
 import os
-import glob as globmod
-import yaml
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
-
-# Feature flag for gradual cutover
-USE_DYNAMO_DATA = os.environ.get('USE_DYNAMO_DATA', '0') == '1'
 
 # Config table name
 CONFIG_TABLE_NAME = os.environ.get('CONFIG_TABLE_NAME', 'dctech-events')
-
-# YAML fallback paths
-GROUPS_DIR = '_groups'
-CATEGORIES_DIR = '_categories'
-SINGLE_EVENTS_DIR = '_single_events'
-EVENT_OVERRIDES_DIR = '_event_overrides'
 
 _table = None
 
@@ -54,14 +40,11 @@ def _get_table():
 
 def get_all_groups():
     """
-    Get all groups. Replaces YAML _groups/*.yaml reads.
+    Get all groups from DynamoDB.
 
     Returns:
         List of group dictionaries, each with 'id' field.
     """
-    if not USE_DYNAMO_DATA:
-        return _get_groups_from_yaml()
-
     table = _get_table()
     groups = []
 
@@ -99,17 +82,13 @@ def get_all_groups():
 
     except ClientError as e:
         print(f"Error fetching groups from DynamoDB: {e}")
-        return _get_groups_from_yaml()
+        return []
 
     return groups
 
 
 def get_active_groups():
-    """Get only active groups, sorted by name."""
-    if not USE_DYNAMO_DATA:
-        groups = _get_groups_from_yaml()
-        return [g for g in groups if g.get('active', True)]
-
+    """Get only active groups from DynamoDB, sorted by name."""
     table = _get_table()
     groups = []
 
@@ -132,15 +111,14 @@ def get_active_groups():
 
     except ClientError as e:
         print(f"Error fetching active groups from DynamoDB: {e}")
-        groups = _get_groups_from_yaml()
-        return [g for g in groups if g.get('active', True)]
+        return []
 
     groups.sort(key=lambda x: x.get('name', '').lower())
     return groups
 
 
 def _dynamo_item_to_group(item):
-    """Convert a DynamoDB GROUP item to group dict matching YAML format."""
+    """Convert a DynamoDB GROUP item to group dict."""
     # PK is GROUP#{slug}
     slug = item['PK'].split('#', 1)[1]
     group = {
@@ -158,44 +136,27 @@ def _dynamo_item_to_group(item):
     return group
 
 
-def _get_groups_from_yaml():
-    """Fallback: load groups from YAML files."""
-    groups = []
-    for file_path in globmod.glob(os.path.join(GROUPS_DIR, '*.yaml')):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                group = yaml.safe_load(f)
-                group['id'] = os.path.splitext(os.path.basename(file_path))[0]
-                groups.append(group)
-        except Exception as e:
-            print(f"Error loading group from {file_path}: {e}")
-    return groups
-
-
 # ─── CATEGORY operations ────────────────────────────────────────────
 
 def get_all_categories():
     """
-    Get all categories. Replaces YAML _categories/*.yaml reads.
+    Get all categories from DynamoDB.
 
     Returns:
         Dict mapping category slug to category metadata.
     """
-    if not USE_DYNAMO_DATA:
-        return _get_categories_from_yaml()
-
     table = _get_table()
     categories = {}
 
     try:
         # Scan for all CATEGORY entities (small dataset, scan is fine)
         response = table.scan(
-            FilterExpression=Key('PK').begins_with('CATEGORY#') & Key('SK').eq('META'),
+            FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'),
         )
         items = response.get('Items', [])
         while 'LastEvaluatedKey' in response:
             response = table.scan(
-                FilterExpression=Key('PK').begins_with('CATEGORY#') & Key('SK').eq('META'),
+                FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'),
                 ExclusiveStartKey=response['LastEvaluatedKey'],
             )
             items.extend(response.get('Items', []))
@@ -210,23 +171,8 @@ def get_all_categories():
 
     except ClientError as e:
         print(f"Error fetching categories from DynamoDB: {e}")
-        return _get_categories_from_yaml()
+        return {}
 
-    return categories
-
-
-def _get_categories_from_yaml():
-    """Fallback: load categories from YAML files."""
-    categories = {}
-    for file_path in globmod.glob(os.path.join(CATEGORIES_DIR, '*.yaml')):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                category = yaml.safe_load(f)
-                slug = os.path.splitext(os.path.basename(file_path))[0]
-                category['slug'] = slug
-                categories[slug] = category
-        except Exception as e:
-            print(f"Error loading category from {file_path}: {e}")
     return categories
 
 
@@ -234,26 +180,23 @@ def _get_categories_from_yaml():
 
 def get_single_events():
     """
-    Get all manually-submitted single events. Replaces _single_events/*.yaml reads.
+    Get all manually-submitted single events from DynamoDB.
 
     Returns:
         List of event dictionaries.
     """
-    if not USE_DYNAMO_DATA:
-        return _get_single_events_from_yaml()
-
     table = _get_table()
     events = []
 
     try:
-        # Scan for EVENT entities with source=manual
+        # Scan for EVENT entities with source=manual or source=submitted
         response = table.scan(
-            FilterExpression=Key('PK').begins_with('EVENT#') & Key('SK').eq('META'),
+            FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
         )
         items = response.get('Items', [])
         while 'LastEvaluatedKey' in response:
             response = table.scan(
-                FilterExpression=Key('PK').begins_with('EVENT#') & Key('SK').eq('META'),
+                FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
                 ExclusiveStartKey=response['LastEvaluatedKey'],
             )
             items.extend(response.get('Items', []))
@@ -264,13 +207,13 @@ def get_single_events():
 
     except ClientError as e:
         print(f"Error fetching single events from DynamoDB: {e}")
-        return _get_single_events_from_yaml()
+        return []
 
     return events
 
 
 def _dynamo_item_to_event(item):
-    """Convert a DynamoDB EVENT item to event dict matching YAML format."""
+    """Convert a DynamoDB EVENT item to event dict."""
     guid = item['PK'].split('#', 1)[1]
     event = {'guid': guid, 'id': guid}
 
@@ -286,25 +229,11 @@ def _dynamo_item_to_event(item):
     return event
 
 
-def _get_single_events_from_yaml():
-    """Fallback: load single events from YAML files."""
-    events = []
-    for file_path in globmod.glob(os.path.join(SINGLE_EVENTS_DIR, '*.yaml')):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                event = yaml.safe_load(f)
-                event['id'] = os.path.splitext(os.path.basename(file_path))[0]
-                events.append(event)
-        except Exception as e:
-            print(f"Error loading event from {file_path}: {e}")
-    return events
-
-
 # ─── EVENT OVERRIDE operations ──────────────────────────────────────
 
 def get_event_override(guid):
     """
-    Get an event override by GUID. Replaces _event_overrides/{guid}.yaml reads.
+    Get an event override by GUID from DynamoDB.
 
     Args:
         guid: MD5 hash identifying the event
@@ -312,9 +241,6 @@ def get_event_override(guid):
     Returns:
         Override dict or None if no override exists.
     """
-    if not USE_DYNAMO_DATA:
-        return _get_override_from_yaml(guid)
-
     table = _get_table()
 
     try:
@@ -332,21 +258,8 @@ def get_event_override(guid):
 
     except ClientError as e:
         print(f"Error fetching override from DynamoDB: {e}")
-        return _get_override_from_yaml(guid)
+        return None
 
-    return None
-
-
-def _get_override_from_yaml(guid):
-    """Fallback: load event override from YAML file."""
-    override_file = os.path.join(EVENT_OVERRIDES_DIR, f"{guid}.yaml")
-    if os.path.exists(override_file):
-        try:
-            with open(override_file, 'r', encoding='utf-8') as f:
-                override = yaml.safe_load(f)
-                return override if override else None
-        except Exception as e:
-            print(f"Error loading override from {override_file}: {e}")
     return None
 
 

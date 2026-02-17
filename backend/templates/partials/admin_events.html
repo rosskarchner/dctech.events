@@ -1,7 +1,46 @@
 {% if events %}
+<div class="bulk-actions" style="background:#f4f4f4; padding:10px; border-radius:4px; margin-bottom:15px; display:flex; align-items:center; gap:15px;">
+  <span style="font-weight:bold; font-size:0.9rem;">Bulk Actions:</span>
+  
+  <button class="btn btn-sm btn-danger"
+          hx-post="/admin/events/bulk"
+          hx-vals='{"action": "delete"}'
+          hx-include=".event-checkbox, #date-filter"
+          hx-target="#events-table"
+          hx-confirm="Are you sure you want to hide the selected events?">
+    Hide Selected
+  </button>
+
+  <div style="display:flex; align-items:center; gap:5px;">
+    <select name="category_slug" class="form-control form-control-sm bulk-cat-select" style="width:150px;">
+      <option value="">-- Set Category --</option>
+      {% for slug in all_categories | sort %}
+        <option value="{{ slug }}">{{ all_categories[slug].name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm" style="background:#eee;"
+            hx-post="/admin/events/bulk"
+            hx-vals='{"action": "category"}'
+            hx-include=".event-checkbox, .bulk-cat-select, #date-filter"
+            hx-target="#events-table">
+      Apply
+    </button>
+  </div>
+
+  <button class="btn btn-sm btn-secondary"
+          hx-post="/admin/events/bulk"
+          hx-vals='{"action": "combine"}'
+          hx-include=".event-checkbox, #date-filter"
+          hx-target="#events-table"
+          hx-confirm="Combine selected events? The first one selected (top-most in list) will be the primary.">
+    Combine
+  </button>
+</div>
+
 <table class="table">
   <thead>
     <tr>
+      <th style="width:30px;"><input type="checkbox" onclick="toggleAllEvents(this)"></th>
       <th>Title</th>
       <th>Date</th>
       <th>Time</th>
@@ -11,26 +50,21 @@
     </tr>
   </thead>
   <tbody>
-    {% for e in events %}
-    <tr id="event-row-{{ e.guid }}">
-      <td>
-        {% if e.url %}<a href="{{ e.url }}" target="_blank">{{ e.title | default('Untitled') }}</a>
-        {% else %}{{ e.title | default('Untitled') }}{% endif %}
-      </td>
-      <td>{{ e.date | default('') }}{% if e.end_date %} – {{ e.end_date }}{% endif %}</td>
-      <td>{{ e.time | default('All day') }}</td>
-      <td>{{ e.location | default('') }}{% if not e.location %}{{ e.city | default('') }}{% if e.state %}, {{ e.state }}{% endif %}{% endif %}</td>
-      <td><span class="badge">{{ e.source | default('ical') }}</span></td>
-      <td>
-        <button class="btn btn-sm"
-          hx-get="/admin/events/{{ e.guid }}/edit"
-          hx-target="closest tr"
-          hx-swap="outerHTML">Edit</button>
-      </td>
-    </tr>
+    {% for event in events %}
+      {% include "partials/admin_event_row.html" %}
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+function toggleAllEvents(source) {
+  const checkboxes = document.querySelectorAll('.event-checkbox');
+  for(let i=0; i<checkboxes.length; i++) {
+    checkboxes[i].checked = source.checked;
+  }
+}
+</script>
+
 <p class="text-muted">{{ events | length }} event(s) found.</p>
 {% else %}
 <p class="text-muted">No events found{% if date_filter %} for "{{ date_filter }}"{% endif %}.</p>

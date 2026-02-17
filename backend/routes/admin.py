@@ -16,6 +16,7 @@ from db import (
     get_all_categories, get_events_by_date,
     get_all_events, get_event_from_config, update_event as db_update_event,
     get_materialized_event,
+    bulk_delete_events, bulk_set_category, bulk_combine_events,
 )
 
 
@@ -215,9 +216,11 @@ def get_events(event, jinja_env):
     date_prefix = params.get('date', '').strip() or None
 
     events = get_all_events(date_prefix)
+    all_categories = get_all_categories()
 
     template = jinja_env.get_template('partials/admin_events.html')
-    html = template.render(events=events, date_filter=date_prefix or '')
+    html = template.render(events=events, date_filter=date_prefix or '',
+                           all_categories=all_categories)
     return _html(200, html)
 
 
@@ -262,15 +265,20 @@ def save_event_edit(event, jinja_env, guid):
         updated = get_event_from_config(guid) or {}
         updated['guid'] = guid
     else:
+        # For iCal events, create or update an override
         override_data = {'edited_by': claims.get('email', '')}
-        for field in ['title', 'location', 'categories']:
-            override_data[field] = data.get(field) or ([] if field == 'categories' else '')
+        # Fields we allow overriding for iCal events
+        for field in ['title', 'location', 'categories', 'url', 'time', 'hidden', 'duplicate_of']:
+            if field in data:
+                override_data[field] = data[field]
+        
         db_put_override(guid, override_data)
-        # Merge materialized event with override for display
-        updated = dict(get_materialized_event(guid) or {})
-        for field in ['title', 'location', 'categories']:
-            val = override_data.get(field)
-            if val:
+        
+        # Merge materialized event with override for display in the updated row
+        base_event = get_materialized_event(guid) or {}
+        updated = dict(base_event)
+        for field, val in override_data.items():
+            if val is not None:
                 updated[field] = val
         updated['guid'] = guid
 
@@ -327,3 +335,58 @@ def delete_override(event, jinja_env, guid):
 
     db_delete_override(guid)
     return _html(200, '')
+
+
+def handle_bulk_action(event, jinja_env):
+    """POST /admin/events/bulk — handle bulk actions on events."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    data = _parse_body(event)
+    action = data.get('action')
+    guids = data.get('guids', [])
+    if isinstance(guids, str):
+        guids = [guids]
+    
+    if not guids:
+        return _html(400, '<p>No events selected</p>')
+
+    actor = claims.get('email', 'unknown')
+
+    if action == 'delete':
+        bulk_delete_events(guids, actor)
+    elif action == 'category':
+        cat_slug = data.get('category_slug')
+        if not cat_slug:
+            return _html(400, '<p>No category selected</p>')
+        bulk_set_category(guids, cat_slug, actor)
+    elif action == 'combine':
+        target_guid = data.get('target_guid')
+        if not target_guid:
+            # Default to the first one in the list? Or require one?
+            # Better to require one or pick the most "materialized" one.
+            target_guid = guids[0]
+        bulk_combine_events(guids, target_guid, actor)
+    else:
+        return _html(400, f'<p>Unknown action: {action}</p>')
+
+    # After bulk action, reload the event list
+    # The date filter might be in query params (GET) or body (POST from bulk include)
+    date_prefix = data.get('date', '').strip()
+    if not date_prefix:
+        params = event.get('queryStringParameters') or {}
+        date_prefix = params.get('date', '').strip()
+    
+    if not date_prefix:
+        date_prefix = None
+        
+    events = get_all_events(date_prefix)
+    all_categories = get_all_categories()
+    
+    template = jinja_env.get_template('partials/admin_events.html')
+    html = template.render(events=events, date_filter=date_prefix or '',
+                           all_categories=all_categories)
+    
+    # We add a success message header
+    return _html(200, html)
