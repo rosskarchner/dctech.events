@@ -27,6 +27,28 @@ def _parse_body(event):
     return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
 
 
+def _html(status_code, body, event=None):
+    allowed_origins = [
+        'https://dctech.events',
+        'https://manage.dctech.events',
+        'https://suggest.dctech.events',
+        'http://localhost:5000'
+    ]
+    origin = event.get('headers', {}).get('origin') if event else None
+    if origin not in allowed_origins:
+        origin = allowed_origins[0]
+
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Access-Control-Allow-Origin': origin,
+            'Vary': 'Origin',
+        },
+        'body': body,
+    }
+
+
 def submit_form(event, jinja_env):
     """GET /submit — returns the submission form HTML."""
     claims, err = get_user_from_event(event)
@@ -48,14 +70,7 @@ def submit_form(event, jinja_env):
         default_ampm='PM',
     )
 
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-        },
-        'body': html,
-    }
+    return _html(200, html, event)
 
 
 def submit_event(event, jinja_env):
@@ -69,22 +84,18 @@ def submit_event(event, jinja_env):
     submission_type = data.get('type', 'event')
 
     if submission_type == 'group':
-        return _submit_group(data, submitter, jinja_env)
-    return _submit_event(data, submitter, jinja_env)
+        return _submit_group(event, data, submitter, jinja_env)
+    return _submit_event(event, data, submitter, jinja_env)
 
 
-def _submit_event(data, submitter, jinja_env):
+def _submit_event(event, data, submitter, jinja_env):
     """Handle event submission."""
     title = data.get('title', '').strip()
     date_val = data.get('date', '').strip()
     if not title or not date_val:
         template = jinja_env.get_template('partials/submit_error.html')
         html = template.render(error='Title and date are required.')
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'text/html; charset=utf-8'},
-            'body': html,
-        }
+        return _html(400, html, event)
 
     # Build time string from hour/minute/ampm fields
     timing = data.get('timing', 'specific')
@@ -113,28 +124,17 @@ def _submit_event(data, submitter, jinja_env):
     template = jinja_env.get_template('partials/submit_confirmation.html')
     html = template.render(draft_id=draft_id, draft_type='event')
 
-    return {
-        'statusCode': 201,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-        },
-        'body': html,
-    }
+    return _html(201, html, event)
 
 
-def _submit_group(data, submitter, jinja_env):
+def _submit_group(event, data, submitter, jinja_env):
     """Handle group submission."""
     name = data.get('name', '').strip()
     website = data.get('website', '').strip()
     if not name or not website:
         template = jinja_env.get_template('partials/submit_error.html')
         html = template.render(error='Group name and website are required.')
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'text/html; charset=utf-8'},
-            'body': html,
-        }
+        return _html(400, html, event)
 
     draft_data = {
         'name': name,
@@ -148,14 +148,7 @@ def _submit_group(data, submitter, jinja_env):
     template = jinja_env.get_template('partials/submit_confirmation.html')
     html = template.render(draft_id=draft_id, draft_type='group')
 
-    return {
-        'statusCode': 201,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-        },
-        'body': html,
-    }
+    return _html(201, html, event)
 
 
 def my_submissions(event, jinja_env):
@@ -170,11 +163,4 @@ def my_submissions(event, jinja_env):
     template = jinja_env.get_template('partials/my_submissions.html')
     html = template.render(submissions=drafts)
 
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-        },
-        'body': html,
-    }
+    return _html(200, html, event)

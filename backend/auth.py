@@ -12,6 +12,7 @@ import jwt
 import requests
 
 COGNITO_USER_POOL_ID = os.environ.get('COGNITO_USER_POOL_ID', '')
+COGNITO_CLIENT_ID = os.environ.get('COGNITO_USER_POOL_CLIENT_ID', '')
 COGNITO_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
 _jwks_cache = None
@@ -66,12 +67,18 @@ def decode_token(token):
             f'/{COGNITO_USER_POOL_ID}'
         )
 
+        decode_options = {}
+        if COGNITO_CLIENT_ID:
+            decode_options['audience'] = COGNITO_CLIENT_ID
+        else:
+            decode_options['options'] = {'verify_aud': False}
+
         claims = jwt.decode(
             token,
             public_key,
             algorithms=['RS256'],
             issuer=issuer,
-            options={'verify_aud': False},
+            **decode_options
         )
         return claims
 

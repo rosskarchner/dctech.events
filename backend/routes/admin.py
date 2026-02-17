@@ -31,12 +31,23 @@ def _admin_check(event):
     return claims, None
 
 
-def _html(status_code, body):
+def _html(status_code, body, event=None):
+    allowed_origins = [
+        'https://dctech.events',
+        'https://manage.dctech.events',
+        'https://suggest.dctech.events',
+        'http://localhost:5000'
+    ]
+    origin = event.get('headers', {}).get('origin') if event else None
+    if origin not in allowed_origins:
+        origin = allowed_origins[0]
+
     return {
         'statusCode': status_code,
         'headers': {
             'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': origin,
+            'Vary': 'Origin',
         },
         'body': body,
     }
@@ -72,7 +83,7 @@ def dashboard(event, jinja_env):
         groups_count=len(groups),
         user_email=claims.get('email', ''),
     )
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 # ─── Queue (drafts) ──────────────────────────────────────────────
@@ -86,7 +97,7 @@ def get_queue(event, jinja_env):
     drafts = get_drafts_by_status('pending')
     template = jinja_env.get_template('partials/draft_queue.html')
     html = template.render(drafts=drafts)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def get_draft(event, jinja_env, draft_id):
@@ -97,11 +108,11 @@ def get_draft(event, jinja_env, draft_id):
 
     draft = db_get_draft(draft_id)
     if not draft:
-        return _html(404, '<p>Draft not found</p>')
+        return _html(404, '<p>Draft not found</p>', event)
 
     template = jinja_env.get_template('partials/draft_detail.html')
     html = template.render(draft=draft)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def approve_draft(event, jinja_env, draft_id):
@@ -112,7 +123,7 @@ def approve_draft(event, jinja_env, draft_id):
 
     draft = db_get_draft(draft_id)
     if not draft:
-        return _html(404, '<p>Draft not found</p>')
+        return _html(404, '<p>Draft not found</p>', event)
 
     reviewer = claims.get('email', '')
     update_draft_status(draft_id, 'approved', reviewer)
@@ -122,7 +133,7 @@ def approve_draft(event, jinja_env, draft_id):
         promote_draft_to_event(draft)
 
     # Return empty string to remove the row via hx-swap="outerHTML"
-    return _html(200, '')
+    return _html(200, '', event)
 
 
 def reject_draft(event, jinja_env, draft_id):
@@ -133,12 +144,12 @@ def reject_draft(event, jinja_env, draft_id):
 
     draft = db_get_draft(draft_id)
     if not draft:
-        return _html(404, '<p>Draft not found</p>')
+        return _html(404, '<p>Draft not found</p>', event)
 
     reviewer = claims.get('email', '')
     update_draft_status(draft_id, 'rejected', reviewer)
 
-    return _html(200, '')
+    return _html(200, '', event)
 
 
 # ─── Groups ──────────────────────────────────────────────────────
@@ -155,7 +166,7 @@ def get_groups(event, jinja_env):
 
     template = jinja_env.get_template('partials/group_list.html')
     html = template.render(groups=groups, categories=categories)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def edit_group_form(event, jinja_env, slug):
@@ -166,12 +177,12 @@ def edit_group_form(event, jinja_env, slug):
 
     group = get_group(slug)
     if not group:
-        return _html(404, '<p>Group not found</p>')
+        return _html(404, '<p>Group not found</p>', event)
 
     categories = get_all_categories()
     template = jinja_env.get_template('partials/group_form.html')
     html = template.render(group=group, categories=categories)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def update_group(event, jinja_env, slug):
@@ -184,7 +195,7 @@ def update_group(event, jinja_env, slug):
 
     group = get_group(slug)
     if not group:
-        return _html(404, '<p>Group not found</p>')
+        return _html(404, '<p>Group not found</p>', event)
 
     # Update fields
     group['name'] = data.get('name', group.get('name', ''))
@@ -201,7 +212,7 @@ def update_group(event, jinja_env, slug):
 
     template = jinja_env.get_template('partials/group_row.html')
     html = template.render(group=group)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 # ─── Events ──────────────────────────────────────────────────────
@@ -221,7 +232,7 @@ def get_events(event, jinja_env):
     template = jinja_env.get_template('partials/admin_events.html')
     html = template.render(events=events, date_filter=date_prefix or '',
                            all_categories=all_categories)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def get_event_edit_form(event, jinja_env, guid):
@@ -241,7 +252,7 @@ def get_event_edit_form(event, jinja_env, guid):
         template = jinja_env.get_template('partials/admin_event_override_form.html')
         html = template.render(guid=guid, event=mat_event, override=override,
                                all_categories=all_categories)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def save_event_edit(event, jinja_env, guid):
@@ -288,7 +299,7 @@ def save_event_edit(event, jinja_env, guid):
 
     template = jinja_env.get_template('partials/admin_event_row.html')
     html = template.render(event=updated)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 # ─── Overrides ───────────────────────────────────────────────────
@@ -302,7 +313,7 @@ def get_overrides(event, jinja_env):
     overrides = db_get_all_overrides()
     template = jinja_env.get_template('partials/override_list.html')
     html = template.render(overrides=overrides)
-    return _html(200, html)
+    return _html(200, html, event)
 
 
 def create_override(event, jinja_env):
@@ -314,7 +325,7 @@ def create_override(event, jinja_env):
     data = _parse_body(event)
     guid = data.get('guid', '').strip()
     if not guid:
-        return _html(400, '<p>GUID is required</p>')
+        return _html(400, '<p>GUID is required</p>', event)
 
     override_data = {}
     for field in ['categories', 'title', 'url', 'location', 'time', 'hidden', 'duplicate_of']:
@@ -328,7 +339,7 @@ def create_override(event, jinja_env):
     override = {'guid': guid, **override_data}
     template = jinja_env.get_template('partials/override_row.html')
     html = template.render(override=override)
-    return _html(201, html)
+    return _html(201, html, event)
 
 
 def delete_override(event, jinja_env, guid):
@@ -338,7 +349,7 @@ def delete_override(event, jinja_env, guid):
         return err
 
     db_delete_override(guid)
-    return _html(200, '')
+    return _html(200, '', event)
 
 
 def handle_bulk_action(event, jinja_env):
@@ -354,7 +365,7 @@ def handle_bulk_action(event, jinja_env):
         guids = [guids]
     
     if not guids:
-        return _html(400, '<p>No events selected</p>')
+        return _html(400, '<p>No events selected</p>', event)
 
     actor = claims.get('email', 'unknown')
 
@@ -363,7 +374,7 @@ def handle_bulk_action(event, jinja_env):
     elif action == 'category':
         cat_slug = data.get('category_slug')
         if not cat_slug:
-            return _html(400, '<p>No category selected</p>')
+            return _html(400, '<p>No category selected</p>', event)
         bulk_set_category(guids, cat_slug, actor)
     elif action == 'combine':
         target_guid = data.get('target_guid')
@@ -373,7 +384,7 @@ def handle_bulk_action(event, jinja_env):
             target_guid = guids[0]
         bulk_combine_events(guids, target_guid, actor)
     else:
-        return _html(400, f'<p>Unknown action: {action}</p>')
+        return _html(400, f'<p>Unknown action: {action}</p>', event)
 
     # After bulk action, reload the event list
     # The date filter might be in query params (GET) or body (POST from bulk include)
@@ -393,4 +404,4 @@ def handle_bulk_action(event, jinja_env):
                            all_categories=all_categories)
     
     # We add a success message header
-    return _html(200, html)
+    return _html(200, html, event)
