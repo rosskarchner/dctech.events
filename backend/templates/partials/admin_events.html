@@ -5,21 +5,28 @@
       <th>Title</th>
       <th>Date</th>
       <th>Time</th>
-      <th>City/State</th>
+      <th>Location</th>
       <th>Source</th>
+      <th>Actions</th>
     </tr>
   </thead>
   <tbody>
     {% for e in events %}
-    <tr>
+    <tr id="event-row-{{ e.guid }}">
       <td>
         {% if e.url %}<a href="{{ e.url }}" target="_blank">{{ e.title | default('Untitled') }}</a>
         {% else %}{{ e.title | default('Untitled') }}{% endif %}
       </td>
       <td>{{ e.date | default('') }}{% if e.end_date %} – {{ e.end_date }}{% endif %}</td>
       <td>{{ e.time | default('All day') }}</td>
-      <td>{{ e.city | default('') }}{% if e.state %}, {{ e.state }}{% endif %}</td>
-      <td><span class="badge">{{ e.source | default('unknown') }}</span></td>
+      <td>{{ e.location | default('') }}{% if not e.location %}{{ e.city | default('') }}{% if e.state %}, {{ e.state }}{% endif %}{% endif %}</td>
+      <td><span class="badge">{{ e.source | default('ical') }}</span></td>
+      <td>
+        <button class="btn btn-sm"
+          hx-get="/admin/events/{{ e.guid }}/edit"
+          hx-target="closest tr"
+          hx-swap="outerHTML">Edit</button>
+      </td>
     </tr>
     {% endfor %}
   </tbody>

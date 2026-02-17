@@ -14,6 +14,7 @@ from db import (
     get_all_overrides as db_get_all_overrides, get_override,
     put_override as db_put_override, delete_override as db_delete_override,
     get_all_categories, get_events_by_date,
+    get_all_events, get_event_from_config, update_event as db_update_event,
 )
 
 
@@ -204,7 +205,7 @@ def update_group(event, jinja_env, slug):
 # ─── Events ──────────────────────────────────────────────────────
 
 def get_events(event, jinja_env):
-    """GET /admin/events — HTML table of events in the config table."""
+    """GET /admin/events — HTML table from DcTechEvents materialized view."""
     claims, err = _admin_check(event)
     if err:
         return err
@@ -212,11 +213,55 @@ def get_events(event, jinja_env):
     params = event.get('queryStringParameters') or {}
     date_prefix = params.get('date', '').strip() or None
 
-    events = get_events_by_date(date_prefix)
-    events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
+    events = get_all_events(date_prefix)
 
     template = jinja_env.get_template('partials/admin_events.html')
     html = template.render(events=events, date_filter=date_prefix or '')
+    return _html(200, html)
+
+
+def get_event_edit_form(event, jinja_env, guid):
+    """GET /admin/events/{guid}/edit — inline edit form row."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    manual = get_event_from_config(guid)
+    if manual:
+        template = jinja_env.get_template('partials/admin_event_edit_form.html')
+        html = template.render(event=manual)
+    else:
+        override = get_override(guid) or {}
+        template = jinja_env.get_template('partials/admin_event_override_form.html')
+        html = template.render(guid=guid, override=override)
+    return _html(200, html)
+
+
+def save_event_edit(event, jinja_env, guid):
+    """PUT /admin/events/{guid} — save edit and return updated row."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    data = _parse_body(event)
+    manual = get_event_from_config(guid)
+
+    if manual:
+        db_update_event(guid, data)
+        # Re-fetch to get latest state
+        updated = get_event_from_config(guid) or {}
+        updated['guid'] = guid
+    else:
+        override_data = {}
+        for field in ['title', 'url', 'location', 'time', 'hidden', 'duplicate_of', 'categories']:
+            if field in data:
+                override_data[field] = data[field]
+        override_data['edited_by'] = claims.get('email', '')
+        db_put_override(guid, override_data)
+        updated = {'guid': guid, **override_data}
+
+    template = jinja_env.get_template('partials/admin_event_row.html')
+    html = template.render(event=updated)
     return _html(200, html)
 
 

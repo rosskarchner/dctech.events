@@ -1,0 +1,16 @@
+<tr id="event-row-{{ event.guid }}">
+  <td>
+    {% if event.url %}<a href="{{ event.url }}" target="_blank">{{ event.title | default('Untitled') }}</a>
+    {% else %}{{ event.title | default('Untitled') }}{% endif %}
+  </td>
+  <td>{{ event.date | default('') }}{% if event.end_date %} – {{ event.end_date }}{% endif %}</td>
+  <td>{{ event.time | default('All day') }}</td>
+  <td>{{ event.location | default('') }}{% if not event.location %}{{ event.city | default('') }}{% if event.state %}, {{ event.state }}{% endif %}{% endif %}</td>
+  <td><span class="badge">{{ event.source | default('') }}</span></td>
+  <td>
+    <button class="btn btn-sm"
+      hx-get="/admin/events/{{ event.guid }}/edit"
+      hx-target="closest tr"
+      hx-swap="outerHTML">Edit</button>
+  </td>
+</tr>

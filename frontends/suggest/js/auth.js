@@ -250,14 +250,17 @@ function updateAuthUI() {
 
 /**
  * Require authentication to access the current page.
- * Redirects to login if not authenticated.
+ * Shows a sign-in message if not authenticated.
  */
 function requireAuth() {
-  if (!isAuthenticated()) {
-    login(window.location.pathname);
-    return false;
-  }
-  return true;
+  if (isAuthenticated()) return true;
+  document.querySelector('main').innerHTML = `
+    <div class="card" style="text-align:center; padding: 2rem;">
+      <h2>Sign in required</h2>
+      <p>You need to sign in to access this page.</p>
+      <a href="${getLoginUrl(window.location.pathname)}" class="btn btn-primary">Sign In</a>
+    </div>`;
+  return false;
 }
 
 // ---- Initialization ----

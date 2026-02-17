@@ -62,6 +62,15 @@ export class LambdaApiStack extends cdk.Stack {
       ],
     }));
 
+    // Add read access to DcTechEvents materialized table
+    const materializedTableName = stackConfig.dynamodb.tableName;
+    const materializedTableArn = `arn:aws:dynamodb:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:table/${materializedTableName}`;
+    lambdaRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:Scan'],
+      resources: [materializedTableArn, `${materializedTableArn}/index/*`],
+    }));
+
     // Add Secrets Manager permissions
     lambdaRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -119,6 +128,7 @@ export class LambdaApiStack extends cdk.Stack {
         COGNITO_DOMAIN: cognitoDomain,
         COGNITO_CLIENT_SECRET_NAME: stackConfig.secrets.cognitoClientSecret,
         DYNAMODB_TABLE_NAME: props.dynamoStack.table.tableName,
+        MATERIALIZED_TABLE_NAME: stackConfig.dynamodb.tableName,
         STAGE: stageName,
       },
       logRetention: logs.RetentionDays.ONE_WEEK,
@@ -225,6 +235,18 @@ export class LambdaApiStack extends cdk.Stack {
 
     const adminEvents = admin.addResource('events');
     adminEvents.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const adminEventGuid = adminEvents.addResource('{guid}');
+    adminEventGuid.addMethod('PUT', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const adminEventEdit = adminEventGuid.addResource('edit');
+    adminEventEdit.addMethod('GET', lambdaIntegration, {
       authorizer: authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });

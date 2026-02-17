@@ -118,6 +118,14 @@ def lambda_handler(event, context):
         if path == '/admin/events' and http_method == 'GET':
             return admin.get_events(event, jinja_env)
 
+        if resource == '/admin/events/{guid}/edit' and http_method == 'GET':
+            guid = event.get('pathParameters', {}).get('guid', '')
+            return admin.get_event_edit_form(event, jinja_env, guid)
+
+        if resource == '/admin/events/{guid}' and http_method == 'PUT':
+            guid = event.get('pathParameters', {}).get('guid', '')
+            return admin.save_event_edit(event, jinja_env, guid)
+
         if path == '/admin/overrides' and http_method == 'GET':
             return admin.get_overrides(event, jinja_env)
 

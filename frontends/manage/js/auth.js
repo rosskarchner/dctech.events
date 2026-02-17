@@ -103,12 +103,11 @@ function getIdToken() {
 }
 
 /**
- * Build the Cognito authorization URL and redirect the user there.
+ * Build the Cognito authorization URL (without redirecting).
  */
-function redirectToLogin() {
+function buildLoginUrl() {
   const state = crypto.randomUUID();
   sessionStorage.setItem('oauth_state', state);
-
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: AUTH_CONFIG.clientId,
@@ -116,8 +115,14 @@ function redirectToLogin() {
     scope: AUTH_CONFIG.scopes,
     state: state,
   });
+  return `${AUTH_CONFIG.cognitoDomain}/oauth2/authorize?${params.toString()}`;
+}
 
-  window.location.href = `${AUTH_CONFIG.cognitoDomain}/oauth2/authorize?${params.toString()}`;
+/**
+ * Build the Cognito authorization URL and redirect the user there.
+ */
+function redirectToLogin() {
+  window.location.href = buildLoginUrl();
 }
 
 /**
@@ -160,18 +165,18 @@ function signOut() {
 /**
  * Require authentication and admin group membership.
  * Call this at the top of every admin page.
- * Redirects to login if not authenticated, or to an error page if not admin.
+ * Shows a sign-in message if not authenticated, or an error if not admin.
  */
 function requireAdmin() {
   const token = getAccessToken();
-  if (!token) {
-    redirectToLogin();
-    return false;
-  }
-
   const idToken = getIdToken();
-  if (!idToken) {
-    redirectToLogin();
+  if (!token || !idToken) {
+    document.querySelector('main').innerHTML = `
+      <div class="card" style="text-align:center; padding: 2rem;">
+        <h2>Sign in required</h2>
+        <p>You need to sign in to access this page.</p>
+        <a href="${buildLoginUrl()}" class="btn btn-primary">Sign In</a>
+      </div>`;
     return false;
   }
 

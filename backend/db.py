@@ -13,8 +13,10 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
 CONFIG_TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'dctech-events')
+MATERIALIZED_TABLE_NAME = os.environ.get('MATERIALIZED_TABLE_NAME', 'DcTechEvents')
 
 _table = None
+_materialized_table = None
 
 
 def _get_table():
@@ -23,6 +25,14 @@ def _get_table():
         dynamodb = boto3.resource('dynamodb')
         _table = dynamodb.Table(CONFIG_TABLE_NAME)
     return _table
+
+
+def _get_materialized_table():
+    global _materialized_table
+    if _materialized_table is None:
+        dynamodb = boto3.resource('dynamodb')
+        _materialized_table = dynamodb.Table(MATERIALIZED_TABLE_NAME)
+    return _materialized_table
 
 
 # ─── DRAFT operations ─────────────────────────────────────────────
@@ -244,6 +254,93 @@ def _event_item_to_dict(item):
             val = item[field]
             event[field] = float(val) if isinstance(val, Decimal) else val
     return event
+
+
+def get_all_events(date_prefix=None):
+    """Query DcTechEvents materialized table for active events, optionally filtered by YYYY-MM prefix."""
+    from datetime import date as _date
+    table = _get_materialized_table()
+    items = []
+
+    if date_prefix:
+        year, month = date_prefix.split('-')
+        start = f"{year}-{month}-01"
+        next_month = int(month) + 1
+        if next_month > 12:
+            end = f"{int(year) + 1}-01-01"
+        else:
+            end = f"{year}-{next_month:02d}-01"
+        kce = Key('status').eq('ACTIVE') & Key('date').between(start, end)
+    else:
+        today = _date.today().isoformat()
+        kce = Key('status').eq('ACTIVE') & Key('date').gte(today)
+
+    query_kwargs = {'IndexName': 'DateIndex', 'KeyConditionExpression': kce}
+    response = table.query(**query_kwargs)
+    items.extend(response.get('Items', []))
+    while 'LastEvaluatedKey' in response:
+        response = table.query(**query_kwargs, ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response.get('Items', []))
+
+    return sorted(
+        [_materialized_event_to_dict(item) for item in items],
+        key=lambda x: (x.get('date', ''), x.get('time', '')),
+    )
+
+
+def _materialized_event_to_dict(item):
+    """Convert a DcTechEvents item to a dict suitable for templates."""
+    event = {}
+    for field in ['eventId', 'title', 'date', 'time', 'end_date', 'url',
+                  'location', 'cost', 'source', 'group', 'categories',
+                  'city', 'state', 'hidden', 'duplicate_of']:
+        if field in item:
+            val = item[field]
+            event[field] = float(val) if isinstance(val, Decimal) else val
+    # Alias eventId → guid for template consistency
+    event['guid'] = event.get('eventId', '')
+    return event
+
+
+def get_event_from_config(guid):
+    """Get an EVENT#{guid} entity from the config table, or None if not found."""
+    table = _get_table()
+    response = table.get_item(Key={'PK': f'EVENT#{guid}', 'SK': 'META'})
+    item = response.get('Item')
+    return _event_item_to_dict(item) if item else None
+
+
+def update_event(guid, data):
+    """Update an EVENT#{guid} entity in the config table with the given fields."""
+    table = _get_table()
+    date = data.get('date', '')
+    time_val = data.get('time', '00:00')
+
+    update_parts = ['GSI1PK = :gsi1pk', 'GSI1SK = :gsi1sk']
+    expr_values = {
+        ':gsi1pk': f'DATE#{date}',
+        ':gsi1sk': f'TIME#{time_val}',
+    }
+    expr_names = {}
+
+    updatable_fields = ['title', 'url', 'date', 'time', 'end_date', 'cost',
+                        'city', 'state', 'all_day', 'categories', 'location']
+    for field in updatable_fields:
+        if field in data and data[field] is not None:
+            safe_key = f'#f_{field}'
+            expr_names[safe_key] = field
+            update_parts.append(f'{safe_key} = :{field}')
+            expr_values[f':{field}'] = data[field]
+
+    update_expr = 'SET ' + ', '.join(update_parts)
+    kwargs = {
+        'Key': {'PK': f'EVENT#{guid}', 'SK': 'META'},
+        'UpdateExpression': update_expr,
+        'ExpressionAttributeValues': expr_values,
+    }
+    if expr_names:
+        kwargs['ExpressionAttributeNames'] = expr_names
+    table.update_item(**kwargs)
 
 
 def promote_draft_to_event(draft):
