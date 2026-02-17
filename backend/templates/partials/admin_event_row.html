@@ -1,17 +1,23 @@
-<tr id="event-row-{{ event.guid }}">
+<tr id="event-row-{{ event.guid }}" {% if event.hidden or event.duplicate_of %}style="background-color: #fcfcfc; color: #666;"{% endif %}>
   <td>
     <input type="checkbox" name="guids" value="{{ event.guid }}" class="event-checkbox">
   </td>
   <td>
-    {% if event.url %}<a href="{{ event.url }}" target="_blank">{{ event.title | default('Untitled') }}</a>
+    {% if event.url %}<a href="{{ event.url }}" target="_blank" {% if event.hidden or event.duplicate_of %}style="color: #666;"{% endif %}>{{ event.title | default('Untitled') }}</a>
     {% else %}{{ event.title | default('Untitled') }}{% endif %}
-    {% if event.categories %}
-      <div style="margin-top:4px;">
+    <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;">
+      {% if event.hidden %}
+        <span style="font-size:0.7rem; background:#fee2e2; color:#991b1b; padding:1px 4px; border-radius:3px; font-weight:bold; border:1px solid #fecaca;">HIDDEN</span>
+      {% endif %}
+      {% if event.duplicate_of %}
+        <span style="font-size:0.7rem; background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:3px; font-weight:bold; border:1px solid #fde68a;" title="Merged into: {{ event.duplicate_of }}">MERGED</span>
+      {% endif %}
+      {% if event.categories %}
         {% for cat in event.categories %}
-          <span style="font-size:0.7rem; background:#eee; padding:1px 4px; border-radius:3px; margin-right:2px;">{{ cat }}</span>
+          <span style="font-size:0.7rem; background:#eee; padding:1px 4px; border-radius:3px;">{{ cat }}</span>
         {% endfor %}
-      </div>
-    {% endif %}
+      {% endif %}
+    </div>
   </td>
   <td>{{ event.date | default('') }}{% if event.end_date %} – {{ event.end_date }}{% endif %}</td>
   <td>{{ event.time | default('All day') }}</td>

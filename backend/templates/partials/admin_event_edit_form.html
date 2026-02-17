@@ -33,6 +33,14 @@
           Cost
           <input type="text" name="cost" value="{{ event.cost | default('') }}" class="form-control form-control-sm">
         </label>
+        <label style="display:flex;flex-direction:column;gap:2px;font-size:0.85rem;">
+          Duplicate of (GUID)
+          <input type="text" name="duplicate_of" value="{{ event.duplicate_of | default('') }}" class="form-control form-control-sm">
+        </label>
+        <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer;margin-top:1.2rem;">
+          <input type="checkbox" name="hidden" value="true" {% if event.hidden %}checked{% endif %}>
+          Hidden
+        </label>
       </div>
       <fieldset style="border:1px solid #ddd;border-radius:4px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">
         <legend style="font-size:0.85rem;font-weight:600;padding:0 0.25rem;">Categories</legend>

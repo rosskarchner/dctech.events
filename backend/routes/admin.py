@@ -258,6 +258,10 @@ def save_event_edit(event, jinja_env, guid):
         cats = [cats] if cats else []
     data['categories'] = cats
 
+    # Normalize checkbox and text fields
+    data['hidden'] = data.get('hidden') == 'true'
+    data['duplicate_of'] = data.get('duplicate_of', '').strip() or None
+
     manual = get_event_from_config(guid)
 
     if manual:
