@@ -4,7 +4,7 @@ Public API routes (no authentication required).
 
 import json
 
-from db import get_events_by_date, get_all_overrides, get_all_categories
+from db import get_all_events, get_all_overrides, get_all_categories
 
 
 def health(event, jinja_env):
@@ -21,12 +21,11 @@ def get_events(event, jinja_env):
     params = event.get('queryStringParameters') or {}
     date_prefix = params.get('date')
 
-    events = get_events_by_date(date_prefix)
-    events.sort(key=lambda x: (
-        str(x.get('date', '')),
-        str(x.get('time', '')),
-    ))
-
+    all_events = get_all_events(date_prefix)
+    
+    # Filter out hidden and duplicate events
+    events = [e for e in all_events if not e.get('hidden') and not e.get('duplicate_of')]
+    
     return {
         'statusCode': 200,
         'headers': {

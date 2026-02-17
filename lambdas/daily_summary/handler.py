@@ -142,6 +142,9 @@ def lambda_handler(event, context):
     print(f"Checking events for {target_date}...")
     
     all_events = db_utils.get_future_events()
+    # Filter out hidden and duplicate events
+    all_events = [e for e in all_events if not e.get('hidden') and not e.get('duplicate_of')]
+    
     events = get_events_for_date(all_events, target_date)
     in_person_events = [e for e in events if not is_virtual_event(e)]
     

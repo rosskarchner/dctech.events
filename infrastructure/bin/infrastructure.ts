@@ -74,4 +74,5 @@ new SocialPostingStack(app, `${stackConfig.stackName}-social-posting`, {
   env,
   microblogTokenSecretArn: secretsStack.microblogTokenSecret.secretArn,
   materializedTableArn: mainStack.eventsTable.tableArn,
+  configTableArn: dynamoStack.table.tableArn,
 });

@@ -108,6 +108,16 @@ export const stackConfig = {
     },
   },
 
+  // Notification configuration
+  notifications: {
+    adminEmail: 'ross@karchner.com',
+    // 8:30 AM EST is 13:30 PM UTC
+    queueSchedule: {
+      minute: '30',
+      hour: '13',
+    },
+  },
+
   // Chalice API configuration (legacy, used by lambda-api-stack)
   chalice: {
     mainApi: {

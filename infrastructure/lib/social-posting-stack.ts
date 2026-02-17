@@ -11,6 +11,7 @@ import * as path from 'path';
 export interface SocialPostingStackProps extends cdk.StackProps {
   microblogTokenSecretArn: string;
   materializedTableArn: string;
+  configTableArn: string;
 }
 
 export class SocialPostingStack extends cdk.Stack {
@@ -81,6 +82,26 @@ export class SocialPostingStack extends cdk.Stack {
       }),
     });
 
+    // 4. Queue Notification Lambda (Daily 8:30 AM EST)
+    const queueNotificationFn = new lambda.Function(this, 'QueueNotificationFunction', {
+      functionName: 'dctech-events-queue-notification',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'queue_notification/handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
+        exclude: ['.git', 'node_modules', '.beads', '.venv', 'infrastructure', 'build', 'static', '_cache', '_data', '__pycache__'],
+        bundling: bundlingOptions,
+      }),
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        CONFIG_TABLE_NAME: 'dctech-events',
+        ADMIN_EMAIL: stackConfig.notifications.adminEmail,
+      },
+      logGroup: new logs.LogGroup(this, 'QueueNotificationLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+    });
+
     // Grant permissions
     [newsletterFn, dailySummaryFn, newEventsSummaryFn].forEach(fn => {
       // Secret access
@@ -97,6 +118,19 @@ export class SocialPostingStack extends cdk.Stack {
         resources: [props.materializedTableArn, `${props.materializedTableArn}/index/*`],
       }));
     });
+
+    // Specific permissions for Queue Notification
+    queueNotificationFn.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['dynamodb:Query'],
+      resources: [props.configTableArn, `${props.configTableArn}/index/GSI1`],
+    }));
+
+    queueNotificationFn.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'], // Standard for SES when not using specific identities
+    }));
 
     // Schedules (All times are UTC)
     // 7 AM EST is 12:00 PM UTC
@@ -118,6 +152,13 @@ export class SocialPostingStack extends cdk.Stack {
       schedule: events.Schedule.expression('cron(30 2 * * ? *)'),
       targets: [new targets.LambdaFunction(newEventsSummaryFn)],
       description: 'Trigger daily new events summary post to Micro.blog (Daily 9:30 PM EST)',
+    });
+
+    // 8:30 AM EST is 13:30 PM UTC
+    new events.Rule(this, 'QueueNotificationScheduleRule', {
+      schedule: events.Schedule.expression('cron(30 13 * * ? *)'),
+      targets: [new targets.LambdaFunction(queueNotificationFn)],
+      description: 'Trigger daily submission queue email notification (Daily 8:30 AM EST)',
     });
 
     // Apply tags

@@ -82,9 +82,9 @@ def get_events(include_hidden=False):
     # Ensure date and time are strings
     events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
 
-    # Filter out hidden events unless explicitly requested
+    # Filter out hidden and duplicate events unless explicitly requested
     if not include_hidden:
-        events = [e for e in events if not e.get('hidden', False)]
+        events = [e for e in events if not e.get('hidden', False) and not e.get('duplicate_of')]
 
     return events
 
@@ -1236,7 +1236,11 @@ def rss_feed():
     """
     Generate RSS feed of recently added events.
     """
-    recent_events = db_utils.get_recently_added(limit=50)
+    recent_events = db_utils.get_recently_added(limit=100)
+    
+    # Filter out hidden and duplicate events
+    recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')][:50]
+    
     feed_title = f"{SITE_NAME} - New Events"
     feed_description = "Recently added events"
     feed_link = BASE_URL
@@ -1246,7 +1250,9 @@ def get_recently_added_events(limit=5):
     """
     Get the N most recently added events from DynamoDB.
     """
-    return db_utils.get_recently_added(limit)
+    events = db_utils.get_recently_added(limit=limit * 2)  # Get extra to allow for filtering
+    filtered = [e for e in events if not e.get('hidden') and not e.get('duplicate_of')]
+    return filtered[:limit]
 
 @app.route('/just-added/')
 def just_added():
@@ -1254,6 +1260,9 @@ def just_added():
     Display the three most recent days with newly added events.
     """
     recent_events = db_utils.get_recently_added(limit=100)
+    
+    # Filter out hidden and duplicate events
+    recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')]
     
     if not recent_events:
         return render_template('just_added.html',

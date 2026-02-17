@@ -41,6 +41,9 @@ def get_microblog_token(secret_name):
 def get_todays_new_events(target_date):
     """Get events added on target date."""
     recent_events = db_utils.get_recently_added(limit=100)
+    # Filter out hidden and duplicate events
+    recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')]
+    
     new_events = []
     
     for event in recent_events:
