@@ -117,7 +117,7 @@ def post_to_microblog(content, token, destination=None):
     data = {'h': 'entry', 'content': content}
     
     # Always try to resolve the UID for the destination
-    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events')
+    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events/')
     data['mp-destination'] = target_destination
 
     try:
@@ -160,6 +160,6 @@ def lambda_handler(event, context):
         return {'statusCode': 200, 'body': 'Could not generate post text'}
 
     print(f"Posting: {post_text}")
-    success = post_to_microblog(post_text, token, destination='https://updates.dctech.events')
+    success = post_to_microblog(post_text, token, destination='https://updates.dctech.events/')
     
     return {'statusCode': 200 if success else 500, 'body': 'Success' if success else 'Failed'}

@@ -21,17 +21,13 @@ def get_micropub_destination(token, target_url='https://updates.dctech.events'):
             return target_url
             
         for dest in destinations:
-            # Check if the URL matches (Micro.blog might return with or without trailing slash)
-            dest_url = dest.get('url', '').rstrip('/')
-            clean_target = target_url.rstrip('/')
-            
-            if dest_url == clean_target:
+            if dest.get('url') == target_url:
                 uid = dest.get('uid')
                 if uid:
                     print(f"Found destination UID: {uid} for {target_url}")
                     return uid
         
-        print(f"Could not find destination UID for {target_url} in config.")
+        print(f"Could not find exact destination match for {target_url} in config.")
         return target_url
         
     except Exception as e:

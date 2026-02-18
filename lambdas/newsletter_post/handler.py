@@ -72,7 +72,7 @@ def post_to_microblog(content, token, destination=None):
     }
 
     # Always try to resolve the UID for the destination
-    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events')
+    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events/')
     data['mp-destination'] = target_destination
 
     try:
@@ -124,7 +124,7 @@ def lambda_handler(event, context):
     success = post_to_microblog(
         content=content,
         token=token,
-        destination='https://updates.dctech.events'
+        destination='https://updates.dctech.events/'
     )
 
     if success:
