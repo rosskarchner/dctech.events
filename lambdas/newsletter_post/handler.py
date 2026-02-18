@@ -5,6 +5,11 @@ import requests
 import yaml
 from datetime import datetime, timedelta
 import pytz
+import sys
+
+# Add current directory to path
+sys.path.append(os.path.dirname(__file__))
+from common.microblog import get_micropub_destination
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -66,8 +71,9 @@ def post_to_microblog(content, token, destination=None):
         'content': content,
     }
 
-    if destination:
-        data['mp-destination'] = destination
+    # Always try to resolve the UID for the destination
+    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events')
+    data['mp-destination'] = target_destination
 
     try:
         response = requests.post(

@@ -7,9 +7,10 @@ from datetime import datetime
 import pytz
 import sys
 
-# Add current directory to path so we can import db_utils
+# Add current directory to path so we can import db_utils and common
 sys.path.append(os.path.dirname(__file__))
 import db_utils
+from common.microblog import get_micropub_destination
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -114,8 +115,10 @@ def post_to_microblog(content, token, destination=None):
     """Post a note to micro.blog."""
     headers = {'Authorization': f'Bearer {token}'}
     data = {'h': 'entry', 'content': content}
-    if destination:
-        data['mp-destination'] = destination
+    
+    # Always try to resolve the UID for the destination
+    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events')
+    data['mp-destination'] = target_destination
 
     try:
         response = requests.post(MICROPUB_ENDPOINT, data=data, headers=headers, timeout=30)
