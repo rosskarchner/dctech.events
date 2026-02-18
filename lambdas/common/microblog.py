@@ -1,4 +1,5 @@
 import requests
+import json
 
 def get_micropub_destination(token, target_url='https://updates.dctech.events'):
     """
@@ -16,6 +17,8 @@ def get_micropub_destination(token, target_url='https://updates.dctech.events'):
         config = resp.json()
         
         destinations = config.get('destination', [])
+        print(f"Available Micro.blog destinations: {json.dumps(destinations, indent=2)}")
+        
         if not destinations:
             print("No destinations found in Micro.blog config.")
             return target_url

@@ -79,6 +79,10 @@ def post_to_microblog(content, token, destination=None):
     target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events/')
     data['mp-destination'] = target_destination
 
+    print(f"DRY RUN: Skipping actual post to Micro.blog. Target destination: {target_destination}")
+    print(f"Post data: {json.dumps(data, indent=2)}")
+    return True
+
     try:
         response = requests.post(MICROPUB_ENDPOINT, data=data, headers=headers, timeout=30)
         if response.status_code >= 500:
