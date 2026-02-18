@@ -144,6 +144,7 @@ async function ensureValidToken() {
 
 function getLoginUrl(returnPath) {
   const state = returnPath || '/submit-event.html';
+  sessionStorage.setItem('oauth_state', state);
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: AUTH_CONFIG.userPoolClientId,

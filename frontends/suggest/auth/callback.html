@@ -49,7 +49,8 @@
       // Validate state parameter to prevent CSRF attacks
       const savedState = sessionStorage.getItem('oauth_state');
       if (!state || state !== savedState) {
-        showError('Invalid state parameter. Possible CSRF attack.');
+        console.warn('State mismatch:', { received: state, expected: savedState });
+        showError('Invalid state parameter. Your session may have expired. Please try signing in again from the home page.');
         return;
       }
       sessionStorage.removeItem('oauth_state');
