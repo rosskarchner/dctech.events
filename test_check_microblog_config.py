@@ -46,11 +46,11 @@ class TestMicroblogConfig(unittest.TestCase):
         self.assertEqual(result, 0)  # Changed from 1 to 0 - it's now OK to not set it
         self.assertIn('not set', output)
         self.assertIn('Will use default', output)
-        self.assertIn('https://updates.dctech.events/', output)
+        self.assertIn('https://updates.dctech.events', output)
 
     def test_destination_correct(self):
         """Test behavior when MICROBLOG_DESTINATION is correct."""
-        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events/'
+        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events'
         
         with patch('sys.stdout', new=StringIO()) as fake_out:
             result = check_microblog_config.check_microblog_destination()
@@ -93,6 +93,17 @@ class TestMicroblogConfig(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertIn('unexpected value', output)
 
+    def test_destination_with_trailing_slash(self):
+        """Test that destination with trailing slash is rejected."""
+        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events/'
+        
+        with patch('sys.stdout', new=StringIO()) as fake_out:
+            result = check_microblog_config.check_microblog_destination()
+            output = fake_out.getvalue()
+        
+        self.assertEqual(result, 1)
+        self.assertIn('wrong blog', output)
+
     def test_token_not_set(self):
         """Test behavior when MB_TOKEN is not set."""
         with patch('sys.stdout', new=StringIO()) as fake_out:
@@ -126,7 +137,7 @@ class TestMicroblogConfig(unittest.TestCase):
 
     def test_main_all_correct(self):
         """Test main function with all configuration correct."""
-        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events/'
+        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events'
         os.environ['MB_TOKEN'] = 'this-is-a-valid-token-with-enough-characters'
         
         with patch('sys.stdout', new=StringIO()) as fake_out:

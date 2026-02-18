@@ -6,7 +6,7 @@ This script checks that the MICROBLOG_DESTINATION environment variable
 is set to the correct value for dctech.events posts.
 
 Usage:
-    export MICROBLOG_DESTINATION="https://updates.dctech.events/"
+    export MICROBLOG_DESTINATION="https://updates.dctech.events"
     python check_microblog_config.py
 """
 
@@ -14,10 +14,11 @@ import os
 import sys
 
 # Expected configuration
-EXPECTED_DESTINATION = "https://updates.dctech.events/"
+EXPECTED_DESTINATION = "https://updates.dctech.events"
 INCORRECT_DESTINATIONS = [
     "https://ross.karchner.com/",
     "https://ross.karchner.com",
+    "https://updates.dctech.events/",  # Trailing slash is incorrect
 ]
 
 
