@@ -32,7 +32,10 @@
       <span class="spinner"></span> Loading your submissions...
     </div>
 
-    <div id="submissions-list">
+    <div id="submissions-list"
+         hx-get="/my-submissions"
+         hx-trigger="load"
+         hx-indicator="#loading-indicator">
       <!-- HTMX will load submissions here -->
     </div>
 
@@ -47,22 +50,6 @@
   <script src="js/auth.js"></script>
   <script>
     DctechAuth.requireAuth();
-    const token = DctechAuth.getIdToken();
-    const submissionsList = document.getElementById('submissions-list');
-    document.getElementById('loading-indicator').style.display = 'block';
-    
-    htmx.ajax('GET', 'https://next.dctech.events/my-submissions', {
-      target: '#submissions-list',
-      swap: 'innerHTML',
-      headers: { 'Authorization': 'Bearer ' + token }
-    }).then(() => {
-      console.log('Submissions loaded successfully');
-    }).catch((err) => {
-      console.error('Failed to load submissions:', err);
-      submissionsList.innerHTML = '<div class="message message-error"><p>Error loading submissions. Please try again later.</p></div>';
-    }).finally(() => {
-      document.getElementById('loading-indicator').style.display = 'none';
-    });
   </script>
 </body>
 </html>
