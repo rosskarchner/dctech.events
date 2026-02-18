@@ -48,11 +48,18 @@
   <script>
     DctechAuth.requireAuth();
     const token = DctechAuth.getIdToken();
+    const submissionsList = document.getElementById('submissions-list');
     document.getElementById('loading-indicator').style.display = 'block';
+    
     htmx.ajax('GET', 'https://next.dctech.events/my-submissions', {
       target: '#submissions-list',
       swap: 'innerHTML',
       headers: { 'Authorization': 'Bearer ' + token }
+    }).then(() => {
+      console.log('Submissions loaded successfully');
+    }).catch((err) => {
+      console.error('Failed to load submissions:', err);
+      submissionsList.innerHTML = '<div class="message message-error"><p>Error loading submissions. Please try again later.</p></div>';
     }).finally(() => {
       document.getElementById('loading-indicator').style.display = 'none';
     });

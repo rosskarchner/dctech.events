@@ -48,7 +48,7 @@ def _get_materialized_table():
 
 # ─── DRAFT operations ─────────────────────────────────────────────
 
-def create_draft(draft_type, data, submitter_email):
+def create_draft(draft_type, data, submitter_email, submitter_id=None):
     """Create a new DRAFT entity (pending submission)."""
     table = _get_table()
     draft_id = str(uuid.uuid4())[:8]
@@ -60,15 +60,19 @@ def create_draft(draft_type, data, submitter_email):
         if field in sanitized_data and not is_safe_url(sanitized_data[field]):
             sanitized_data[field] = ''
 
+    # We use sub (submitter_id) for indexing if available, otherwise email
+    user_id = submitter_id or submitter_email
+
     item = {
         'PK': f'DRAFT#{draft_id}',
         'SK': 'META',
         'GSI1PK': 'STATUS#pending',
         'GSI1SK': now,
-        'GSI3PK': f'USER#{submitter_email}',  # For querying by submitter
+        'GSI3PK': f'USER#{user_id}',  # For querying by submitter
         'GSI3SK': now,  # Sort by creation time
         'draft_type': draft_type,
         'submitter_email': submitter_email,
+        'submitter_id': submitter_id,
         'created_at': now,
         'status': 'pending',
         **{k: v for k, v in sanitized_data.items() if v is not None},
@@ -101,15 +105,17 @@ def get_drafts_by_status(status='pending'):
     return [_draft_item_to_dict(item) for item in items]
 
 
-def get_drafts_by_submitter(submitter_email):
-    """Get all drafts submitted by a specific user."""
+def get_drafts_by_submitter(user_id):
+    """Get all drafts submitted by a specific user (by sub or email)."""
+    if not user_id:
+        return []
     table = _get_table()
     items = []
 
-    # Use GSI3 to efficiently query by submitter email
+    # Use GSI3 to efficiently query by user identifier
     response = table.query(
         IndexName='GSI3',
-        KeyConditionExpression=Key('GSI3PK').eq(f'USER#{submitter_email}'),
+        KeyConditionExpression=Key('GSI3PK').eq(f'USER#{user_id}'),
         ScanIndexForward=False,  # Most recent first
     )
     items.extend(response.get('Items', []))
@@ -117,7 +123,7 @@ def get_drafts_by_submitter(submitter_email):
     while 'LastEvaluatedKey' in response:
         response = table.query(
             IndexName='GSI3',
-            KeyConditionExpression=Key('GSI3PK').eq(f'USER#{submitter_email}'),
+            KeyConditionExpression=Key('GSI3PK').eq(f'USER#{user_id}'),
             ScanIndexForward=False,
             ExclusiveStartKey=response['LastEvaluatedKey'],
         )
