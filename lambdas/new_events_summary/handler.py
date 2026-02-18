@@ -70,18 +70,14 @@ def generate_summary_content(count, target_date):
     event_word = 'event' if count == 1 else 'events'
     return f"{count} new {event_word} added today: {url}"
 
-def post_to_microblog(content, token, destination=None):
+def post_to_microblog(content, token):
     """Post to micro.blog."""
     headers = {'Authorization': f'Bearer {token}'}
     data = {'h': 'entry', 'content': content}
     
     # Always try to resolve the UID for the destination
-    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events/')
+    target_destination = get_micropub_destination(token)
     data['mp-destination'] = target_destination
-
-    print(f"DRY RUN: Skipping actual post to Micro.blog. Target destination: {target_destination}")
-    print(f"Post data: {json.dumps(data, indent=2)}")
-    return True
 
     try:
         response = requests.post(MICROPUB_ENDPOINT, data=data, headers=headers, timeout=30)
@@ -111,6 +107,6 @@ def lambda_handler(event, context):
 
     content = generate_summary_content(len(new_events), target_date)
     print(f"Posting: {content}")
-    success = post_to_microblog(content, token, destination='https://updates.dctech.events/')
+    success = post_to_microblog(content, token)
     
     return {'statusCode': 200 if success else 500, 'body': 'Success' if success else 'Failed'}

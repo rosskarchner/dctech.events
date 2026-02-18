@@ -14,11 +14,12 @@ import os
 import sys
 
 # Expected configuration
-EXPECTED_DESTINATION = "https://updates.dctech.events"
+EXPECTED_DESTINATION = "https://dctechevents.micro.blog/"
 INCORRECT_DESTINATIONS = [
     "https://ross.karchner.com/",
     "https://ross.karchner.com",
-    "https://updates.dctech.events/",  # Trailing slash is incorrect
+    "https://updates.dctech.events",
+    "https://updates.dctech.events/",
 ]
 
 

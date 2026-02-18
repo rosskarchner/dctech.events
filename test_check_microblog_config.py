@@ -46,11 +46,11 @@ class TestMicroblogConfig(unittest.TestCase):
         self.assertEqual(result, 0)  # Changed from 1 to 0 - it's now OK to not set it
         self.assertIn('not set', output)
         self.assertIn('Will use default', output)
-        self.assertIn('https://updates.dctech.events', output)
+        self.assertIn('https://dctechevents.micro.blog/', output)
 
     def test_destination_correct(self):
         """Test behavior when MICROBLOG_DESTINATION is correct."""
-        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events'
+        os.environ['MICROBLOG_DESTINATION'] = 'https://dctechevents.micro.blog/'
         
         with patch('sys.stdout', new=StringIO()) as fake_out:
             result = check_microblog_config.check_microblog_destination()
@@ -137,7 +137,7 @@ class TestMicroblogConfig(unittest.TestCase):
 
     def test_main_all_correct(self):
         """Test main function with all configuration correct."""
-        os.environ['MICROBLOG_DESTINATION'] = 'https://updates.dctech.events'
+        os.environ['MICROBLOG_DESTINATION'] = 'https://dctechevents.micro.blog/'
         os.environ['MB_TOKEN'] = 'this-is-a-valid-token-with-enough-characters'
         
         with patch('sys.stdout', new=StringIO()) as fake_out:

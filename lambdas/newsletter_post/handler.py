@@ -59,7 +59,7 @@ def generate_note_content(target_date):
     week_url = get_week_url(target_date)
     return f"{SITE_NAME} for the week of {short_date}: {week_url}"
 
-def post_to_microblog(content, token, destination=None):
+def post_to_microblog(content, token):
     """Post a note to micro.blog using form-encoded Micropub."""
     headers = {
         'Authorization': f'Bearer {token}',
@@ -72,12 +72,8 @@ def post_to_microblog(content, token, destination=None):
     }
 
     # Always try to resolve the UID for the destination
-    target_destination = get_micropub_destination(token, destination or 'https://updates.dctech.events/')
+    target_destination = get_micropub_destination(token)
     data['mp-destination'] = target_destination
-
-    print(f"DRY RUN: Skipping actual post to Micro.blog. Target destination: {target_destination}")
-    print(f"Post data: {json.dumps(data, indent=2)}")
-    return True
 
     try:
         response = requests.post(
@@ -127,8 +123,7 @@ def lambda_handler(event, context):
     # Post to micro.blog
     success = post_to_microblog(
         content=content,
-        token=token,
-        destination='https://updates.dctech.events/'
+        token=token
     )
 
     if success:
