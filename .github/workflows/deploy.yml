@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ${{ vars.AWS_REGION }}
   AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
 
 jobs:
@@ -99,23 +99,11 @@ jobs:
 
       - name: Invalidate CloudFront Cache
         run: |
-          echo "Finding distribution IDs..."
-          SUGGEST_DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items!=null && contains(Aliases.Items, 'suggest.dctech.events')].Id" --output text)
-          MANAGE_DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items!=null && contains(Aliases.Items, 'manage.dctech.events')].Id" --output text)
+          echo "Invalidating suggest.dctech.events (${{ vars.SUGGEST_DIST_ID }})..."
+          aws cloudfront create-invalidation --distribution-id ${{ vars.SUGGEST_DIST_ID }} --paths "/*"
           
-          if [ -n "$SUGGEST_DIST_ID" ]; then
-            echo "Invalidating suggest.dctech.events ($SUGGEST_DIST_ID)..."
-            aws cloudfront create-invalidation --distribution-id "$SUGGEST_DIST_ID" --paths "/*"
-          else
-            echo "⚠️ Warning: Could not find CloudFront distribution for suggest.dctech.events"
-          fi
-          
-          if [ -n "$MANAGE_DIST_ID" ]; then
-            echo "Invalidating manage.dctech.events ($MANAGE_DIST_ID)..."
-            aws cloudfront create-invalidation --distribution-id "$MANAGE_DIST_ID" --paths "/*"
-          else
-            echo "⚠️ Warning: Could not find CloudFront distribution for manage.dctech.events"
-          fi
+          echo "Invalidating manage.dctech.events (${{ vars.MANAGE_DIST_ID }})..."
+          aws cloudfront create-invalidation --distribution-id ${{ vars.MANAGE_DIST_ID }} --paths "/*"
 
       - name: Trigger Main Site Rebuild
         run: |
