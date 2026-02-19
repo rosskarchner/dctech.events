@@ -19,7 +19,37 @@ env:
   AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
 
 jobs:
-  deploy:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      site: ${{ steps.filter.outputs.site }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            infra:
+              - 'infrastructure/**'
+            frontend:
+              - 'frontends/**'
+            backend:
+              - 'backend/**'
+              - 'lambdas/**'
+            site:
+              - 'templates/**'
+              - 'app.py'
+              - 'freeze.py'
+              - 'generate_*.py'
+              - 'track_events.py'
+              - 'refresh_calendars.py'
+
+  deploy-infra:
+    needs: changes
+    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,51 +60,17 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            infrastructure/package-lock.json
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
+          cache-dependency-path: infrastructure/package-lock.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Build and cache RebuildWorker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: lambdas/rebuild_worker/Dockerfile
-          push: false
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: dctech-events-rebuild-worker:latest
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          # Warm the pip cache with all relevant requirements files
-          python -m pip install --upgrade pip
-          for req in requirements.txt backend/requirements.txt lambdas/rebuild_worker/requirements.txt lambdas/social_posting_requirements.txt; do
-            if [ -f "$req" ]; then
-              echo "Warming cache for $req..."
-              pip install -r "$req"
-            fi
-          done
-
-      - name: Build JavaScript bundles
-        run: npm run build
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-deploy
+          role-session-name: github-actions-deploy-infra
 
       - name: Install Infrastructure dependencies
         run: |
@@ -82,12 +78,27 @@ jobs:
           npm ci
 
       - name: Deploy Stacks via CDK
-        id: cdk-deploy
         env:
           DOCKER_BUILDKIT: '1'
         run: |
           cd infrastructure
+          # Only run CDK if infra or backend code changed
           npx cdk deploy --all --require-approval never
+
+  deploy-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-deploy-frontend
 
       - name: Sync Frontend Apps to S3
         run: |
@@ -105,10 +116,24 @@ jobs:
           echo "Invalidating manage.dctech.events (${{ vars.MANAGE_DIST_ID }})..."
           aws cloudfront create-invalidation --distribution-id ${{ vars.MANAGE_DIST_ID }} --paths "/*"
 
+  trigger-rebuild:
+    needs: [changes, deploy-infra]
+    # Rebuild if the site content changed OR if we just updated the infrastructure/lambdas
+    if: |
+      always() && 
+      (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.infra == 'true') &&
+      (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-trigger-rebuild
+
       - name: Trigger Main Site Rebuild
         run: |
-          # Trigger a rebuild to pick up any code/template changes
-          # We do this by sending a message to the SQS queue
           QUEUE_URL=$(aws sqs get-queue-url --queue-name dctech-events-rebuild.fifo --region ${{ env.AWS_REGION }} --query "QueueUrl" --output text)
           
           if [ -z "$QUEUE_URL" ]; then
@@ -126,11 +151,3 @@ jobs:
             --message-deduplication-id "$DEDUP_ID"
           
           echo "Sent rebuild trigger to SQS (dedup_id: $DEDUP_ID)"
-
-      - name: Deployment summary
-        if: success()
-        run: |
-          echo "✅ Deployment successful!"
-          echo "🌐 Site: https://dctech.events"
-          echo "🛠️ Admin: https://manage.dctech.events"
-          echo "📝 Suggest: https://suggest.dctech.events"
