@@ -291,8 +291,8 @@ def _event_item_to_dict(item):
     return event
 
 
-def get_all_events(date_prefix=None):
-    """Query DcTechEvents materialized table for active events, optionally filtered by YYYY-MM prefix."""
+def get_all_events(date_prefix=None, filter_type=None):
+    """Query DcTechEvents materialized table for active events, optionally filtered by YYYY-MM prefix or other filters."""
     from datetime import date as _date
     table = _get_materialized_table()
     items = []
@@ -317,8 +317,15 @@ def get_all_events(date_prefix=None):
         response = table.query(**query_kwargs, ExclusiveStartKey=response['LastEvaluatedKey'])
         items.extend(response.get('Items', []))
 
+    # Convert to dicts first
+    results = [_materialized_event_to_dict(item) for item in items]
+
+    # Apply additional Python filters
+    if filter_type == 'uncategorized':
+        results = [e for e in results if not e.get('categories')]
+
     return sorted(
-        [_materialized_event_to_dict(item) for item in items],
+        results,
         key=lambda x: (str(x.get('date', '') or ''), str(x.get('time', '') or '')),
     )
 

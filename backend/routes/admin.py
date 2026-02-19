@@ -225,12 +225,14 @@ def get_events(event, jinja_env):
 
     params = event.get('queryStringParameters') or {}
     date_prefix = params.get('date', '').strip() or None
+    filter_type = params.get('filter', '').strip() or None
 
-    events = get_all_events(date_prefix)
+    events = get_all_events(date_prefix, filter_type)
     all_categories = get_all_categories()
 
     template = jinja_env.get_template('partials/admin_events.html')
     html = template.render(events=events, date_filter=date_prefix or '',
+                           filter_type=filter_type,
                            all_categories=all_categories)
     return _html(200, html, event)
 
@@ -387,20 +389,27 @@ def handle_bulk_action(event, jinja_env):
         return _html(400, f'<p>Unknown action: {action}</p>', event)
 
     # After bulk action, reload the event list
-    # The date filter might be in query params (GET) or body (POST from bulk include)
+    # Parameters might be in query params (GET) or body (POST from bulk include)
     date_prefix = data.get('date', '').strip()
+    filter_type = data.get('filter', '').strip()
+    
+    params = event.get('queryStringParameters') or {}
     if not date_prefix:
-        params = event.get('queryStringParameters') or {}
         date_prefix = params.get('date', '').strip()
+    if not filter_type:
+        filter_type = params.get('filter', '').strip()
     
     if not date_prefix:
         date_prefix = None
+    if not filter_type:
+        filter_type = None
         
-    events = get_all_events(date_prefix)
+    events = get_all_events(date_prefix, filter_type)
     all_categories = get_all_categories()
     
     template = jinja_env.get_template('partials/admin_events.html')
     html = template.render(events=events, date_filter=date_prefix or '',
+                           filter_type=filter_type,
                            all_categories=all_categories)
     
     # We add a success message header
