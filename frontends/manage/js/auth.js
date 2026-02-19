@@ -1,3 +1,4 @@
+(function() {
 /**
  * Auth utilities for manage.dctech.events
  *
@@ -293,3 +294,4 @@ window.isAdmin = isAdmin;
 window.setTokens = setTokens;
 window.clearTokens = clearTokens;
 window.base64UrlDecode = base64UrlDecode;
+})();

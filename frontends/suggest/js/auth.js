@@ -1,3 +1,4 @@
+(function() {
 /**
  * Cognito Authentication Module for suggest.dctech.events
  *
@@ -267,11 +268,15 @@ function requireAuth() {
 // ---- Initialization ----
 
 function initAuth() {
-  setupHtmxAuth();
   updateAuthUI();
 }
 
-// Auto-initialize when DOM is ready
+// Register HTMX listeners immediately (before body is parsed) so that
+// hx-trigger="load" requests fired by HTMX already have auth headers
+// and the correct API base URL.
+setupHtmxAuth();
+
+// Auto-initialize UI when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAuth);
 } else {
@@ -294,3 +299,4 @@ window.DctechAuth = {
   updateAuthUI,
   storeTokens,
 };
+})();
