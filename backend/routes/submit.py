@@ -91,8 +91,29 @@ def submit_event(event, jinja_env):
 
 def _submit_event(event, data, submitter, jinja_env, submitter_id=None):
     """Handle event submission."""
-    # ... [no changes to title/date validation] ...
-    # ... [no changes to time string building] ...
+    title = data.get('title', '').strip()
+    date_val = data.get('date', '').strip()
+    timing = data.get('timing', 'specific')
+
+    if not title or not date_val:
+        template = jinja_env.get_template('partials/submit_error.html')
+        html = template.render(error='Event title and date are required.')
+        return _html(400, html, event)
+
+    # Build 24-hour time string from hour/minute/ampm fields
+    time_str = None
+    if timing == 'specific':
+        hour = data.get('time_hour', '')
+        minute = data.get('time_minute', '00')
+        ampm = data.get('time_ampm', 'PM')
+        if hour:
+            h = int(hour)
+            if ampm == 'PM' and h != 12:
+                h += 12
+            elif ampm == 'AM' and h == 12:
+                h = 0
+            time_str = f'{h:02d}:{minute}'
+
     draft_data = {
         'title': title,
         'date': date_val,
