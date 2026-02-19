@@ -163,7 +163,7 @@ export class LambdaApiStack extends cdk.Stack {
     // Create Lambda integration
     const lambdaIntegration = new apigateway.LambdaIntegration(this.apiFunction, {
       proxy: true,
-      allowTestInvoke: true,
+      allowTestInvoke: false,
     });
 
     // Add routes
@@ -200,104 +200,19 @@ export class LambdaApiStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
-    // Admin routes
+    // Admin routes — use {proxy+} to avoid Lambda policy size limit from per-method permissions
     const admin = api.root.addResource('admin');
-    admin.addMethod('GET', lambdaIntegration, {
+    admin.addMethod('ANY', lambdaIntegration, {
       authorizer: authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
-
-    const queue = admin.addResource('queue');
-    queue.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const draft = admin.addResource('draft');
-    const draftId = draft.addResource('{draft_id}');
-    draftId.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-    draftId.addMethod('PUT', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const approve = draftId.addResource('approve');
-    approve.addMethod('POST', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const approveForm = draftId.addResource('approve-form');
-    approveForm.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const draftRow = draftId.addResource('row');
-    draftRow.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const reject = draftId.addResource('reject');
-    reject.addMethod('POST', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminGroups = admin.addResource('groups');
-    adminGroups.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminGroupSlug = adminGroups.addResource('{slug}');
-    adminGroupSlug.addMethod('PUT', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminGroupEdit = adminGroupSlug.addResource('edit');
-    adminGroupEdit.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminEvents = admin.addResource('events');
-    adminEvents.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminEventGuid = adminEvents.addResource('{guid}');
-    adminEventGuid.addMethod('PUT', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminEventEdit = adminEventGuid.addResource('edit');
-    adminEventEdit.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const adminOverrides = admin.addResource('overrides');
-    adminOverrides.addMethod('GET', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-    adminOverrides.addMethod('POST', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
-    const overrideGuid = adminOverrides.addResource('{guid}');
-    overrideGuid.addMethod('DELETE', lambdaIntegration, {
-      authorizer: authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
+    const adminProxy = admin.addProxy({
+      defaultIntegration: lambdaIntegration,
+      defaultMethodOptions: {
+        authorizer: authorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+      anyMethod: true,
     });
 
     this.apiEndpoint = api.url;
