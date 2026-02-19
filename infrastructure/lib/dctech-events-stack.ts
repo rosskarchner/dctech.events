@@ -234,9 +234,7 @@ function handler(event) {
           new iam.PolicyStatement({
             actions: ['cloudfront:CreateInvalidation'],
             resources: [
-              `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${
-                this.distribution.distributionId
-              }`,
+              `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/*`,
             ],
           }),
           new iam.PolicyStatement({
