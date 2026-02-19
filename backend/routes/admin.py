@@ -115,8 +115,8 @@ def get_draft(event, jinja_env, draft_id):
     return _html(200, html, event)
 
 
-def approve_draft(event, jinja_env, draft_id):
-    """POST /admin/draft/{id}/approve — approve and return updated row."""
+def get_approve_form(event, jinja_env, draft_id):
+    """GET /admin/draft/{id}/approve-form — inline category selection form."""
     claims, err = _admin_check(event)
     if err:
         return err
@@ -125,10 +125,48 @@ def approve_draft(event, jinja_env, draft_id):
     if not draft:
         return _html(404, '<p>Draft not found</p>', event)
 
+    categories = sorted(get_all_categories().values(), key=lambda c: c.get('name', c['slug']))
+    template = jinja_env.get_template('partials/draft_approve_form.html')
+    html = template.render(draft=draft, categories=categories)
+    return _html(200, html, event)
+
+
+def get_draft_row(event, jinja_env, draft_id):
+    """GET /admin/draft/{id}/row — single draft row (used by cancel in approve form)."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    draft = db_get_draft(draft_id)
+    if not draft:
+        return _html(404, '<tr><td colspan="5">Draft not found</td></tr>', event)
+
+    template = jinja_env.get_template('partials/draft_row.html')
+    html = template.render(draft=draft)
+    return _html(200, html, event)
+
+
+def approve_draft(event, jinja_env, draft_id):
+    """POST /admin/draft/{id}/approve — approve with optional categories."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    draft = db_get_draft(draft_id)
+    if not draft:
+        return _html(404, '<p>Draft not found</p>', event)
+
+    # Apply any categories submitted via the approve form
+    data = _parse_body(event)
+    cats = data.get('categories', None)
+    if cats is not None:
+        if isinstance(cats, str):
+            cats = [cats] if cats else []
+        draft['categories'] = cats
+
     reviewer = claims.get('email', '')
     update_draft_status(draft_id, 'approved', reviewer)
 
-    # Promote event drafts to EVENT# entities so they appear in the API
     if draft.get('draft_type') == 'event':
         promote_draft_to_event(draft)
 

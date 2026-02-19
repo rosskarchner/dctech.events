@@ -230,6 +230,18 @@ export class LambdaApiStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    const approveForm = draftId.addResource('approve-form');
+    approveForm.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
+    const draftRow = draftId.addResource('row');
+    draftRow.addMethod('GET', lambdaIntegration, {
+      authorizer: authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+
     const reject = draftId.addResource('reject');
     reject.addMethod('POST', lambdaIntegration, {
       authorizer: authorizer,
@@ -352,7 +364,7 @@ export class LambdaApiStack extends cdk.Stack {
           accessControlAllowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
           accessControlAllowHeaders: ['Content-Type', 'Authorization', 'HX-Request', 'HX-Trigger', 'HX-Trigger-Name', 'HX-Target', 'HX-Current-URL'],
           accessControlAllowCredentials: false,
-          originOverride: true,
+          originOverride: false,
         },
       });
 

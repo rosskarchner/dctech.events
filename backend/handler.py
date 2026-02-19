@@ -142,6 +142,14 @@ def lambda_handler(event, context):
             draft_id = path.split('/')[3]
             return add_cors(admin.approve_draft(event, jinja_env, draft_id))
 
+        if path.startswith('/admin/draft/') and path.endswith('/approve-form') and http_method == 'GET':
+            draft_id = path.split('/')[3]
+            return add_cors(admin.get_approve_form(event, jinja_env, draft_id))
+
+        if path.startswith('/admin/draft/') and path.endswith('/row') and http_method == 'GET':
+            draft_id = path.split('/')[3]
+            return add_cors(admin.get_draft_row(event, jinja_env, draft_id))
+
         if path.startswith('/admin/draft/') and path.endswith('/reject') and http_method == 'POST':
             draft_id = path.split('/')[3]
             return add_cors(admin.reject_draft(event, jinja_env, draft_id))

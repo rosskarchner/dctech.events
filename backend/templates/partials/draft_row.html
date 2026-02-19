@@ -11,10 +11,9 @@
   <td>{{ draft.submitter_email | default('') }}</td>
   <td>{{ draft.created_at | default('') }}</td>
   <td>
-    <button hx-post="https://next.dctech.events/admin/draft/{{ draft.id }}/approve"
+    <button hx-get="https://next.dctech.events/admin/draft/{{ draft.id }}/approve-form"
             hx-target="#draft-{{ draft.id }}"
-            hx-swap="outerHTML"
-            hx-confirm="Approve this submission?">
+            hx-swap="outerHTML">
       Approve
     </button>
     <button hx-post="https://next.dctech.events/admin/draft/{{ draft.id }}/reject"

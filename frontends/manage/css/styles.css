@@ -532,3 +532,52 @@ select.form-control {
     align-items: stretch;
   }
 }
+
+/* Inline approve form */
+.approve-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.approve-form-header {
+  font-size: 0.95rem;
+}
+
+.approve-form-submitter {
+  margin-left: 0.5rem;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.approve-form-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.approve-form-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  align-items: center;
+}
+
+.category-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.approve-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.approve-form-row td {
+  background: #f0fdf4;
+  border-top: 2px solid #22c55e;
+}

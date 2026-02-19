@@ -1,0 +1,35 @@
+<tr id="draft-{{ draft.id }}" class="approve-form-row">
+  <td colspan="5">
+    <form hx-post="https://next.dctech.events/admin/draft/{{ draft.id }}/approve"
+          hx-target="#draft-{{ draft.id }}"
+          hx-swap="outerHTML">
+      <div class="approve-form">
+        <div class="approve-form-header">
+          <strong>Approving:</strong>
+          {{ draft.title | default('Untitled') }}
+          {% if draft.date %}&mdash; {{ draft.date }}{% endif %}
+          <span class="approve-form-submitter">submitted by {{ draft.submitter_email | default('unknown') }}</span>
+        </div>
+        <div class="approve-form-categories">
+          <span class="approve-form-label">Categories:</span>
+          {% for cat in categories %}
+          <label class="category-checkbox">
+            <input type="checkbox" name="categories" value="{{ cat.slug }}"
+              {% if cat.slug in (draft.categories or []) %}checked{% endif %}>
+            {{ cat.name | default(cat.slug) | title }}
+          </label>
+          {% endfor %}
+        </div>
+        <div class="approve-form-actions">
+          <button type="submit" class="btn btn-success btn-sm">Confirm Approve</button>
+          <button type="button" class="btn btn-outline btn-sm"
+                  hx-get="https://next.dctech.events/admin/draft/{{ draft.id }}/row"
+                  hx-target="#draft-{{ draft.id }}"
+                  hx-swap="outerHTML">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </form>
+  </td>
+</tr>
