@@ -40,45 +40,13 @@
     </div>
 
     <div class="card">
+      <div id="queue-loading" class="htmx-indicator">
+        <span class="spinner"></span> Loading queue...
+      </div>
+
       <div id="queue-list"
            hx-get="https://next.dctech.events/admin/queue"
-           hx-trigger="load"
-           hx-indicator="#queue-loading">
-
-        <div id="queue-loading" class="htmx-indicator">
-          <span class="spinner"></span> Loading queue...
-        </div>
-
-        <!-- The API returns an HTML fragment containing a table of pending drafts.
-             Each row includes Approve / Reject buttons like:
-
-             <tr id="draft-{id}">
-               <td>Event Name</td>
-               <td>submitter@example.com</td>
-               <td>2026-03-15</td>
-               <td>
-                 <span class="badge badge-pending">Pending</span>
-               </td>
-               <td>
-                 <div class="btn-group">
-                   <button class="btn btn-success btn-sm"
-                           hx-post="https://next.dctech.events/admin/draft/{id}/approve"
-                           hx-target="#draft-{id}"
-                           hx-swap="outerHTML"
-                           hx-confirm="Approve this submission?">
-                     Approve
-                   </button>
-                   <button class="btn btn-danger btn-sm"
-                           hx-post="https://next.dctech.events/admin/draft/{id}/reject"
-                           hx-target="#draft-{id}"
-                           hx-swap="outerHTML"
-                           hx-confirm="Reject this submission?">
-                     Reject
-                   </button>
-                 </div>
-               </td>
-             </tr>
-        -->
+           hx-trigger="load">
       </div>
     </div>
   </main>
