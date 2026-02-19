@@ -32,7 +32,7 @@
         <p>Manage overrides for iCal-imported events (categories, title, visibility).</p>
       </div>
       <button class="btn btn-outline"
-              hx-get="/admin/overrides"
+              hx-get="https://next.dctech.events/admin/overrides"
               hx-target="#content"
               hx-indicator="#overrides-loading">
         Refresh
@@ -45,7 +45,7 @@
       </div>
 
       <div id="content"
-           hx-get="/admin/overrides"
+           hx-get="https://next.dctech.events/admin/overrides"
            hx-trigger="load"
            hx-indicator="#overrides-loading">
       </div>

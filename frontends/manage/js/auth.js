@@ -240,17 +240,14 @@ function updateUserDisplay() {
  * that fire before DOMContentLoaded completes.
  */
 function setupHtmx() {
-  // Add Authorization header to all HTMX requests
+  // Add Authorization header to all HTMX requests targeting the API
   document.addEventListener('htmx:configRequest', function (event) {
-    const token = getIdToken();
-    if (token) {
-      event.detail.headers['Authorization'] = 'Bearer ' + token;
-    }
-
-    // Rewrite relative URLs to the API base
-    const path = event.detail.path;
-    if (path && path.startsWith('/')) {
-      event.detail.path = AUTH_CONFIG.apiBaseUrl + path;
+    const path = event.detail.path || '';
+    if (path.startsWith(AUTH_CONFIG.apiBaseUrl)) {
+      const token = getIdToken();
+      if (token) {
+        event.detail.headers['Authorization'] = 'Bearer ' + token;
+      }
     }
   });
 

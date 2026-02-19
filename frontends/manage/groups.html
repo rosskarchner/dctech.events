@@ -32,7 +32,7 @@
         <p>Manage tech meetup groups and their calendar feeds.</p>
       </div>
       <button class="btn btn-outline"
-              hx-get="/admin/groups"
+              hx-get="https://next.dctech.events/admin/groups"
               hx-target="#content"
               hx-indicator="#groups-loading">
         Refresh
@@ -45,7 +45,7 @@
       </div>
 
       <div id="content"
-           hx-get="/admin/groups"
+           hx-get="https://next.dctech.events/admin/groups"
            hx-trigger="load"
            hx-indicator="#groups-loading">
       </div>

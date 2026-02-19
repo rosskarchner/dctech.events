@@ -32,7 +32,7 @@
         <p>Review and approve or reject user-submitted events.</p>
       </div>
       <button class="btn btn-outline"
-              hx-get="/admin/queue"
+              hx-get="https://next.dctech.events/admin/queue"
               hx-target="#queue-list"
               hx-indicator="#queue-loading">
         Refresh
@@ -41,7 +41,7 @@
 
     <div class="card">
       <div id="queue-list"
-           hx-get="/admin/queue"
+           hx-get="https://next.dctech.events/admin/queue"
            hx-trigger="load"
            hx-indicator="#queue-loading">
 
@@ -62,14 +62,14 @@
                <td>
                  <div class="btn-group">
                    <button class="btn btn-success btn-sm"
-                           hx-post="/admin/draft/{id}/approve"
+                           hx-post="https://next.dctech.events/admin/draft/{id}/approve"
                            hx-target="#draft-{id}"
                            hx-swap="outerHTML"
                            hx-confirm="Approve this submission?">
                      Approve
                    </button>
                    <button class="btn btn-danger btn-sm"
-                           hx-post="/admin/draft/{id}/reject"
+                           hx-post="https://next.dctech.events/admin/draft/{id}/reject"
                            hx-target="#draft-{id}"
                            hx-swap="outerHTML"
                            hx-confirm="Reject this submission?">
