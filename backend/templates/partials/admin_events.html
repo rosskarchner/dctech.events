@@ -11,7 +11,7 @@
   {% endif %}
   
   <button class="btn btn-sm btn-danger"
-          hx-post="/admin/events/bulk"
+          hx-post="https://next.dctech.events/admin/events/bulk"
           hx-vals='{"action": "delete"}'
           hx-include=".event-checkbox, #date-filter, #active-filter"
           hx-target="#events-table"
@@ -27,7 +27,7 @@
       {% endfor %}
     </select>
     <button class="btn btn-sm" style="background:#eee;"
-            hx-post="/admin/events/bulk"
+            hx-post="https://next.dctech.events/admin/events/bulk"
             hx-vals='{"action": "category"}'
             hx-include=".event-checkbox, .bulk-cat-select, #date-filter, #active-filter"
             hx-target="#events-table">
@@ -36,7 +36,7 @@
   </div>
 
   <button class="btn btn-sm btn-secondary"
-          hx-post="/admin/events/bulk"
+          hx-post="https://next.dctech.events/admin/events/bulk"
           hx-vals='{"action": "combine"}'
           hx-include=".event-checkbox, #date-filter, #active-filter"
           hx-target="#events-table"

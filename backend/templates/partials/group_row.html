@@ -13,7 +13,7 @@
     {% endif %}
   </td>
   <td>
-    <button hx-get="/admin/groups/{{ group.id }}/edit"
+    <button hx-get="https://next.dctech.events/admin/groups/{{ group.id }}/edit"
             hx-target="#group-{{ group.id }}"
             hx-swap="outerHTML">
       Edit

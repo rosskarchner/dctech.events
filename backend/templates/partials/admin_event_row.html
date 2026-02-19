@@ -25,7 +25,7 @@
   <td><span class="badge">{{ event.source | default('') }}</span></td>
   <td>
     <button class="btn btn-sm"
-      hx-get="/admin/events/{{ event.guid }}/edit"
+      hx-get="https://next.dctech.events/admin/events/{{ event.guid }}/edit"
       hx-target="closest tr"
       hx-swap="outerHTML">Edit</button>
   </td>

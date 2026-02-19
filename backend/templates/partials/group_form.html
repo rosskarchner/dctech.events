@@ -1,6 +1,6 @@
 <tr id="group-{{ group.id }}">
   <td colspan="5">
-    <form hx-put="/admin/groups/{{ group.id }}"
+    <form hx-put="https://next.dctech.events/admin/groups/{{ group.id }}"
           hx-target="#group-{{ group.id }}"
           hx-swap="outerHTML">
       <fieldset>
@@ -32,7 +32,7 @@
         <div>
           <button type="submit">Save</button>
           <button type="button"
-                  hx-get="/admin/groups"
+                  hx-get="https://next.dctech.events/admin/groups"
                   hx-target="#content"
                   hx-swap="innerHTML">Cancel</button>
         </div>

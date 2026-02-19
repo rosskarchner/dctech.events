@@ -6,7 +6,7 @@
     <p style="font-size:0.8rem;color:#888;margin:0 0 0.5rem;">
       iCal-sourced event — saves an override (title, location, categories only).
     </p>
-    <form hx-put="/admin/events/{{ guid }}"
+    <form hx-put="https://next.dctech.events/admin/events/{{ guid }}"
           hx-target="closest tr"
           hx-swap="outerHTML"
           style="padding: 0.5rem 0;">
@@ -44,7 +44,7 @@
       <div style="display:flex;gap:0.5rem;">
         <button type="submit" class="btn btn-primary btn-sm">Save</button>
         <button type="button" class="btn btn-sm"
-          hx-get="/admin/events"
+          hx-get="https://next.dctech.events/admin/events"
           hx-target="#events-table"
           hx-swap="innerHTML">Cancel</button>
       </div>

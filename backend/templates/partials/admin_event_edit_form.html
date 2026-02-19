@@ -1,6 +1,6 @@
 <tr id="event-row-{{ event.guid }}">
   <td colspan="6">
-    <form hx-put="/admin/events/{{ event.guid }}"
+    <form hx-put="https://next.dctech.events/admin/events/{{ event.guid }}"
           hx-target="closest tr"
           hx-swap="outerHTML"
           style="padding: 0.5rem 0;">
@@ -58,7 +58,7 @@
       <div style="display:flex;gap:0.5rem;">
         <button type="submit" class="btn btn-primary btn-sm">Save</button>
         <button type="button" class="btn btn-sm"
-          hx-get="/admin/events"
+          hx-get="https://next.dctech.events/admin/events"
           hx-target="#events-table"
           hx-swap="innerHTML">Cancel</button>
       </div>

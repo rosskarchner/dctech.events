@@ -4,7 +4,7 @@
   <td>{{ override.title | default('') }}</td>
   <td>{{ override.edited_by | default('') }}</td>
   <td>
-    <button hx-delete="/admin/overrides/{{ override.guid }}"
+    <button hx-delete="https://next.dctech.events/admin/overrides/{{ override.guid }}"
             hx-target="#override-{{ override.guid }}"
             hx-swap="outerHTML"
             hx-confirm="Delete this override?">
