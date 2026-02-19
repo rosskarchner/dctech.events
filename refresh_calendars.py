@@ -136,6 +136,12 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         if url_match:
                             event_url = url_match.group(0)
 
+                if not event_url:
+                    event_description = str(component.get('description', ''))
+                    url_match = re.search(r'https?://(?:lu\.ma|luma\.com)/[^\s\\]+', event_description)
+                    if url_match:
+                        event_url = url_match.group(0)
+
                 if not event_url and group and group.get('fallback_url'):
                     event_url = group.get('fallback_url')
                     using_fallback = True

@@ -124,6 +124,54 @@ class TestRefreshCalendars(unittest.TestCase):
             self.assertEqual(event_url, 'https://lu.ma/vu8ktr9y',
                            "URL should be extracted from location field")
 
+    def test_luma_description_url_extraction(self):
+        """Test that lu.ma/luma.com URLs in the DESCRIPTION field are used as event URL"""
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'Test Lu.ma Description Event')
+        event.add('dtstart', datetime.now(pytz.UTC))
+        event.add('dtend', datetime.now(pytz.UTC))
+        event.add('description',
+                  'Get up-to-date information at: https://luma.com/sfrx1dhi\n\n'
+                  'Address:\nSTATION DC\nWashington, District of Columbia\n\n'
+                  'Hosted by Sofia Wynn')
+        cal.add_component(event)
+
+        for component in cal.walk('VEVENT'):
+            event_url = str(component.get('url', '')) if component.get('url') else None
+
+            if not event_url:
+                event_description = str(component.get('description', ''))
+                url_match = re.search(r'https?://(?:lu\.ma|luma\.com)/[^\s\\]+', event_description)
+                if url_match:
+                    event_url = url_match.group(0)
+
+            self.assertEqual(event_url, 'https://luma.com/sfrx1dhi',
+                             "URL should be extracted from description field")
+
+    def test_luma_description_url_not_used_when_url_field_present(self):
+        """Test that explicit URL field takes priority over description URL"""
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'Test Event')
+        event.add('dtstart', datetime.now(pytz.UTC))
+        event.add('dtend', datetime.now(pytz.UTC))
+        event.add('url', 'https://lu.ma/explicit-url')
+        event.add('description', 'Get up-to-date information at: https://luma.com/other-url')
+        cal.add_component(event)
+
+        for component in cal.walk('VEVENT'):
+            event_url = str(component.get('url', '')) if component.get('url') else None
+
+            if not event_url:
+                event_description = str(component.get('description', ''))
+                url_match = re.search(r'https?://(?:lu\.ma|luma\.com)/[^\s\\]+', event_description)
+                if url_match:
+                    event_url = url_match.group(0)
+
+            self.assertEqual(event_url, 'https://lu.ma/explicit-url',
+                             "Explicit URL field should take priority over description URL")
+
     def test_scan_for_metadata_default_true(self):
         """Test that scan_for_metadata defaults to True when not specified"""
         # No group - should default to True
