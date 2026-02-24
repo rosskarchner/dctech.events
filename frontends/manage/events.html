@@ -69,18 +69,35 @@
         <span class="spinner"></span> Loading events...
       </div>
 
-      <div id="events-table"
-           hx-get="https://next.dctech.events/admin/events"
-           hx-trigger="load"
-           hx-indicator="#events-loading">
-      </div>
+      <div id="events-table"></div>
     </div>
   </main>
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      initAuth();
+      if (initAuth()) {
+        // Load events after auth succeeds
+        loadEvents();
+      }
     });
+
+    function loadEvents() {
+      const el = document.getElementById('events-table');
+      const token = getIdToken();
+
+      if (!token) {
+        el.innerHTML = '<p>Not authenticated</p>';
+        return;
+      }
+
+      el.innerHTML = '<span class="htmx-indicator" style="display:inline"><span class="spinner"></span> Loading events...</span>';
+
+      htmx.ajax('GET', 'https://next.dctech.events/admin/events', {
+        target: '#events-table',
+        swap: 'innerHTML',
+        headers: {'Authorization': 'Bearer ' + token},
+      });
+    }
   </script>
 </body>
 </html>
