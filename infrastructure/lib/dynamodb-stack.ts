@@ -38,6 +38,8 @@ export interface DynamoDBStackProps extends cdk.StackProps {
  * - Query user submissions (GSI3: PK={submitter_id}, SK={created_at})
  * - Query events by category (GSI2: PK=CATEGORY#{slug}, SK=DATE#{date})
  * - Get cached iCal events (PK: ICAL#{group_id}, SK: EVENT#{guid})
+ * - Query active events by date range (GSI4: PK=EVT#ACTIVE, SK={date}#{time})
+ * - Query recently created events (GSI3: PK=CREATED#{YYYY-MM}, SK={createdAt})
  */
 export class DynamoDBStack extends cdk.Stack {
   public readonly table: dynamodb.Table;
@@ -123,6 +125,21 @@ export class DynamoDBStack extends cdk.Stack {
       },
       sortKey: {
         name: 'GSI3SK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI4: Query active events by date range
+    // PK: EVT#{status} (e.g. EVT#ACTIVE), SK: {date}#{time} (e.g. 2026-02-23#18:00)
+    this.table.addGlobalSecondaryIndex({
+      indexName: 'GSI4',
+      partitionKey: {
+        name: 'GSI4PK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'GSI4SK',
         type: dynamodb.AttributeType.STRING,
       },
       projectionType: dynamodb.ProjectionType.ALL,

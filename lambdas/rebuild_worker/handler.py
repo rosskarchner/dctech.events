@@ -1,15 +1,12 @@
 """
 Rebuild Worker Lambda
 
-Docker Lambda that runs the full site rebuild pipeline:
-1. Sync iCal cache from S3
-2. Run refresh_calendars.py
-3. Run generate_month_data.py
-4. Run npm run build (esbuild JS)
-5. Run freeze.py (Frozen-Flask static site generation)
-6. Sync build/ to S3
-7. CloudFront invalidation
-8. Sync cache back to S3
+Supports two modes:
+1. **Site rebuild** (default): Build static site from DynamoDB and deploy
+   - npm run build → freeze.py → S3 sync → CloudFront invalidation
+2. **iCal refresh** (ICAL_REFRESH_MODE=true): Fetch iCal feeds and write to DynamoDB
+   - refresh_calendars.py writes events directly to config table
+   - Config table changes then trigger site rebuild via DynamoDB Streams
 """
 
 import json
@@ -22,9 +19,10 @@ import boto3
 s3 = boto3.client('s3')
 cloudfront = boto3.client('cloudfront')
 
-SITE_BUCKET = os.environ['SITE_BUCKET']
-DATA_CACHE_BUCKET = os.environ['DATA_CACHE_BUCKET']
+SITE_BUCKET = os.environ.get('SITE_BUCKET', '')
+DATA_CACHE_BUCKET = os.environ.get('DATA_CACHE_BUCKET', '')
 CLOUDFRONT_DISTRIBUTION_ID = os.environ.get('CLOUDFRONT_DISTRIBUTION_ID', '')
+ICAL_REFRESH_MODE = os.environ.get('ICAL_REFRESH_MODE', 'false').lower() == 'true'
 WORK_DIR = '/tmp/site'
 PROJECT_SOURCE = '/opt/site'  # baked into Docker image at build time
 
@@ -126,12 +124,13 @@ def invalidate_cloudfront():
 
 
 def lambda_handler(event, context):
-    """Main handler - triggered by SQS rebuild queue."""
+    """Main handler - supports rebuild (SQS) and iCal refresh (EventBridge) modes."""
     start_time = time.time()
 
-    for record in event.get('Records', []):
-        body = json.loads(record.get('body', '{}'))
-        print(f"Rebuild triggered: {json.dumps(body)}")
+    if not ICAL_REFRESH_MODE:
+        for record in event.get('Records', []):
+            body = json.loads(record.get('body', '{}'))
+            print(f"Rebuild triggered: {json.dumps(body)}")
 
     # Setup workspace: copy project source from /opt/site to writable /tmp/site
     import shutil
@@ -141,50 +140,55 @@ def lambda_handler(event, context):
     print(f"Copied project source from {PROJECT_SOURCE} to {WORK_DIR}")
 
     try:
-        # 1. Sync iCal cache from S3
-        print("Step 1: Syncing cache from S3...")
-        sync_from_s3(DATA_CACHE_BUCKET, 'ical-cache/', os.path.join(WORK_DIR, '_cache', 'ical'))
+        if ICAL_REFRESH_MODE:
+            # iCal refresh mode: fetch feeds and write events to config table
+            print("Running in iCal refresh mode...")
 
-        # 2. Refresh calendars
-        print("Step 2: Refreshing calendars...")
-        run_command(['python', 'refresh_calendars.py'])
+            # Sync iCal cache from S3 for ETag/Last-Modified headers
+            if DATA_CACHE_BUCKET:
+                sync_from_s3(DATA_CACHE_BUCKET, 'ical-cache/', os.path.join(WORK_DIR, '_cache', 'ical'))
 
-        # 3. Generate month data
-        print("Step 3: Generating month data...")
-        run_command(['python', 'generate_month_data.py'])
+            print("Step 1: Refreshing calendars (writing to DynamoDB)...")
+            run_command(['python', 'refresh_calendars.py'])
 
-        # 4. Build JS assets
-        print("Step 4: Building JS assets...")
-        run_command(['npm', 'run', 'build'])
+            # Sync cache back to S3 for next run
+            if DATA_CACHE_BUCKET:
+                sync_to_s3(os.path.join(WORK_DIR, '_cache', 'ical'), DATA_CACHE_BUCKET, 'ical-cache')
 
-        # 5. Freeze static site
-        print("Step 5: Freezing static site...")
-        run_command(['python', 'freeze.py'])
+        else:
+            # Site rebuild mode: build static site from DynamoDB
+            print("Running in site rebuild mode...")
 
-        # 6. Sync build to S3
-        print("Step 6: Syncing build to S3...")
-        sync_to_s3(os.path.join(WORK_DIR, 'build'), SITE_BUCKET)
+            # 1. Build JS assets
+            print("Step 1: Building JS assets...")
+            run_command(['npm', 'run', 'build'])
 
-        # 7. CloudFront invalidation
-        print("Step 7: Invalidating CloudFront...")
-        invalidate_cloudfront()
+            # 2. Freeze static site
+            print("Step 2: Freezing static site...")
+            run_command(['python', 'freeze.py'])
 
-        # 8. Sync cache back to S3
-        print("Step 8: Syncing cache back to S3...")
-        sync_to_s3(os.path.join(WORK_DIR, '_cache', 'ical'), DATA_CACHE_BUCKET, 'ical-cache')
+            # 3. Sync build to S3
+            print("Step 3: Syncing build to S3...")
+            sync_to_s3(os.path.join(WORK_DIR, 'build'), SITE_BUCKET)
 
+            # 4. CloudFront invalidation
+            print("Step 4: Invalidating CloudFront...")
+            invalidate_cloudfront()
+
+        mode = 'iCal refresh' if ICAL_REFRESH_MODE else 'Rebuild'
         elapsed = time.time() - start_time
-        print(f"Rebuild completed successfully in {elapsed:.1f}s")
+        print(f"{mode} completed successfully in {elapsed:.1f}s")
 
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'message': 'Rebuild completed',
+                'message': f'{mode} completed',
                 'elapsed_seconds': round(elapsed, 1),
             }),
         }
 
     except Exception as e:
+        mode = 'iCal refresh' if ICAL_REFRESH_MODE else 'Rebuild'
         elapsed = time.time() - start_time
-        print(f"Rebuild failed after {elapsed:.1f}s: {e}")
+        print(f"{mode} failed after {elapsed:.1f}s: {e}")
         raise

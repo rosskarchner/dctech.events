@@ -17,18 +17,20 @@
 - Jinja2 server-side templates in `backend/templates/partials/`
 - Cognito JWT auth on protected routes
 
+**MCP Server**: Agent-based event database manipulation
+- `mcp_server/server.py` — stdio transport, tool registration
+- `mcp_server/tools.py` — 16 tools (read/write/history)
+- Configured in `.claude/mcp.json`
+
 ## Data Storage
 
-### Two DynamoDB Tables
+### Single DynamoDB Table (`dctech-events`)
 
-1. **`dctech-events` (config/admin table)** — Single-table design
-   - Source of truth for groups, categories, overrides, drafts
-   - Changes trigger site rebuilds via DynamoDB Streams
-   - Managed by admin UI and data access layer
+All data lives in one table with single-table design. The old `DcTechEvents`
+materialized view table is deprecated (kept as backup).
 
-2. **`DcTechEvents` (materialized event view)** — Existing table
-   - Written by `generate_month_data.py` (fetches iCal feeds, deduplicates)
-   - Read by `app.py` to render the static site
+**All events** — iCal, manual, and submitted — are first-class `EVENT#{guid}/META`
+entities with GSI keys for efficient querying.
 
 ### Config Table Key Patterns
 
@@ -37,28 +39,59 @@
 | GROUP | `GROUP#{slug}` | `META` |
 | CATEGORY | `CATEGORY#{slug}` | `META` |
 | EVENT | `EVENT#{guid}` | `META` |
-| OVERRIDE | `OVERRIDE#{guid}` | `META` |
+| OVERRIDE | `OVERRIDE#{guid}` | `META` (legacy, being merged into EVENT entities) |
 | DRAFT | `DRAFT#{id}` | `META` |
+| HISTORY | `EVENT#{guid}` | `V#{iso_timestamp}` |
 | ICAL_CACHE | `ICAL#{group_id}` | `EVENT#{guid}` |
 | ICAL_META | `ICAL_META#{group_id}` | `META` |
 
-Three GSIs: GSI1 (GSI1PK/GSI1SK), GSI2 (GSI2PK/GSI2SK), GSI3 (GSI3PK/GSI3SK).
+### GSI Patterns
+
+| GSI | PK | SK | Use |
+|-----|----|----|-----|
+| GSI1 | `DATE#{date}`, `ACTIVE#{0\|1}`, `STATUS#{status}` | `TIME#{time}`, `NAME#{name}`, `{created_at}` | Events by date, groups by active, drafts by status |
+| GSI2 | `CATEGORY#{slug}` | `DATE#{date}`, `GROUP#{slug}` | Events/groups by category |
+| GSI3 | `USER#{id}`, `CREATED#{YYYY-MM}` | `{created_at}` | User's drafts, recently created events |
+| GSI4 | `EVT#ACTIVE` | `{date}#{time}` | **Primary event query**: all future active events by date range |
 
 ### Data Access Layer (`dynamo_data.py`)
 
-Reads from the config table:
-- `get_all_groups()`, `get_all_categories()`, `get_single_events()`, `get_event_override(guid)`
-- DynamoDB is the sole source of truth for site configuration and content.
-- YAML data files (`_groups/`, `_categories/`, etc.) have been archived.
+**Event queries (consolidated):**
+- `get_future_events()` → GSI4 query for `EVT#ACTIVE` with SK >= today
+- `get_recently_added(limit)` → GSI3 query for `CREATED#{current_month}`
+- `put_ical_event(guid, data)` → Write EVENT preserving overridden fields + createdAt
+
+**Config queries:**
+- `get_all_groups()`, `get_active_groups()`, `get_all_categories()`
+- `get_single_events()`, `get_event_override(guid)`
+
+### Versioned Writes (`versioned_db.py`)
+
+Wiki-style change tracking. Before any mutation, the previous state is
+snapshotted as a `V#{iso_timestamp}` sort key under the same PK.
+
+- `versioned_put(pk, item, editor, reason)` — TransactWriteItems: history + update
+- `versioned_delete(pk, editor, reason)` — soft-delete with history
+- `get_history(pk, limit)` — query V# entries, newest first
+- `rollback(pk, version_ts, editor)` — restore snapshot, creates new history entry
 
 ## Rebuild Pipeline
 
-DynamoDB Streams → Dispatcher Lambda → SQS FIFO (60s dedup window) → Docker Rebuild Worker Lambda
+### iCal Refresh (decoupled)
+EventBridge (every 4h) → iCal Refresh Lambda → writes events to config table
 
-1. Config table change triggers stream event
-2. `lambdas/stream_dispatcher/handler.py` sends SQS message with `DeduplicationId = floor(epoch/60)`
-3. `lambdas/rebuild_worker/handler.py` runs full rebuild:
-   - Sync cache from S3 → refresh calendars → generate month data → freeze → sync to S3 → CloudFront invalidation
+`refresh_calendars.py` fetches iCal feeds, extracts JSON-LD metadata, and writes
+`EVENT#{guid}/META` entities directly to the config table. Preserves overridden
+fields tracked in the `overrides` map. Same-day events are never removed.
+
+### Site Rebuild
+DynamoDB Streams → Dispatcher Lambda → SQS FIFO (60s dedup) → Rebuild Worker Lambda
+
+Rebuild worker runs 4 steps:
+1. `npm run build` (esbuild JS assets)
+2. `freeze.py` (Frozen-Flask static site from DynamoDB)
+3. Sync `build/` to S3
+4. CloudFront invalidation
 
 ## Cognito Authentication
 
@@ -87,14 +120,35 @@ DynamoDB Streams → Dispatcher Lambda → SQS FIFO (60s dedup window) → Docke
 - `GET /admin/events?date=YYYY-MM` — event list from config table (HTML table)
 - `GET /admin/overrides` — override list (HTML)
 
+## MCP Server Tools
+
+### Read Tools
+- `query_events(date_from, date_to, category, group, search_text, limit)`
+- `get_event(guid)` — full detail + recent history
+- `list_groups(active_only)` / `get_group(slug)`
+- `list_categories()`
+- `get_recently_added(limit)`
+- `search(query, limit)` — text search across title/description/group/location
+
+### Write Tools (all create versioned history)
+- `edit_event(guid, changes, reason)`
+- `edit_group(slug, changes, reason)`
+- `hide_event(guid, reason)` / `unhide_event(guid, reason)`
+- `mark_duplicate(guid, duplicate_of, reason)`
+- `set_event_categories(guid, categories, reason)`
+
+### History Tools
+- `get_history(entity_type, entity_id, limit)`
+- `rollback(entity_type, entity_id, version_timestamp, reason)`
+
 ## Infrastructure (CDK)
 
 All stacks in `infrastructure/lib/`:
 - `dctech-events-stack.ts` — S3, CloudFront, Route53, DcTechEvents table, GitHub OIDC
-- `dynamodb-stack.ts` — Config table with streams, GSIs, TTL
+- `dynamodb-stack.ts` — Config table with streams, GSI1-4, TTL
 - `cognito-stack.ts` — User pool, app client, custom domain, SES email
 - `secrets-stack.ts` — Cognito client secret in Secrets Manager
-- `rebuild-stack.ts` — Stream dispatcher → SQS FIFO → Docker rebuild worker
+- `rebuild-stack.ts` — Stream dispatcher → SQS FIFO → rebuild worker + iCal refresh Lambda + EventBridge schedule
 - `lambda-api-stack.ts` — API Lambda + API Gateway + Cognito authorizer
 - `frontend-stack.ts` — S3 + CloudFront + Route53 for suggest/manage subdomains
 

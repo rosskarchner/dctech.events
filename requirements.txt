@@ -23,6 +23,9 @@ recurring-ical-events
 # AWS SDK for S3 operations
 boto3
 
+# MCP server for agent-based event manipulation
+mcp
+
 # Dev/testing only (not needed for CI build, but kept for local development)
 beautifulsoup4
 responses

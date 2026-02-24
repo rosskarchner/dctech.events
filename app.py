@@ -12,7 +12,7 @@ from icalendar import Calendar, Event as ICalEvent
 import hashlib
 from xml.etree import ElementTree as ET
 from email.utils import formatdate
-import db_utils
+import db_utils  # Legacy — being phased out
 import dynamo_data
 
 # Load configuration
@@ -68,7 +68,7 @@ def inject_config():
 
 def get_events(include_hidden=False):
     """
-    Get events from DynamoDB
+    Get events from DynamoDB (consolidated config table via GSI4).
 
     Args:
         include_hidden: If True, include events marked as hidden. Default False.
@@ -76,11 +76,7 @@ def get_events(include_hidden=False):
     Returns:
         A list of events
     """
-    events = db_utils.get_future_events()
-
-    # Sort by date and time (since DynamoDB only sorts by date)
-    # Ensure date and time are strings
-    events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
+    events = dynamo_data.get_future_events()
 
     # Filter out hidden and duplicate events unless explicitly requested
     if not include_hidden:
@@ -1236,11 +1232,11 @@ def rss_feed():
     """
     Generate RSS feed of recently added events.
     """
-    recent_events = db_utils.get_recently_added(limit=100)
-    
+    recent_events = dynamo_data.get_recently_added(limit=100)
+
     # Filter out hidden and duplicate events
     recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')][:50]
-    
+
     feed_title = f"{SITE_NAME} - New Events"
     feed_description = "Recently added events"
     feed_link = BASE_URL
@@ -1250,7 +1246,7 @@ def get_recently_added_events(limit=5):
     """
     Get the N most recently added events from DynamoDB.
     """
-    events = db_utils.get_recently_added(limit=limit * 2)  # Get extra to allow for filtering
+    events = dynamo_data.get_recently_added(limit=limit * 2)  # Get extra to allow for filtering
     filtered = [e for e in events if not e.get('hidden') and not e.get('duplicate_of')]
     return filtered[:limit]
 
@@ -1259,11 +1255,11 @@ def just_added():
     """
     Display the three most recent days with newly added events.
     """
-    recent_events = db_utils.get_recently_added(limit=100)
-    
+    recent_events = dynamo_data.get_recently_added(limit=100)
+
     # Filter out hidden and duplicate events
     recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')]
-    
+
     if not recent_events:
         return render_template('just_added.html',
                              days_with_events=[],

@@ -4,6 +4,8 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as eventsources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import { DynamoDBStack } from './dynamodb-stack';
 import { stackConfig } from './config';
@@ -45,15 +47,15 @@ export interface RebuildStackProps extends cdk.StackProps {
  * and sends a message to the SQS FIFO queue with content-based deduplication
  * (floor(epoch/60) as dedup ID) to batch rapid changes into a single rebuild.
  *
- * The rebuild worker Lambda (Docker image) runs the full site rebuild:
- * 1. Sync cache from S3
- * 2. refresh_calendars.py
- * 3. generate_month_data.py
- * 4. npm run build
- * 5. freeze.py
- * 6. Sync build/ to S3
- * 7. CloudFront invalidation
- * 8. Sync cache back to S3
+ * The rebuild worker Lambda (Docker image) runs the static site build:
+ * 1. npm run build (JS assets)
+ * 2. freeze.py (static site generation from DynamoDB)
+ * 3. Sync build/ to S3
+ * 4. CloudFront invalidation
+ *
+ * iCal refresh runs separately on a schedule (EventBridge → ical-refresh Lambda)
+ * and writes events directly to the config table. Config table changes then
+ * trigger the rebuild pipeline via DynamoDB Streams.
  */
 export class RebuildStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: RebuildStackProps) {
@@ -174,6 +176,45 @@ export class RebuildStack extends cdk.Stack {
       actions: ['cloudfront:CreateInvalidation'],
       resources: ['*'],
     }));
+
+    // iCal Refresh Lambda (runs on schedule, writes events to config table)
+    const icalRefreshFn = new lambda.DockerImageFunction(this, 'IcalRefreshWorker', {
+      functionName: 'dctech-events-ical-refresh',
+      code: lambda.DockerImageCode.fromImageAsset(
+        path.join(__dirname, '../..'),  // repo root as build context
+        { file: 'lambdas/rebuild_worker/Dockerfile' }
+      ),
+      timeout: cdk.Duration.seconds(600),
+      memorySize: 1024,
+      environment: {
+        CONFIG_TABLE_NAME: 'dctech-events',
+        ICAL_REFRESH_MODE: 'true',  // Tells handler to run refresh only
+      },
+      logGroup: new logs.LogGroup(this, 'IcalRefreshLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+    });
+
+    // Grant iCal refresh Lambda access to config table
+    icalRefreshFn.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem',
+        'dynamodb:Query', 'dynamodb:Scan',
+      ],
+      resources: [
+        props.dynamoStack.table.tableArn,
+        `${props.dynamoStack.table.tableArn}/index/*`,
+      ],
+    }));
+
+    // Schedule iCal refresh every 4 hours
+    new events.Rule(this, 'IcalRefreshSchedule', {
+      ruleName: 'dctech-events-ical-refresh-schedule',
+      schedule: events.Schedule.rate(cdk.Duration.hours(4)),
+      targets: [new targets.LambdaFunction(icalRefreshFn)],
+    });
 
     // Stack outputs
     new cdk.CfnOutput(this, 'QueueUrl', {

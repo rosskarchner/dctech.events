@@ -17,6 +17,9 @@ Entity key patterns:
 """
 
 import os
+import time
+from datetime import datetime
+
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
@@ -305,10 +308,15 @@ def put_single_event(guid, event_data):
     date = event_data.get('date', '')
     time_val = event_data.get('time', '')
 
+    # Set createdAt if not present
+    if 'createdAt' not in event_data:
+        event_data['createdAt'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
     item = {
         'PK': f'EVENT#{guid}',
         'SK': 'META',
         'source': 'manual',
+        'status': 'ACTIVE',
         **{k: v for k, v in event_data.items() if v is not None},
     }
 
@@ -321,6 +329,18 @@ def put_single_event(guid, event_data):
         item['GSI2PK'] = f'CATEGORY#{categories[0]}'
         item['GSI2SK'] = f'DATE#{date}'
 
+    # GSI3: createdAt queries
+    created_at = item.get('createdAt', '')
+    if created_at:
+        month_key = created_at[:7]
+        item['GSI3PK'] = f'CREATED#{month_key}'
+        item['GSI3SK'] = created_at
+
+    # GSI4: date-range queries
+    if date:
+        item['GSI4PK'] = 'EVT#ACTIVE'
+        item['GSI4SK'] = f'{date}#{time_val}' if time_val else date
+
     table.put_item(Item=item)
 
 
@@ -332,4 +352,167 @@ def put_override(guid, override_data):
         'SK': 'META',
         **{k: v for k, v in override_data.items() if v is not None},
     }
+    table.put_item(Item=item)
+
+
+# ─── GSI4 EVENT queries (consolidated table) ──────────────────────
+
+def get_future_events():
+    """
+    Get all active events with date >= today via GSI4.
+
+    GSI4PK: EVT#ACTIVE, GSI4SK: {date}#{time}
+    Returns list of event dicts sorted by date/time.
+    """
+    table = _get_table()
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    items = []
+    try:
+        response = table.query(
+            IndexName='GSI4',
+            KeyConditionExpression=Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today),
+        )
+        items.extend(response.get('Items', []))
+        while 'LastEvaluatedKey' in response:
+            response = table.query(
+                IndexName='GSI4',
+                KeyConditionExpression=Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today),
+                ExclusiveStartKey=response['LastEvaluatedKey'],
+            )
+            items.extend(response.get('Items', []))
+    except ClientError as e:
+        print(f"Error querying GSI4 for future events: {e}")
+        return []
+
+    events = [_dynamo_item_to_event_full(item) for item in items]
+    events.sort(key=lambda x: (str(x.get('date', '')), str(x.get('time', ''))))
+    return events
+
+
+def get_recently_added(limit=50):
+    """
+    Get recently added events via GSI3 CREATED# partition.
+
+    GSI3PK: CREATED#{YYYY-MM}, GSI3SK: {createdAt_iso}
+    Queries the current month (and previous month for good coverage).
+    Returns list of event dicts sorted by createdAt descending.
+    """
+    table = _get_table()
+    now = datetime.now()
+    items = []
+
+    # Query current month and previous month
+    months_to_query = [now.strftime('%Y-%m')]
+    if now.month == 1:
+        months_to_query.append(f'{now.year - 1}-12')
+    else:
+        months_to_query.append(f'{now.year}-{now.month - 1:02d}')
+
+    try:
+        for month_key in months_to_query:
+            response = table.query(
+                IndexName='GSI3',
+                KeyConditionExpression=Key('GSI3PK').eq(f'CREATED#{month_key}'),
+                ScanIndexForward=False,
+                Limit=limit,
+            )
+            items.extend(response.get('Items', []))
+    except ClientError as e:
+        print(f"Error querying GSI3 for recently added: {e}")
+        return []
+
+    # Sort by createdAt descending and limit
+    items.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
+    items = items[:limit]
+
+    return [_dynamo_item_to_event_full(item) for item in items]
+
+
+def _dynamo_item_to_event_full(item):
+    """Convert a DynamoDB EVENT item to a full event dict (for site rendering)."""
+    guid = item['PK'].split('#', 1)[1]
+    event = {'guid': guid, 'id': guid, 'eventId': guid}
+
+    for field in ['title', 'date', 'time', 'end_date', 'end_time',
+                  'location', 'url', 'cost', 'description', 'group',
+                  'group_website', 'categories', 'source', 'submitted_by',
+                  'submitter_link', 'start_date', 'start_time',
+                  'duplicate_of', 'hidden', 'city', 'state',
+                  'location_type', 'also_published_by', 'createdAt',
+                  'overrides', 'status']:
+        if field in item:
+            event[field] = item[field]
+
+    return event
+
+
+def put_ical_event(guid, data):
+    """
+    Write an iCal EVENT entity to the config table.
+
+    Preserves overridden fields (tracked in the 'overrides' map) and createdAt.
+    Sets GSI4 keys for date-range queries and GSI3 keys for createdAt queries.
+
+    Args:
+        guid: Event GUID (MD5 hash)
+        data: Event data dict
+    """
+    table = _get_table()
+
+    # Check for existing event to preserve overridden fields and createdAt
+    existing = table.get_item(Key={'PK': f'EVENT#{guid}', 'SK': 'META'}).get('Item')
+
+    overrides_map = {}
+    if existing:
+        overrides_map = existing.get('overrides', {})
+        # Preserve createdAt from existing
+        if 'createdAt' not in data and 'createdAt' in existing:
+            data['createdAt'] = existing['createdAt']
+        # Preserve overridden fields
+        for field, is_overridden in overrides_map.items():
+            if is_overridden and field in existing:
+                data[field] = existing[field]
+
+    if 'createdAt' not in data:
+        data['createdAt'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+    date_val = data.get('date', '')
+    time_val = data.get('time', '')
+
+    item = {
+        'PK': f'EVENT#{guid}',
+        'SK': 'META',
+        'source': 'ical',
+        'status': 'ACTIVE',
+        **{k: v for k, v in data.items() if v is not None},
+    }
+
+    # Preserve overrides map
+    if overrides_map:
+        item['overrides'] = overrides_map
+
+    # GSI1: date-based queries (existing pattern)
+    if date_val:
+        item['GSI1PK'] = f'DATE#{date_val}'
+        item['GSI1SK'] = f'TIME#{time_val}' if time_val else 'TIME#'
+
+    # GSI2: category queries
+    categories = data.get('categories', [])
+    if categories:
+        item['GSI2PK'] = f'CATEGORY#{categories[0]}'
+        item['GSI2SK'] = f'DATE#{date_val}'
+
+    # GSI3: createdAt queries
+    created_at = data.get('createdAt', '')
+    if created_at:
+        month_key = created_at[:7]  # YYYY-MM
+        item['GSI3PK'] = f'CREATED#{month_key}'
+        item['GSI3SK'] = created_at
+
+    # GSI4: date-range queries for active events
+    if date_val:
+        item['GSI4PK'] = 'EVT#ACTIVE'
+        item['GSI4SK'] = f'{date_val}#{time_val}' if time_val else date_val
+
     table.put_item(Item=item)

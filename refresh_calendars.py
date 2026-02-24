@@ -5,6 +5,7 @@ import icalendar
 import requests
 import json
 import pytz
+import hashlib
 from datetime import datetime, timedelta, timezone, date
 import re
 from pathlib import Path
@@ -306,27 +307,200 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
         print(f"Error fetching iCal feed from {url}: {str(e)}")
         return None
 
-def refresh_calendars():
+def calculate_event_hash(date_str, time_str, title, url=None):
+    """Calculate MD5 hash for event identification (matches generate_month_data.py)."""
+    uid_parts = [date_str, time_str, title]
+    if url:
+        uid_parts.append(url)
+    uid_base = '-'.join(str(p) for p in uid_parts)
+    return hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+
+
+def write_events_to_dynamo(events, group):
     """
-    Fetch all iCal files from groups stored in DynamoDB
+    Write fetched iCal events directly to the config table as EVENT entities.
+
+    Handles:
+    - Preserving overridden fields (tracked in 'overrides' map on EVENT entity)
+    - Preserving createdAt on existing events
+    - Category resolution (event → group → empty)
+    - Setting all GSI keys for consolidated queries
+    """
+    categories = dynamo_data.get_all_categories()
+    group_name = str(group.get('name', ''))
+    group_website = str(group.get('website', ''))
+    group_categories = group.get('categories', [])
+    suppress_urls = group.get('suppress_urls', [])
+    suppress_guids = group.get('suppress_guid', [])
+
+    # Get allowed states from config
+    allowed_states = config.get('only_states', [])
+
+    written = 0
+    for event in events:
+        guid = calculate_event_hash(
+            event.get('date', ''),
+            event.get('time', ''),
+            event.get('title', ''),
+            event.get('url'),
+        )
+
+        # Apply suppressions
+        if event.get('url') in suppress_urls:
+            continue
+        if guid in suppress_guids:
+            continue
+
+        # Apply state filter
+        if allowed_states:
+            location = event.get('location', '')
+            if location:
+                city, state = extract_location_info(location)
+                if state and state not in allowed_states:
+                    continue
+
+        # Resolve categories: event-level → group-level → empty
+        event_cats = event.get('categories', [])
+        if not event_cats and group_categories:
+            event_cats = [c for c in group_categories if c in categories]
+
+        data = {
+            'title': event.get('title', ''),
+            'date': event.get('date', ''),
+            'time': event.get('time', ''),
+            'url': event.get('url', ''),
+            'location': event.get('location', ''),
+            'description': event.get('description', ''),
+            'group': group_name,
+            'group_website': group_website,
+            'source': 'ical',
+        }
+
+        # Optional fields
+        for field in ['start_date', 'start_time', 'end_date', 'end_time',
+                      'location_type', 'city', 'state', 'cost']:
+            if event.get(field):
+                data[field] = event[field]
+
+        if event_cats:
+            data['categories'] = event_cats
+
+        dynamo_data.put_ical_event(guid, data)
+        written += 1
+
+    print(f"  Wrote {written} events from {group.get('id', '?')} to config table")
+    return written
+
+
+def handle_disappeared_events(current_guids, group_id):
+    """
+    Handle events that disappeared from the iCal feed.
+
+    Same-day stability: events whose date is today are NEVER removed (source
+    feeds like meetup.com drop past events mid-day). Events that disappear
+    on a future date get soft-deleted (status='REMOVED').
+    """
+    from boto3.dynamodb.conditions import Key, Attr
+    table = dynamo_data._get_table()
+    today_str = datetime.now(pytz.timezone(timezone_name)).strftime('%Y-%m-%d')
+
+    # Find existing iCal events for this group
+    response = table.scan(
+        FilterExpression=(
+            Attr('PK').begins_with('EVENT#') &
+            Attr('SK').eq('META') &
+            Attr('source').eq('ical') &
+            Attr('group').eq(group_id)
+        ),
+        ProjectionExpression='PK, #d, #s',
+        ExpressionAttributeNames={'#d': 'date', '#s': 'status'},
+    )
+    existing = response.get('Items', [])
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            FilterExpression=(
+                Attr('PK').begins_with('EVENT#') &
+                Attr('SK').eq('META') &
+                Attr('source').eq('ical') &
+                Attr('group').eq(group_id)
+            ),
+            ProjectionExpression='PK, #d, #s',
+            ExpressionAttributeNames={'#d': 'date', '#s': 'status'},
+            ExclusiveStartKey=response['LastEvaluatedKey'],
+        )
+        existing.extend(response.get('Items', []))
+
+    removed = 0
+    for item in existing:
+        guid = item['PK'].split('#', 1)[1]
+        if guid in current_guids:
+            continue
+        if item.get('status') == 'REMOVED':
+            continue
+
+        event_date = str(item.get('date', ''))
+
+        # Same-day stability: keep today's events
+        if event_date == today_str:
+            continue
+
+        # Past events that disappeared: soft-delete
+        # Future events that disappeared: also soft-delete (genuine cancellations)
+        table.update_item(
+            Key={'PK': f'EVENT#{guid}', 'SK': 'META'},
+            UpdateExpression='SET #s = :removed REMOVE GSI4PK, GSI4SK',
+            ExpressionAttributeNames={'#s': 'status'},
+            ExpressionAttributeValues={':removed': 'REMOVED'},
+        )
+        removed += 1
+
+    if removed:
+        print(f"  Soft-deleted {removed} disappeared events from {group_id}")
+
+
+def refresh_calendars(write_to_dynamo=True):
+    """
+    Fetch all iCal files from groups stored in DynamoDB.
+
+    Args:
+        write_to_dynamo: If True, write events directly to config table.
+            If False, only cache to JSON files (legacy behavior).
     """
     print("Refreshing calendars from DynamoDB...")
     groups = dynamo_data.get_active_groups()
     updated = False
-    
+
     for group in groups:
         if 'ical' in group and group['ical']:
             events = fetch_ical_and_extract_events(group['ical'], group['id'], group)
             if events is not None:
                 updated = True
-    
+
+                if write_to_dynamo:
+                    written = write_events_to_dynamo(events, group)
+
+                    # Track which GUIDs we just wrote for this group
+                    current_guids = set()
+                    for event in events:
+                        guid = calculate_event_hash(
+                            event.get('date', ''),
+                            event.get('time', ''),
+                            event.get('title', ''),
+                            event.get('url'),
+                        )
+                        current_guids.add(guid)
+
+                    # Handle events that disappeared from feed
+                    group_name = str(group.get('name', ''))
+                    handle_disappeared_events(current_guids, group_name)
+
     if updated:
         with open(REFRESH_FLAG_FILE, 'w') as f:
             f.write(datetime.now().isoformat())
         print("Calendars refreshed successfully")
     else:
         print("No calendar updates needed")
-    
+
     return updated
 
 def main():

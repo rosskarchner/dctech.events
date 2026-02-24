@@ -5,18 +5,22 @@ Used by the API backend for admin and submission workflows.
 """
 
 import os
+import sys
 import time
 import uuid
+from datetime import date as _date_type
 from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
+# Add parent dir for dynamo_data import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import dynamo_data
+
 CONFIG_TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'dctech-events')
-MATERIALIZED_TABLE_NAME = os.environ.get('MATERIALIZED_TABLE_NAME', 'DcTechEvents')
 
 _table = None
-_materialized_table = None
 
 
 def is_safe_url(url):
@@ -36,14 +40,6 @@ def _get_table():
         dynamodb = boto3.resource('dynamodb')
         _table = dynamodb.Table(CONFIG_TABLE_NAME)
     return _table
-
-
-def _get_materialized_table():
-    global _materialized_table
-    if _materialized_table is None:
-        dynamodb = boto3.resource('dynamodb')
-        _materialized_table = dynamodb.Table(MATERIALIZED_TABLE_NAME)
-    return _materialized_table
 
 
 # ─── DRAFT operations ─────────────────────────────────────────────
@@ -292,9 +288,8 @@ def _event_item_to_dict(item):
 
 
 def get_all_events(date_prefix=None, filter_type=None):
-    """Query DcTechEvents materialized table for active events, optionally filtered by YYYY-MM prefix or other filters."""
-    from datetime import date as _date
-    table = _get_materialized_table()
+    """Query config table for active events via GSI4, optionally filtered by YYYY-MM prefix."""
+    table = _get_table()
     items = []
 
     if date_prefix:
@@ -305,22 +300,20 @@ def get_all_events(date_prefix=None, filter_type=None):
             end = f"{int(year) + 1}-01-01"
         else:
             end = f"{year}-{next_month:02d}-01"
-        kce = Key('status').eq('ACTIVE') & Key('date').between(start, end)
+        kce = Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').between(start, end)
     else:
-        today = _date.today().isoformat()
-        kce = Key('status').eq('ACTIVE') & Key('date').gte(today)
+        today = _date_type.today().isoformat()
+        kce = Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today)
 
-    query_kwargs = {'IndexName': 'DateIndex', 'KeyConditionExpression': kce}
+    query_kwargs = {'IndexName': 'GSI4', 'KeyConditionExpression': kce}
     response = table.query(**query_kwargs)
     items.extend(response.get('Items', []))
     while 'LastEvaluatedKey' in response:
         response = table.query(**query_kwargs, ExclusiveStartKey=response['LastEvaluatedKey'])
         items.extend(response.get('Items', []))
 
-    # Convert to dicts first
-    results = [_materialized_event_to_dict(item) for item in items]
+    results = [_config_event_to_dict(item) for item in items]
 
-    # Apply additional Python filters
     if filter_type == 'uncategorized':
         results = [e for e in results if not e.get('categories')]
 
@@ -330,26 +323,22 @@ def get_all_events(date_prefix=None, filter_type=None):
     )
 
 
-def _materialized_event_to_dict(item):
-    """Convert a DcTechEvents item to a dict suitable for templates."""
-    event = {}
-    for field in ['eventId', 'title', 'date', 'time', 'end_date', 'url',
+def _config_event_to_dict(item):
+    """Convert a config table EVENT item to a dict suitable for templates."""
+    guid = item['PK'].split('#', 1)[1]
+    event = {'guid': guid, 'eventId': guid}
+    for field in ['title', 'date', 'time', 'end_date', 'url',
                   'location', 'cost', 'source', 'group', 'categories',
-                  'city', 'state', 'hidden', 'duplicate_of']:
+                  'city', 'state', 'hidden', 'duplicate_of', 'createdAt']:
         if field in item:
             val = item[field]
             event[field] = float(val) if isinstance(val, Decimal) else val
-    # Alias eventId → guid for template consistency
-    event['guid'] = event.get('eventId', '')
     return event
 
 
 def get_materialized_event(guid):
-    """Get a single event from the DcTechEvents table by eventId."""
-    table = _get_materialized_table()
-    response = table.get_item(Key={'eventId': guid})
-    item = response.get('Item')
-    return _materialized_event_to_dict(item) if item else None
+    """Get a single event from the config table by GUID."""
+    return get_event_from_config(guid)
 
 
 def get_event_from_config(guid):
@@ -403,17 +392,29 @@ def promote_draft_to_event(draft):
     table = _get_table()
     now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     guid = draft['id']
-    date = draft.get('date', '')
+    date_val = draft.get('date', '')
+    time_val = draft.get('time', '00:00')
 
     item = {
         'PK': f'EVENT#{guid}',
         'SK': 'META',
-        'GSI1PK': f'DATE#{date}',
-        'GSI1SK': f'TIME#{draft.get("time", "00:00")}',
+        'GSI1PK': f'DATE#{date_val}',
+        'GSI1SK': f'TIME#{time_val}',
         'source': 'submitted',
+        'status': 'ACTIVE',
         'submitted_by': draft.get('submitter_email', ''),
-        'created_at': now,
+        'createdAt': now,
     }
+
+    # GSI3: createdAt
+    month_key = now[:7]
+    item['GSI3PK'] = f'CREATED#{month_key}'
+    item['GSI3SK'] = now
+
+    # GSI4: date-range queries
+    if date_val:
+        item['GSI4PK'] = 'EVT#ACTIVE'
+        item['GSI4SK'] = f'{date_val}#{time_val}' if time_val else date_val
 
     for field in ['title', 'url', 'date', 'time', 'end_date', 'cost',
                   'city', 'state', 'all_day', 'categories']:
@@ -497,20 +498,16 @@ def bulk_delete_events(guids, actor_email):
 def bulk_set_category(guids, category_slug, actor_email):
     """Add a category to multiple events."""
     for guid in guids:
-        manual = get_event_from_config(guid)
-        if manual:
-            cats = manual.get('categories', [])
+        event = get_event_from_config(guid)
+        if event:
+            cats = list(event.get('categories', []))
             if category_slug not in cats:
                 cats.append(category_slug)
                 update_event(guid, {'categories': cats})
         else:
+            # Event not in config table — create override
             override = get_override(guid) or {}
-            # We might need the materialized event to see existing categories
-            mat = get_materialized_event(guid) or {}
-            cats = override.get('categories')
-            if cats is None:
-                cats = mat.get('categories', [])
-            
+            cats = override.get('categories', [])
             if category_slug not in cats:
                 cats.append(category_slug)
                 override['categories'] = cats
