@@ -40,7 +40,7 @@
           hx-target="#form-response"
           hx-swap="innerHTML"
           hx-indicator="#submit-indicator"
-          hx-on::after-request="if(event.detail.successful) this.reset()"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
       <input type="hidden" name="type" value="event">
 
       <div class="event-section">
