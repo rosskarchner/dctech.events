@@ -1,0 +1,43 @@
+<div class="category-list">
+  <h2>Categories ({{ categories | length }})</h2>
+
+  <form hx-post="https://next.dctech.events/admin/categories"
+        hx-target="#category-list"
+        hx-swap="afterbegin"
+        hx-on::after-request="this.reset()"
+        class="new-category-form">
+    <fieldset>
+      <legend>Add Category</legend>
+      <div>
+        <label for="new-slug">Slug</label>
+        <input type="text" id="new-slug" name="slug" placeholder="e.g. ai-ml"
+               pattern="[a-z0-9-]+" required>
+      </div>
+      <div>
+        <label for="new-name">Name</label>
+        <input type="text" id="new-name" name="name" placeholder="e.g. AI / ML" required>
+      </div>
+      <div>
+        <label for="new-description">Description</label>
+        <input type="text" id="new-description" name="description" placeholder="Optional description">
+      </div>
+      <button type="submit">Add Category</button>
+    </fieldset>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Slug</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="category-list">
+      {% for category in categories %}
+      {% include "partials/category_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

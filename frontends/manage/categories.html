@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pending Submissions - DC Tech Events Admin</title>
+  <title>Categories - DC Tech Events Admin</title>
   <link rel="stylesheet" href="/css/styles.css">
   <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
@@ -14,10 +14,10 @@
     <a href="/" class="nav-brand">DC Tech Events Admin</a>
     <ul class="nav-links">
       <li><a href="/">Dashboard</a></li>
-      <li><a href="/queue.html" class="active">Queue</a></li>
+      <li><a href="/queue.html">Queue</a></li>
       <li><a href="/events.html">Events</a></li>
       <li><a href="/groups.html">Groups</a></li>
-      <li><a href="/categories.html">Categories</a></li>
+      <li><a href="/categories.html" class="active">Categories</a></li>
       <li><a href="/overrides.html">Overrides</a></li>
     </ul>
     <div class="nav-right">
@@ -29,25 +29,26 @@
   <main class="container">
     <div class="page-header flex justify-between items-center">
       <div>
-        <h1>Pending Submissions</h1>
-        <p>Review and approve or reject user-submitted events.</p>
+        <h1>Categories</h1>
+        <p>Manage event categories used across events, groups, and submissions.</p>
       </div>
       <button class="btn btn-outline"
-              hx-get="https://next.dctech.events/admin/queue"
-              hx-target="#queue-list"
-              hx-indicator="#queue-loading">
+              hx-get="https://next.dctech.events/admin/categories"
+              hx-target="#content"
+              hx-indicator="#categories-loading">
         Refresh
       </button>
     </div>
 
     <div class="card">
-      <div id="queue-loading" class="htmx-indicator">
-        <span class="spinner"></span> Loading queue...
+      <div id="categories-loading" class="htmx-indicator">
+        <span class="spinner"></span> Loading categories...
       </div>
 
-      <div id="queue-list"
-           hx-get="https://next.dctech.events/admin/queue"
-           hx-trigger="load">
+      <div id="content"
+           hx-get="https://next.dctech.events/admin/categories"
+           hx-trigger="load"
+           hx-indicator="#categories-loading">
       </div>
     </div>
   </main>

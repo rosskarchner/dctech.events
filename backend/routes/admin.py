@@ -16,6 +16,7 @@ from db import (
     get_all_categories, get_events_by_date,
     get_all_events, get_event_from_config, update_event as db_update_event,
     bulk_delete_events, bulk_set_category, bulk_combine_events,
+    put_category as db_put_category, delete_category as db_delete_category,
 )
 
 
@@ -454,3 +455,68 @@ def handle_bulk_action(event, jinja_env):
     
     # We add a success message header
     return _html(200, html, event)
+
+
+# ─── Categories ──────────────────────────────────────────────────
+
+def get_categories(event, jinja_env):
+    """GET /admin/categories"""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+    categories = get_all_categories()
+    cats_list = sorted(categories.values(), key=lambda x: x.get('name', '').lower())
+    template = jinja_env.get_template('partials/admin_categories.html')
+    return _html(200, template.render(categories=cats_list), event)
+
+
+def create_category(event, jinja_env):
+    """POST /admin/categories"""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+    data = _parse_body(event)
+    slug = data.get('slug', '').strip().lower()
+    name = data.get('name', '').strip()
+    if not slug or not name:
+        return _html(400, '<p>Slug and name are required</p>', event)
+    cat = {'slug': slug, 'name': name, 'description': data.get('description', '').strip()}
+    db_put_category(slug, cat)
+    template = jinja_env.get_template('partials/category_row.html')
+    return _html(201, template.render(category=cat), event)
+
+
+def get_category_edit_form(event, jinja_env, slug):
+    """GET /admin/categories/{slug}/edit"""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+    cat = get_all_categories().get(slug)
+    if not cat:
+        return _html(404, '<p>Category not found</p>', event)
+    template = jinja_env.get_template('partials/category_edit_form.html')
+    return _html(200, template.render(category=cat), event)
+
+
+def update_category(event, jinja_env, slug):
+    """PUT /admin/categories/{slug}"""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+    data = _parse_body(event)
+    name = data.get('name', '').strip()
+    if not name:
+        return _html(400, '<p>Name is required</p>', event)
+    cat = {'slug': slug, 'name': name, 'description': data.get('description', '').strip()}
+    db_put_category(slug, cat)
+    template = jinja_env.get_template('partials/category_row.html')
+    return _html(200, template.render(category=cat), event)
+
+
+def delete_category_route(event, jinja_env, slug):
+    """DELETE /admin/categories/{slug}"""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+    db_delete_category(slug)
+    return _html(200, '', event)

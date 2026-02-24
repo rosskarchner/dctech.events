@@ -1,0 +1,18 @@
+<tr id="category-{{ category.slug }}">
+  <td><code>{{ category.slug }}</code></td>
+  <td><strong>{{ category.name }}</strong></td>
+  <td>{{ category.description }}</td>
+  <td>
+    <button hx-get="https://next.dctech.events/admin/categories/{{ category.slug }}/edit"
+            hx-target="#category-{{ category.slug }}"
+            hx-swap="outerHTML">
+      Edit
+    </button>
+    <button hx-delete="https://next.dctech.events/admin/categories/{{ category.slug }}"
+            hx-target="#category-{{ category.slug }}"
+            hx-swap="outerHTML"
+            hx-confirm="Delete category '{{ category.slug }}'? This won't remove it from existing events.">
+      Delete
+    </button>
+  </td>
+</tr>

@@ -195,6 +195,24 @@ def lambda_handler(event, context):
             guid = path.split('/')[3]
             return add_cors(admin.delete_override(event, jinja_env))
 
+        if path == '/admin/categories' and http_method == 'GET':
+            return add_cors(admin.get_categories(event, jinja_env))
+
+        if path == '/admin/categories' and http_method == 'POST':
+            return add_cors(admin.create_category(event, jinja_env))
+
+        if path.startswith('/admin/categories/') and path.endswith('/edit') and http_method == 'GET':
+            slug = path.split('/')[3]
+            return add_cors(admin.get_category_edit_form(event, jinja_env, slug))
+
+        if path.startswith('/admin/categories/') and http_method == 'PUT':
+            slug = path.split('/')[3]
+            return add_cors(admin.update_category(event, jinja_env, slug))
+
+        if path.startswith('/admin/categories/') and http_method == 'DELETE':
+            slug = path.split('/')[3]
+            return add_cors(admin.delete_category_route(event, jinja_env, slug))
+
         return add_cors(json_response(404, {'error': 'Not found'}))
 
     except Exception as e:

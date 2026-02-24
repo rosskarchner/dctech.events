@@ -572,3 +572,20 @@ def get_all_categories():
             'description': item.get('description', ''),
         }
     return categories
+
+
+def put_category(slug, data):
+    """Create or update a CATEGORY entity."""
+    table = _get_table()
+    item = {
+        'PK': f'CATEGORY#{slug}',
+        'SK': 'META',
+        **{k: v for k, v in data.items() if v is not None},
+    }
+    table.put_item(Item=item)
+
+
+def delete_category(slug):
+    """Delete a CATEGORY entity."""
+    table = _get_table()
+    table.delete_item(Key={'PK': f'CATEGORY#{slug}', 'SK': 'META'})

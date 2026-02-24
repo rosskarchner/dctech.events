@@ -1,0 +1,32 @@
+<tr id="category-{{ category.slug }}">
+  <td colspan="4">
+    <form hx-put="https://next.dctech.events/admin/categories/{{ category.slug }}"
+          hx-target="#category-{{ category.slug }}"
+          hx-swap="outerHTML">
+      <fieldset>
+        <legend>Edit: <code>{{ category.slug }}</code></legend>
+        <div>
+          <label>Slug (read-only)</label>
+          <code>{{ category.slug }}</code>
+        </div>
+        <div>
+          <label for="name-{{ category.slug }}">Name</label>
+          <input type="text" id="name-{{ category.slug }}" name="name"
+                 value="{{ category.name }}" required>
+        </div>
+        <div>
+          <label for="desc-{{ category.slug }}">Description</label>
+          <input type="text" id="desc-{{ category.slug }}" name="description"
+                 value="{{ category.description }}">
+        </div>
+        <div>
+          <button type="submit">Save</button>
+          <button type="button"
+                  hx-get="https://next.dctech.events/admin/categories"
+                  hx-target="#content"
+                  hx-swap="innerHTML">Cancel</button>
+        </div>
+      </fieldset>
+    </form>
+  </td>
+</tr>
