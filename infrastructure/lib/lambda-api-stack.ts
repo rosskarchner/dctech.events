@@ -83,12 +83,12 @@ export class LambdaApiStack extends cdk.Stack {
       functionName: 'dctech-events-api',
       runtime: lambda.Runtime.PYTHON_3_12, // Use 3.12 (supported)
       handler: 'handler.lambda_handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend'), {
+      code: lambda.Code.fromAsset(path.join(__dirname, '../..'), {
         bundling: {
           image: lambda.Runtime.PYTHON_3_12.bundlingImage,
           command: [
             'bash', '-c',
-            'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output',
+            'pip install -r backend/requirements.txt -t /asset-output && cp -au backend/. /asset-output && cp dynamo_data.py versioned_db.py /asset-output/',
           ],
           local: {
             tryBundle(outputDir: string) {
@@ -98,9 +98,12 @@ export class LambdaApiStack extends cdk.Stack {
                 return false;
               }
 
+              const root = path.join(__dirname, '../..');
               const commands = [
-                `python3 -m pip install -r ${path.join(__dirname, '../../backend/requirements.txt')} -t ${outputDir} --platform manylinux2014_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: --upgrade`,
-                `cp -r ${path.join(__dirname, '../../backend')}/* ${outputDir}`
+                `python3 -m pip install -r ${root}/backend/requirements.txt -t ${outputDir} --platform manylinux2014_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: --upgrade`,
+                `cp -r ${root}/backend/* ${outputDir}`,
+                `cp ${root}/dynamo_data.py ${outputDir}/`,
+                `cp ${root}/versioned_db.py ${outputDir}/`,
               ];
 
               execSync(commands.join(' && '), { stdio: 'inherit' });
@@ -117,6 +120,11 @@ export class LambdaApiStack extends cdk.Stack {
           '.git',
           '.venv',
           'node_modules',
+          '.beads',
+          'infrastructure',
+          'build',
+          'frontends',
+          'migrations',
         ],
       }),
       role: lambdaRole,

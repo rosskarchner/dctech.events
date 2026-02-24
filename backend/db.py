@@ -5,7 +5,6 @@ Used by the API backend for admin and submission workflows.
 """
 
 import os
-import sys
 import time
 import uuid
 from datetime import date as _date_type
@@ -14,8 +13,6 @@ from decimal import Decimal
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
-# Add parent dir for dynamo_data import
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import dynamo_data
 
 CONFIG_TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'dctech-events')
