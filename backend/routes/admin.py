@@ -15,7 +15,6 @@ from db import (
     put_override as db_put_override, delete_override as db_delete_override,
     get_all_categories, get_events_by_date,
     get_all_events, get_event_from_config, update_event as db_update_event,
-    get_materialized_event,
     bulk_delete_events, bulk_set_category, bulk_combine_events,
 )
 
@@ -282,15 +281,20 @@ def get_event_edit_form(event, jinja_env, guid):
         return err
 
     all_categories = get_all_categories()
-    manual = get_event_from_config(guid)
-    if manual:
+    mat_event = get_event_from_config(guid) or {}
+    if mat_event and mat_event.get('source') != 'ical':
         template = jinja_env.get_template('partials/admin_event_edit_form.html')
-        html = template.render(event=manual, all_categories=all_categories)
+        html = template.render(event=mat_event, all_categories=all_categories)
     else:
-        mat_event = get_materialized_event(guid) or {}
         override = get_override(guid) or {}
+        # Merge legacy OVERRIDE entity into event so template sees correct current values
+        merged = dict(mat_event)
+        for field in ['title', 'location', 'categories', 'hidden', 'duplicate_of']:
+            if field in override:
+                merged[field] = override[field]
+        merged.setdefault('guid', guid)
         template = jinja_env.get_template('partials/admin_event_override_form.html')
-        html = template.render(guid=guid, event=mat_event, override=override,
+        html = template.render(guid=guid, event=merged, override={},
                                all_categories=all_categories)
     return _html(200, html, event)
 
@@ -313,28 +317,26 @@ def save_event_edit(event, jinja_env, guid):
     data['hidden'] = data.get('hidden') == 'true'
     data['duplicate_of'] = data.get('duplicate_of', '').strip() or None
 
-    manual = get_event_from_config(guid)
+    existing = get_event_from_config(guid)
 
-    if manual:
+    if existing and existing.get('source') != 'ical':
         db_update_event(guid, data)
         updated = get_event_from_config(guid) or {}
         updated['guid'] = guid
     else:
-        # For iCal events, create or update an override
-        override_data = {'edited_by': claims.get('email', '')}
-        # Fields we allow overriding for iCal events
-        for field in ['title', 'location', 'categories', 'url', 'time', 'hidden', 'duplicate_of']:
+        # For iCal events, update the EVENT entity directly with overrides map
+        overrides_map = (existing or {}).get('overrides', {})
+
+        editable_fields = ['title', 'location', 'categories', 'url', 'time', 'hidden', 'duplicate_of']
+        override_data = {}
+        for field in editable_fields:
             if field in data:
                 override_data[field] = data[field]
-        
-        db_put_override(guid, override_data)
-        
-        # Merge materialized event with override for display in the updated row
-        base_event = get_materialized_event(guid) or {}
-        updated = dict(base_event)
-        for field, val in override_data.items():
-            if val is not None:
-                updated[field] = val
+                overrides_map[field] = True
+
+        db_update_event(guid, override_data, overrides=overrides_map)
+
+        updated = get_event_from_config(guid) or {}
         updated['guid'] = guid
 
     template = jinja_env.get_template('partials/admin_event_row.html')

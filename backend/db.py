@@ -277,7 +277,8 @@ def _event_item_to_dict(item):
     for field in ['title', 'date', 'time', 'end_date', 'end_time',
                   'location', 'url', 'cost', 'description', 'group',
                   'group_website', 'categories', 'source', 'submitted_by',
-                  'start_date', 'start_time', 'hidden', 'duplicate_of']:
+                  'start_date', 'start_time', 'hidden', 'duplicate_of',
+                  'overrides']:
         if field in item:
             val = item[field]
             event[field] = float(val) if isinstance(val, Decimal) else val
@@ -346,7 +347,7 @@ def get_event_from_config(guid):
     return _event_item_to_dict(item) if item else None
 
 
-def update_event(guid, data):
+def update_event(guid, data, overrides=None):
     """Update an EVENT#{guid} entity in the config table with the given fields."""
     table = _get_table()
     date = data.get('date', '')
@@ -367,11 +368,16 @@ def update_event(guid, data):
             val = data[field]
             if field == 'url' and not is_safe_url(val):
                 val = ''
-            
+
             safe_key = f'#f_{field}'
             expr_names[safe_key] = field
             update_parts.append(f'{safe_key} = :{field}')
             expr_values[f':{field}'] = val
+
+    if overrides is not None:
+        expr_names['#f_overrides'] = 'overrides'
+        update_parts.append('#f_overrides = :overrides')
+        expr_values[':overrides'] = overrides
 
     update_expr = 'SET ' + ', '.join(update_parts)
     kwargs = {

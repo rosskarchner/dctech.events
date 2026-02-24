@@ -474,6 +474,17 @@ def put_ical_event(guid, data):
             if is_overridden and field in existing:
                 data[field] = existing[field]
 
+    # Check for legacy OVERRIDE entity (written by old save_event_edit path)
+    override_item = table.get_item(
+        Key={'PK': f'OVERRIDE#{guid}', 'SK': 'META'}
+    ).get('Item')
+    if override_item:
+        for field in ['title', 'location', 'categories', 'url',
+                      'time', 'hidden', 'duplicate_of']:
+            if field in override_item:
+                data[field] = override_item[field]
+                overrides_map[field] = True
+
     if 'createdAt' not in data:
         data['createdAt'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 
