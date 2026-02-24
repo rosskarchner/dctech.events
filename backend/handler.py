@@ -86,6 +86,8 @@ def lambda_handler(event, context):
     path = event.get('path', '/')
     resource = event.get('resource', path)
 
+    print(f"REQUEST: {http_method} {path} resource={resource}")
+
     # Determine CORS origin based on request
     cors_origin = get_cors_origin(event)
 
@@ -196,5 +198,5 @@ def lambda_handler(event, context):
         return add_cors(json_response(404, {'error': 'Not found'}))
 
     except Exception as e:
-        print(f"Error handling {http_method} {path}: {traceback.format_exc()}")
+        print(f"ERROR handling {http_method} {path}: {traceback.format_exc()}")
         return add_cors(json_response(500, {'error': 'Internal server error'}))

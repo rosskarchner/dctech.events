@@ -223,6 +223,15 @@ export class LambdaApiStack extends cdk.Stack {
       anyMethod: true,
     });
 
+    // Explicit wildcard Lambda invoke permission covering all routes.
+    // LambdaIntegration auto-generates per-route permissions, but they can drift out of sync
+    // (e.g. if CF state gets corrupted). This blanket permission ensures all routes always work.
+    this.apiFunction.addPermission('ApiGatewayInvokeAll', {
+      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: api.arnForExecuteApi('*', '/*', stageName),
+    });
+
     this.apiEndpoint = api.url;
 
     // Add usage plan with rate limiting and throttling
