@@ -10,7 +10,7 @@ import sys
 # Add current directory to path so we can import db_utils and common
 sys.path.append(os.path.dirname(__file__))
 import db_utils
-from common.microblog import get_micropub_destination
+from common.microblog import MP_DESTINATION
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -116,9 +116,7 @@ def post_to_microblog(content, token):
     headers = {'Authorization': f'Bearer {token}'}
     data = {'h': 'entry', 'content': content}
     
-    # Always try to resolve the UID for the destination
-    target_destination = get_micropub_destination(token)
-    data['mp-destination'] = target_destination
+    data['mp-destination'] = MP_DESTINATION
 
     try:
         response = requests.post(MICROPUB_ENDPOINT, data=data, headers=headers, timeout=30)
