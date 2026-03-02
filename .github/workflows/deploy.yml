@@ -107,15 +107,23 @@ jobs:
 
       - name: Invalidate CloudFront Cache
         run: |
-          echo "Invalidating edit.dctech.events (${{ vars.EDIT_DIST_ID }})..."
-          aws cloudfront create-invalidation --distribution-id ${{ vars.EDIT_DIST_ID }} --paths "/*"
+          echo "Finding CloudFront Distribution ID for edit.dctech.events..."
+          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'edit.dctech.events')].Id" --output text)
+          
+          if [ -z "$DIST_ID" ] || [ "$DIST_ID" == "None" ]; then
+            echo "❌ Error: Could not find CloudFront Distribution for edit.dctech.events"
+            exit 1
+          fi
+          
+          echo "Invalidating distribution $DIST_ID..."
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
 
   trigger-rebuild:
     needs: [changes, deploy-infra]
     # Rebuild if the site content changed OR if we just updated the infrastructure/lambdas
     if: |
       always() && 
-      (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.infra == 'true') &&
+      (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.infra == 'true' || github.event_name == 'workflow_dispatch') &&
       (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
