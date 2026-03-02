@@ -9,7 +9,7 @@ import sys
 
 # Add current directory to path
 sys.path.append(os.path.dirname(__file__))
-from common.microblog import get_micropub_destination
+from common.microblog import MP_DESTINATION
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -71,9 +71,7 @@ def post_to_microblog(content, token):
         'content': content,
     }
 
-    # Always try to resolve the UID for the destination
-    target_destination = get_micropub_destination(token)
-    data['mp-destination'] = target_destination
+    data['mp-destination'] = MP_DESTINATION
 
     try:
         response = requests.post(
