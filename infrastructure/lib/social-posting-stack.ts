@@ -41,6 +41,7 @@ export class SocialPostingStack extends cdk.Stack {
         bundling: bundlingOptions,
       }),
       timeout: cdk.Duration.seconds(60),
+      architecture: lambda.Architecture.ARM_64,
       environment: commonEnv,
       logGroup: new logs.LogGroup(this, 'WeeklyNewsletterLogGroup', {
         retention: logs.RetentionDays.ONE_WEEK,
@@ -58,6 +59,7 @@ export class SocialPostingStack extends cdk.Stack {
         bundling: bundlingOptions,
       }),
       timeout: cdk.Duration.seconds(60),
+      architecture: lambda.Architecture.ARM_64,
       environment: commonEnv,
       logGroup: new logs.LogGroup(this, 'DailySummaryLogGroup', {
         retention: logs.RetentionDays.ONE_WEEK,
@@ -75,6 +77,7 @@ export class SocialPostingStack extends cdk.Stack {
         bundling: bundlingOptions,
       }),
       timeout: cdk.Duration.seconds(60),
+      architecture: lambda.Architecture.ARM_64,
       environment: commonEnv,
       logGroup: new logs.LogGroup(this, 'NewEventsSummaryLogGroup', {
         retention: logs.RetentionDays.ONE_WEEK,
@@ -92,6 +95,7 @@ export class SocialPostingStack extends cdk.Stack {
         bundling: bundlingOptions,
       }),
       timeout: cdk.Duration.seconds(30),
+      architecture: lambda.Architecture.ARM_64,
       environment: {
         CONFIG_TABLE_NAME: 'dctech-events',
         ADMIN_EMAIL: stackConfig.notifications.adminEmail,

@@ -1,6 +1,6 @@
 <tr id="draft-{{ draft.id }}" class="approve-form-row">
   <td colspan="5">
-    <form hx-post="https://next.dctech.events/admin/draft/{{ draft.id }}/approve"
+    <form hx-post="/admin/draft/{{ draft.id }}/approve"
           hx-target="#draft-{{ draft.id }}"
           hx-swap="outerHTML">
       <div class="approve-form">
@@ -23,7 +23,7 @@
         <div class="approve-form-actions">
           <button type="submit" class="btn btn-success btn-sm">Confirm Approve</button>
           <button type="button" class="btn btn-outline btn-sm"
-                  hx-get="https://next.dctech.events/admin/draft/{{ draft.id }}/row"
+                  hx-get="/admin/draft/{{ draft.id }}/row"
                   hx-target="#draft-{{ draft.id }}"
                   hx-swap="outerHTML">
             Cancel

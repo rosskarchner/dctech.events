@@ -90,6 +90,7 @@ export class RebuildStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../../lambdas/stream_dispatcher')),
       timeout: cdk.Duration.seconds(30),
       memorySize: 128,
+      architecture: lambda.Architecture.ARM_64,
       environment: {
         REBUILD_QUEUE_URL: rebuildQueue.queueUrl,
         DEDUP_WINDOW_SECONDS: String(stackConfig.rebuild.deduplicationWindowSeconds),
@@ -123,6 +124,7 @@ export class RebuildStack extends cdk.Stack {
       ),
       timeout: cdk.Duration.seconds(stackConfig.rebuild.lambdaTimeoutSeconds),
       memorySize: stackConfig.rebuild.lambdaMemoryMB,
+      architecture: lambda.Architecture.ARM_64,
       environment: {
         SITE_BUCKET: siteBucketName,
         DATA_CACHE_BUCKET: dataCacheBucketName,
@@ -185,7 +187,8 @@ export class RebuildStack extends cdk.Stack {
         { file: 'lambdas/rebuild_worker/Dockerfile' }
       ),
       timeout: cdk.Duration.seconds(600),
-      memorySize: 1024,
+      memorySize: 512,
+      architecture: lambda.Architecture.ARM_64,
       environment: {
         CONFIG_TABLE_NAME: 'dctech-events',
         ICAL_REFRESH_MODE: 'true',  // Tells handler to run refresh only

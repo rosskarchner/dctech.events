@@ -1,18 +1,19 @@
 (function() {
 /**
- * Cognito Authentication Module for edit.dctech.events
+ * Consolidated Cognito Authentication Module for edit.dctech.events
  *
  * Handles OAuth 2.0 Authorization Code flow with Cognito Hosted UI.
- * Stores tokens in sessionStorage and attaches them to HTMX requests.
+ * Supports both general users and admins.
  */
 
 const AUTH_CONFIG = {
   userPoolClientId: '58j1h73i72v1kaim503bk2amgb',
   cognitoDomain: 'https://login.dctech.events',
-  redirectUri: 'https://edit.dctech.events/auth/callback.html',
-  logoutUri: 'https://edit.dctech.events/',
+  redirectUri: window.location.origin + '/auth/callback.html',
+  logoutUri: window.location.origin + '/',
   scopes: 'email openid profile',
-  apiBaseUrl: 'https://next.dctech.events',
+  apiPaths: ['/api/', '/admin/', '/submit', '/my-submissions', '/health'],
+  adminGroup: 'admins'
 };
 
 const TOKEN_KEYS = {
@@ -39,7 +40,12 @@ function storeTokens(tokenResponse) {
 
   // Decode ID token to extract user info
   try {
-    const payload = JSON.parse(atob(tokenResponse.id_token.split('.')[1]));
+    const base64Url = tokenResponse.id_token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    const payload = JSON.parse(jsonPayload);
     sessionStorage.setItem(TOKEN_KEYS.userInfo, JSON.stringify({
       email: payload.email,
       name: payload.name || payload.email,
@@ -80,6 +86,11 @@ function isAuthenticated() {
   return Date.now() < parseInt(expiry, 10);
 }
 
+function isAdmin() {
+  const user = getUserInfo();
+  return user && user.groups && user.groups.includes(AUTH_CONFIG.adminGroup);
+}
+
 function clearTokens() {
   Object.values(TOKEN_KEYS).forEach(key => sessionStorage.removeItem(key));
 }
@@ -113,7 +124,6 @@ async function refreshAccessToken() {
     }
 
     const tokenData = await response.json();
-    // Refresh response does not include a new refresh_token; keep the existing one
     tokenData.refresh_token = tokenData.refresh_token || refreshToken;
     storeTokens(tokenData);
     return true;
@@ -124,10 +134,6 @@ async function refreshAccessToken() {
   }
 }
 
-/**
- * Ensure we have a valid token, refreshing if needed.
- * Returns the access token or null.
- */
 async function ensureValidToken() {
   if (isAuthenticated()) {
     return getAccessToken();
@@ -144,7 +150,7 @@ async function ensureValidToken() {
 // ---- Login / Logout ----
 
 function getLoginUrl(returnPath) {
-  const state = returnPath || '/submit-event.html';
+  const state = returnPath || '/';
   sessionStorage.setItem('oauth_state', state);
   const params = new URLSearchParams({
     response_type: 'code',
@@ -198,12 +204,13 @@ async function exchangeCodeForTokens(code) {
 // ---- HTMX Integration ----
 
 function setupHtmxAuth() {
-  // Attach Authorization header to API requests
   document.addEventListener('htmx:configRequest', function(event) {
     const path = event.detail.path || '';
+    
+    // Check if path is an API path
+    const isApiRequest = AUTH_CONFIG.apiPaths.some(p => path.startsWith(p));
 
-    // Add auth header for API requests (use cached token synchronously)
-    if (path.startsWith(AUTH_CONFIG.apiBaseUrl)) {
+    if (isApiRequest) {
       const token = getIdToken();
       if (token) {
         event.detail.headers['Authorization'] = 'Bearer ' + token;
@@ -211,7 +218,6 @@ function setupHtmxAuth() {
     }
   });
 
-  // Handle 401 responses by redirecting to login
   document.addEventListener('htmx:responseError', function(event) {
     if (event.detail.xhr && event.detail.xhr.status === 401) {
       clearTokens();
@@ -225,16 +231,18 @@ function setupHtmxAuth() {
 function updateAuthUI() {
   const user = getUserInfo();
   const loggedIn = isAuthenticated();
+  const admin = isAdmin();
 
-  // Show/hide elements based on auth state
   document.querySelectorAll('[data-auth="logged-in"]').forEach(el => {
     el.classList.toggle('hidden', !loggedIn);
   });
   document.querySelectorAll('[data-auth="logged-out"]').forEach(el => {
     el.classList.toggle('hidden', loggedIn);
   });
+  document.querySelectorAll('[data-auth="admin"]').forEach(el => {
+    el.classList.toggle('hidden', !admin);
+  });
 
-  // Populate user info
   if (loggedIn && user) {
     document.querySelectorAll('[data-user="email"]').forEach(el => {
       el.textContent = user.email;
@@ -245,10 +253,6 @@ function updateAuthUI() {
   }
 }
 
-/**
- * Require authentication to access the current page.
- * Shows a sign-in message if not authenticated.
- */
 function requireAuth() {
   if (isAuthenticated()) return true;
   document.querySelector('main').innerHTML = `
@@ -260,18 +264,33 @@ function requireAuth() {
   return false;
 }
 
+function requireAdmin() {
+  if (!isAuthenticated()) {
+    login(window.location.pathname);
+    return false;
+  }
+  if (!isAdmin()) {
+    document.body.innerHTML = `
+      <div style="max-width:600px;margin:80px auto;text-align:center;font-family:system-ui,sans-serif;">
+        <h1>Access Denied</h1>
+        <p>You are not a member of the <strong>admins</strong> group.</p>
+        <p>Contact an administrator if you believe this is an error.</p>
+        <button onclick="DctechAuth.logout()" style="margin-top:1rem;padding:0.5rem 1.5rem;cursor:pointer;">Sign Out</button>
+      </div>
+    `;
+    return false;
+  }
+  return true;
+}
+
 // ---- Initialization ----
 
 function initAuth() {
   updateAuthUI();
 }
 
-// Register HTMX listeners immediately (before body is parsed) so that
-// hx-trigger="load" requests fired by HTMX already have auth headers
-// and the correct API base URL.
 setupHtmxAuth();
 
-// Auto-initialize UI when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initAuth);
 } else {
@@ -283,12 +302,16 @@ window.DctechAuth = {
   AUTH_CONFIG,
   login,
   logout,
+  signOut: logout, // Compatibility
   isAuthenticated,
+  isAdmin,
   getUserInfo,
   getAccessToken,
   getIdToken,
   ensureValidToken,
   requireAuth,
+  requireAdmin,
+  initAuth, // Compatibility
   exchangeCodeForTokens,
   clearTokens,
   updateAuthUI,

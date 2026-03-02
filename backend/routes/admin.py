@@ -35,7 +35,7 @@ def _html(status_code, body, event=None):
     allowed_origins = [
         'https://dctech.events',
         'https://manage.dctech.events',
-        'https://suggest.dctech.events',
+        'https://edit.dctech.events',
         'http://localhost:5000'
     ]
     origin = event.get('headers', {}).get('origin') if event else None

@@ -6,5 +6,8 @@
   "scripts": {
     "build": "npm run build:css",
     "build:css": "echo 'CSS build placeholder'"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
   }
 }

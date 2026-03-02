@@ -1,7 +1,7 @@
 <div class="category-list">
   <h2>Categories ({{ categories | length }})</h2>
 
-  <form hx-post="https://next.dctech.events/admin/categories"
+  <form hx-post="/admin/categories"
         hx-target="#category-list"
         hx-swap="afterbegin"
         hx-on::after-request="this.reset()"

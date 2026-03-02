@@ -63,7 +63,7 @@ new LambdaApiStack(app, `${stackConfig.stackName}-api`, {
   secretsStack,
 });
 
-// Frontend apps (suggest.dctech.events, manage.dctech.events)
+// Frontend apps (edit.dctech.events)
 new FrontendStack(app, `${stackConfig.stackName}-frontend`, {
   env,
   certificate: mainStack.certificate,

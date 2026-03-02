@@ -94,7 +94,7 @@ export class ImportEventsStack extends cdk.Stack {
               }
 
               const commands = [
-                `python3 -m pip install -r ${path.join(__dirname, '../../backend/requirements.txt')} -t ${outputDir} --platform manylinux2014_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: --upgrade`,
+                `python3 -m pip install -r ${path.join(__dirname, '../../backend/requirements.txt')} -t ${outputDir} --platform manylinux2014_aarch64 --implementation cp --python-version 3.12 --only-binary=:all: --upgrade`,
                 `cp -r ${path.join(__dirname, '../../backend')}/* ${outputDir}`
               ];
 
@@ -116,7 +116,8 @@ export class ImportEventsStack extends cdk.Stack {
       }),
       role: lambdaRole,
       timeout: cdk.Duration.minutes(5),  // GitHub fetching + DynamoDB writes
-      memorySize: 512,
+      memorySize: 256,
+      architecture: lambda.Architecture.ARM_64,
       environment: {
         DYNAMODB_TABLE_NAME: props.dynamoStack.table.tableName,
         GITHUB_REPO: githubRepo,

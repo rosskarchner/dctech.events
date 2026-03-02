@@ -1,6 +1,6 @@
 <tr id="category-{{ category.slug }}">
   <td colspan="4">
-    <form hx-put="https://next.dctech.events/admin/categories/{{ category.slug }}"
+    <form hx-put="/admin/categories/{{ category.slug }}"
           hx-target="#category-{{ category.slug }}"
           hx-swap="outerHTML">
       <fieldset>
@@ -22,7 +22,7 @@
         <div>
           <button type="submit">Save</button>
           <button type="button"
-                  hx-get="https://next.dctech.events/admin/categories"
+                  hx-get="/admin/categories"
                   hx-target="#content"
                   hx-swap="innerHTML">Cancel</button>
         </div>

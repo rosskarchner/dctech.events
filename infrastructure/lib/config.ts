@@ -71,13 +71,11 @@ export const stackConfig = {
     domainPrefix: 'dctech-events',
     customDomain: 'login.dctech.events',
     callbackUrls: [
-      'https://suggest.dctech.events/auth/callback.html',
-      'https://manage.dctech.events/auth/callback.html',
+      'https://edit.dctech.events/auth/callback.html',
       'http://localhost:5000/auth/callback',
     ],
     logoutUrls: [
-      'https://suggest.dctech.events/',
-      'https://manage.dctech.events/',
+      'https://edit.dctech.events/',
       'http://localhost:5000/',
     ],
     ses: {
@@ -136,7 +134,7 @@ export const stackConfig = {
     deduplicationWindowSeconds: 60,
     visibilityTimeoutSeconds: 900,
     lambdaTimeoutSeconds: 900,
-    lambdaMemoryMB: 2048,
+    lambdaMemoryMB: 1024,
   },
 
   // Tags to apply to all resources

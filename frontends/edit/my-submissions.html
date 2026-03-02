@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Submissions - DC Tech Events</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
+</head>
+<body>
+    <nav class="nav">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
+      <div style="display:flex; align-items: center; gap: 2rem;">
+        <a href="/" class="nav-brand">DC Tech Events Edit</a>
+        <ul class="nav-links" data-auth="admin" class="hidden">
+          <li><a href="/queue.html">Queue</a></li>
+          <li><a href="/events.html">Events</a></li>
+          <li><a href="/groups.html">Groups</a></li>
+          <li><a href="/categories.html">Categories</a></li>
+          <li><a href="/overrides.html">Overrides</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <span data-auth="logged-in" class="hidden">
+          <span data-user="name"></span>
+          <button class="btn-sign-out" onclick="DctechAuth.logout()">Sign Out</button>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <h2>My Submissions</h2>
+    <p>Events and groups you have submitted.</p>
+
+    <div id="submissions-trigger"></div>
+
+    <div id="loading-indicator" class="htmx-indicator" style="text-align: center; padding: 2rem;">
+      <span class="spinner"></span> Loading your submissions...
+    </div>
+
+    <div id="submissions-list"
+         hx-get="/my-submissions"
+         hx-trigger="load"
+         hx-indicator="#loading-indicator">
+      <!-- HTMX will load submissions here -->
+    </div>
+
+    <noscript>
+      <div class="message message-info">
+        <p>JavaScript is required to view your submissions.</p>
+      </div>
+    </noscript>
+  </main>
+
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    DctechAuth.requireAuth();
+  </script>
+</body>
+</html>

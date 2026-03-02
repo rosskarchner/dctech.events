@@ -102,19 +102,13 @@ jobs:
 
       - name: Sync Frontend Apps to S3
         run: |
-          echo "Syncing suggest.dctech.events..."
-          aws s3 sync frontends/suggest/ s3://dctech-events-suggest-frontend/ --delete
-          
-          echo "Syncing manage.dctech.events..."
-          aws s3 sync frontends/manage/ s3://dctech-events-manage-frontend/ --delete
+          echo "Syncing edit.dctech.events..."
+          aws s3 sync frontends/edit/ s3://dctech-events-edit-frontend/ --delete
 
       - name: Invalidate CloudFront Cache
         run: |
-          echo "Invalidating suggest.dctech.events (${{ vars.SUGGEST_DIST_ID }})..."
-          aws cloudfront create-invalidation --distribution-id ${{ vars.SUGGEST_DIST_ID }} --paths "/*"
-          
-          echo "Invalidating manage.dctech.events (${{ vars.MANAGE_DIST_ID }})..."
-          aws cloudfront create-invalidation --distribution-id ${{ vars.MANAGE_DIST_ID }} --paths "/*"
+          echo "Invalidating edit.dctech.events (${{ vars.EDIT_DIST_ID }})..."
+          aws cloudfront create-invalidation --distribution-id ${{ vars.EDIT_DIST_ID }} --paths "/*"
 
   trigger-rebuild:
     needs: [changes, deploy-infra]

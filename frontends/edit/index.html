@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit - DC Tech Events</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
+      <a href="/" class="nav-brand">DC Tech Events Edit</a>
+      <div class="nav-right">
+        <span data-auth="logged-in" class="hidden">
+          <span id="user-info" data-user="name"></span>
+          <button class="btn-sign-out" onclick="DctechAuth.logout()">Sign Out</button>
+        </span>
+        <span data-auth="logged-out">
+          <button class="btn-sign-out" onclick="DctechAuth.login()">Sign In</button>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- Logged-out view -->
+    <div data-auth="logged-out">
+      <div class="hero">
+        <h1>Welcome to DC Tech Events</h1>
+        <p>Submit and manage tech events in the DC area.</p>
+        <button class="btn btn-primary" onclick="DctechAuth.login()">Sign in to get started</button>
+      </div>
+    </div>
+
+    <!-- Logged-in view -->
+    <div data-auth="logged-in" class="hidden">
+      <div class="page-header">
+        <h1>What would you like to do?</h1>
+      </div>
+
+      <div class="action-links" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+        <!-- Public Submission Actions -->
+        <a class="card" href="submit-event.html" style="text-decoration: none; color: inherit;">
+          <div class="card-header">Submit an Event</div>
+          <p>Add a new tech event happening in the DC area.</p>
+        </a>
+        <a class="card" href="submit-group.html" style="text-decoration: none; color: inherit;">
+          <div class="card-header">Submit a Group</div>
+          <p>Add a new tech group or organization.</p>
+        </a>
+        <a class="card" href="my-submissions.html" style="text-decoration: none; color: inherit;">
+          <div class="card-header">My Submissions</div>
+          <p>View the status of your submitted events.</p>
+        </a>
+
+        <!-- Admin Actions (Conditional) -->
+        <div data-auth="admin" class="hidden" style="grid-column: 1 / -1;">
+          <h2 style="margin-top: 2rem; margin-bottom: 1rem; border-top: 1px solid var(--color-border); padding-top: 2rem;">Admin Dashboard</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+            <a class="card" href="queue.html" style="text-decoration: none; color: inherit;">
+              <div class="card-header">Moderation Queue</div>
+              <p>Review and approve event submissions.</p>
+            </a>
+            <a class="card" href="events.html" style="text-decoration: none; color: inherit;">
+              <div class="card-header">Manage Events</div>
+              <p>Edit or remove existing events.</p>
+            </a>
+            <a class="card" href="groups.html" style="text-decoration: none; color: inherit;">
+              <div class="card-header">Manage Groups</div>
+              <p>Edit or remove groups.</p>
+            </a>
+            <a class="card" href="categories.html" style="text-decoration: none; color: inherit;">
+              <div class="card-header">Categories</div>
+              <p>Manage event categories.</p>
+            </a>
+            <a class="card" href="overrides.html" style="text-decoration: none; color: inherit;">
+              <div class="card-header">Overrides</div>
+              <p>Manage manual event overrides.</p>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style>
+    /* Merge some styles from both */
+    .hero {
+      text-align: center;
+      padding: 4rem 1rem;
+    }
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--color-text-muted);
+      margin-bottom: 2rem;
+    }
+    .action-links .card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+      transition: all 0.2s ease;
+    }
+  </style>
+</body>
+</html>

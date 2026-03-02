@@ -31,7 +31,7 @@ def _html(status_code, body, event=None):
     allowed_origins = [
         'https://dctech.events',
         'https://manage.dctech.events',
-        'https://suggest.dctech.events',
+        'https://edit.dctech.events',
         'http://localhost:5000'
     ]
     origin = event.get('headers', {}).get('origin') if event else None
@@ -91,18 +91,29 @@ def submit_event(event, jinja_env):
 
 def _submit_event(event, data, submitter, jinja_env, submitter_id=None):
     """Handle event submission."""
-    title = data.get('title', '').strip()
+    # Support both 'title' (new) and 'name' (old)
+    title = data.get('title') or data.get('name') or ''
+    title = title.strip()
+    
     date_val = data.get('date', '').strip()
+    time_str = data.get('time', '').strip() or None
     timing = data.get('timing', 'specific')
+
+    # Support 'start_datetime' (old)
+    start_dt = data.get('start_datetime', '').strip()
+    if start_dt and not date_val:
+        if 'T' in start_dt:
+            date_val, time_str = start_dt.split('T')
+        else:
+            date_val = start_dt
 
     if not title or not date_val:
         template = jinja_env.get_template('partials/submit_error.html')
         html = template.render(error='Event title and date are required.')
         return _html(400, html, event)
 
-    # Build 24-hour time string from hour/minute/ampm fields
-    time_str = None
-    if timing == 'specific':
+    # Build 24-hour time string from hour/minute/ampm fields (new form)
+    if timing == 'specific' and not time_str:
         hour = data.get('time_hour', '')
         minute = data.get('time_minute', '00')
         ampm = data.get('time_ampm', 'PM')
@@ -124,7 +135,16 @@ def _submit_event(event, data, submitter, jinja_env, submitter_id=None):
         'cost': data.get('cost', ''),
         'end_date': data.get('end_date', ''),
         'all_day': timing == 'allday',
+        'description': data.get('description', ''),
+        'location': data.get('location', ''),
+        'group_name': data.get('group_name', ''),
     }
+
+    # Handle categories (checkboxes or comma-separated)
+    categories = data.get('categories', [])
+    if isinstance(categories, str):
+        categories = [c.strip() for c in categories.split(',') if c.strip()]
+    draft_data['categories'] = categories
 
     draft_id = create_draft('event', draft_data, submitter, submitter_id)
 

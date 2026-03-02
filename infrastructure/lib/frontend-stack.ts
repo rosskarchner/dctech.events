@@ -57,19 +57,35 @@ function handler(event) {
       functionName: 'dctech-events-frontend-directory-index',
     });
 
-    // Define the two frontend sites
-    const sites = [
-      { subdomain: 'suggest', bucketName: 'dctech-events-suggest-frontend' },
-      { subdomain: 'manage', bucketName: 'dctech-events-manage-frontend' },
+    // Define the frontend sites (legacy sites are being consolidated into edit.dctech.events)
+    const sites: { subdomain: string; bucketName: string; redirect?: string }[] = [
+      // Legacy sites kept for transition if needed, otherwise empty array
     ];
+
+    // CloudFront Function for 301 redirects to edit.dctech.events
+    const redirectFunction = new cloudfront.Function(this, 'EditRedirectFunction', {
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var response = {
+    statusCode: 301,
+    statusDescription: 'Moved Permanently',
+    headers: {
+      'location': { 'value': 'https://edit.dctech.events' + event.request.uri }
+    }
+  };
+  return response;
+}
+      `),
+      comment: 'Redirect legacy subdomains to edit.dctech.events',
+      functionName: 'dctech-events-legacy-redirect',
+    });
 
     for (const site of sites) {
       const domainName = `${site.subdomain}.${stackConfig.domain}`;
       const idPrefix = site.subdomain.charAt(0).toUpperCase() + site.subdomain.slice(1);
 
-      // S3 Bucket
+      // S3 Bucket (kept to satisfy CloudFront origin requirements, even if redirecting)
       const bucket = new s3.Bucket(this, `${idPrefix}Bucket`, {
-        bucketName: site.bucketName,
         blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
         versioned: false,
         encryption: s3.BucketEncryption.S3_MANAGED,
@@ -88,7 +104,7 @@ function handler(event) {
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
           functionAssociations: [
             {
-              function: directoryIndexFunction,
+              function: site.redirect ? redirectFunction : directoryIndexFunction,
               eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
             },
           ],
@@ -99,20 +115,6 @@ function handler(event) {
         httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
         enableIpv6: true,
         minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
-        errorResponses: [
-          {
-            httpStatus: 403,
-            responseHttpStatus: 200,
-            responsePagePath: '/index.html',
-            ttl: cdk.Duration.minutes(5),
-          },
-          {
-            httpStatus: 404,
-            responseHttpStatus: 200,
-            responsePagePath: '/index.html',
-            ttl: cdk.Duration.minutes(5),
-          },
-        ],
       });
 
       // Bucket policy for CloudFront OAC

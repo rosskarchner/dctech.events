@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit a Group - DC Tech Events</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
+      <div style="display:flex; align-items: center; gap: 2rem;">
+        <a href="/" class="nav-brand">DC Tech Events Edit</a>
+        <ul class="nav-links" data-auth="admin" class="hidden">
+          <li><a href="queue.html">Queue</a></li>
+          <li><a href="events.html">Events</a></li>
+          <li><a href="groups.html">Groups</a></li>
+          <li><a href="categories.html">Categories</a></li>
+          <li><a href="overrides.html">Overrides</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <span data-auth="logged-in" class="hidden">
+          <span data-user="name"></span>
+          <button class="btn-sign-out" onclick="DctechAuth.logout()">Sign Out</button>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <h2>Submit a Group to DC Tech Events</h2>
+    <p>To submit a group, you'll need to sign in. This allows us to add your group to the calendar.</p>
+
+    <div id="auth-section">
+      <div class="auth-status" id="auth-status" data-auth="logged-out">
+        <p>Not signed in</p>
+        <button class="btn btn-primary" onclick="DctechAuth.login()">Sign In</button>
+      </div>
+    </div>
+
+    <div id="form-response" class="response-area"></div>
+
+    <form id="group-form" class="hidden" data-auth="logged-in"
+          hx-post="/submit"
+          hx-target="#form-response"
+          hx-swap="innerHTML"
+          hx-indicator="#submit-indicator"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+      <input type="hidden" name="type" value="group">
+
+      <div class="form-group">
+        <label for="name">Group Name <span class="required">*</span></label>
+        <input type="text" id="name" name="name" required maxlength="200"
+               placeholder="e.g., DC Python User Group">
+      </div>
+
+      <div class="form-group">
+        <label for="website">Group Website <span class="required">*</span></label>
+        <input type="url" id="website" name="website" required
+               placeholder="https://example.com or https://meetup.com/your-group">
+        <div class="form-hint">Main website or Meetup.com page for your group</div>
+      </div>
+
+      <div class="form-group">
+        <label for="ical">iCal Feed URL</label>
+        <input type="url" id="ical" name="ical_url"
+               placeholder="https://example.com/calendar.ics">
+        <div class="form-hint">Calendar feed URL (iCal format) - at least one feed type is recommended</div>
+      </div>
+
+      <details class="optional-details">
+        <summary>Optional Details</summary>
+        <div class="optional-fields">
+          <div class="form-group">
+            <label for="fallback_url">Fallback URL</label>
+            <input type="url" id="fallback_url" name="fallback_url"
+                   placeholder="https://example.com/events">
+            <div class="form-hint">Alternative URL to find events if feeds are unavailable</div>
+          </div>
+        </div>
+      </details>
+
+      <div class="form-group">
+        <button type="submit" id="submit-btn" class="btn btn-primary">
+          <span class="htmx-indicator" id="submit-indicator"><span class="spinner"></span></span>
+          Submit Group
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <style>
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    .form-group input[type="text"],
+    .form-group input[type="url"],
+    .form-group textarea {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .form-hint { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+    .required { color: red; }
+    .response-area { margin-bottom: 1.5rem; }
+    .optional-details { margin-bottom: 1.5rem; }
+    .optional-details summary { cursor: pointer; font-weight: 600; margin-bottom: 0.5rem; }
+    .optional-fields { padding: 1rem; border: 1px solid #eee; border-radius: 4px; background: #fafafa; margin-top: 0.5rem; }
+    .spinner {
+      display: inline-block;
+      width: 1rem; height: 1rem;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+    .htmx-request.btn-primary { pointer-events: none; opacity: 0.8; }
+  </style>
+
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    DctechAuth.requireAuth();
+  </script>
+</body>
+</html>
