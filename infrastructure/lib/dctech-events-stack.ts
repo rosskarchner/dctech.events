@@ -238,6 +238,10 @@ function handler(event) {
             ],
           }),
           new iam.PolicyStatement({
+            actions: ['cloudfront:ListDistributions'],
+            resources: ['*'],
+          }),
+          new iam.PolicyStatement({
             actions: [
               'dynamodb:PutItem',
               'dynamodb:GetItem',
