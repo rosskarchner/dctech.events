@@ -5,14 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit a Group - DC Tech Events</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/front-suggest.css">
   <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
+  <style>
+    /* Override some front-suggest styles to work with unified header */
+    header { display: none; } /* We use the nav below instead */
+    .container { max-width: 800px; }
+    .nav-links.hidden { display: none !important; }
+    [data-auth].hidden { display: none !important; }
+  </style>
 </head>
 <body>
   <nav class="nav">
-    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px; padding: 0.5rem 1rem;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="/" class="nav-brand">DC Tech Events Edit</a>
-        <ul class="nav-links" data-auth="admin" class="hidden">
+        <a href="/" class="nav-brand" style="font-weight: bold; text-decoration: none; color: inherit;">DC Tech Events Edit</a>
+        <ul class="nav-links" data-auth="admin" style="display:flex; list-style: none; gap: 1rem; margin: 0; padding: 0;">
           <li><a href="queue.html">Queue</a></li>
           <li><a href="events.html">Events</a></li>
           <li><a href="groups.html">Groups</a></li>
@@ -23,7 +31,7 @@
       <div class="nav-right">
         <span data-auth="logged-in" class="hidden">
           <span data-user="name"></span>
-          <button class="btn-sign-out" onclick="DctechAuth.logout()">Sign Out</button>
+          <button class="btn-sign-out" onclick="DctechAuth.logout()" style="margin-left: 1rem; cursor: pointer;">Sign Out</button>
         </span>
       </div>
     </div>
@@ -50,39 +58,43 @@
           hx-on::after-request="if(event.detail.successful) this.reset()">
       <input type="hidden" name="type" value="group">
 
-      <div class="form-group">
-        <label for="name">Group Name <span class="required">*</span></label>
-        <input type="text" id="name" name="name" required maxlength="200"
-               placeholder="e.g., DC Python User Group">
-      </div>
+      <div class="event-section">
+        <h3>Group Details</h3>
 
-      <div class="form-group">
-        <label for="website">Group Website <span class="required">*</span></label>
-        <input type="url" id="website" name="website" required
-               placeholder="https://example.com or https://meetup.com/your-group">
-        <div class="form-hint">Main website or Meetup.com page for your group</div>
-      </div>
-
-      <div class="form-group">
-        <label for="ical">iCal Feed URL</label>
-        <input type="url" id="ical" name="ical_url"
-               placeholder="https://example.com/calendar.ics">
-        <div class="form-hint">Calendar feed URL (iCal format) - at least one feed type is recommended</div>
-      </div>
-
-      <details class="optional-details">
-        <summary>Optional Details</summary>
-        <div class="optional-fields">
-          <div class="form-group">
-            <label for="fallback_url">Fallback URL</label>
-            <input type="url" id="fallback_url" name="fallback_url"
-                   placeholder="https://example.com/events">
-            <div class="form-hint">Alternative URL to find events if feeds are unavailable</div>
-          </div>
+        <div class="form-group">
+          <label for="name">Group Name <span class="required">*</span></label>
+          <input type="text" id="name" name="name" required maxlength="200"
+                 placeholder="e.g., DC Python User Group">
         </div>
-      </details>
 
-      <div class="form-group">
+        <div class="form-group">
+          <label for="website">Group Website <span class="required">*</span></label>
+          <input type="url" id="website" name="website" required
+                 placeholder="https://example.com or https://meetup.com/your-group">
+          <small>Main website or Meetup.com page for your group</small>
+        </div>
+
+        <div class="form-group">
+          <label for="ical">iCal Feed URL</label>
+          <input type="url" id="ical" name="ical_url"
+                 placeholder="https://example.com/calendar.ics">
+          <small>Calendar feed URL (iCal format) - at least one feed type is recommended</small>
+        </div>
+
+        <details class="optional-details">
+          <summary>Optional Details</summary>
+          <div class="optional-fields">
+            <div class="form-group">
+              <label for="fallback_url">Fallback URL</label>
+              <input type="url" id="fallback_url" name="fallback_url"
+                     placeholder="https://example.com/events">
+              <small>Alternative URL to find events if feeds are unavailable</small>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="form-actions">
         <button type="submit" id="submit-btn" class="btn btn-primary">
           <span class="htmx-indicator" id="submit-indicator"><span class="spinner"></span></span>
           Submit Group
@@ -90,39 +102,6 @@
       </div>
     </form>
   </main>
-
-  <style>
-    .form-group { margin-bottom: 1.5rem; }
-    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
-    .form-group input[type="text"],
-    .form-group input[type="url"],
-    .form-group textarea {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .form-hint { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
-    .required { color: red; }
-    .response-area { margin-bottom: 1.5rem; }
-    .optional-details { margin-bottom: 1.5rem; }
-    .optional-details summary { cursor: pointer; font-weight: 600; margin-bottom: 0.5rem; }
-    .optional-fields { padding: 1rem; border: 1px solid #eee; border-radius: 4px; background: #fafafa; margin-top: 0.5rem; }
-    .spinner {
-      display: inline-block;
-      width: 1rem; height: 1rem;
-      border: 2px solid #fff;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 0.5rem;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .htmx-indicator { display: none; }
-    .htmx-request .htmx-indicator { display: inline-block; }
-    .htmx-request.btn-primary { pointer-events: none; opacity: 0.8; }
-  </style>
 
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="js/auth.js"></script>

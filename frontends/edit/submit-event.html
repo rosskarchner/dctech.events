@@ -5,14 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit an Event - DC Tech Events</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/front-suggest.css">
   <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
+  <style>
+    /* Override some front-suggest styles to work with unified header */
+    header { display: none; } /* We use the nav below instead */
+    .container { max-width: 800px; }
+    .nav-links.hidden { display: none !important; }
+    [data-auth].hidden { display: none !important; }
+  </style>
 </head>
 <body>
   <nav class="nav">
-    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px; padding: 0.5rem 1rem;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="/" class="nav-brand">DC Tech Events Edit</a>
-        <ul class="nav-links" data-auth="admin" class="hidden">
+        <a href="/" class="nav-brand" style="font-weight: bold; text-decoration: none; color: inherit;">DC Tech Events Edit</a>
+        <ul class="nav-links" data-auth="admin" style="display:flex; list-style: none; gap: 1rem; margin: 0; padding: 0;">
           <li><a href="queue.html">Queue</a></li>
           <li><a href="events.html">Events</a></li>
           <li><a href="groups.html">Groups</a></li>
@@ -23,15 +31,15 @@
       <div class="nav-right">
         <span data-auth="logged-in" class="hidden">
           <span data-user="name"></span>
-          <button class="btn-sign-out" onclick="DctechAuth.logout()">Sign Out</button>
+          <button class="btn-sign-out" onclick="DctechAuth.logout()" style="margin-left: 1rem; cursor: pointer;">Sign Out</button>
         </span>
       </div>
     </div>
   </nav>
 
   <main class="container">
-    <h2>Submit an Event</h2>
-    <p>Add a tech event happening in the DC area. Submissions are reviewed before publishing.</p>
+    <h2>Submit events to DC Tech Events</h2>
+    <p>To submit an event, you'll need to sign in. Don't have an account? Just email the info to ross@karchner.com.</p>
 
     <div id="auth-section">
       <div class="auth-status" id="auth-status" data-auth="logged-out">
@@ -50,115 +58,156 @@
           hx-on::after-request="if(event.detail.successful) this.reset()">
       <input type="hidden" name="type" value="event">
 
-      <div class="form-group">
-        <label for="event-name">Event Name <span class="required">*</span></label>
-        <input type="text" id="event-name" name="name" required
-               placeholder="e.g., DC Python Meetup - February 2026">
-      </div>
+      <div class="event-section">
+        <h3>Event Details</h3>
 
-      <div class="form-group">
-        <label for="event-url">Event URL <span class="required">*</span></label>
-        <input type="url" id="event-url" name="url" required
-               placeholder="https://www.meetup.com/...">
-        <div class="form-hint">Link to the event page (Meetup, Eventbrite, etc.)</div>
-      </div>
-
-      <div class="form-group">
-        <label for="event-description">Description</label>
-        <textarea id="event-description" name="description" class="form-control"
-                  placeholder="Brief description of the event..."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="event-start">Start Date &amp; Time <span class="required">*</span></label>
-        <input type="datetime-local" id="event-start" name="start_datetime" class="form-control" required>
-      </div>
-
-      <div class="form-group">
-        <label for="event-end">End Date &amp; Time</label>
-        <input type="datetime-local" id="event-end" name="end_datetime" class="form-control">
-      </div>
-
-      <div class="form-group">
-        <label for="event-location">Location</label>
-        <input type="text" id="event-location" name="location" class="form-control"
-               placeholder="e.g., WeWork White House, 1440 G St NW, Washington, DC">
-        <div class="form-hint">Physical address or "Online" for virtual events</div>
-      </div>
-
-      <div class="form-group">
-        <label for="event-group">Organizing Group</label>
-        <input type="text" id="event-group" name="group_name" class="form-control"
-               placeholder="e.g., DC Python">
-      </div>
-
-      <div class="form-group">
-        <label>Categories</label>
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="categories" value="ai"> AI/ML</label>
-          <label><input type="checkbox" name="categories" value="cloud"> Cloud</label>
-          <label><input type="checkbox" name="categories" value="cybersecurity"> Cybersecurity</label>
-          <label><input type="checkbox" name="categories" value="data"> Data</label>
-          <label><input type="checkbox" name="categories" value="design"> Design</label>
-          <label><input type="checkbox" name="categories" value="devops"> DevOps</label>
-          <label><input type="checkbox" name="categories" value="frontend"> Frontend</label>
-          <label><input type="checkbox" name="categories" value="general"> General</label>
-          <label><input type="checkbox" name="categories" value="hardware"> Hardware</label>
-          <label><input type="checkbox" name="categories" value="mobile"> Mobile</label>
-          <label><input type="checkbox" name="categories" value="networking"> Networking</label>
-          <label><input type="checkbox" name="categories" value="open-source"> Open Source</label>
-          <label><input type="checkbox" name="categories" value="policy"> Policy</label>
-          <label><input type="checkbox" name="categories" value="programming"> Programming</label>
-          <label><input type="checkbox" name="categories" value="startup"> Startup</label>
-          <label><input type="checkbox" name="categories" value="web"> Web</label>
+        <div class="form-group">
+          <label for="title">Event Title <span class="required">*</span></label>
+          <input type="text" id="title" name="title" required maxlength="200"
+                 placeholder="e.g., Python User Group Monthly Meetup">
         </div>
+
+        <div class="form-group">
+          <label for="url">Event URL <span class="required">*</span></label>
+          <input type="url" id="url" name="url" required
+                 placeholder="https://example.com/event">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="date">Date <span class="required">*</span></label>
+            <input type="date" id="date" name="date" required>
+          </div>
+
+          <div class="form-group">
+            <label>Event Timing <span class="required">*</span></label>
+            <div class="timing-options">
+              <label class="timing-option">
+                <input type="radio" name="timing" value="specific" checked>
+                <span class="timing-label">Specific Time</span>
+                <div class="time-selector">
+                  <select id="time-hour" name="time_hour">
+                    <option value="">Hour</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                  </select>
+                  <select id="time-minute" name="time_minute">
+                    <option value="">Min</option>
+                    <option value="00">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                  <select id="time-ampm" name="time_ampm">
+                    <option value="">AM/PM</option>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </label>
+
+              <label class="timing-option">
+                <input type="radio" name="timing" value="allday">
+                <span class="timing-label">All-Day Event</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="city">City <span class="required">*</span></label>
+            <input type="text" id="city" name="city" required maxlength="100"
+                   placeholder="e.g., Arlington" value="Washington">
+          </div>
+
+          <div class="form-group">
+            <label for="state">State <span class="required">*</span></label>
+            <select id="state" name="state" required>
+              <option value="DC" selected>DC</option>
+              <option value="MD">Maryland</option>
+              <option value="VA">Virginia</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="location">Location</label>
+          <input type="text" id="location" name="location"
+                 placeholder="e.g., WeWork White House, 1440 G St NW, Washington, DC">
+          <small>Physical address or "Online" for virtual events</small>
+        </div>
+
+        <div class="form-group">
+          <label for="group_name">Organizing Group</label>
+          <input type="text" id="group_name" name="group_name"
+                 placeholder="e.g., DC Python">
+        </div>
+
+        <div class="form-group">
+          <label>Categories</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" name="categories" value="ai"> AI/ML</label>
+            <label><input type="checkbox" name="categories" value="cloud"> Cloud</label>
+            <label><input type="checkbox" name="categories" value="cybersecurity"> Cybersecurity</label>
+            <label><input type="checkbox" name="categories" value="data"> Data</label>
+            <label><input type="checkbox" name="categories" value="design"> Design</label>
+            <label><input type="checkbox" name="categories" value="devops"> DevOps</label>
+            <label><input type="checkbox" name="categories" value="frontend"> Frontend</label>
+            <label><input type="checkbox" name="categories" value="general"> General</label>
+            <label><input type="checkbox" name="categories" value="hardware"> Hardware</label>
+            <label><input type="checkbox" name="categories" value="mobile"> Mobile</label>
+            <label><input type="checkbox" name="categories" value="networking"> Networking</label>
+            <label><input type="checkbox" name="categories" value="open-source"> Open Source</label>
+            <label><input type="checkbox" name="categories" value="policy"> Policy</label>
+            <label><input type="checkbox" name="categories" value="programming"> Programming</label>
+            <label><input type="checkbox" name="categories" value="startup"> Startup</label>
+            <label><input type="checkbox" name="categories" value="web"> Web</label>
+          </div>
+        </div>
+
+        <details class="optional-details">
+          <summary>Optional Details</summary>
+          <div class="optional-fields">
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea id="description" name="description"
+                        placeholder="Brief description of the event..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="end_date">End Date</label>
+              <input type="date" id="end_date" name="end_date">
+              <small>For multi-day events</small>
+            </div>
+
+            <div class="form-group">
+              <label for="cost">Cost</label>
+              <input type="text" id="cost" name="cost" maxlength="100"
+                     placeholder="e.g., Free, $10, $5-$15">
+            </div>
+          </div>
+        </details>
       </div>
 
-      <div class="form-group">
-        <button type="submit" class="btn btn-primary">
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn btn-primary">
           <span class="htmx-indicator" id="submit-indicator"><span class="spinner"></span></span>
           Submit Event
         </button>
       </div>
     </form>
   </main>
-
-  <style>
-    .form-group { margin-bottom: 1.5rem; }
-    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
-    .form-group input[type="text"],
-    .form-group input[type="url"],
-    .form-group input[type="datetime-local"],
-    .form-group textarea {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .form-hint { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
-    .required { color: red; }
-    .checkbox-group {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 0.5rem;
-    }
-    .checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 0.5rem; }
-    .response-area { margin-bottom: 1.5rem; }
-    .spinner {
-      display: inline-block;
-      width: 1rem; height: 1rem;
-      border: 2px solid #fff;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 0.5rem;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .htmx-indicator { display: none; }
-    .htmx-request .htmx-indicator { display: inline-block; }
-    .htmx-request.btn-primary { pointer-events: none; opacity: 0.8; }
-  </style>
 
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="js/auth.js"></script>
