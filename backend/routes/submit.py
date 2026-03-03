@@ -137,7 +137,6 @@ def _submit_event(event, data, submitter, jinja_env, submitter_id=None):
         'all_day': timing == 'allday',
         'description': data.get('description', ''),
         'location': data.get('location', ''),
-        'group_name': data.get('group_name', ''),
     }
 
     # Handle categories (checkboxes or comma-separated)
