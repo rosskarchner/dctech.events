@@ -27,7 +27,15 @@
       <div style="font-size: 0.75rem; color: var(--color-text-muted);">to {{ event.end_date }}</div>
     {% endif %}
   </td>
-  <td class="col-time">{{ event.time | default('All day') }}</td>
+  <td class="col-time">
+    {% if event.time is mapping %}
+      {% for d, t in event.time.items() %}
+        <div style="font-size: 0.75rem; white-space: nowrap;">{{ d }}: {{ t }}</div>
+      {% endfor %}
+    {% else %}
+      {{ event.time | default('All day') }}
+    {% endif %}
+  </td>
   <td class="col-loc">
     <div style="font-size: 0.8rem;">
       {{ event.location | default('') }}{% if not event.location %}{{ event.city | default('') }}{% if event.state %}, {{ event.state }}{% endif %}{% endif %}
