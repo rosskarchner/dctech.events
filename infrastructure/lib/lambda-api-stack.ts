@@ -245,10 +245,10 @@ export class LambdaApiStack extends cdk.Stack {
     health.addMethod('GET', lambdaIntegration);
 
     const apiResource = api.root.addResource('api');
-    const events = apiResource.addResource('events');
-    events.addMethod('GET', lambdaIntegration); // Public API
+    const eventsResource = apiResource.addResource('events');
+    eventsResource.addMethod('GET', lambdaIntegration); // Public API
 
-    const upcomingIcs = events.addResource('upcoming.ics');
+    const upcomingIcs = eventsResource.addResource('upcoming.ics');
     upcomingIcs.addMethod('GET', lambdaIntegration);
 
     // Authenticated routes
