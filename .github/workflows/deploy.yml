@@ -29,6 +29,7 @@ jobs:
       infra: ${{ steps.filter.outputs.infra }}
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
+      workflow: ${{ steps.filter.outputs.workflow }}
       site: ${{ steps.filter.outputs.site }}
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +44,8 @@ jobs:
             backend:
               - 'backend/**'
               - 'lambdas/**'
+            workflow:
+              - '.github/workflows/**'
             site:
               - 'templates/**'
               - 'app.py'
@@ -126,7 +129,7 @@ jobs:
     if: |
       always() && 
       (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || 
-       needs.changes.outputs.infra == 'true' ||
+       needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflow == 'true' ||
        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
