@@ -126,6 +126,7 @@ jobs:
     if: |
       always() && 
       (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || 
+       needs.changes.outputs.infra == 'true' ||
        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
