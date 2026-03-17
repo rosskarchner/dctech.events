@@ -11,8 +11,6 @@ from db import (
     get_drafts_by_status, get_draft as db_get_draft, update_draft_status,
     promote_draft_to_event,
     get_all_groups, get_group, put_group,
-    get_all_overrides as db_get_all_overrides, get_override,
-    put_override as db_put_override, delete_override as db_delete_override,
     get_all_categories, get_events_by_date,
     get_all_events, get_event_from_config, update_event as db_update_event,
     bulk_delete_events, bulk_set_category, bulk_combine_events,
@@ -25,90 +23,62 @@ def _admin_check(event):
     claims, err = get_user_from_event(event)
     if err:
         return None, err
-    admin_err = require_admin(claims)
-    if admin_err:
-        return None, admin_err
+    if not require_admin(claims):
+        return None, {'statusCode': 403, 'body': 'Forbidden'}
     return claims, None
 
 
 def _html(status_code, body, event=None):
-    allowed_origins = [
-        'https://dctech.events',
-        'https://manage.dctech.events',
-        'https://edit.dctech.events',
-        'http://localhost:5000'
-    ]
-    origin = event.get('headers', {}).get('origin') if event else None
-    if origin not in allowed_origins:
-        origin = allowed_origins[0]
-
+    """Return HTML response."""
     return {
         'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': origin,
-            'Vary': 'Origin',
-        },
+        'headers': {'Content-Type': 'text/html'},
         'body': body,
     }
 
 
 def _parse_body(event):
-    body = event.get('body', '')
-    if not body:
-        return {}
-    content_type = (event.get('headers', {}).get('Content-Type', '') or
-                    event.get('headers', {}).get('content-type', ''))
-    if 'application/json' in content_type:
-        return json.loads(body)
+    """Parse application/x-www-form-urlencoded body."""
     from urllib.parse import parse_qs
+    body = event.get('body', '')
     parsed = parse_qs(body)
     return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
 
 
-# ─── Dashboard ────────────────────────────────────────────────────
-
 def dashboard(event, jinja_env):
-    """GET /admin — admin dashboard summary."""
+    """GET /admin/dashboard — Main admin view."""
     claims, err = _admin_check(event)
     if err:
         return err
 
-    pending = get_drafts_by_status('pending')
-    groups = get_all_groups()
-
-    template = jinja_env.get_template('partials/admin_dashboard.html')
-    html = template.render(
-        pending_count=len(pending),
-        groups_count=len(groups),
-        user_email=claims.get('email', ''),
-    )
+    template = jinja_env.get_template('admin/dashboard.html')
+    html = template.render(claims=claims)
     return _html(200, html, event)
 
 
-# ─── Queue (drafts) ──────────────────────────────────────────────
+# ─── Draft Queue ──────────────────────────────────────────────────
 
 def get_queue(event, jinja_env):
-    """GET /admin/queue — HTML table of pending drafts."""
+    """GET /admin/queue — Draft review queue."""
     claims, err = _admin_check(event)
     if err:
         return err
 
-    drafts = get_drafts_by_status('pending')
+    drafts = get_drafts_by_status('PENDING')
     template = jinja_env.get_template('partials/draft_queue.html')
     html = template.render(drafts=drafts)
     return _html(200, html, event)
 
 
 def get_draft(event, jinja_env, draft_id):
-    """GET /admin/draft/{id} — single draft detail."""
+    """GET /admin/draft/{id} — Draft detail."""
     claims, err = _admin_check(event)
     if err:
         return err
 
     draft = db_get_draft(draft_id)
     if not draft:
-        return _html(404, '<p>Draft not found</p>', event)
+        return {'statusCode': 404, 'body': 'Draft not found'}
 
     template = jinja_env.get_template('partials/draft_detail.html')
     html = template.render(draft=draft)
@@ -116,81 +86,59 @@ def get_draft(event, jinja_env, draft_id):
 
 
 def get_approve_form(event, jinja_env, draft_id):
-    """GET /admin/draft/{id}/approve-form — inline category selection form."""
+    """GET /admin/draft/{id}/approve-form — Approval form."""
     claims, err = _admin_check(event)
     if err:
         return err
 
     draft = db_get_draft(draft_id)
     if not draft:
-        return _html(404, '<p>Draft not found</p>', event)
+        return {'statusCode': 404, 'body': 'Draft not found'}
 
-    categories = sorted(get_all_categories().values(), key=lambda c: c.get('name', c['slug']))
+    categories = get_all_categories()
     template = jinja_env.get_template('partials/draft_approve_form.html')
     html = template.render(draft=draft, categories=categories)
     return _html(200, html, event)
 
 
 def get_draft_row(event, jinja_env, draft_id):
-    """GET /admin/draft/{id}/row — single draft row (used by cancel in approve form)."""
-    claims, err = _admin_check(event)
-    if err:
-        return err
-
+    """GET /admin/draft/{id}/row — Return just the queue row."""
     draft = db_get_draft(draft_id)
-    if not draft:
-        return _html(404, '<tr><td colspan="5">Draft not found</td></tr>', event)
-
     template = jinja_env.get_template('partials/draft_row.html')
     html = template.render(draft=draft)
-    return _html(200, html, event)
+    return _html(200, html)
 
 
 def approve_draft(event, jinja_env, draft_id):
-    """POST /admin/draft/{id}/approve — approve with optional categories."""
+    """POST /admin/draft/{id}/approve."""
     claims, err = _admin_check(event)
     if err:
         return err
 
-    draft = db_get_draft(draft_id)
-    if not draft:
-        return _html(404, '<p>Draft not found</p>', event)
-
-    # Apply any categories submitted via the approve form
     data = _parse_body(event)
-    cats = data.get('categories', None)
-    if cats is not None:
-        if isinstance(cats, str):
-            cats = [cats] if cats else []
-        draft['categories'] = cats
+    
+    # Normalize categories
+    cats = data.get('categories', [])
+    if isinstance(cats, str):
+        cats = [cats] if cats else []
+    data['categories'] = cats
 
-    reviewer = claims.get('email', '')
-    update_draft_status(draft_id, 'approved', reviewer)
-
-    if draft.get('draft_type') == 'event':
-        promote_draft_to_event(draft)
-
-    # Return empty string to remove the row via hx-swap="outerHTML"
-    return _html(200, '', event)
+    promote_draft_to_event(draft_id, data, claims.get('email', ''))
+    
+    return _html(200, "Approved and promoted to event.")
 
 
 def reject_draft(event, jinja_env, draft_id):
-    """POST /admin/draft/{id}/reject — reject and return updated row."""
+    """POST /admin/draft/{id}/reject."""
     claims, err = _admin_check(event)
     if err:
         return err
 
-    draft = db_get_draft(draft_id)
-    if not draft:
-        return _html(404, '<p>Draft not found</p>', event)
-
-    reviewer = claims.get('email', '')
-    update_draft_status(draft_id, 'rejected', reviewer)
-
-    return _html(200, '', event)
+    update_draft_status(draft_id, 'REJECTED')
+    return _html(200, "Rejected.")
 
 
-# ─── Groups ──────────────────────────────────────────────────────
+# ─── Groups ───────────────────────────────────────────────────────
 
 def get_groups(event, jinja_env):
     """GET /admin/groups — HTML table of groups."""
@@ -199,104 +147,74 @@ def get_groups(event, jinja_env):
         return err
 
     groups = get_all_groups()
-    groups.sort(key=lambda x: x.get('name', '').lower())
-    categories = get_all_categories()
-
-    template = jinja_env.get_template('partials/group_list.html')
-    html = template.render(groups=groups, categories=categories)
+    template = jinja_env.get_template('partials/admin_group_list.html')
+    html = template.render(groups=groups)
     return _html(200, html, event)
 
 
 def edit_group_form(event, jinja_env, slug):
-    """GET /admin/groups/{slug}/edit — HTML form fragment."""
+    """GET /admin/group/{slug}/edit — HTML form."""
     claims, err = _admin_check(event)
     if err:
         return err
 
     group = get_group(slug)
-    if not group:
-        return _html(404, '<p>Group not found</p>', event)
-
-    categories = get_all_categories()
-    template = jinja_env.get_template('partials/group_form.html')
-    html = template.render(group=group, categories=categories)
+    template = jinja_env.get_template('partials/admin_group_edit_form.html')
+    html = template.render(group=group)
     return _html(200, html, event)
 
 
 def update_group(event, jinja_env, slug):
-    """PUT /admin/groups/{slug} — save group, return updated row."""
+    """POST /admin/group/{slug}."""
     claims, err = _admin_check(event)
     if err:
         return err
 
     data = _parse_body(event)
-
+    data['active'] = data.get('active') == 'true'
+    
+    put_group(slug, data)
+    
+    # Return updated row
     group = get_group(slug)
-    if not group:
-        return _html(404, '<p>Group not found</p>', event)
-
-    # Update fields
-    group['name'] = data.get('name', group.get('name', ''))
-    group['website'] = data.get('website', group.get('website', ''))
-    group['ical'] = data.get('ical', group.get('ical', ''))
-    group['active'] = data.get('active', 'true') in ('true', True, '1', 1)
-
-    categories_val = data.get('categories', [])
-    if isinstance(categories_val, str):
-        categories_val = [c.strip() for c in categories_val.split(',') if c.strip()]
-    group['categories'] = categories_val
-
-    put_group(slug, group)
-
-    template = jinja_env.get_template('partials/group_row.html')
+    template = jinja_env.get_template('partials/admin_group_row.html')
     html = template.render(group=group)
     return _html(200, html, event)
 
 
-# ─── Events ──────────────────────────────────────────────────────
+# ─── Events ───────────────────────────────────────────────────────
 
 def get_events(event, jinja_env):
-    """GET /admin/events — HTML table from DcTechEvents materialized view."""
+    """GET /admin/events — List manual events."""
     claims, err = _admin_check(event)
     if err:
         return err
 
     params = event.get('queryStringParameters') or {}
-    date_prefix = params.get('date', '').strip() or None
-    filter_type = params.get('filter', '').strip() or None
-
-    events = get_all_events(date_prefix, filter_type)
-    all_categories = get_all_categories()
-
-    template = jinja_env.get_template('partials/admin_events.html')
-    html = template.render(events=events, date_filter=date_prefix or '',
-                           filter_type=filter_type,
-                           all_categories=all_categories)
+    date_prefix = params.get('date')
+    
+    events = get_all_events(date_prefix)
+    # Only show non-ical events in the manual event list
+    events = [e for e in events if e.get('source') != 'ical']
+    
+    template = jinja_env.get_template('partials/admin_event_list.html')
+    html = template.render(events=events)
     return _html(200, html, event)
 
 
 def get_event_edit_form(event, jinja_env, guid):
-    """GET /admin/events/{guid}/edit — inline edit form row."""
+    """GET /admin/events/{guid}/edit — HTML form."""
     claims, err = _admin_check(event)
     if err:
         return err
 
     all_categories = get_all_categories()
     mat_event = get_event_from_config(guid) or {}
-    if mat_event and mat_event.get('source') != 'ical':
-        template = jinja_env.get_template('partials/admin_event_edit_form.html')
-        html = template.render(event=mat_event, all_categories=all_categories)
-    else:
-        override = get_override(guid) or {}
-        # Merge legacy OVERRIDE entity into event so template sees correct current values
-        merged = dict(mat_event)
-        for field in ['title', 'location', 'categories', 'hidden', 'duplicate_of']:
-            if field in override:
-                merged[field] = override[field]
-        merged.setdefault('guid', guid)
-        template = jinja_env.get_template('partials/admin_event_override_form.html')
-        html = template.render(guid=guid, event=merged, override={},
-                               all_categories=all_categories)
+    if not mat_event:
+        return {'statusCode': 404, 'body': 'Event not found'}
+
+    template = jinja_env.get_template('partials/admin_event_edit_form.html')
+    html = template.render(event=mat_event, all_categories=all_categories)
     return _html(200, html, event)
 
 
@@ -308,7 +226,7 @@ def save_event_edit(event, jinja_env, guid):
 
     data = _parse_body(event)
 
-    # Normalize categories: checkboxes send repeated values or nothing
+    # Normalize categories
     cats = data.get('categories', [])
     if isinstance(cats, str):
         cats = [cats] if cats else []
@@ -318,85 +236,19 @@ def save_event_edit(event, jinja_env, guid):
     data['hidden'] = data.get('hidden') == 'true'
     data['duplicate_of'] = data.get('duplicate_of', '').strip() or None
 
-    existing = get_event_from_config(guid)
-
-    if existing and existing.get('source') != 'ical':
-        db_update_event(guid, data)
-        updated = get_event_from_config(guid) or {}
-        updated['guid'] = guid
-    else:
-        # For iCal events, update the EVENT entity directly with overrides map
-        overrides_map = (existing or {}).get('overrides', {})
-
-        editable_fields = ['title', 'location', 'categories', 'url', 'time', 'hidden', 'duplicate_of']
-        override_data = {}
-        for field in editable_fields:
-            if field in data:
-                override_data[field] = data[field]
-                overrides_map[field] = True
-
-        db_update_event(guid, override_data, overrides=overrides_map)
-
-        updated = get_event_from_config(guid) or {}
-        updated['guid'] = guid
+    db_update_event(guid, data)
+    updated = get_event_from_config(guid) or {}
+    updated['guid'] = guid
 
     template = jinja_env.get_template('partials/admin_event_row.html')
     html = template.render(event=updated)
     return _html(200, html, event)
 
 
-# ─── Overrides ───────────────────────────────────────────────────
-
-def get_overrides(event, jinja_env):
-    """GET /admin/overrides — HTML table of overrides."""
-    claims, err = _admin_check(event)
-    if err:
-        return err
-
-    overrides = db_get_all_overrides()
-    template = jinja_env.get_template('partials/override_list.html')
-    html = template.render(overrides=overrides)
-    return _html(200, html, event)
-
-
-def create_override(event, jinja_env):
-    """POST /admin/overrides — create a new override."""
-    claims, err = _admin_check(event)
-    if err:
-        return err
-
-    data = _parse_body(event)
-    guid = data.get('guid', '').strip()
-    if not guid:
-        return _html(400, '<p>GUID is required</p>', event)
-
-    override_data = {}
-    for field in ['categories', 'title', 'url', 'location', 'time', 'hidden', 'duplicate_of']:
-        if field in data:
-            override_data[field] = data[field]
-
-    override_data['edited_by'] = claims.get('email', '')
-
-    db_put_override(guid, override_data)
-
-    override = {'guid': guid, **override_data}
-    template = jinja_env.get_template('partials/override_row.html')
-    html = template.render(override=override)
-    return _html(201, html, event)
-
-
-def delete_override(event, jinja_env, guid):
-    """DELETE /admin/overrides/{guid} — delete override, return empty."""
-    claims, err = _admin_check(event)
-    if err:
-        return err
-
-    db_delete_override(guid)
-    return _html(200, '', event)
-
+# ─── Bulk Actions ────────────────────────────────────────────────
 
 def handle_bulk_action(event, jinja_env):
-    """POST /admin/events/bulk — handle bulk actions on events."""
+    """POST /admin/events/bulk — Handle hide/categorize/combine."""
     claims, err = _admin_check(event)
     if err:
         return err
@@ -406,117 +258,73 @@ def handle_bulk_action(event, jinja_env):
     guids = data.get('guids', [])
     if isinstance(guids, str):
         guids = [guids]
-    
+
     if not guids:
-        return _html(400, '<p>No events selected</p>', event)
+        return {'statusCode': 400, 'body': 'No events selected'}
 
-    actor = claims.get('email', 'unknown')
+    actor = claims.get('email', '')
 
-    if action == 'delete':
+    if action == 'hide':
         bulk_delete_events(guids, actor)
-    elif action == 'category':
-        cat_slug = data.get('category_slug')
-        if not cat_slug:
-            return _html(400, '<p>No category selected</p>', event)
-        bulk_set_category(guids, cat_slug, actor)
+    elif action == 'categorize':
+        cat = data.get('category')
+        if cat:
+            bulk_set_category(guids, cat, actor)
     elif action == 'combine':
-        target_guid = data.get('target_guid')
-        if not target_guid:
-            # Default to the first one in the list? Or require one?
-            # Better to require one or pick the most "materialized" one.
-            target_guid = guids[0]
-        bulk_combine_events(guids, target_guid, actor)
-    else:
-        return _html(400, f'<p>Unknown action: {action}</p>', event)
+        target = data.get('target_guid')
+        if target:
+            bulk_combine_events(guids, target, actor)
 
-    # After bulk action, reload the event list
-    # Parameters might be in query params (GET) or body (POST from bulk include)
-    date_prefix = data.get('date', '').strip()
-    filter_type = data.get('filter', '').strip()
-    
-    params = event.get('queryStringParameters') or {}
-    if not date_prefix:
-        date_prefix = params.get('date', '').strip()
-    if not filter_type:
-        filter_type = params.get('filter', '').strip()
-    
-    if not date_prefix:
-        date_prefix = None
-    if not filter_type:
-        filter_type = None
-        
-    events = get_all_events(date_prefix, filter_type)
-    all_categories = get_all_categories()
-    
-    template = jinja_env.get_template('partials/admin_events.html')
-    html = template.render(events=events, date_filter=date_prefix or '',
-                           filter_type=filter_type,
-                           all_categories=all_categories)
-    
-    # We add a success message header
-    return _html(200, html, event)
+    return _html(200, f"Bulk action '{action}' completed for {len(guids)} events.")
 
 
 # ─── Categories ──────────────────────────────────────────────────
 
 def get_categories(event, jinja_env):
-    """GET /admin/categories"""
+    """GET /admin/categories — HTML list."""
     claims, err = _admin_check(event)
     if err:
         return err
+
     categories = get_all_categories()
-    cats_list = sorted(categories.values(), key=lambda x: x.get('name', '').lower())
-    template = jinja_env.get_template('partials/admin_categories.html')
-    return _html(200, template.render(categories=cats_list), event)
+    template = jinja_env.get_template('partials/admin_category_list.html')
+    html = template.render(categories=categories)
+    return _html(200, html, event)
 
 
 def create_category(event, jinja_env):
-    """POST /admin/categories"""
+    """POST /admin/categories — create new."""
     claims, err = _admin_check(event)
     if err:
         return err
+
     data = _parse_body(event)
     slug = data.get('slug', '').strip().lower()
-    name = data.get('name', '').strip()
-    if not slug or not name:
-        return _html(400, '<p>Slug and name are required</p>', event)
-    cat = {'slug': slug, 'name': name, 'description': data.get('description', '').strip()}
-    db_put_category(slug, cat)
-    template = jinja_env.get_template('partials/category_row.html')
-    return _html(201, template.render(category=cat), event)
+    if not slug:
+        return {'statusCode': 400, 'body': 'Missing slug'}
+
+    db_put_category(slug, data)
+    
+    # Return updated list
+    return get_categories(event, jinja_env)
 
 
 def get_category_edit_form(event, jinja_env, slug):
-    """GET /admin/categories/{slug}/edit"""
-    claims, err = _admin_check(event)
-    if err:
-        return err
-    cat = get_all_categories().get(slug)
-    if not cat:
-        return _html(404, '<p>Category not found</p>', event)
-    template = jinja_env.get_template('partials/category_edit_form.html')
-    return _html(200, template.render(category=cat), event)
+    """GET /admin/category/{slug}/edit."""
+    # Similar to others...
+    return _html(200, "Not implemented yet")
 
 
 def update_category(event, jinja_env, slug):
-    """PUT /admin/categories/{slug}"""
-    claims, err = _admin_check(event)
-    if err:
-        return err
-    data = _parse_body(event)
-    name = data.get('name', '').strip()
-    if not name:
-        return _html(400, '<p>Name is required</p>', event)
-    cat = {'slug': slug, 'name': name, 'description': data.get('description', '').strip()}
-    db_put_category(slug, cat)
-    template = jinja_env.get_template('partials/category_row.html')
-    return _html(200, template.render(category=cat), event)
+    """POST /admin/category/{slug}."""
+    return create_category(event, jinja_env)
 
 
 def delete_category_route(event, jinja_env, slug):
-    """DELETE /admin/categories/{slug}"""
+    """DELETE /admin/category/{slug}."""
     claims, err = _admin_check(event)
     if err:
         return err
+
     db_delete_category(slug)
-    return _html(200, '', event)
+    return _html(200, "")
