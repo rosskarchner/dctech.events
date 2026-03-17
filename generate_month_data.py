@@ -100,13 +100,15 @@ def process_events():
     categories = get_categories()
     overrides = load_overrides()
     
-    all_events = []
+    regular_events = []
+    submitted_events = []
     today = datetime.now(local_tz).date()
     max_future_date = today + timedelta(days=120)
     
     # Track events seen in current run to handle disappearances
     current_run_guids = set()
 
+    # 1. Process regular scraped groups
     for group in groups:
         if not group.get('active', True):
             continue
@@ -140,13 +142,13 @@ def process_events():
                         try:
                             event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
                             if today <= event_date <= max_future_date:
-                                all_events.append(event)
+                                regular_events.append(event)
                         except Exception:
                             continue
                 except Exception as e:
                     print(f"Error processing {group_id}: {e}")
 
-    # Special handling for submitted events
+    # 2. Process submitted events
     submitted_cache = os.path.join(ICAL_CACHE_DIR, "submitted-events.json")
     if os.path.exists(submitted_cache):
          with open(submitted_cache, 'r') as f:
@@ -160,54 +162,62 @@ def process_events():
                         event.get('url')
                     )
                     event['guid'] = guid
+                    current_run_guids.add(guid)
                     # Date filter
                     try:
                         event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
                         if today <= event_date <= max_future_date:
-                            all_events.append(event)
+                            submitted_events.append(event)
                     except Exception:
                         continue
             except Exception as e:
                 print(f"Error processing submitted events: {e}")
 
-    # Same-day stability: Keep events that were in the previous run if they are for today
+    # 3. Same-day stability: Keep events from previous run if they are for today
+    previous_data = []
     previous_data_file = os.path.join(DATA_DIR, 'all_events.json')
     if os.path.exists(previous_data_file):
         with open(previous_data_file, 'r') as f:
             try:
-                previous_events = json.load(f)
-                for prev_event in previous_events:
+                prev_events = json.load(f)
+                for prev_event in prev_events:
                     guid = prev_event.get('guid')
                     if guid not in current_run_guids:
-                        # Event disappeared from source
                         try:
                             event_date = datetime.strptime(prev_event['date'], '%Y-%m-%d').date()
                             if event_date == today:
-                                # Keep it for same-day stability
-                                all_events.append(prev_event)
+                                previous_data.append(prev_event)
                         except Exception:
                             pass
             except Exception:
                 pass
 
-    # Deduplicate and sort
+    # Deduplicate: Regular events > Submitted events > Previous stability events
     seen_guids = set()
     unique_events = []
-    for e in all_events:
+    
+    for e in regular_events:
+        if e['guid'] not in seen_guids:
+            unique_events.append(e)
+            seen_guids.add(e['guid'])
+            
+    for e in submitted_events:
+        if e['guid'] not in seen_guids:
+            unique_events.append(e)
+            seen_guids.add(e['guid'])
+            
+    for e in previous_data:
         if e['guid'] not in seen_guids:
             unique_events.append(e)
             seen_guids.add(e['guid'])
             
     unique_events.sort(key=lambda x: (x.get('date', ''), x.get('time', '')))
     
-    # Save consolidate data
+    # Save consolidated data
     with open(os.path.join(DATA_DIR, 'all_events.json'), 'w') as f:
         json.dump(unique_events, f, indent=2)
         
     print(f"Generated data for {len(unique_events)} events")
-    
-    # Generate per-month and per-category data if needed (legacy scripts might expect this)
-    # For now, let's keep it simple.
 
 def main():
     process_events()

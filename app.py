@@ -90,6 +90,17 @@ def get_events(include_hidden=False):
         # Ensure we only return future events (plus today)
         today = date.today().strftime('%Y-%m-%d')
         events = [e for e in events if e.get('date', '') >= today]
+        
+        # Add group_website if missing by looking it up from groups
+        groups = get_approved_groups()
+        group_map = {g.get('name'): g for g in groups if g.get('name')}
+
+        for event in events:
+
+            if not event.get('group_website') and event.get('group'):
+                group = group_map.get(event['group'])
+                if group and group.get('website'):
+                    event['group_website'] = group['website']
             
         return events
     except Exception as e:

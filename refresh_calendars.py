@@ -212,7 +212,7 @@ def refresh_calendars():
     edit_ical_url = config.get('edit_ical_url', 'https://edit.dctech.events/api/events/upcoming.ics')
     groups.append({
         'id': 'submitted-events',
-        'name': 'Submitted Events',
+        'name': None,  # No display name for submitted events
         'ical': edit_ical_url,
         'active': True
     })
