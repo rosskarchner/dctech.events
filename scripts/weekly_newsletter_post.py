@@ -52,8 +52,8 @@ def main():
     
     token = os.environ.get('MICROBLOG_TOKEN')
     if not token:
-        print("Warning: MICROBLOG_TOKEN environment variable not found. Skipping posting.")
-        return
+        print("Error: MICROBLOG_TOKEN environment variable not found")
+        sys.exit(1)
 
     now = datetime.now(local_tz)
     current_date = now.date()

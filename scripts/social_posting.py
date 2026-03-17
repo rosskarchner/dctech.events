@@ -133,8 +133,8 @@ def main():
     
     token = os.environ.get('MICROBLOG_TOKEN')
     if not token:
-        print("Warning: MICROBLOG_TOKEN environment variable not found. Skipping posting.")
-        return
+        print("Error: MICROBLOG_TOKEN environment variable not found")
+        sys.exit(1)
 
     target_date = datetime.now(local_tz).date()
     print(f"Checking events for {target_date}...")
