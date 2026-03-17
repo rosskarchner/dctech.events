@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '0 9 * * *' # 9:00 AM UTC is 4:00 AM EST
   workflow_dispatch:
 
 permissions:
@@ -15,8 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_REGION: us-east-1
   AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+  SITE_BUCKET: dctech-events-site-1768361440101
+  CACHE_BUCKET: dctech-events-data-cache
 
 jobs:
   changes:
@@ -44,12 +48,14 @@ jobs:
               - 'app.py'
               - 'freeze.py'
               - 'generate_*.py'
-              - 'track_events.py'
               - 'refresh_calendars.py'
+              - '_groups/**'
+              - '_categories/**'
+              - 'static/**'
 
   deploy-infra:
     needs: changes
-    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -85,10 +91,9 @@ jobs:
           DOCKER_BUILDKIT: '1'
         run: |
           cd infrastructure
-          # Only run CDK if infra or backend code changed
           npx cdk deploy --all --require-approval never
 
-  deploy-frontend:
+  deploy-frontend-app:
     needs: changes
     if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -112,47 +117,67 @@ jobs:
         run: |
           echo "Finding CloudFront Distribution ID for edit.dctech.events..."
           DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'edit.dctech.events')].Id" --output text)
-          
-          if [ -z "$DIST_ID" ] || [ "$DIST_ID" == "None" ]; then
-            echo "❌ Error: Could not find CloudFront Distribution for edit.dctech.events"
-            exit 1
+          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
           fi
-          
-          echo "Invalidating distribution $DIST_ID..."
-          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
 
-  trigger-rebuild:
+  rebuild-site:
     needs: [changes, deploy-infra]
-    # Rebuild if the site content changed OR if we just updated the infrastructure/lambdas
     if: |
       always() && 
-      (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.infra == 'true' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || 
+       github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-trigger-rebuild
+          role-session-name: github-actions-rebuild-site
 
-      - name: Trigger Main Site Rebuild
+      - name: Sync Cache from S3
         run: |
-          QUEUE_URL=$(aws sqs get-queue-url --queue-name dctech-events-rebuild.fifo --region ${{ env.AWS_REGION }} --query "QueueUrl" --output text)
-          
-          if [ -z "$QUEUE_URL" ]; then
-            echo "❌ Error: Could not find SQS queue 'dctech-events-rebuild.fifo'"
-            exit 1
+          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_cache _cache || echo "No cache found"
+          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_data _data || echo "No data found"
+
+      - name: Refresh Calendars
+        run: python refresh_calendars.py
+
+      - name: Generate Month Data
+        run: python generate_month_data.py
+
+      - name: Build Static Site
+        run: python freeze.py
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync build/ s3://${{ env.SITE_BUCKET }}/ --delete
+          aws s3 sync _data/ s3://${{ env.SITE_BUCKET }}/_data/ --delete
+
+      - name: Sync Cache to S3
+        run: |
+          aws s3 sync _cache s3://${{ env.CACHE_BUCKET }}/_cache --delete
+          aws s3 sync _data s3://${{ env.CACHE_BUCKET }}/_data --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'dctech.events')].Id" --output text)
+          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
           fi
-          
-          DEDUP_ID="gha-$(date +%s)"
-          
-          aws sqs send-message \
-            --queue-url "$QUEUE_URL" \
-            --region ${{ env.AWS_REGION }} \
-            --message-body "{\"trigger\": \"github_actions\", \"commit\": \"${{ github.sha }}\"}" \
-            --message-group-id "rebuild" \
-            --message-deduplication-id "$DEDUP_ID"
-          
-          echo "Sent rebuild trigger to SQS (dedup_id: $DEDUP_ID)"
