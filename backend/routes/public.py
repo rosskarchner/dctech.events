@@ -58,7 +58,6 @@ def upcoming_ics(event, jinja_env):
     cal = Calendar()
     cal.add('prodid', '-//dctech.events//mxm.dk//')
     cal.add('version', '2.0')
-    cal.add('x-wr-calname', 'DC Tech Events (Submitted & Overrides)')
     
     # Create a map of overrides by GUID
     override_map = {o['guid']: o for o in overrides}

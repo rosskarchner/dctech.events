@@ -108,6 +108,13 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
 
         calendar = icalendar.Calendar.from_ical(response.text)
         
+        # Extract group name from calendar if not provided
+        group_name = group.get('name') if group else group_id
+        if group_name is None:
+            group_name = str(calendar.get('x-wr-calname', ''))
+            if not group_name:
+                group_name = None # Keep it None if still empty
+        
         # Determine date range for recurring events (next 6 months)
         start_date = datetime.now(timezone.utc)
         end_date = start_date + timedelta(days=180)
@@ -157,7 +164,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 'url': event_url,
                 'location': str(event.get('location', '')),
                 'description': str(event.get('description', '')),
-                'group': group.get('name', group_id) if group else group_id,
+                'group': group_name,
                 'group_id': group_id,
                 'categories': group.get('categories', []) if group else []
             }
