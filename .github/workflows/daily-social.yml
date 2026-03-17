@@ -1,0 +1,42 @@
+name: Daily Social Posting
+
+on:
+  schedule:
+    - cron: '0 13 * * *' # 13:00 UTC is 8:00 AM or 9:00 AM EST depending on DST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MICROBLOG_TOKEN: ${{ secrets.MICROBLOG_TOKEN }}
+  CACHE_BUCKET: dctech-events-data-cache
+
+jobs:
+  social-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests pyyaml pytz
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-actions-daily-social
+
+      - name: Sync Data from S3
+        run: |
+          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_data _data || echo "No data found"
+
+      - name: Run Daily Social Posting
+        run: python scripts/social_posting.py

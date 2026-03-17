@@ -60,11 +60,6 @@ jobs:
       - name: Build Static Site
         run: python freeze.py
 
-      - name: Social Posting (Daily Summary)
-        env:
-          MICROBLOG_TOKEN: ${{ secrets.MICROBLOG_TOKEN }}
-        run: python scripts/social_posting.py
-
       - name: Deploy to S3
         run: |
           aws s3 sync build/ s3://${{ env.SITE_BUCKET }}/ --delete
