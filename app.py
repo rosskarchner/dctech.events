@@ -88,7 +88,7 @@ def get_events(include_hidden=False):
             events = [e for e in events if not e.get('hidden', False) and not e.get('duplicate_of')]
         
         # Ensure we only return future events (plus today)
-        today = date.today().strftime('%Y-%m-%d')
+        today = datetime.now(local_tz).date().strftime('%Y-%m-%d')
         events = [e for e in events if e.get('date', '') >= today]
         
         # Add group_website if missing by looking it up from groups
@@ -242,11 +242,11 @@ def filter_events_to_next_two_weeks(events):
     Returns:
         List of events occurring within the next 14 days
     """
-    today = date.today()
+    today = datetime.now(local_tz).date()
     two_weeks_from_now = today + timedelta(days=14)
     return [
         e for e in events 
-        if e.get('date') and datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
+        if e.get('date') and today <= datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
     ]
 
 def calculate_event_hash(date, time, title, url=None):
