@@ -431,75 +431,16 @@ def promote_draft_to_event(draft):
     return guid
 
 
-# ─── OVERRIDE operations ──────────────────────────────────────────
-
-def get_all_overrides():
-    """Get all event overrides."""
-    table = _get_table()
-    items = []
-
-    response = table.scan(
-        FilterExpression=Attr('PK').begins_with('OVERRIDE#') & Attr('SK').eq('META'),
-    )
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(
-            FilterExpression=Attr('PK').begins_with('OVERRIDE#') & Attr('SK').eq('META'),
-            ExclusiveStartKey=response['LastEvaluatedKey'],
-        )
-        items.extend(response.get('Items', []))
-
-    return [_override_item_to_dict(item) for item in items]
-
-
-def get_override(guid):
-    """Get a single override by GUID."""
-    table = _get_table()
-    response = table.get_item(Key={'PK': f'OVERRIDE#{guid}', 'SK': 'META'})
-    item = response.get('Item')
-    return _override_item_to_dict(item) if item else None
-
-
-def put_override(guid, data):
-    """Create or update an OVERRIDE entity."""
-    table = _get_table()
-
-    # Sanitize URL
-    sanitized_data = data.copy()
-    if 'url' in sanitized_data and not is_safe_url(sanitized_data['url']):
-        sanitized_data['url'] = ''
-
-    item = {
-        'PK': f'OVERRIDE#{guid}',
-        'SK': 'META',
-        **{k: v for k, v in sanitized_data.items() if v is not None},
-    }
-    table.put_item(Item=item)
-
-
-def delete_override(guid):
-    """Delete an override by GUID."""
-    table = _get_table()
-    table.delete_item(Key={'PK': f'OVERRIDE#{guid}', 'SK': 'META'})
-
-
 def bulk_delete_events(guids, actor_email):
-    """Hide multiple events by creating overrides or deleting manual records."""
+    """Hide multiple events (manual/submitted records only)."""
     for guid in guids:
         manual = get_event_from_config(guid)
         if manual:
-            # For manual events, we just set hidden=True in the record
             update_event(guid, {'hidden': True})
-        else:
-            # For iCal events, create/update override
-            override = get_override(guid) or {}
-            override['hidden'] = True
-            override['edited_by'] = actor_email
-            put_override(guid, override)
 
 
 def bulk_set_category(guids, category_slug, actor_email):
-    """Add a category to multiple events."""
+    """Add a category to multiple events (manual/submitted records only)."""
     for guid in guids:
         event = get_event_from_config(guid)
         if event:
@@ -507,19 +448,10 @@ def bulk_set_category(guids, category_slug, actor_email):
             if category_slug not in cats:
                 cats.append(category_slug)
                 update_event(guid, {'categories': cats})
-        else:
-            # Event not in config table — create override
-            override = get_override(guid) or {}
-            cats = override.get('categories', [])
-            if category_slug not in cats:
-                cats.append(category_slug)
-                override['categories'] = cats
-                override['edited_by'] = actor_email
-                put_override(guid, override)
 
 
 def bulk_combine_events(guids, target_guid, actor_email):
-    """Mark multiple events as duplicates of a target event."""
+    """Mark multiple events as duplicates of a target event (manual/submitted records only)."""
     if target_guid in guids:
         guids = [g for g in guids if g != target_guid]
     
@@ -527,22 +459,6 @@ def bulk_combine_events(guids, target_guid, actor_email):
         manual = get_event_from_config(guid)
         if manual:
             update_event(guid, {'duplicate_of': target_guid})
-        else:
-            override = get_override(guid) or {}
-            override['duplicate_of'] = target_guid
-            override['edited_by'] = actor_email
-            put_override(guid, override)
-
-
-def _override_item_to_dict(item):
-    """Convert a DynamoDB OVERRIDE item to a dict."""
-    guid = item['PK'].split('#', 1)[1]
-    override = {'guid': guid}
-    for field in ['categories', 'edited_by', 'title', 'url',
-                  'location', 'time', 'hidden', 'duplicate_of']:
-        if field in item:
-            override[field] = item[field]
-    return override
 
 
 # ─── CATEGORY operations ──────────────────────────────────────────

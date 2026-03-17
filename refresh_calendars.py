@@ -214,7 +214,7 @@ def refresh_calendars():
     groups = get_groups()
     updated = False
 
-    # Add the "Submitted & Overrides" feed from the edit site
+    # Add the "Submitted" feed from the edit site
     # This URL should be configurable or derived from base_url/config
     edit_ical_url = config.get('edit_ical_url', 'https://edit.dctech.events/api/events/upcoming.ics')
     groups.append({

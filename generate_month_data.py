@@ -73,32 +73,10 @@ def get_categories():
                 categories[slug]['slug'] = slug
     return categories
 
-def load_overrides():
-    """Fetch overrides from the edit site API."""
-    edit_api_url = config.get('edit_api_url', 'https://edit.dctech.events/api')
-    try:
-        response = requests.get(f"{edit_api_url}/overrides", timeout=10)
-        if response.status_code == 200:
-            overrides = response.json()
-            return {o['guid']: o for o in overrides}
-    except Exception as e:
-        print(f"Warning: Could not fetch overrides: {e}")
-    return {}
-
-def merge_event_with_override(event, override):
-    """Apply override fields to an event."""
-    if not override:
-        return event
-    for field in ['title', 'url', 'location', 'time', 'categories']:
-        if field in override and override[field]:
-            event[field] = override[field]
-    return event
-
 def process_events():
     """Generate the consolidated event data from all sources."""
     groups = get_groups()
     categories = get_categories()
-    overrides = load_overrides()
     
     regular_events = []
     submitted_events = []
@@ -127,13 +105,6 @@ def process_events():
                             event.get('title', ''),
                             event.get('url')
                         )
-                        
-                        # Apply overrides
-                        override = overrides.get(event_hash)
-                        if override and override.get('hidden'):
-                            continue
-                        if override:
-                            event = merge_event_with_override(event, override)
                         
                         event['guid'] = event_hash
                         current_run_guids.add(event_hash)
