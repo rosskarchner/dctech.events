@@ -1,5 +1,6 @@
 /**
  * Stack configuration for DC Tech Events infrastructure
+ * Refactored for radical simplification
  */
 export const stackConfig = {
   // Stack metadata
