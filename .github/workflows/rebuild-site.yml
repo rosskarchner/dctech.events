@@ -63,6 +63,7 @@ jobs:
       - name: Deploy to S3
         run: |
           aws s3 sync build/ s3://${{ env.SITE_BUCKET }}/ --delete
+          aws s3 sync _data/ s3://${{ env.SITE_BUCKET }}/_data/ --delete
 
       - name: Sync Cache to S3
         run: |
