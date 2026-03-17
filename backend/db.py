@@ -285,7 +285,7 @@ def _event_item_to_dict(item):
     return event
 
 
-def get_all_events(date_prefix=None, filter_type=None):
+def get_all_events(date_prefix=None, filter_type=None, include_past=False):
     """Query config table for active events via GSI4, optionally filtered by YYYY-MM prefix."""
     table = _get_table()
     items = []
@@ -299,6 +299,8 @@ def get_all_events(date_prefix=None, filter_type=None):
         else:
             end = f"{year}-{next_month:02d}-01"
         kce = Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').between(start, end)
+    elif include_past:
+        kce = Key('GSI4PK').eq('EVT#ACTIVE')
     else:
         today = _date_type.today().isoformat()
         kce = Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today)

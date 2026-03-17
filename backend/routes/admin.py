@@ -192,8 +192,9 @@ def get_events(event, jinja_env):
 
     params = event.get('queryStringParameters') or {}
     date_prefix = params.get('date')
+    filter_type = params.get('filter')
     
-    events = get_all_events(date_prefix)
+    events = get_all_events(date_prefix, filter_type=filter_type, include_past=True)
     # Only show non-ical events in the manual event list
     events = [e for e in events if e.get('source') != 'ical']
     
