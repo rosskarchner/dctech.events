@@ -6,7 +6,10 @@ import json
 
 from db import get_all_events, get_all_categories
 from icalendar import Calendar, Event as ICalEvent
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
+import pytz
+
+local_tz = pytz.timezone('US/Eastern')
 
 
 def health(event, jinja_env):
@@ -64,10 +67,11 @@ def upcoming_ics(event, jinja_env):
         
         if evt_date_str:
             try:
-                dt = datetime.strptime(f"{evt_date_str} {evt_time_str}", "%Y-%m-%d %H:%M")
+                dt_naive = datetime.strptime(f"{evt_date_str} {evt_time_str}", "%Y-%m-%d %H:%M")
+                dt = local_tz.localize(dt_naive)
                 evt.add('dtstart', dt)
                 # Default duration 1 hour if not specified
-                evt.add('dtend', dt.replace(hour=(dt.hour + 1) % 24))
+                evt.add('dtend', dt + timedelta(hours=1))
             except ValueError:
                 try:
                     d = datetime.strptime(evt_date_str, "%Y-%m-%d").date()
