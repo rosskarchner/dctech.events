@@ -13,7 +13,7 @@ from db import (
     get_all_groups, get_group, put_group,
     get_all_categories, get_events_by_date,
     get_all_events, get_event_from_config, update_event as db_update_event,
-    bulk_delete_events, bulk_set_category, bulk_combine_events,
+    bulk_delete_events, bulk_hard_delete_events, bulk_set_category, bulk_combine_events,
     put_category as db_put_category, delete_category as db_delete_category,
 )
 
@@ -150,7 +150,7 @@ def get_groups(event, jinja_env):
         return err
 
     groups = get_all_groups()
-    template = jinja_env.get_template('partials/admin_group_list.html')
+    template = jinja_env.get_template('partials/group_list.html')
     html = template.render(groups=groups)
     return _html(200, html, event)
 
@@ -196,13 +196,21 @@ def get_events(event, jinja_env):
     params = event.get('queryStringParameters') or {}
     date_prefix = params.get('date')
     filter_type = params.get('filter')
+    include_past = params.get('include_past') == 'true'
     
-    events = get_all_events(date_prefix, filter_type=filter_type, include_past=True)
+    events = get_all_events(date_prefix, filter_type=filter_type, include_past=include_past)
     # Only show non-ical events in the manual event list
     events = [e for e in events if e.get('source') != 'ical']
     
-    template = jinja_env.get_template('partials/admin_event_list.html')
-    html = template.render(events=events)
+    categories = get_all_categories()
+    
+    template = jinja_env.get_template('partials/admin_events.html')
+    html = template.render(
+        events=events,
+        all_categories=categories,
+        filter_type=filter_type,
+        date_filter=date_prefix
+    )
     return _html(200, html, event)
 
 
@@ -270,8 +278,10 @@ def handle_bulk_action(event, jinja_env):
 
     if action == 'hide':
         bulk_delete_events(guids, actor)
+    elif action == 'delete':
+        bulk_hard_delete_events(guids, actor)
     elif action == 'categorize':
-        cat = data.get('category')
+        cat = data.get('category_slug')
         if cat:
             bulk_set_category(guids, cat, actor)
     elif action == 'combine':
@@ -279,7 +289,19 @@ def handle_bulk_action(event, jinja_env):
         if target:
             bulk_combine_events(guids, target, actor)
 
-    return _html(200, f"Bulk action '{action}' completed for {len(guids)} events.")
+    msgHTML = f"""
+    <div style="padding: 2rem; text-align: center;">
+      <div style="display: inline-block; padding: 1rem 2rem; background: #e6f4ea; color: #1e4620; border-radius: 4px; font-weight: 500;">
+        Bulk action '{action}' completed for {len(guids)} event(s). Returning to list...
+      </div>
+      <div hx-get="/admin/events"
+           hx-trigger="load delay:1.5s"
+           hx-target="#events-table"
+           hx-include="#date-filter, #active-filter, #include-past"
+           style="display:none;"></div>
+    </div>
+    """
+    return _html(200, msgHTML)
 
 
 # ─── Categories ──────────────────────────────────────────────────
@@ -291,7 +313,7 @@ def get_categories(event, jinja_env):
         return err
 
     categories = get_all_categories()
-    template = jinja_env.get_template('partials/admin_category_list.html')
+    template = jinja_env.get_template('partials/admin_categories.html')
     html = template.render(categories=categories)
     return _html(200, html, event)
 

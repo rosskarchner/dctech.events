@@ -1,0 +1,117 @@
+{
+  "ai": {
+    "slug": "ai",
+    "name": "AI & Machine Learning",
+    "description": "Artificial intelligence, machine learning, and data science events"
+  },
+  "cloud": {
+    "slug": "cloud",
+    "name": "Cloud Computing",
+    "description": "Cloud platforms, infrastructure, DevOps, and cloud-native technologies"
+  },
+  "conferences": {
+    "slug": "conferences",
+    "name": "Conferences",
+    "description": "Multi-day conferences, summits, and large-scale tech gatherings"
+  },
+  "coworking": {
+    "slug": "coworking",
+    "name": "Coworking",
+    "description": "Coworking sessions, collaboration spaces, and community work events"
+  },
+  "crypto": {
+    "slug": "crypto",
+    "name": "Blockchain & Crypto",
+    "description": "Cryptocurrency, blockchain technology, and Web3 events"
+  },
+  "cybersecurity": {
+    "slug": "cybersecurity",
+    "name": "Cybersecurity",
+    "description": "Information security, cybersecurity, and privacy-focused events"
+  },
+  "data": {
+    "slug": "data",
+    "name": "Data & Analytics",
+    "description": "Data engineering, analytics, visualization, and big data events"
+  },
+  "gaming": {
+    "slug": "gaming",
+    "name": "Gaming & Gamedev",
+    "description": "Making and playing games"
+  },
+  "govtech": {
+    "slug": "govtech",
+    "name": "Government Technology",
+    "description": "Government technology, civic tech, digital services, and public sector innovation events"
+  },
+  "hardware": {
+    "slug": "hardware",
+    "name": "Hardware & Electronics",
+    "description": "Making and tinkering with actual physical things"
+  },
+  "legal-tech": {
+    "slug": "legal-tech",
+    "name": "Legal Tech",
+    "description": "Legal technology, law and technology intersection, and legal innovation events"
+  },
+  "microsoft": {
+    "slug": "microsoft",
+    "name": "Microsoft Technologies",
+    "description": "Microsoft platforms, .NET, Azure, and related technologies"
+  },
+  "mobile": {
+    "slug": "mobile",
+    "name": "Mobile Development",
+    "description": "Mobile app development, iOS, Android, and cross-platform technologies"
+  },
+  "open-source-community": {
+    "slug": "open-source-community",
+    "name": "Open Source Community",
+    "description": "Events about Free and Open Source Software."
+  },
+  "programming-languages": {
+    "slug": "programming-languages",
+    "name": "Programming Languages",
+    "description": "Programming language meetups, user groups, and language-specific communities"
+  },
+  "regional-organizations": {
+    "slug": "regional-organizations",
+    "name": "Regional Organizations",
+    "description": "Regional tech organizations, professional associations, and community groups"
+  },
+  "social": {
+    "slug": "social",
+    "name": "Social & Networking",
+    "description": "Tech social events, happy hours, and professional networking"
+  },
+  "software-development": {
+    "slug": "software-development",
+    "name": "Software Development",
+    "description": "Software development practices, methodologies, and general programming topics"
+  },
+  "startups": {
+    "slug": "startups",
+    "name": "Startups & Entrepreneurship",
+    "description": "Startup culture, entrepreneurship, and business development events"
+  },
+  "technology-and-media": {
+    "slug": "technology-and-media",
+    "name": "Technology & Media",
+    "description": "Technology journalism, media production, digital content, and broadcasting events"
+  },
+  "training": {
+    "slug": "training",
+    "name": "Training & Workshops",
+    "description": "Educational workshops, training sessions, and skills development"
+  },
+  "ux-design": {
+    "slug": "ux-design",
+    "name": "UX & Design",
+    "description": "User experience, interface design, and product design events"
+  },
+  "vendor-conferences": {
+    "slug": "vendor-conferences",
+    "name": "Vendor Conferences",
+    "description": "Company-sponsored conferences, product launches, and vendor events"
+  }
+}

@@ -11,13 +11,22 @@
       </div>
     {% endif %}
     
+    <button class="btn btn-sm btn-outline"
+            hx-post="/admin/events/bulk"
+            hx-vals='{"action": "hide"}'
+            hx-include=".event-checkbox, #date-filter, #active-filter"
+            hx-target="#events-table"
+            hx-confirm="Are you sure you want to hide the selected events?">
+      Hide Selected
+    </button>
+    
     <button class="btn btn-sm btn-danger"
             hx-post="/admin/events/bulk"
             hx-vals='{"action": "delete"}'
             hx-include=".event-checkbox, #date-filter, #active-filter"
             hx-target="#events-table"
-            hx-confirm="Are you sure you want to hide the selected events?">
-      Hide Selected
+            hx-confirm="Are you sure you want to PERMANENTLY delete the selected events?">
+      Delete Selected
     </button>
 
     <div style="display:flex; align-items:center; gap:0;">

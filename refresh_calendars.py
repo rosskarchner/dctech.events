@@ -64,6 +64,47 @@ def should_fetch(meta_data, group_id):
             return False
     return True
 
+JSON_LD_CACHE_DIR = os.path.join(CACHE_DIR, 'json-ld')
+os.makedirs(JSON_LD_CACHE_DIR, exist_ok=True)
+
+def fetch_json_ld_title(url):
+    """Fetch title from JSON-LD on the given URL (e.g. Meetup event pages)."""
+    if "meetup.com" not in url:
+        return None
+        
+    url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+    cache_file = os.path.join(JSON_LD_CACHE_DIR, f"{url_hash}.json")
+    
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r') as f:
+            data = json.load(f)
+            return data.get('title')
+            
+    try:
+        from bs4 import BeautifulSoup
+        resp = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=10)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            for script in soup.find_all('script', type='application/ld+json'):
+                try:
+                    ld_data = json.loads(script.string)
+                    items = ld_data if isinstance(ld_data, list) else [ld_data]
+                    for item in items:
+                        if item.get('@type') == 'Event' and 'name' in item:
+                            title = item['name']
+                            with open(cache_file, 'w') as f:
+                                json.dump({'title': title}, f)
+                            return title
+                except json.JSONDecodeError:
+                    continue
+    except Exception as e:
+        print(f"Error fetching JSON-LD for {url}: {e}")
+        pass
+        
+    with open(cache_file, 'w') as f:
+        json.dump({'title': None}, f)
+    return None
+
 def fetch_ical_and_extract_events(url, group_id, group=None):
     """
     Fetch an iCal file and extract events.
@@ -155,6 +196,11 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 url_match = re.search(r'https?://[^\s<>"]+|www\.[^\s<>"]+', desc)
                 event_url = url_match.group(0) if url_match else group.get('website', '')
 
+            if event_url:
+                canonical_title = fetch_json_ld_title(event_url)
+                if canonical_title:
+                    title = canonical_title
+
             event_data = {
                 'title': title,
                 'date': date_str,
@@ -166,8 +212,27 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 'description': str(event.get('description', '')),
                 'group': group_name,
                 'group_id': group_id,
-                'categories': group.get('categories', []) if group else []
             }
+
+            event_categories = set(group.get('categories', []) if group else [])
+            ical_categories = event.get('categories')
+            if ical_categories:
+                if not isinstance(ical_categories, list):
+                    ical_categories = [ical_categories]
+                for cat in ical_categories:
+                    if hasattr(cat, 'to_ical'):
+                        val = cat.to_ical().decode('utf-8')
+                        for c in val.split(','):
+                            c_clean = c.strip()
+                            if c_clean:
+                                event_categories.add(c_clean)
+                    elif isinstance(cat, str):
+                        for c in cat.split(','):
+                            c_clean = c.strip()
+                            if c_clean:
+                                event_categories.add(c_clean)
+            
+            event_data['categories'] = list(event_categories)
             events.append(event_data)
 
         # Update cache

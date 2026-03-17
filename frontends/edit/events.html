@@ -44,10 +44,14 @@
           <div style="display:flex; align-items:center; gap: 8px;">
             <input type="text" id="date-filter" name="date" class="form-control"
                    placeholder="e.g. 2026-03" style="width:110px">
+            <label style="display:flex; align-items:center; gap: 4px; font-size: 0.85rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="include-past" name="include_past" value="true">
+              Include Past
+            </label>
             <button class="btn btn-primary btn-sm"
                     hx-get="/admin/events"
                     hx-target="#events-table"
-                    hx-include="#date-filter, #active-filter"
+                    hx-include="#date-filter, #active-filter, #include-past"
                     hx-indicator="#events-loading">
               Filter
             </button>
@@ -59,12 +63,13 @@
                   hx-get="/admin/events"
                   hx-vals='{"filter": "uncategorized"}'
                   hx-target="#events-table"
-                  hx-include="#date-filter"
+                  hx-include="#date-filter, #include-past"
                   hx-indicator="#events-loading">
             Uncategorized
           </button>
 
           <button class="btn btn-sm" style="background:transparent; border:none; color: var(--color-primary); padding: 0;"
+                  onclick="document.getElementById('date-filter').value=''; document.getElementById('include-past').checked=false;"
                   hx-get="/admin/events"
                   hx-target="#events-table"
                   hx-indicator="#events-loading">

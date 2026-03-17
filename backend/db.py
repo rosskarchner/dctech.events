@@ -441,6 +441,13 @@ def bulk_delete_events(guids, actor_email):
             update_event(guid, {'hidden': True})
 
 
+def bulk_hard_delete_events(guids, actor_email):
+    """Permanently delete multiple events (manual/submitted records only)."""
+    table = _get_table()
+    for guid in guids:
+        table.delete_item(Key={'PK': f'EVENT#{guid}', 'SK': 'META'})
+
+
 def bulk_set_category(guids, category_slug, actor_email):
     """Add a category to multiple events (manual/submitted records only)."""
     for guid in guids:
