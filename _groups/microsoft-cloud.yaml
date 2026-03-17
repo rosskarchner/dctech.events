@@ -1,0 +1,9 @@
+name: Microsoft Cloud & AI Meetup
+active: true
+website: https://www.meetup.com/microsoft-cloud
+ical: https://www.meetup.com/microsoft-cloud/events/ical/
+categories:
+- microsoft
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

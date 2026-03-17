@@ -1,0 +1,10 @@
+name: AI Discussion Club
+active: true
+website: https://luma.com/ai-discussion-club
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-W06JcTHge80LKy3
+fallback_url: https://luma.com/ai-discussion-club
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

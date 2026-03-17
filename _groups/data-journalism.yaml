@@ -1,0 +1,9 @@
+name: Data Journalism DC
+active: true
+website: https://www.meetup.com/data-journalism
+ical: https://www.meetup.com/data-journalism/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

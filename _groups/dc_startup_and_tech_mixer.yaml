@@ -1,0 +1,9 @@
+name: DC Startup and Tech Mixer
+active: true
+website: https://www.meetup.com/DCTechMixer/
+ical: https://www.meetup.com/DCTechMixer/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,11 @@
+name: VC in DC
+active: true
+website: https://lu.ma/vcdc?k=c
+ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-blLIOAdVcZqEpeP
+fallback_url: https://lu.ma/vcdc?k=c
+categories:
+- startups
+suppress_urls:
+- https://luma.com/event/evt-098Icw0mTqWnD7F
+suppress_guid: false
+scan_for_metadata: false

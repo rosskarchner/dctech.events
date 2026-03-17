@@ -1,0 +1,9 @@
+name: NoVABeerSec
+active: true
+website: https://www.meetup.com/nova-beer-sec
+ical: https://www.meetup.com/nova-beer-sec/events/ical/
+categories:
+- cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

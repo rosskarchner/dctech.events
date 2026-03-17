@@ -1,0 +1,9 @@
+name: Midnight Blockchain Group - DC/MD/VA
+active: true
+website: https://www.meetup.com/cardano-blockchain-dc-md-va/
+ical: https://www.meetup.com/cardano-blockchain-dc-md-va/events/ical/
+categories:
+- crypto
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

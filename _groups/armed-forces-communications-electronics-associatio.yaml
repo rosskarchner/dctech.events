@@ -1,0 +1,9 @@
+name: AFCEA
+active: true
+website: https://www.afcea.org/
+ical: https://rosskarchner.github.io/dctech-scrapercollcection/afcea.ics
+categories:
+- govtech
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

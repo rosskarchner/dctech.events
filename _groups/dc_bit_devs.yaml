@@ -1,0 +1,9 @@
+name: DC Bit Devs
+active: true
+website: https://www.meetup.com/dc-bit-devs/
+ical: https://www.meetup.com/dc-bit-devs/events/ical/
+categories:
+- crypto
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

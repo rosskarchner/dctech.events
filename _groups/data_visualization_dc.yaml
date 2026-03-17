@@ -1,0 +1,9 @@
+name: Data Visualization DC
+active: true
+website: https://www.meetup.com/data-visualization-dc/
+ical: https://www.meetup.com/data-visualization-dc/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

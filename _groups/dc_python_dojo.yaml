@@ -1,0 +1,11 @@
+name: DC Python Dojo
+active: true
+website: https://pydistrict.org/
+ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-Wg8JJjExSGrXXNA
+fallback_url: https://lu.ma/pydistrict
+categories:
+- programming-languages
+suppress_urls:
+- https://lu.ma/e/evt-PrnKuOUHph8Fgjg
+suppress_guid: false
+scan_for_metadata: false

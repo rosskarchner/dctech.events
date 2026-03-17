@@ -1,0 +1,9 @@
+name: DMV Artificial Intelligence
+active: true
+website: https://www.meetup.com/dmvaigroup
+ical: https://www.meetup.com/dmvaigroup/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: DC Startup Founder 101
+active: true
+website: https://www.meetup.com/dc-startup-founder-101/
+ical: https://www.meetup.com/dc-startup-founder-101/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

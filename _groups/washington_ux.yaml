@@ -1,0 +1,9 @@
+name: Washington User Experience Meetup Group
+active: true
+website: https://www.meetup.com/washington-user-experience-meetup-group/
+ical: https://www.meetup.com/washington-user-experience-meetup-group/events/ical/
+categories:
+- ux-design
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: ACM DC
+active: true
+website: https://www.meetup.com/acm-dc/
+ical: https://www.meetup.com/acm-dc/events/ical/
+categories:
+- software-development
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

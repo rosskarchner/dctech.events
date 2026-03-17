@@ -1,0 +1,9 @@
+name: DC iOS
+active: true
+website: https://www.meetup.com/dc-ios/
+ical: https://www.meetup.com/dc-ios/events/ical/
+categories:
+- mobile
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

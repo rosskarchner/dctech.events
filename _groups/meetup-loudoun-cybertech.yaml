@@ -1,0 +1,9 @@
+name: Loudoun CyberTech
+active: true
+website: https://www.meetup.com/loudoun-cybertech/
+ical: https://www.meetup.com/loudoun-cybertech/events/ical/
+categories:
+- cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

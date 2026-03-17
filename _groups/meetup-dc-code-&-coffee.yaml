@@ -1,0 +1,9 @@
+name: DC Code & Coffee
+active: true
+website: https://www.meetup.com/dc-code-coffee/
+ical: https://www.meetup.com/dc-code-coffee/events/ical/
+categories:
+- coworking
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

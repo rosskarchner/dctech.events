@@ -1,0 +1,10 @@
+name: Anti-Networking Networking Club
+active: true
+website: https://lu.ma/antinetworkers
+ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-JKay5R7w9EMOAVl
+fallback_url: https://lu.ma/antinetworkers
+categories:
+- social
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

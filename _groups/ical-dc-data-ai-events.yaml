@@ -1,0 +1,10 @@
+name: DC Data & AI Events
+active: true
+website: https://luma.com/DC2
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-eCuIBRbS1atJOa6
+fallback_url: https://luma.com/DC2
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

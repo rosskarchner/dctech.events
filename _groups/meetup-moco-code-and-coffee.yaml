@@ -1,0 +1,9 @@
+name: MoCo Code and Coffee
+active: true
+website: https://www.meetup.com/mocode-coffee/
+ical: https://www.meetup.com/mocode-coffee/events/ical/
+categories:
+- coworking
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

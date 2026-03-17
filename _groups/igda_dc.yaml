@@ -1,0 +1,9 @@
+name: IGDA DC
+active: true
+website: https://www.meetup.com/igda-dc/
+ical: https://www.meetup.com/igda-dc/events/ical/
+categories:
+- gaming
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,10 @@
+name: Defense Tech DC
+active: true
+website: https://lu.ma/defense-tech-dc
+ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-9cB78glcBH8tHvA
+fallback_url: https://lu.ma/defense-tech-dc
+categories:
+- govtech
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

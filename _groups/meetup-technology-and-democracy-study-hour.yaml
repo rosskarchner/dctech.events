@@ -1,0 +1,9 @@
+name: Technology and Democracy Study Hour
+active: true
+website: https://www.meetup.com/technology-democracy-study-hour/
+ical: https://www.meetup.com/technology-democracy-study-hour/events/ical/
+categories:
+- social
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

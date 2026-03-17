@@ -1,0 +1,9 @@
+name: Bethesda Open Source AI
+active: true
+website: https://www.meetup.com/bethesda-open-source-ai/
+ical: https://www.meetup.com/bethesda-open-source-ai/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

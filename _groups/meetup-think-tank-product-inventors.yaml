@@ -1,0 +1,9 @@
+name: Think Tank - Product Inventors
+active: true
+website: https://www.meetup.com/think-tank-product-inventors/
+ical: https://www.meetup.com/think-tank-product-inventors/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

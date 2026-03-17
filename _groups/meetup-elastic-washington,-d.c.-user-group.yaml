@@ -1,0 +1,9 @@
+name: Elastic Washington, D.C. User Group
+active: true
+website: https://www.meetup.com/washington-dc-elastic-fantastics/
+ical: https://www.meetup.com/washington-dc-elastic-fantastics/events/ical/
+categories:
+- open-source-community
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,82 @@
+name: Rebuild and Deploy Static Site
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # 9:00 AM UTC is 4:00 AM EST
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'infrastructure/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+  SITE_BUCKET: dctech-events-site-1768361440101
+  CACHE_BUCKET: dctech-events-data-cache
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-rebuild-site
+
+      - name: Sync Cache from S3
+        run: |
+          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_cache _cache || echo "No cache found"
+          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_data _data || echo "No data found"
+
+      - name: Refresh Calendars
+        run: python refresh_calendars.py
+
+      - name: Generate Month Data
+        run: python generate_month_data.py
+
+      - name: Build Static Site
+        run: python freeze.py
+
+      - name: Social Posting (Daily Summary)
+        env:
+          MICROBLOG_TOKEN: ${{ secrets.MICROBLOG_TOKEN }}
+        run: python scripts/social_posting.py
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync build/ s3://${{ env.SITE_BUCKET }}/ --delete
+
+      - name: Sync Cache to S3
+        run: |
+          aws s3 sync _cache s3://${{ env.CACHE_BUCKET }}/_cache --delete
+          aws s3 sync _data s3://${{ env.CACHE_BUCKET }}/_data --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'dctech.events')].Id" --output text)
+          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
+          fi

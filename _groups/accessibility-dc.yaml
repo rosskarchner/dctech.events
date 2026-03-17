@@ -1,0 +1,9 @@
+name: Accessibility DC
+active: true
+website: https://www.meetup.com/accessibility-dc/
+ical: https://www.meetup.com/accessibility-dc/events/ical/
+categories:
+- ux-design
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

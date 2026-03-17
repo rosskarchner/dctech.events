@@ -1,0 +1,9 @@
+name: 'Fueling the Future of Innovation: Connect and Collaborate'
+active: true
+website: https://www.meetup.com/aistartuplaunchpad/
+ical: https://www.meetup.com/aistartuplaunchpad/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

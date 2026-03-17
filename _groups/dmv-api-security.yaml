@@ -1,0 +1,9 @@
+name: DMV API Security
+active: true
+website: https://www.meetup.com/dmv-api-security/
+ical: https://www.meetup.com/dmv-api-security/events/ical/
+categories:
+- cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

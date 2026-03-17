@@ -1,0 +1,9 @@
+name: AI Innovators Network
+active: true
+website: https://www.meetup.com/ai-innovators-network-tysons-meetup-dc-nova-md/
+ical: https://www.meetup.com/ai-innovators-network-tysons-meetup-dc-nova-md/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

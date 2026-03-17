@@ -1,0 +1,9 @@
+name: Code With Me
+active: true
+website: https://www.meetup.com/code-with-me/
+ical: https://www.meetup.com/code-with-me/events/ical/
+categories:
+- coworking
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

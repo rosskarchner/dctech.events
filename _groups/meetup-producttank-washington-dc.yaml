@@ -1,0 +1,9 @@
+name: ProductTank Washington DC
+active: true
+website: https://www.meetup.com/producttank-washington-dc/
+ical: https://www.meetup.com/producttank-washington-dc/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

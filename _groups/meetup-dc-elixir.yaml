@@ -1,0 +1,9 @@
+name: DC |> Elixir
+active: true
+website: https://www.meetup.com/dc-elixir/
+ical: https://www.meetup.com/dc-elixir/events/ical/
+categories:
+- programming-languages
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

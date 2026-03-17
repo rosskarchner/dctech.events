@@ -1,0 +1,9 @@
+name: OVHcloud US TechLab Reston Meetup
+active: true
+website: https://www.meetup.com/ovhcloud-us-techlab-reston-meetup/
+ical: https://www.meetup.com/ovhcloud-us-techlab-reston-meetup/events/ical/
+categories:
+- cloud
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: NSCoderNight DC
+active: true
+website: https://www.meetup.com/nscodernight-dc/
+ical: https://www.meetup.com/nscodernight-dc/events/ical/
+categories:
+- mobile
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

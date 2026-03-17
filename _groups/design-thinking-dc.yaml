@@ -1,0 +1,9 @@
+name: Design Thinking DC
+active: true
+website: https://www.meetup.com/design-thinking-dc
+ical: https://www.meetup.com/design-thinking-dc/events/ical/
+categories:
+- ux-design
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

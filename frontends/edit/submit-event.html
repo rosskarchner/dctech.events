@@ -150,23 +150,8 @@
 
         <div class="form-group">
           <label>Categories</label>
-          <div class="checkbox-group">
-            <label><input type="checkbox" name="categories" value="ai"> AI/ML</label>
-            <label><input type="checkbox" name="categories" value="cloud"> Cloud</label>
-            <label><input type="checkbox" name="categories" value="cybersecurity"> Cybersecurity</label>
-            <label><input type="checkbox" name="categories" value="data"> Data</label>
-            <label><input type="checkbox" name="categories" value="design"> Design</label>
-            <label><input type="checkbox" name="categories" value="devops"> DevOps</label>
-            <label><input type="checkbox" name="categories" value="frontend"> Frontend</label>
-            <label><input type="checkbox" name="categories" value="general"> General</label>
-            <label><input type="checkbox" name="categories" value="hardware"> Hardware</label>
-            <label><input type="checkbox" name="categories" value="mobile"> Mobile</label>
-            <label><input type="checkbox" name="categories" value="networking"> Networking</label>
-            <label><input type="checkbox" name="categories" value="open-source"> Open Source</label>
-            <label><input type="checkbox" name="categories" value="policy"> Policy</label>
-            <label><input type="checkbox" name="categories" value="programming"> Programming</label>
-            <label><input type="checkbox" name="categories" value="startup"> Startup</label>
-            <label><input type="checkbox" name="categories" value="web"> Web</label>
+          <div id="category-checkboxes" class="checkbox-group">
+            <span class="loading">Loading categories...</span>
           </div>
         </div>
 
@@ -207,6 +192,27 @@
   <script src="js/auth.js"></script>
   <script>
     DctechAuth.requireAuth();
+
+    // Load categories dynamically
+    async function loadCategories() {
+      const container = document.getElementById('category-checkboxes');
+      try {
+        const response = await fetch('https://dctech.events/static/categories.json');
+        if (!response.ok) throw new Error('Failed to load categories');
+        const categories = await response.json();
+        
+        container.innerHTML = '';
+        Object.entries(categories).sort((a,b) => a[1].name.localeCompare(b[1].name)).forEach(([slug, cat]) => {
+          const label = document.createElement('label');
+          label.innerHTML = `<input type="checkbox" name="categories" value="${slug}"> ${cat.name}`;
+          container.appendChild(label);
+        });
+      } catch (err) {
+        console.error('Error loading categories:', err);
+        container.innerHTML = '<span class="error">Failed to load categories. Please try again later.</span>';
+      }
+    }
+    loadCategories();
   </script>
 </body>
 </html>

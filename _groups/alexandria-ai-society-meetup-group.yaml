@@ -1,0 +1,9 @@
+name: 'AI: Affecting Jobs, Society, Education, Work'
+active: true
+website: https://www.meetup.com/alexandria-ai-society-meetup-group
+ical: https://www.meetup.com/alexandria-ai-society-meetup-group/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,10 @@
+name: DC Android Meetup
+active: true
+website: https://www.meetup.com/dcandroid/
+ical: https://www.meetup.com/dcandroid/events/ical/
+categories:
+- mobile
+suppress_urls:
+- https://www.meetup.com/dcandroid/events/311127378/
+suppress_guid: false
+scan_for_metadata: false

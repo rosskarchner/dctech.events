@@ -1,0 +1,9 @@
+name: Data & AI Social Club
+active: true
+website: https://www.meetup.com/data-ai-social-club/
+ical: https://www.meetup.com/data-ai-social-club/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

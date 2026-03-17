@@ -1,0 +1,9 @@
+name: Northern Virginia Linux Users Group (NoVaLUG)
+active: true
+website: https://novalug.org/
+ical: https://mobilizon.us/@novalug/feed/ics
+categories:
+- open-source-community
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: Girl Develop It D.C.
+active: true
+website: https://www.meetup.com/girl-develop-it-dc/
+ical: https://www.meetup.com/girl-develop-it-dc/events/ical/
+categories:
+- software-development
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

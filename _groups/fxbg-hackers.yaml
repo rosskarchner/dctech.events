@@ -1,0 +1,9 @@
+name: FXBG Hackers Association
+active: true
+website: https://www.meetup.com/fxbg-hackers
+ical: https://www.meetup.com/fxbg-hackers/events/ical/
+categories:
+- cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

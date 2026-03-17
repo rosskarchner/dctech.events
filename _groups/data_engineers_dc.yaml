@@ -1,0 +1,9 @@
+name: Data Engineers DC
+active: true
+website: https://www.meetup.com/data-engineers/
+ical: https://www.meetup.com/data-engineers/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

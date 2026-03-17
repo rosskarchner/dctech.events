@@ -1,0 +1,9 @@
+name: Beyond Vibe Coding
+active: true
+website: https://www.meetup.com/beyond-vibe-coding/
+ical: https://www.meetup.com/beyond-vibe-coding/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

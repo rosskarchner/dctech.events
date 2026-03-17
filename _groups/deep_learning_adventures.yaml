@@ -1,0 +1,9 @@
+name: Deep Learning Adventures
+active: true
+website: https://www.meetup.com/Deep-Learning-Adventures/
+ical: https://www.meetup.com/Deep-Learning-Adventures/events/ical/
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

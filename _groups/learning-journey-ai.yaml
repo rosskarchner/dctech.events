@@ -1,0 +1,9 @@
+name: Learning Journey AI
+active: true
+website: https://luma.com/calendar/cal-bgCwoSqr0HjJELt
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-bgCwoSqr0HjJELt
+categories:
+- ai
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

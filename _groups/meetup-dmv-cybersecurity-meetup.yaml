@@ -1,0 +1,9 @@
+name: DMV Cybersecurity Meetup
+active: true
+website: https://www.meetup.com/wust-edu/
+ical: https://www.meetup.com/wust-edu/events/ical/
+categories:
+- cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

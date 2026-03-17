@@ -1,0 +1,9 @@
+name: NOVA Game Developers
+active: true
+website: https://www.meetup.com/novagamedevs/
+ical: https://www.meetup.com/novagamedevs/events/ical/
+categories:
+- gaming
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

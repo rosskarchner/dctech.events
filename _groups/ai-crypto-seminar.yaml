@@ -1,0 +1,9 @@
+name: AI Crypto Events
+active: true
+website: https://www.meetup.com/ai-crypto-seminar/
+ical: https://www.meetup.com/ai-crypto-seminar/events/ical/
+categories:
+- crypto
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

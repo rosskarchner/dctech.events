@@ -1,0 +1,30 @@
+name: Weekly Newsletter Post
+
+on:
+  schedule:
+    - cron: '0 12 * * 1' # 12:00 PM UTC on Mondays (7:00 AM EST or 8:00 AM EDT)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MICROBLOG_TOKEN: ${{ secrets.MICROBLOG_TOKEN }}
+
+jobs:
+  weekly-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests pyyaml pytz
+
+      - name: Run Weekly Newsletter Post
+        run: python scripts/weekly_newsletter_post.py

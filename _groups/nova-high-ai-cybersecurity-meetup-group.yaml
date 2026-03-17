@@ -1,0 +1,9 @@
+name: Nova High AI Cybersecurity Meetup Group
+active: true
+website: https://www.meetup.com/nova-high-ai-cybersecurity-meetup-group
+ical: https://www.meetup.com/nova-high-ai-cybersecurity-meetup-group/events/ical/
+categories:
+- cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

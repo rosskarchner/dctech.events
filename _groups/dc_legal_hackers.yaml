@@ -1,0 +1,9 @@
+name: DC Legal Hackers
+active: true
+website: https://www.meetup.com/DCLegalHackers/
+ical: https://www.meetup.com/DCLegalHackers/events/ical/
+categories:
+- legal-tech
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

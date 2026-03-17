@@ -1,0 +1,9 @@
+name: Content Strategy DC
+active: true
+website: https://www.meetup.com/content-strategy-dc/
+ical: https://www.meetup.com/content-strategy-dc/events/ical/
+categories:
+- ux-design
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

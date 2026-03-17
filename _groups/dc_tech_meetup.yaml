@@ -1,0 +1,10 @@
+name: DC Tech Meetup
+active: true
+website: https://www.dctechmeetup.com/
+ical: https://api.lu.ma/ics/get?entity=calendar&id=cal-GzmqNpNKPBSmYdl
+fallback_url: https://lu.ma/DCTechMeetup
+categories:
+- social
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

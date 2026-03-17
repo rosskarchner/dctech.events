@@ -1,0 +1,10 @@
+name: Girlies in Tech
+active: true
+website: https://luma.com/girliesintechdinner?k=c
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-lNFGtBuEeqmoeof
+fallback_url: https://luma.com/girliesintechdinner?k=c
+categories:
+- social
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

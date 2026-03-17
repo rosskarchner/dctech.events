@@ -13,7 +13,6 @@ import hashlib
 from xml.etree import ElementTree as ET
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
-import dynamo_data
 
 # Load configuration
 CONFIG_FILE = 'config.yaml'
@@ -68,7 +67,7 @@ def inject_config():
 
 def get_events(include_hidden=False):
     """
-    Get events from DynamoDB (consolidated config table via GSI4).
+    Get events from the consolidated _data/all_events.json file.
 
     Args:
         include_hidden: If True, include events marked as hidden. Default False.
@@ -76,34 +75,78 @@ def get_events(include_hidden=False):
     Returns:
         A list of events
     """
-    events = dynamo_data.get_future_events()
-
-    # Filter out hidden and duplicate events unless explicitly requested
-    if not include_hidden:
-        events = [e for e in events if not e.get('hidden', False) and not e.get('duplicate_of')]
-
-    return events
+    events_file = os.path.join(DATA_DIR, 'all_events.json')
+    if not os.path.exists(events_file):
+        return []
+    
+    try:
+        with open(events_file, 'r') as f:
+            events = json.load(f)
+            
+        # Filter out hidden and duplicate events unless explicitly requested
+        if not include_hidden:
+            events = [e for e in events if not e.get('hidden', False) and not e.get('duplicate_of')]
+        
+        # Ensure we only return future events (plus today)
+        today = date.today().strftime('%Y-%m-%d')
+        events = [e for e in events if e.get('date', '') >= today]
+            
+        return events
+    except Exception as e:
+        print(f"Error loading events from {events_file}: {e}")
+        return []
 
 def get_approved_groups():
     """
-    Get all groups from DynamoDB.
+    Get all groups from _groups/*.yaml files.
 
     Returns:
         A list of group dictionaries
     """
-    groups = dynamo_data.get_all_groups()
+    groups = []
+    groups_dir = '_groups'
+    if not os.path.exists(groups_dir):
+        return groups
+        
+    for filename in os.listdir(groups_dir):
+        if filename.endswith('.yaml'):
+            slug = filename[:-5]
+            try:
+                with open(os.path.join(groups_dir, filename), 'r') as f:
+                    group = yaml.safe_load(f)
+                    group['id'] = slug
+                    groups.append(group)
+            except Exception as e:
+                print(f"Error loading group {filename}: {e}")
+                
     groups.sort(key=lambda x: x.get('name', '').lower())
     return groups
 
 def get_categories():
     """
-    Get all categories from DynamoDB.
+    Get all categories from _categories/*.yaml files.
 
     Returns:
         A dict mapping category slugs to category metadata
         Example: {'python': {'name': 'Python', 'description': '...', 'slug': 'python'}, ...}
     """
-    return dynamo_data.get_all_categories()
+    categories = {}
+    categories_dir = '_categories'
+    if not os.path.exists(categories_dir):
+        return categories
+        
+    for filename in os.listdir(categories_dir):
+        if filename.endswith('.yaml'):
+            slug = filename[:-5]
+            try:
+                with open(os.path.join(categories_dir, filename), 'r') as f:
+                    cat = yaml.safe_load(f)
+                    cat['slug'] = slug
+                    categories[slug] = cat
+            except Exception as e:
+                print(f"Error loading category {filename}: {e}")
+                
+    return categories
 
 def get_upcoming_months():
     """
@@ -629,16 +672,12 @@ def homepage():
     # Get categories with event counts
     categories_with_counts = get_categories_with_event_counts()
     
-    # Get recently added events for preview
-    recently_added = get_recently_added_events(limit=5)
-    
     return render_template('homepage.html',
                           days=days,
                           stats=stats,
                           base_url=base_url,
                           upcoming_months=upcoming_months,
-                          categories_with_counts=categories_with_counts,
-                          recently_added=recently_added)
+                          categories_with_counts=categories_with_counts)
 
 @app.route("/virtual/")
 def virtual_events_page():
@@ -1226,83 +1265,6 @@ def location_rss_feed(state):
     feed_link = f"{BASE_URL}/locations/{state.lower()}/"
     
     return generate_rss_feed_from_events(filtered_events, feed_title, feed_description, feed_link)
-
-@app.route("/events-feed.xml")
-def rss_feed():
-    """
-    Generate RSS feed of recently added events.
-    """
-    recent_events = dynamo_data.get_recently_added(limit=100)
-
-    # Filter out hidden and duplicate events
-    recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')][:50]
-
-    feed_title = f"{SITE_NAME} - New Events"
-    feed_description = "Recently added events"
-    feed_link = BASE_URL
-    return generate_rss_feed_from_events(recent_events, feed_title, feed_description, feed_link)
-
-def get_recently_added_events(limit=5):
-    """
-    Get the N most recently added events from DynamoDB.
-    """
-    events = dynamo_data.get_recently_added(limit=limit * 2)  # Get extra to allow for filtering
-    filtered = [e for e in events if not e.get('hidden') and not e.get('duplicate_of')]
-    return filtered[:limit]
-
-@app.route('/just-added/')
-def just_added():
-    """
-    Display the three most recent days with newly added events.
-    """
-    recent_events = dynamo_data.get_recently_added(limit=100)
-
-    # Filter out hidden and duplicate events
-    recent_events = [e for e in recent_events if not e.get('hidden') and not e.get('duplicate_of')]
-
-    if not recent_events:
-        return render_template('just_added.html',
-                             days_with_events=[],
-                             error_message="No recent events found")
-
-    events_by_date = {}
-    for event in recent_events:
-        createdAt = event.get('createdAt')
-        if not createdAt:
-            continue
-        
-        try:
-            created_dt = datetime.fromisoformat(createdAt.replace('Z', '+00:00'))
-            created_local = created_dt.astimezone(local_tz)
-            date_key = created_local.date()
-            if date_key not in events_by_date:
-                events_by_date[date_key] = []
-            event['date_added_display'] = created_local.strftime('%b %d, %I:%M %p')
-            events_by_date[date_key].append(event)
-        except (ValueError, AttributeError):
-            continue
-            
-    days_with_events = []
-    for date_obj, day_events in sorted(events_by_date.items(), key=lambda x: x[0], reverse=True):
-        if len(day_events) > 100:
-            continue
-        
-        anchor = f"{date_obj.month}-{date_obj.day}-{date_obj.year}"
-        date_display = f"{date_obj.strftime('%A, %B')} {date_obj.day}, {date_obj.year}"
-            
-        days_with_events.append({
-            'date': date_obj,
-            'date_display': date_display,
-            'anchor': anchor,
-            'count': len(day_events),
-            'events': sorted(day_events, key=lambda x: x.get('createdAt', ''), reverse=True)
-        })
-        
-        if len(days_with_events) >= 3:
-            break
-            
-    return render_template('just_added.html', days_with_events=days_with_events)
-
 
 @app.route('/404.html')
 def not_found_page():

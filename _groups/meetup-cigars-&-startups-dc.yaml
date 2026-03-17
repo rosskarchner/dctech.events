@@ -1,0 +1,9 @@
+name: Cigars & Startups DC
+active: true
+website: https://www.meetup.com/cigars-startups-dc/
+ical: https://www.meetup.com/cigars-startups-dc/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

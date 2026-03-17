@@ -1,0 +1,9 @@
+name: "PyDistrict\u2122"
+active: true
+website: https://www.meetup.com/pydistrict
+ical: https://www.meetup.com/pydistrict/events/ical/
+categories:
+- programming-languages
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

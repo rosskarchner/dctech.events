@@ -1,0 +1,9 @@
+name: Hacks/Hackers DC
+active: true
+website: https://www.meetup.com/Hacks-Hackers-DC/
+ical: https://www.meetup.com/Hacks-Hackers-DC/events/ical/
+categories:
+- technology-and-media
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: Full Stack Data Science
+active: true
+website: https://www.meetup.com/full-stack-data-science/
+ical: https://www.meetup.com/full-stack-data-science/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: MoCo Makers
+active: true
+website: https://www.meetup.com/mocomakers/
+ical: https://www.meetup.com/mocomakers/events/ical/
+categories:
+- hardware
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

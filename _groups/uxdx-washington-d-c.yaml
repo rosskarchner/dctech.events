@@ -1,0 +1,9 @@
+name: UXDX Washington D.C.
+active: true
+website: https://www.meetup.com/uxdx-washington-d-c/
+ical: https://www.meetup.com/uxdx-washington-d-c/events/ical/
+categories:
+- ux-design
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

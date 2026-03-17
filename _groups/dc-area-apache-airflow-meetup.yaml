@@ -1,0 +1,9 @@
+name: DC Area Apache Airflow Meetup
+active: true
+website: https://www.meetup.com/dc-area-apache-airflow-meetup/
+ical: https://www.meetup.com/dc-area-apache-airflow-meetup/events/ical/
+categories:
+- open-source-community
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: Devs-on-draft
+active: true
+website: https://www.meetup.com/devs-on-draft/
+ical: https://www.meetup.com/devs-on-draft/events/ical/
+categories:
+- social
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

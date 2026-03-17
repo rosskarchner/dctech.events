@@ -1,0 +1,9 @@
+name: Data Community DC (DC2)
+active: true
+website: https://www.meetup.com/data-community-dc/
+ical: https://www.meetup.com/data-community-dc/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

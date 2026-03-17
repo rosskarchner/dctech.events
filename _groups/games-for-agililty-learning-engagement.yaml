@@ -1,0 +1,9 @@
+name: Games for Agility, Learning, & Engagement
+active: true
+website: https://www.meetup.com/games-for-agililty-learning-engagement
+ical: https://www.meetup.com/games-for-agililty-learning-engagement/events/ical/
+categories:
+- gaming
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

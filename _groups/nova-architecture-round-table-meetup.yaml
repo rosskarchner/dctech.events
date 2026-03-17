@@ -1,0 +1,9 @@
+name: NOVA Software Architecture Round Table Meetup
+active: true
+website: https://www.meetup.com/nova-architecture-round-table-meetup/
+ical: https://www.meetup.com/nova-architecture-round-table-meetup/events/ical/
+categories:
+- software-development
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

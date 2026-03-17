@@ -1,0 +1,9 @@
+name: DC Research Software Engineers
+active: true
+website: https://www.meetup.com/dc-research-software-engineers/
+ical: https://www.meetup.com/dc-research-software-engineers/events/ical/
+categories:
+- software-development
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

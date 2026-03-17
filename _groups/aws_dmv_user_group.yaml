@@ -1,0 +1,9 @@
+name: AWS DMV User Group
+active: true
+website: https://www.meetup.com/amazon-web-services-dmv/
+ical: https://www.meetup.com/amazon-web-services-dmv/events/ical/
+categories:
+- cloud
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: DC Area Drupal Meetup Group
+active: true
+website: https://www.meetup.com/drupal-dc/
+ical: https://www.meetup.com/drupal-dc/events/ical/
+categories:
+- open-source-community
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

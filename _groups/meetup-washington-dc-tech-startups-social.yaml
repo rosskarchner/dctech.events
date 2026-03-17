@@ -1,0 +1,9 @@
+name: Washington DC Tech Startups Social
+active: true
+website: https://www.meetup.com/washington-dc-tech-startups-social/
+ical: https://www.meetup.com/washington-dc-tech-startups-social/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

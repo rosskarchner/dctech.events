@@ -1,0 +1,629 @@
+openapi: 3.0.0
+info:
+  title: Wiki-like Events API
+  version: 1.0.0
+  description: API for managing events, groups, and categories in a wiki-like manner.
+
+servers:
+  - url: https://api.dctech.events
+
+security:
+  - CognitoAuth: []
+
+paths:
+  /weeks:
+    get:
+      summary: List all weeks
+      responses:
+        '200':
+          description: A list of weeks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Week'
+
+  /weeks/{weekId}:
+    get:
+      summary: Get details of a specific week
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "2026-W10"
+      responses:
+        '200':
+          description: Week details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Week'
+        '404':
+          description: Week not found
+
+  /weeks/{weekId}/events:
+    get:
+      summary: List events for a specific week
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of events in the week
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    post:
+      summary: Create a new event for a specific week
+      parameters:
+        - name: weekId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInput'
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+
+  /events/upcoming:
+    get:
+      summary: List upcoming events
+      responses:
+        '200':
+          description: A list of upcoming events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /events/{eventId}:
+    get:
+      summary: Get details of a specific event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+    put:
+      summary: Update a specific event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInput'
+      responses:
+        '200':
+          description: Event updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+    delete:
+      summary: Delete a specific event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Event deleted
+        '404':
+          description: Event not found
+
+  /events/{eventId}/history:
+    get:
+      summary: Get history of changes for a specific event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: History of event changes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryEntry'
+
+  /events/{eventId}/rollback:
+    post:
+      summary: Rollback an event to a previous version
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                historyId:
+                  type: string
+                  format: uuid
+              required: [historyId]
+      responses:
+        '200':
+          description: Event rolled back successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+
+  /events/{eventId}/duplicate:
+    post:
+      summary: Mark an event as a duplicate of another event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duplicateOf:
+                  type: string
+                  format: uuid
+              required: [duplicateOf]
+      responses:
+        '200':
+          description: Event marked as duplicate
+    delete:
+      summary: Unmark an event as a duplicate
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Duplication status removed
+
+  /events/{eventId}/duplicates:
+    get:
+      summary: Get all events that are duplicates of this event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A list of duplicate events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /groups:
+    get:
+      summary: List all groups
+      responses:
+        '200':
+          description: A list of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Group'
+    post:
+      summary: Create a new group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupInput'
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+
+  /groups/{groupId}:
+    get:
+      summary: Get details of a specific group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Group details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+    put:
+      summary: Update a specific group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupInput'
+      responses:
+        '200':
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+    delete:
+      summary: Delete a specific group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Group deleted
+
+  /groups/{groupId}/events:
+    get:
+      summary: List events for a specific group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A list of events for the group
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /categories:
+    get:
+      summary: List all categories
+      responses:
+        '200':
+          description: A list of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+    post:
+      summary: Create a new category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+
+  /categories/{categoryId}:
+    get:
+      summary: Get a specific category
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    put:
+      summary: Update a specific category
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    delete:
+      summary: Delete a specific category
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Category deleted
+
+  /history:
+    get:
+      summary: Get global history of changes
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of history entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryEntry'
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: apiKey
+      name: Authorization
+      in: header
+      description: JWT token from Cognito User Pool us-east-1_8Ay4dTt8j
+
+  schemas:
+    Week:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "2026-W10"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        title:
+          type: string
+      required: [id, startDate, endDate, title]
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: '^([01]\d|2[0-3]):?([0-5]\d)$'
+        url:
+          type: string
+          format: uri
+        groupId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        sourceLocked:
+          type: boolean
+        duplicateOf:
+          type: string
+          format: uuid
+        isDuplicate:
+          type: boolean
+        startDateTime:
+          type: string
+          format: date-time
+      required: [id, name, date, time, startDateTime]
+
+    EventInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: '^([01]\d|2[0-3]):?([0-5]\d)$'
+        url:
+          type: string
+          format: uri
+        groupId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        sourceLocked:
+          type: boolean
+        startDateTime:
+          type: string
+          format: date-time
+      required: [name, date, time, startDateTime]
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        icalFeedUrl:
+          type: string
+          format: uri
+      required: [id, name]
+
+    GroupInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        icalFeedUrl:
+          type: string
+          format: uri
+      required: [name]
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+      required: [id, name]
+
+    CategoryInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required: [name]
+
+    HistoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        userId:
+          type: string
+        action:
+          type: string
+          enum: [CREATE, UPDATE, DELETE, ROLLBACK]
+        entityType:
+          type: string
+          enum: [EVENT, GROUP, CATEGORY]
+        entityId:
+          type: string
+          format: uuid
+        changes:
+          type: object
+          description: Map of field names to old/new values
+      required: [id, timestamp, userId, action, entityType, entityId]

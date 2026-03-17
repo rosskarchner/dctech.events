@@ -1,0 +1,9 @@
+name: DMV (DC Maryland Virginia Metro) Vintage Computer Meetup
+active: true
+website: https://www.meetup.com/dmv-dc-maryland-virginia-metro-vintage-computer-meetup/
+ical: https://www.meetup.com/dmv-dc-maryland-virginia-metro-vintage-computer-meetup/events/ical/
+categories:
+- hardware
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

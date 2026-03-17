@@ -1,0 +1,9 @@
+name: Data Vault Meetup - DC Metro
+active: true
+website: https://www.meetup.com/data-vault-meetup-dc-metro/
+ical: https://www.meetup.com/data-vault-meetup-dc-metro/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

@@ -1,0 +1,9 @@
+name: NoVA/DC metro MinIO Users
+active: true
+website: https://www.meetup.com/arlington-minio-users/
+ical: https://www.meetup.com/arlington-minio-users/events/ical/
+categories:
+- data
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

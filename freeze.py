@@ -116,16 +116,6 @@ def location_rss_feed():
     yield {'state': 'md'}
 
 @freezer.register_generator
-def rss_feed():
-    """Generate the RSS feed"""
-    yield {}
-
-@freezer.register_generator
-def just_added():
-    """Generate the recently added events page"""
-    yield {}
-
-@freezer.register_generator
 def not_found_page():
     """Generate the 404 error page"""
     yield {}

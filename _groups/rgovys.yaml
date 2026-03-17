@@ -1,0 +1,9 @@
+name: R Govys
+active: true
+website: https://www.meetup.com/rgovys/
+ical: https://www.meetup.com/rgovys/events/ical/
+categories:
+- govtech
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

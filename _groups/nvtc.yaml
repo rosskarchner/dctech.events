@@ -1,0 +1,10 @@
+name: Northern Virginia Technology Council
+active: true
+website: https://www.nvtc.org/events/
+ical: https://www.nvtc.org/events/?ical=1
+categories:
+- regional-organizations
+suppress_urls:
+- https://www.nvtc.org/event/ces-2026/
+suppress_guid: false
+scan_for_metadata: false
