@@ -23,8 +23,11 @@ def _admin_check(event):
     claims, err = get_user_from_event(event)
     if err:
         return None, err
-    if not require_admin(claims):
-        return None, {'statusCode': 403, 'body': 'Forbidden'}
+    
+    admin_err = require_admin(claims)
+    if admin_err:
+        return None, admin_err
+        
     return claims, None
 
 
