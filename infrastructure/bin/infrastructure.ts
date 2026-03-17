@@ -4,10 +4,8 @@ import { DctechEventsStack } from '../lib/dctech-events-stack';
 import { DynamoDBStack } from '../lib/dynamodb-stack';
 import { CognitoStack } from '../lib/cognito-stack';
 import { SecretsStack } from '../lib/secrets-stack';
-import { RebuildStack } from '../lib/rebuild-stack';
 import { LambdaApiStack } from '../lib/lambda-api-stack';
 import { FrontendStack } from '../lib/frontend-stack';
-import { SocialPostingStack } from '../lib/social-posting-stack';
 import { stackConfig } from '../lib/config';
 
 const app = new cdk.App();
