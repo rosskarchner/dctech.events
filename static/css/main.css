@@ -123,6 +123,7 @@ h3.time-heading {
         width: 90px;
         text-align: right;
         float: left;
+        padding: var(--spacing-md) 0;
     }
 }
 
@@ -201,6 +202,7 @@ nav [aria-current="page"] {
 /* Time Slots */
 .time-slot {
     margin-bottom: var(--spacing-md);
+    display: flow-root;
 }
 
 /* Events */
