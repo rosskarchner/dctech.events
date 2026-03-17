@@ -137,6 +137,8 @@ export class SocialPostingStack extends cdk.Stack {
     }));
 
     // Schedules (All times are UTC)
+    // DISABLED: Moved to GitHub Actions
+    /*
     // 7 AM EST is 12:00 PM UTC
     new events.Rule(this, 'NewsletterScheduleRule', {
       schedule: events.Schedule.expression('cron(0 12 ? * MON *)'),
@@ -157,6 +159,7 @@ export class SocialPostingStack extends cdk.Stack {
       targets: [new targets.LambdaFunction(newEventsSummaryFn)],
       description: 'Trigger daily new events summary post to Micro.blog (Daily 9:30 PM EST)',
     });
+    */
 
     // 8:30 AM EST is 13:30 PM UTC
     new events.Rule(this, 'QueueNotificationScheduleRule', {

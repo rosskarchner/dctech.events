@@ -105,6 +105,8 @@ export class RebuildStack extends cdk.Stack {
     rebuildQueue.grantSendMessages(dispatcherFn);
 
     // Connect dispatcher to DynamoDB stream
+    // DISABLED: Build moved to GitHub Actions
+    /*
     dispatcherFn.addEventSource(new eventsources.DynamoEventSource(props.dynamoStack.table, {
       startingPosition: lambda.StartingPosition.TRIM_HORIZON,
       batchSize: 10,
@@ -113,6 +115,7 @@ export class RebuildStack extends cdk.Stack {
       bisectBatchOnError: true,
       reportBatchItemFailures: true,
     }));
+    */
 
     // Rebuild worker Lambda (Docker image)
     // Build context is repo root so Dockerfile can COPY the full project
@@ -213,11 +216,14 @@ export class RebuildStack extends cdk.Stack {
     }));
 
     // Schedule iCal refresh every 4 hours
+    // DISABLED: Build moved to GitHub Actions
+    /*
     new events.Rule(this, 'IcalRefreshSchedule', {
       ruleName: 'dctech-events-ical-refresh-schedule',
       schedule: events.Schedule.rate(cdk.Duration.hours(4)),
       targets: [new targets.LambdaFunction(icalRefreshFn)],
     });
+    */
 
     // Stack outputs
     new cdk.CfnOutput(this, 'QueueUrl', {
