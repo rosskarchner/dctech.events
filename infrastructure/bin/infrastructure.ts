@@ -46,33 +46,17 @@ const secretsStack = new SecretsStack(app, `${stackConfig.stackName}-secrets`, {
   microblogTokenSecretName: stackConfig.secrets.microblogTokenSecret,
 });
 
-// Rebuild pipeline (DynamoDB Streams → SQS FIFO → Docker Lambda)
-new RebuildStack(app, `${stackConfig.stackName}-rebuild`, {
-  env,
-  dynamoStack,
-  siteBucketName: stackConfig.s3.bucketName,
-  dataCacheBucketName: stackConfig.s3.dataCacheBucketName,
-  cloudFrontDistributionId: mainStack.distribution.distributionId,
-});
-
 // API backend (Lambda + API Gateway)
 new LambdaApiStack(app, `${stackConfig.stackName}-api`, {
   env,
   dynamoStack,
   cognitoStack,
   secretsStack,
+  materializedTableArn: mainStack.eventsTable.tableArn,
 });
 
 // Frontend apps (edit.dctech.events)
 new FrontendStack(app, `${stackConfig.stackName}-frontend`, {
   env,
   certificate: mainStack.certificate,
-});
-
-// Social media automated posting (Micro.blog)
-new SocialPostingStack(app, `${stackConfig.stackName}-social-posting`, {
-  env,
-  microblogTokenSecretArn: secretsStack.microblogTokenSecret.secretArn,
-  materializedTableArn: mainStack.eventsTable.tableArn,
-  configTableArn: dynamoStack.table.tableArn,
 });

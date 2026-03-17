@@ -9,6 +9,8 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import { LambdaApiStackProps } from './interfaces';
 import { stackConfig } from './config';
@@ -19,7 +21,7 @@ import { execSync } from 'child_process';
  * Lambda API Stack for DC Tech Events
  *
  * Deploys the Python application as a Lambda function with API Gateway REST API.
- * Replaces Chalice with native CDK constructs for better control and Python 3.14 compatibility.
+ * Handles event submissions and moderation.
  */
 export class LambdaApiStack extends cdk.Stack {
   public readonly apiEndpoint: string;
@@ -74,12 +76,10 @@ export class LambdaApiStack extends cdk.Stack {
     }));
 
     // Add read access to DcTechEvents materialized table
-    const materializedTableName = stackConfig.dynamodb.tableName;
-    const materializedTableArn = `arn:aws:dynamodb:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:table/${materializedTableName}`;
     lambdaRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:Scan'],
-      resources: [materializedTableArn, `${materializedTableArn}/index/*`],
+      resources: [props.materializedTableArn, `${props.materializedTableArn}/index/*`],
     }));
 
     // Add Secrets Manager permissions
@@ -92,7 +92,7 @@ export class LambdaApiStack extends cdk.Stack {
     // Create Lambda function
     this.apiFunction = new lambda.Function(this, 'ApiFunction', {
       functionName: 'dctech-events-api',
-      runtime: lambda.Runtime.PYTHON_3_12, // Use 3.12 (supported)
+      runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../..'), {
         bundling: {
@@ -157,6 +157,53 @@ export class LambdaApiStack extends cdk.Stack {
       }),
     });
 
+    // 4. Queue Notification Lambda (Daily 8:30 AM EST)
+    const queueNotificationFn = new lambda.Function(this, 'QueueNotificationFunction', {
+      functionName: 'dctech-events-queue-notification',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'queue_notification/handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../..'), {
+        exclude: ['.git', 'node_modules', '.beads', '.venv', 'infrastructure', 'build', 'static', '_cache', '_data', '__pycache__'],
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install requests pytz pyyaml -t /asset-output && cp -r lambdas/* /asset-output/ && cp config.yaml /asset-output/ && cp db_utils.py /asset-output/',
+          ],
+        },
+      }),
+      timeout: cdk.Duration.seconds(30),
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        CONFIG_TABLE_NAME: props.dynamoStack.table.tableName,
+        ADMIN_EMAIL: stackConfig.notifications.adminEmail,
+      },
+      logGroup: new logs.LogGroup(this, 'QueueNotificationLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+    });
+
+    // Grant permissions for Queue Notification
+    queueNotificationFn.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['dynamodb:Query'],
+      resources: [props.dynamoStack.table.tableArn, `${props.dynamoStack.table.tableArn}/index/GSI1`],
+    }));
+
+    queueNotificationFn.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    }));
+
+    // Trigger daily submission queue email notification (Daily 8:30 AM EST = 13:30 UTC)
+    new events.Rule(this, 'QueueNotificationScheduleRule', {
+      schedule: events.Schedule.expression('cron(30 13 * * ? *)'),
+      targets: [new targets.LambdaFunction(queueNotificationFn)],
+      description: 'Trigger daily submission queue email notification (Daily 8:30 AM EST)',
+    });
+
     // Create API Gateway REST API
     const api = new apigateway.RestApi(this, 'Api', {
       restApiName: 'dctech-events-api',
@@ -180,9 +227,7 @@ export class LambdaApiStack extends cdk.Stack {
       identitySource: 'method.request.header.Authorization',
     });
 
-    // Create an unmanaged version of the function for API Gateway to avoid CDK adding 
-    // individual permissions for every single route, which hits the 20KB policy limit.
-    // We already add a blanket permission below.
+    // Create an unmanaged version of the function for API Gateway
     const unmanagedApiFunction = lambda.Function.fromFunctionArn(
       this, 
       'UnmanagedApiFunction', 
@@ -196,21 +241,15 @@ export class LambdaApiStack extends cdk.Stack {
     });
 
     // Add routes
-
-    // Public routes (no auth)
     const health = api.root.addResource('health');
     health.addMethod('GET', lambdaIntegration);
 
     const apiResource = api.root.addResource('api');
-
     const events = apiResource.addResource('events');
     events.addMethod('GET', lambdaIntegration); // Public API
 
     const upcomingIcs = events.addResource('upcoming.ics');
     upcomingIcs.addMethod('GET', lambdaIntegration);
-
-    const overrides = apiResource.addResource('overrides');
-    overrides.addMethod('GET', lambdaIntegration); // Public API
 
     // Authenticated routes
     const submit = api.root.addResource('submit');
@@ -229,7 +268,6 @@ export class LambdaApiStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
-    // Admin routes — use {proxy+} to avoid Lambda policy size limit from per-method permissions
     const admin = api.root.addResource('admin');
     admin.addMethod('ANY', lambdaIntegration, {
       authorizer: authorizer,
@@ -244,9 +282,6 @@ export class LambdaApiStack extends cdk.Stack {
       anyMethod: true,
     });
 
-    // Explicit wildcard Lambda invoke permission covering all routes.
-    // LambdaIntegration auto-generates per-route permissions, but they can drift out of sync
-    // (e.g. if CF state gets corrupted). This blanket permission ensures all routes always work.
     this.apiFunction.addPermission('ApiGatewayInvokeAll', {
       principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
       action: 'lambda:InvokeFunction',
@@ -255,26 +290,24 @@ export class LambdaApiStack extends cdk.Stack {
 
     this.apiEndpoint = api.url;
 
-    // Add usage plan with rate limiting and throttling
+    // Add usage plan
     const usagePlan = api.addUsagePlan('ApiUsagePlan', {
       name: 'dctech-events-api-usage-plan',
-      description: 'Rate limiting for DC Tech Events API',
       throttle: {
-        rateLimit: 100,    // Requests per second
-        burstLimit: 200,   // Maximum concurrent requests
+        rateLimit: 100,
+        burstLimit: 200,
       },
       quota: {
-        limit: 10000,      // Total requests per day
+        limit: 10000,
         period: apigateway.Period.DAY,
       },
     });
 
-    // Associate usage plan with the API stage
     usagePlan.addApiStage({
       stage: api.deploymentStage,
     });
 
-    // Setup custom domain if hosted zone is available
+    // Setup custom domain
     if (stackConfig.features.enableCustomDomain && stackConfig.hostedZoneId) {
       const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
         this,
@@ -285,19 +318,16 @@ export class LambdaApiStack extends cdk.Stack {
         }
       );
 
-      // Create ACM certificate for API domain
       const certificate = new acm.Certificate(this, 'ApiCertificate', {
         domainName: apiDomain,
         subjectAlternativeNames: ['manage.dctech.events', 'suggest.dctech.events'],
         validation: acm.CertificateValidation.fromDns(hostedZone),
       });
 
-      // Origin Access Control for CloudFront to access S3
       const oac = new cloudfront.S3OriginAccessControl(this, 'EditFrontendOAC', {
         description: 'OAC for DC Tech Events edit frontend bucket',
       });
 
-      // CloudFront Function to rewrite directory URLs to index.html and handle legacy redirects
       const directoryIndexFunction = new cloudfront.Function(this, 'DirectoryIndexFunction', {
         code: cloudfront.FunctionCode.fromInline(`
 function handler(event) {
@@ -305,7 +335,6 @@ function handler(event) {
   var headers = request.headers;
   var host = headers.host ? headers.host.value : '';
 
-  // Redirect legacy subdomains to edit.dctech.events
   if (host === 'manage.dctech.events' || host === 'suggest.dctech.events') {
     return {
       statusCode: 301,
@@ -326,12 +355,9 @@ function handler(event) {
   return request;
 }
         `),
-        comment: 'Rewrite directory URLs and handle legacy redirects',
         functionName: 'dctech-events-edit-directory-index',
       });
 
-      // Create custom domain name (REGIONAL for use with CloudFront)
-      // Changed logical ID from 'ApiCustomDomain' to force replacement from EDGE to REGIONAL
       this.customDomainName = new apigateway.DomainName(this, 'ApiCustomDomainRegional', {
         domainName: apiDomain,
         certificate: certificate,
@@ -339,18 +365,14 @@ function handler(event) {
         securityPolicy: apigateway.SecurityPolicy.TLS_1_2,
       });
 
-      // Create base path mapping
       new apigateway.BasePathMapping(this, 'ApiBasePathMapping', {
         domainName: this.customDomainName,
         restApi: api,
         stage: api.deploymentStage,
       });
 
-      // Create CloudFront distribution for caching and serving static files
-      // CORS response headers policy for API
       const corsResponseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'ApiCorsResponseHeaders', {
         responseHeadersPolicyName: 'DctechEventsEditCors',
-        comment: 'CORS headers for edit.dctech.events API',
         corsBehavior: {
           accessControlAllowOrigins: ['https://edit.dctech.events', 'https://dctech.events', 'https://manage.dctech.events', 'https://suggest.dctech.events'],
           accessControlAllowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -361,12 +383,10 @@ function handler(event) {
       });
 
       const distribution = new cloudfront.Distribution(this, 'ApiDistribution', {
-        comment: 'CloudFront distribution for edit.dctech.events (API + Frontend)',
         domainNames: [apiDomain, 'manage.dctech.events', 'suggest.dctech.events'],
         certificate: certificate,
         defaultRootObject: 'index.html',
         defaultBehavior: {
-          // Default behavior serves static files from S3
           origin: origins.S3BucketOrigin.withOriginAccessControl(editBucket, {
             originAccessControl: oac,
           }),
@@ -381,7 +401,6 @@ function handler(event) {
           ],
         },
         additionalBehaviors: {
-          // API routes point to API Gateway
           '/api/*': {
             origin: new origins.RestApiOrigin(api),
             viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -393,16 +412,6 @@ function handler(event) {
             responseHeadersPolicy: corsResponseHeadersPolicy,
           },
           '/admin/*': {
-            origin: new origins.RestApiOrigin(api),
-            viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-            cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
-            compress: true,
-            cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-            originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-            responseHeadersPolicy: corsResponseHeadersPolicy,
-          },
-          '/admin': {
             origin: new origins.RestApiOrigin(api),
             viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
@@ -441,7 +450,6 @@ function handler(event) {
             cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
             responseHeadersPolicy: corsResponseHeadersPolicy,
           },
-          // Cache /api/events* (public event list)
           '/api/events*': {
             origin: new origins.RestApiOrigin(api),
             viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -451,26 +459,6 @@ function handler(event) {
             responseHeadersPolicy: corsResponseHeadersPolicy,
             cachePolicy: new cloudfront.CachePolicy(this, 'EventsCachePolicy', {
               cachePolicyName: 'DctechEventsEditApiEventsCache',
-              comment: 'Cache policy for /api/events endpoints (1 hour TTL)',
-              defaultTtl: cdk.Duration.hours(1),
-              minTtl: cdk.Duration.seconds(0),
-              maxTtl: cdk.Duration.hours(24),
-              enableAcceptEncodingGzip: true,
-              enableAcceptEncodingBrotli: true,
-              queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
-            }),
-          },
-          // Cache /api/overrides (public overrides)
-          '/api/overrides': {
-            origin: new origins.RestApiOrigin(api),
-            viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-            cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
-            compress: true,
-            responseHeadersPolicy: corsResponseHeadersPolicy,
-            cachePolicy: new cloudfront.CachePolicy(this, 'OverridesCachePolicy', {
-              cachePolicyName: 'DctechEventsEditApiOverridesCache',
-              comment: 'Cache policy for /api/overrides endpoint (1 hour TTL)',
               defaultTtl: cdk.Duration.hours(1),
               minTtl: cdk.Duration.seconds(0),
               maxTtl: cdk.Duration.hours(24),
@@ -499,7 +487,6 @@ function handler(event) {
         ],
       });
 
-      // Bucket policy for CloudFront OAC access
       editBucket.addToResourcePolicy(
         new iam.PolicyStatement({
           actions: ['s3:GetObject'],
@@ -513,11 +500,9 @@ function handler(event) {
         })
       );
 
-      // Create Route53 A and AAAA records pointing to CloudFront for all domains
       const domains = [apiDomain, 'manage.dctech.events', 'suggest.dctech.events'];
       for (const domain of domains) {
         const subdomain = domain.split('.')[0];
-        // Reuse original logical IDs for 'edit' to avoid duplicate resource errors
         const idPrefix = subdomain === 'edit' ? '' : subdomain.charAt(0).toUpperCase() + subdomain.slice(1);
         
         new route53.ARecord(this, `ApiARecord${idPrefix}`, {
@@ -526,7 +511,6 @@ function handler(event) {
           target: route53.RecordTarget.fromAlias(
             new route53targets.CloudFrontTarget(distribution)
           ),
-          comment: `IPv4 record for ${domain} (Consolidated via CloudFront)`,
         });
 
         new route53.AaaaRecord(this, `ApiAAAARecord${idPrefix}`, {
@@ -535,50 +519,21 @@ function handler(event) {
           target: route53.RecordTarget.fromAlias(
             new route53targets.CloudFrontTarget(distribution)
           ),
-          comment: `IPv6 record for ${domain} (Consolidated via CloudFront)`,
         });
       }
-
-      // Output custom domain info
-      new cdk.CfnOutput(this, 'CustomDomainName', {
-        value: apiDomain,
-        description: 'Custom domain name for API',
-        exportName: 'DctechEventsApiCustomDomain',
-      });
-
-      new cdk.CfnOutput(this, 'CustomDomainUrl', {
-        value: `https://${apiDomain}`,
-        description: 'Custom domain URL for API',
-        exportName: 'DctechEventsApiCustomDomainUrl',
-      });
-
-      new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
-        value: distribution.distributionId,
-        description: 'CloudFront distribution ID',
-        exportName: 'DctechEventsApiDistributionId',
-      });
-
-      new cdk.CfnOutput(this, 'CloudFrontDomainName', {
-        value: distribution.distributionDomainName,
-        description: 'CloudFront distribution domain name',
-        exportName: 'DctechEventsApiDistributionDomain',
-      });
     }
 
     // Stack outputs
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: this.apiEndpoint,
-      description: 'API Gateway endpoint URL',
       exportName: 'DctechEventsApiEndpoint',
     });
 
     new cdk.CfnOutput(this, 'FunctionArn', {
       value: this.apiFunction.functionArn,
-      description: 'Lambda function ARN',
       exportName: 'DctechEventsApiFunctionArn',
     });
 
-    // Apply tags
     cdk.Tags.of(this).add('project', 'dctech-events');
     cdk.Tags.of(this).add('component', 'api');
     cdk.Tags.of(this).add('managedBy', 'CDK');

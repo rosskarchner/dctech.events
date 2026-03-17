@@ -23,6 +23,11 @@ export interface LambdaApiStackProps extends cdk.StackProps {
   dynamoStack: DynamoDBStack;
 
   /**
+   * ARN of the materialized events table (DcTechEvents)
+   */
+  materializedTableArn: string;
+
+  /**
    * Cognito domain prefix
    * @default 'dctech-events'
    */
