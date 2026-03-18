@@ -10,7 +10,7 @@ from location_utils import extract_location_info, get_region_name
 import io
 from icalendar import Calendar, Event as ICalEvent
 import hashlib
-import defusedxml.ElementTree as ET
+import xml.etree.ElementTree as ET  # nosec B405
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
 
@@ -1010,7 +1010,7 @@ def sitemap():
 
     xml.append('</urlset>')
 
-    return Response('\n'.join(xml), mimetype='text/xml')
+    return Response('\n'.join(xml), mimetype='application/xml')
 
 @app.route("/events.json")
 def events_json():
