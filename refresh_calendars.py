@@ -48,7 +48,7 @@ def calculate_event_hash(date, time, title, url=None):
         uid_parts.append(url)
 
     uid_base = '-'.join(str(p) for p in uid_parts)
-    uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+    uid_hash = hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
     return uid_hash
 
 def should_fetch(meta_data, group_id):
@@ -72,7 +72,7 @@ def fetch_json_ld_title(url):
     if "meetup.com" not in url:
         return None
         
-    url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()
+    url_hash = hashlib.md5(url.encode('utf-8'), usedforsecurity=False).hexdigest()
     cache_file = os.path.join(JSON_LD_CACHE_DIR, f"{url_hash}.json")
     
     if os.path.exists(cache_file):
@@ -128,7 +128,8 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                         return None
                     if 'etag' in meta_data:
                         headers['If-None-Match'] = meta_data['etag']
-                except Exception:
+                except Exception as meta_err:
+                    print(f"Metadata read error: {meta_err}")
                     pass
 
         response = requests.get(url, headers=headers, timeout=30)

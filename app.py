@@ -10,7 +10,7 @@ from location_utils import extract_location_info, get_region_name
 import io
 from icalendar import Calendar, Event as ICalEvent
 import hashlib
-from xml.etree import ElementTree as ET
+import defusedxml.ElementTree as ET
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
 
@@ -268,7 +268,7 @@ def calculate_event_hash(date, time, title, url=None):
         uid_parts.append(url)
     
     uid_base = '-'.join(str(p) for p in uid_parts)
-    uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+    uid_hash = hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
     return uid_hash
 
 def prepare_events_by_day(events, add_week_links=False):
@@ -1124,7 +1124,7 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
             uid_parts.append(event['url'])
 
         uid_base = '-'.join(str(p) for p in uid_parts)
-        uid_hash = hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+        uid_hash = hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
         uid = f"{uid_hash}@dctech.events"
         ical_event.add('uid', uid)
         ical_event.add('dtstamp', datetime.now(pytz.UTC))
@@ -1222,7 +1222,7 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
         ET.SubElement(item, 'description').text = description
         
         guid_text = f"{event_date}-{event_time}-{title}-{url}"
-        guid_hash = hashlib.md5(guid_text.encode('utf-8')).hexdigest()
+        guid_hash = hashlib.md5(guid_text.encode('utf-8'), usedforsecurity=False).hexdigest()
         guid = ET.SubElement(item, 'guid')
         guid.set('isPermaLink', 'false')
         guid.text = guid_hash

@@ -31,3 +31,4 @@ beautifulsoup4
 responses
 pytest
 pytest-cov
+defusedxml==0.7.1

@@ -44,7 +44,7 @@ def calculate_event_hash(date, time, title, url=None):
     if url:
         uid_parts.append(url)
     uid_base = '-'.join(str(p) for p in uid_parts)
-    return hashlib.md5(uid_base.encode('utf-8')).hexdigest()
+    return hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 def get_groups():
     """Load groups from YAML files."""
@@ -114,7 +114,8 @@ def process_events():
                             event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
                             if today <= event_date <= max_future_date:
                                 regular_events.append(event)
-                        except Exception:
+                        except Exception as parse_err:
+                            print(f"Date parse error (regular): {parse_err}")
                             continue
                 except Exception as e:
                     print(f"Error processing {group_id}: {e}")
@@ -139,7 +140,8 @@ def process_events():
                         event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
                         if today <= event_date <= max_future_date:
                             submitted_events.append(event)
-                    except Exception:
+                    except Exception as parse_err:
+                        print(f"Date parse error (submitted): {parse_err}")
                         continue
             except Exception as e:
                 print(f"Error processing submitted events: {e}")
@@ -158,9 +160,11 @@ def process_events():
                             event_date = datetime.strptime(prev_event['date'], '%Y-%m-%d').date()
                             if event_date == today:
                                 previous_data.append(prev_event)
-                        except Exception:
+                        except Exception as parse_err:
+                            print(f"Date parse error (prev): {parse_err}")
                             pass
-            except Exception:
+            except Exception as read_err:
+                print(f"Error reading prev data: {read_err}")
                 pass
 
     # Deduplicate: Regular events > Submitted events > Previous stability events
