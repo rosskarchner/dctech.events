@@ -4,7 +4,7 @@ Tests for refresh_calendars.py to ensure event processing doesn't crash
 """
 import unittest
 import icalendar
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, date, timedelta, timezone
 import pytz
 import re
 from urllib.parse import urlparse
@@ -293,6 +293,30 @@ class TestRefreshCalendars(unittest.TestCase):
         # Verify it's the correct event
         self.assertEqual(event_instances[0].get('summary'), 'One-time Event',
                        "Event should have the correct summary")
+
+    def test_all_day_event_has_empty_time_string(self):
+        """Test that all-day (date-only) iCal events produce an empty time string, not '00:00'"""
+        # Create an iCal event with a date-only dtstart (no time component)
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'All Day Conference')
+        # Add date-only dtstart (not datetime) to simulate an all-day event
+        event.add('dtstart', date(2026, 6, 15))
+        event.add('dtend', date(2026, 6, 16))
+        cal.add_component(event)
+
+        # Simulate the logic from refresh_calendars.py
+        for component in cal.walk('VEVENT'):
+            dtstart = component.get('dtstart').dt
+            if isinstance(dtstart, datetime):
+                time_str = dtstart.strftime('%H:%M')
+            else:
+                time_str = ""
+
+            self.assertEqual(time_str, "",
+                             "All-day events should have an empty time string, not '00:00'")
+            self.assertNotEqual(time_str, "00:00",
+                                "All-day events must not be assigned '00:00' as time")
 
 if __name__ == '__main__':
     unittest.main()

@@ -173,7 +173,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 time_str = dt_local.strftime('%H:%M')
             else:
                 date_str = dtstart.strftime('%Y-%m-%d')
-                time_str = "00:00"
+                time_str = ""
                 
             dtend = event.get('dtend')
             end_date_str = ""
