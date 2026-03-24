@@ -171,6 +171,10 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 dt_local = dtstart.astimezone(local_tz)
                 date_str = dt_local.strftime('%Y-%m-%d')
                 time_str = dt_local.strftime('%H:%M')
+                # Treat midnight (00:00) as all-day — many calendars use a midnight
+                # datetime to represent all-day events instead of a DATE-only value.
+                if time_str == '00:00':
+                    time_str = ''
             else:
                 date_str = dtstart.strftime('%Y-%m-%d')
                 time_str = ""
