@@ -6,6 +6,7 @@ import { CognitoStack } from '../lib/cognito-stack';
 import { SecretsStack } from '../lib/secrets-stack';
 import { LambdaApiStack } from '../lib/lambda-api-stack';
 import { FrontendStack } from '../lib/frontend-stack';
+import { RedirectStack } from '../lib/redirect-stack';
 import { stackConfig } from '../lib/config';
 
 const app = new cdk.App();
@@ -14,6 +15,11 @@ const env = { region: stackConfig.region };
 // Existing main stack (S3, CloudFront, Route53, DcTechEvents table, GitHub OIDC)
 const mainStack = new DctechEventsStack(app, stackConfig.stackName, {
   description: stackConfig.stackDescription,
+  env,
+});
+
+// Domain redirects (dctechevents.com -> dctech.events)
+new RedirectStack(app, `${stackConfig.stackName}-redirects`, {
   env,
 });
 

@@ -10,6 +10,15 @@ export const stackConfig = {
   domain: 'dctech.events',
   hostedZoneId: 'Z078066931R85FQDWCM3P',
 
+  // Redirect configuration
+  redirectDomains: [
+    {
+      domainName: 'dctechevents.com',
+      hostedZoneId: 'Z01256093SBV195X5X4TH',
+      alternateNames: ['www.dctechevents.com'],
+    },
+  ],
+
   // AWS region - CloudFront requires certificates in us-east-1
   region: 'us-east-1',
 
