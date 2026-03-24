@@ -154,59 +154,6 @@ def lambda_handler(event, context):
             draft_id = path.split('/')[3]
             return add_cors(admin.get_draft(event, jinja_env, draft_id))
 
-        if path == '/admin/groups' and http_method == 'GET':
-            return add_cors(admin.get_groups(event, jinja_env))
-
-        if path.startswith('/admin/groups/') and path.endswith('/edit') and http_method == 'GET':
-            slug = path.split('/')[3]
-            return add_cors(admin.edit_group_form(event, jinja_env, slug))
-
-        if path.startswith('/admin/groups/') and http_method == 'PUT':
-            slug = path.split('/')[3]
-            return add_cors(admin.update_group(event, jinja_env, slug))
-
-        if path == '/admin/events' and http_method == 'GET':
-            return add_cors(admin.get_events(event, jinja_env))
-
-        if path == '/admin/events/bulk' and http_method == 'POST':
-            return add_cors(admin.handle_bulk_action(event, jinja_env))
-
-        if resource == '/admin/events/{guid}/edit' and http_method == 'GET':
-            guid = event.get('pathParameters', {}).get('guid', '')
-            return add_cors(admin.get_event_edit_form(event, jinja_env, guid))
-
-        if resource == '/admin/events/{guid}' and http_method == 'PUT':
-            guid = event.get('pathParameters', {}).get('guid', '')
-            return add_cors(admin.save_event_edit(event, jinja_env, guid))
-
-        if path == '/admin/overrides' and http_method == 'GET':
-            return add_cors(admin.get_overrides(event, jinja_env))
-
-        if path == '/admin/overrides' and http_method == 'POST':
-            return add_cors(admin.create_override(event, jinja_env))
-
-        if path.startswith('/admin/overrides/') and http_method == 'DELETE':
-            guid = path.split('/')[3]
-            return add_cors(admin.delete_override(event, jinja_env))
-
-        if path == '/admin/categories' and http_method == 'GET':
-            return add_cors(admin.get_categories(event, jinja_env))
-
-        if path == '/admin/categories' and http_method == 'POST':
-            return add_cors(admin.create_category(event, jinja_env))
-
-        if path.startswith('/admin/categories/') and path.endswith('/edit') and http_method == 'GET':
-            slug = path.split('/')[3]
-            return add_cors(admin.get_category_edit_form(event, jinja_env, slug))
-
-        if path.startswith('/admin/categories/') and http_method == 'PUT':
-            slug = path.split('/')[3]
-            return add_cors(admin.update_category(event, jinja_env, slug))
-
-        if path.startswith('/admin/categories/') and http_method == 'DELETE':
-            slug = path.split('/')[3]
-            return add_cors(admin.delete_category_route(event, jinja_env, slug))
-
         return add_cors(json_response(404, {'error': 'Not found'}))
 
     except Exception as e:

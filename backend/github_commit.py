@@ -1,5 +1,5 @@
 """
-Commit approved events as YAML files to _single_events/ in the GitHub repo.
+Commit approved events and groups as YAML files to the GitHub repo.
 
 Uses the GitHub Contents API (REST) with a PAT stored in AWS Secrets Manager.
 Best-effort: failures are logged but do not block the approval flow.
@@ -60,18 +60,11 @@ def _slugify(text):
     return text[:60].rstrip('-')
 
 
-def _event_to_yaml(event_data):
-    """Convert event dict to YAML string (hand-rolled to avoid PyYAML dependency)."""
+def _to_yaml(fields, data):
+    """Convert a dict to YAML string using the given field order."""
     lines = []
-
-    field_order = [
-        'title', 'date', 'time', 'end_date', 'end_time',
-        'url', 'location', 'cost', 'description',
-        'categories', 'submitted_by',
-    ]
-
-    for field in field_order:
-        val = event_data.get(field)
+    for field in fields:
+        val = data.get(field)
         if val is None or val == '':
             continue
 
@@ -94,31 +87,13 @@ def _event_to_yaml(event_data):
     return '\n'.join(lines) + '\n'
 
 
-def _build_filename(event_data):
-    """Build a _single_events/ filename from event data."""
-    date = event_data.get('date', 'unknown')
-    title = event_data.get('title', 'event')
-    slug = _slugify(title)
-    return f'_single_events/{date}-{slug}.yaml'
-
-
-def commit_event_to_repo(event_data):
-    """
-    Commit an approved event as a YAML file to _single_events/ in the repo.
-
-    Args:
-        event_data: dict with event fields (title, date, time, url, etc.)
-
-    Returns:
-        The commit URL on success, or None on failure.
-    """
+def _commit_file(file_path, content, message):
+    """Commit a file to the GitHub repo. Returns commit URL or None."""
     owner = os.environ.get('GITHUB_REPO_OWNER', 'rosskarchner')
     repo = os.environ.get('GITHUB_REPO_NAME', 'dctech.events')
 
     try:
-        yaml_content = _event_to_yaml(event_data)
-        file_path = _build_filename(event_data)
-        encoded = base64.b64encode(yaml_content.encode()).decode()
+        encoded = base64.b64encode(content.encode()).decode()
 
         # Check if file already exists (to get its SHA for updates)
         sha = None
@@ -130,7 +105,7 @@ def commit_event_to_repo(event_data):
                 raise
 
         body = {
-            'message': f"Add event: {event_data.get('title', 'new event')}",
+            'message': message,
             'content': encoded,
             'branch': 'main',
         }
@@ -139,9 +114,46 @@ def commit_event_to_repo(event_data):
 
         result = _github_request('PUT', f'/repos/{owner}/{repo}/contents/{file_path}', body)
         commit_url = result.get('commit', {}).get('html_url', '')
-        print(f"Committed event to {file_path}: {commit_url}")
+        print(f"Committed {file_path}: {commit_url}")
         return commit_url
 
     except Exception:
-        print(f"ERROR committing event to GitHub: {traceback.format_exc()}")
+        print(f"ERROR committing {file_path} to GitHub: {traceback.format_exc()}")
         return None
+
+
+EVENT_FIELDS = [
+    'title', 'date', 'time', 'end_date', 'end_time',
+    'url', 'location', 'cost', 'description',
+    'categories', 'submitted_by',
+]
+
+GROUP_FIELDS = [
+    'name', 'active', 'website', 'ical', 'fallback_url', 'categories',
+]
+
+
+def commit_event_to_repo(event_data):
+    """Commit an approved event as a YAML file to _single_events/."""
+    date = event_data.get('date', 'unknown')
+    title = event_data.get('title', 'event')
+    slug = _slugify(title)
+    file_path = f'_single_events/{date}-{slug}.yaml'
+    yaml_content = _to_yaml(EVENT_FIELDS, event_data)
+    message = f"Add event: {event_data.get('title', 'new event')}"
+    return _commit_file(file_path, yaml_content, message)
+
+
+def commit_group_to_repo(group_data):
+    """Commit an approved group as a YAML file to _groups/."""
+    name = group_data.get('name', 'group')
+    slug = _slugify(name)
+    # Ensure active defaults to true for new groups
+    data = {**group_data, 'active': True}
+    # Map ical_url field to ical (form uses ical_url, YAML uses ical)
+    if 'ical_url' in data and 'ical' not in data:
+        data['ical'] = data.pop('ical_url')
+    file_path = f'_groups/{slug}.yaml'
+    yaml_content = _to_yaml(GROUP_FIELDS, data)
+    message = f"Add group: {name}"
+    return _commit_file(file_path, yaml_content, message)
