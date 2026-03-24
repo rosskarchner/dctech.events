@@ -48,6 +48,7 @@ const secretsStack = new SecretsStack(app, `${stackConfig.stackName}-secrets`, {
   env,
   cognitoClientSecretName: stackConfig.secrets.cognitoClientSecret,
   microblogTokenSecretName: stackConfig.secrets.microblogTokenSecret,
+  githubTokenSecretName: stackConfig.secrets.githubTokenSecret,
 });
 
 // API backend (Lambda + API Gateway)

@@ -86,7 +86,10 @@ export class LambdaApiStack extends cdk.Stack {
     lambdaRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['secretsmanager:GetSecretValue'],
-      resources: [props.secretsStack.cognitoClientSecret.secretArn],
+      resources: [
+        props.secretsStack.cognitoClientSecret.secretArn,
+        props.secretsStack.githubTokenSecret.secretArn,
+      ],
     }));
 
     // Create Lambda function
@@ -147,6 +150,9 @@ export class LambdaApiStack extends cdk.Stack {
         COGNITO_USER_POOL_CLIENT_ID: props.cognitoStack.userPoolClient.userPoolClientId,
         COGNITO_DOMAIN: cognitoDomain,
         COGNITO_CLIENT_SECRET_NAME: stackConfig.secrets.cognitoClientSecret,
+        GITHUB_TOKEN_SECRET_NAME: stackConfig.secrets.githubTokenSecret,
+        GITHUB_REPO_OWNER: stackConfig.github.repositoryOwner,
+        GITHUB_REPO_NAME: stackConfig.github.repositoryName,
         DYNAMODB_TABLE_NAME: props.dynamoStack.table.tableName,
         MATERIALIZED_TABLE_NAME: stackConfig.dynamodb.tableName,
         STAGE: stageName,

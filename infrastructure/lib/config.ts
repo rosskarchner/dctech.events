@@ -102,6 +102,7 @@ export const stackConfig = {
   secrets: {
     cognitoClientSecret: 'dctech-events/cognito-client-secret',
     microblogTokenSecret: 'dctech-events/microblog-token',
+    githubTokenSecret: 'dctech-events/github-token',
   },
 
   // Newsletter configuration

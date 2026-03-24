@@ -34,6 +34,7 @@ CACHE_DIR = '_cache'
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
 GROUPS_DIR = '_groups'
 CATEGORIES_DIR = '_categories'
+SINGLE_EVENTS_DIR = '_single_events'
 
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -72,6 +73,52 @@ def get_categories():
                 categories[slug] = yaml.safe_load(f)
                 categories[slug]['slug'] = slug
     return categories
+
+def load_single_events():
+    """Load manually submitted events from _single_events/ YAML files."""
+    events = []
+    if not os.path.exists(SINGLE_EVENTS_DIR):
+        return events
+
+    for filename in os.listdir(SINGLE_EVENTS_DIR):
+        if not filename.endswith('.yaml'):
+            continue
+        filepath = os.path.join(SINGLE_EVENTS_DIR, filename)
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                event = yaml.safe_load(f)
+            if not event:
+                continue
+
+            event['id'] = os.path.splitext(filename)[0]
+            event['source'] = 'manual'
+
+            # Normalize date
+            if 'date' in event:
+                if isinstance(event['date'], date):
+                    event['date'] = event['date'].strftime('%Y-%m-%d')
+                else:
+                    parsed = dateparser.parse(str(event['date']), settings={
+                        'TIMEZONE': timezone_name,
+                        'DATE_ORDER': 'YMD',
+                        'PREFER_DATES_FROM': 'future',
+                    })
+                    if parsed:
+                        event['date'] = parsed.strftime('%Y-%m-%d')
+
+            # Generate guid for deduplication
+            event['guid'] = calculate_event_hash(
+                event.get('date', ''),
+                event.get('time', ''),
+                event.get('title', ''),
+                event.get('url'),
+            )
+
+            events.append(event)
+        except Exception as e:
+            print(f"Error loading single event {filename}: {e}")
+
+    return events
 
 def process_events():
     """Generate the consolidated event data from all sources."""
@@ -120,7 +167,21 @@ def process_events():
                 except Exception as e:
                     print(f"Error processing {group_id}: {e}")
 
-    # 2. Process submitted events
+    # 2. Process single events from _single_events/ YAML files
+    single_events = load_single_events()
+    for event in single_events:
+        guid = event.get('guid', '')
+        if guid:
+            current_run_guids.add(guid)
+        try:
+            event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
+            if today <= event_date <= max_future_date:
+                submitted_events.append(event)
+        except Exception as parse_err:
+            print(f"Date parse error (single_event): {parse_err}")
+            continue
+
+    # 3. Process submitted events from iCal feed cache
     submitted_cache = os.path.join(ICAL_CACHE_DIR, "submitted-events.json")
     if os.path.exists(submitted_cache):
          with open(submitted_cache, 'r') as f:
@@ -146,7 +207,7 @@ def process_events():
             except Exception as e:
                 print(f"Error processing submitted events: {e}")
 
-    # 3. Same-day stability: Keep events from previous run if they are for today
+    # 4. Same-day stability: Keep events from previous run if they are for today
     previous_data = []
     previous_data_file = os.path.join(DATA_DIR, 'all_events.json')
     if os.path.exists(previous_data_file):
@@ -186,7 +247,7 @@ def process_events():
             unique_events.append(e)
             seen_guids.add(e['guid'])
             
-    unique_events.sort(key=lambda x: (x.get('date', ''), x.get('time', '')))
+    unique_events.sort(key=lambda x: (x.get('date', ''), x.get('time', '') if isinstance(x.get('time'), str) else ''))
     
     # Save consolidated data
     with open(os.path.join(DATA_DIR, 'all_events.json'), 'w') as f:

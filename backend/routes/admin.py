@@ -127,6 +127,17 @@ def approve_draft(event, jinja_env, draft_id):
     data['categories'] = cats
 
     promote_draft_to_event(draft_id, data, claims.get('email', ''))
+
+    # Best-effort: commit event YAML to GitHub repo
+    try:
+        from github_commit import commit_event_to_repo
+        draft = db_get_draft(draft_id)
+        if draft:
+            event_data = {k: v for k, v in draft.items() if v is not None}
+            event_data.update({k: v for k, v in data.items() if v is not None})
+            commit_event_to_repo(event_data)
+    except Exception as e:
+        print(f"WARNING: GitHub commit failed (non-blocking): {e}")
     
     return _html(200, "Approved and promoted to event.")
 
