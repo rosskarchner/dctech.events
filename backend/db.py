@@ -329,7 +329,7 @@ def _config_event_to_dict(item):
     event = {'guid': guid, 'eventId': guid}
     for field in ['title', 'date', 'time', 'end_date', 'url',
                   'location', 'cost', 'source', 'group', 'categories',
-                  'city', 'state', 'hidden', 'duplicate_of', 'createdAt']:
+                  'city', 'state', 'all_day', 'hidden', 'duplicate_of', 'createdAt']:
         if field in item:
             val = item[field]
             event[field] = float(val) if isinstance(val, Decimal) else val
