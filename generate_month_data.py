@@ -181,33 +181,7 @@ def process_events():
             print(f"Date parse error (single_event): {parse_err}")
             continue
 
-    # 3. Process submitted events from iCal feed cache
-    submitted_cache = os.path.join(ICAL_CACHE_DIR, "submitted-events.json")
-    if os.path.exists(submitted_cache):
-         with open(submitted_cache, 'r') as f:
-            try:
-                events = json.load(f)
-                for event in events:
-                    guid = event.get('uid') or calculate_event_hash(
-                        event.get('date', ''),
-                        event.get('time', ''),
-                        event.get('title', ''),
-                        event.get('url')
-                    )
-                    event['guid'] = guid
-                    current_run_guids.add(guid)
-                    # Date filter
-                    try:
-                        event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
-                        if today <= event_date <= max_future_date:
-                            submitted_events.append(event)
-                    except Exception as parse_err:
-                        print(f"Date parse error (submitted): {parse_err}")
-                        continue
-            except Exception as e:
-                print(f"Error processing submitted events: {e}")
-
-    # 4. Same-day stability: Keep events from previous run if they are for today
+    # 3. Same-day stability: Keep events from previous run if they are for today
     previous_data = []
     previous_data_file = os.path.join(DATA_DIR, 'all_events.json')
     if os.path.exists(previous_data_file):

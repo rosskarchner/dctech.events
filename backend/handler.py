@@ -118,9 +118,6 @@ def lambda_handler(event, context):
         if path == '/api/events':
             return add_cors(public.get_events(event, jinja_env))
 
-        if path.startswith('/api/events/upcoming.ics'):
-            return add_cors(public.upcoming_ics(event, jinja_env))
-
         # Submission routes (authenticated)
         if path == '/submit' and http_method == 'GET':
             return add_cors(submit.submit_form(event, jinja_env))

@@ -278,21 +278,11 @@ def get_groups():
 
 def refresh_calendars():
     """
-    Fetch all iCal files from groups and the edit iCal feed.
+    Fetch all iCal files from groups.
     """
     print("Refreshing calendars...")
     groups = get_groups()
     updated = False
-
-    # Add the "Submitted" feed from the edit site
-    # This URL should be configurable or derived from base_url/config
-    edit_ical_url = config.get('edit_ical_url', 'https://edit.dctech.events/api/events/upcoming.ics')
-    groups.append({
-        'id': 'submitted-events',
-        'name': None,  # No display name for submitted events
-        'ical': edit_ical_url,
-        'active': True
-    })
 
     for group in groups:
         if not group.get('active', True):
