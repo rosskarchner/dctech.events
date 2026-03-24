@@ -133,7 +133,7 @@ def get_draft(draft_id):
     return _draft_item_to_dict(item) if item else None
 
 
-def update_draft_status(draft_id, new_status, reviewer_email=None):
+def update_draft_status(draft_id, new_status, reviewer_email=None, commit_url=None):
     """Update draft status (approve/reject)."""
     table = _get_table()
     now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
@@ -150,6 +150,10 @@ def update_draft_status(draft_id, new_status, reviewer_email=None):
         update_expr += ', reviewer_email = :reviewer'
         expr_values[':reviewer'] = reviewer_email
 
+    if commit_url:
+        update_expr += ', commit_url = :commit_url'
+        expr_values[':commit_url'] = commit_url
+
     table.update_item(
         Key={'PK': f'DRAFT#{draft_id}', 'SK': 'META'},
         UpdateExpression=update_expr,
@@ -165,7 +169,8 @@ def _draft_item_to_dict(item):
     for field in ['draft_type', 'status', 'submitter_email', 'reviewer_email',
                   'created_at', 'updated_at', 'title', 'date', 'time',
                   'location', 'url', 'cost', 'description', 'group_name',
-                  'name', 'website', 'ical', 'categories']:
+                  'name', 'website', 'ical', 'ical_url', 'categories',
+                  'commit_url']:
         if field in item:
             val = item[field]
             result[field] = float(val) if isinstance(val, Decimal) else val

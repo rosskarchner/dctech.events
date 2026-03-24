@@ -131,17 +131,18 @@ def approve_draft(event, jinja_env, draft_id):
     merged.update({k: v for k, v in data.items() if v is not None})
 
     # Best-effort: commit YAML to GitHub repo
+    commit_url = None
     try:
         if draft_type == 'group':
             from github_commit import commit_group_to_repo
-            commit_group_to_repo(merged)
+            commit_url = commit_group_to_repo(merged)
         else:
             from github_commit import commit_event_to_repo
-            commit_event_to_repo(merged)
+            commit_url = commit_event_to_repo(merged)
     except Exception as e:
         print(f"WARNING: GitHub commit failed (non-blocking): {e}")
 
-    update_draft_status(draft_id, 'APPROVED', claims.get('email', ''))
+    update_draft_status(draft_id, 'APPROVED', claims.get('email', ''), commit_url=commit_url)
 
     label = 'group' if draft_type == 'group' else 'event'
     return _html(200, f"Approved and committed {label} to repo.")

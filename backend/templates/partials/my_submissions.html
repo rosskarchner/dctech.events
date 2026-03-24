@@ -12,7 +12,13 @@
     {% for s in submissions %}
     <tr>
       <td>{{ s.draft_type | capitalize }}</td>
-      <td>{{ s.name | default(s.title | default('Untitled')) }}</td>
+      <td>
+        {%- if s.status == 'APPROVED' and s.commit_url -%}
+          <a href="{{ s.commit_url }}" target="_blank" rel="noopener">{{ s.name | default(s.title | default('Untitled')) }}</a>
+        {%- else -%}
+          {{ s.name | default(s.title | default('Untitled')) }}
+        {%- endif -%}
+      </td>
       <td><span class="status-badge status-{{ s.status }}">{{ s.status | capitalize }}</span></td>
       <td>{{ s.created_at[:10] if s.created_at else '' }}</td>
     </tr>
