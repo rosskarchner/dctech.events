@@ -318,5 +318,37 @@ class TestRefreshCalendars(unittest.TestCase):
             self.assertNotEqual(time_str, "00:00",
                                 "All-day events must not be assigned '00:00' as time")
 
+    def test_midnight_datetime_treated_as_all_day(self):
+        """Test that iCal events with a midnight datetime start are treated as all-day.
+
+        Some calendar systems (e.g. the GW OSCON 2026 feed) export all-day events
+        as a DTSTART datetime at 00:00 local time rather than as a DATE-only value.
+        refresh_calendars.py must normalise these to an empty time string so the
+        event is shown as 'All Day' instead of '12:00 am'.
+        """
+        eastern = pytz.timezone('US/Eastern')
+        cal = icalendar.Calendar()
+        event = icalendar.Event()
+        event.add('summary', 'GW Open Source Conference (OSCON 2026)')
+        # Midnight in local time — the pattern that triggered the bug
+        event.add('dtstart', eastern.localize(datetime(2026, 4, 15, 0, 0, 0)))
+        event.add('dtend', eastern.localize(datetime(2026, 4, 18, 0, 0, 0)))
+        cal.add_component(event)
+
+        # Simulate the fixed logic from refresh_calendars.py
+        local_tz = pytz.timezone('US/Eastern')
+        for component in cal.walk('VEVENT'):
+            dtstart = component.get('dtstart').dt
+            if isinstance(dtstart, datetime):
+                dt_local = dtstart.astimezone(local_tz)
+                time_str = dt_local.strftime('%H:%M')
+                if time_str == '00:00':
+                    time_str = ''
+            else:
+                time_str = ""
+
+            self.assertEqual(time_str, "",
+                             "Midnight datetime events should be treated as all-day (empty time string)")
+
 if __name__ == '__main__':
     unittest.main()

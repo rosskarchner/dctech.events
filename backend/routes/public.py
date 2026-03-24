@@ -63,15 +63,30 @@ def upcoming_ics(event, jinja_env):
         
         # Date/Time handling
         evt_date_str = event_data.get('date')
-        evt_time_str = event_data.get('time') or '00:00'
-        
+        evt_time_str = event_data.get('time', '')
+        is_all_day = event_data.get('all_day', False) or not evt_time_str
+
         if evt_date_str:
             try:
-                dt_naive = datetime.strptime(f"{evt_date_str} {evt_time_str}", "%Y-%m-%d %H:%M")
-                dt = local_tz.localize(dt_naive)
-                evt.add('dtstart', dt)
-                # Default duration 1 hour if not specified
-                evt.add('dtend', dt + timedelta(hours=1))
+                if is_all_day:
+                    # All-day event: use DATE-only DTSTART/DTEND (iCal convention)
+                    d = datetime.strptime(evt_date_str, "%Y-%m-%d").date()
+                    evt.add('dtstart', d)
+                    end_date_str = event_data.get('end_date')
+                    if end_date_str:
+                        try:
+                            end_d = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+                            evt.add('dtend', end_d + timedelta(days=1))
+                        except ValueError:
+                            evt.add('dtend', d + timedelta(days=1))
+                    else:
+                        evt.add('dtend', d + timedelta(days=1))
+                else:
+                    dt_naive = datetime.strptime(f"{evt_date_str} {evt_time_str}", "%Y-%m-%d %H:%M")
+                    dt = local_tz.localize(dt_naive)
+                    evt.add('dtstart', dt)
+                    # Default duration 1 hour if not specified
+                    evt.add('dtend', dt + timedelta(hours=1))
             except ValueError:
                 try:
                     d = datetime.strptime(evt_date_str, "%Y-%m-%d").date()
