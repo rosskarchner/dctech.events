@@ -1,0 +1,9 @@
+name: AIGA DC
+active: true
+website: https://dc.aiga.org/upcoming-events/?view=calendar
+ical: https://rosskarchner.github.io/dctech-scrapercollcection/aiga_dc.ics
+categories:
+- ux-design
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
