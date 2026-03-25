@@ -329,7 +329,14 @@ def process_events(groups, categories, single_events, ical_events, allowed_state
     # 3. Combine and deduplicate (iCal takes priority over manual)
     combined = regular_events + submitted_events
     unique_events = remove_duplicates(combined)
-    unique_events.sort(key=lambda x: (x.get('date', ''), x.get('time', '') or ''))
+    def _sort_time(event):
+        t = event.get('time', '')
+        if isinstance(t, dict):
+            # Multi-day event with per-day times — use the time for the start date
+            return t.get(event.get('date', ''), '') or ''
+        return t or ''
+
+    unique_events.sort(key=lambda x: (x.get('date', ''), _sort_time(x)))
     return unique_events
 
 def main():
