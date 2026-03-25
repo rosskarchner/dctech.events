@@ -2,8 +2,6 @@ name: DefenseScoop
 active: true
 website: https://defensescoop.com/attend/
 ical: https://rosskarchner.github.io/dctech-scrapercollcection/defensescoop.ics
-categories:
-- cybersecurity
 suppress_urls: false
 suppress_guid: false
 scan_for_metadata: false
