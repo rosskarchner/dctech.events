@@ -9,19 +9,19 @@ class TestApp(unittest.TestCase):
         self.local_tz = pytz.timezone(self.timezone_name)
         self.today = datetime.now(self.local_tz).date()
         
-        # Patch db_utils.get_future_events to read from upcoming.yaml
+        # Patch app.get_events to read from upcoming.yaml
         from unittest.mock import patch
         import yaml
         import os
         
-        def mock_get_future_events():
+        def mock_get_events(include_hidden=False):
             upcoming_file = os.path.join('_data', 'upcoming.yaml')
             if os.path.exists(upcoming_file):
                 with open(upcoming_file, 'r') as f:
                     return yaml.safe_load(f) or []
             return []
             
-        self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
+        self.patcher = patch('app.get_events', side_effect=mock_get_events)
         self.patcher.start()
         
         # Patch db_utils.get_recently_added to return empty list by default
@@ -1777,19 +1777,19 @@ class TestEditRoute(unittest.TestCase):
     """Test cases for the /edit/ routes (list and dynamic edit pages)"""
     
     def setUp(self):
-        # Patch db_utils.get_future_events to read from upcoming.yaml
+        # Patch app.get_events to read from upcoming.yaml
         from unittest.mock import patch
         import yaml
         import os
         
-        def mock_get_future_events():
+        def mock_get_events(include_hidden=False):
             upcoming_file = os.path.join('_data', 'upcoming.yaml')
             if os.path.exists(upcoming_file):
                 with open(upcoming_file, 'r') as f:
                     return yaml.safe_load(f) or []
             return []
             
-        self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
+        self.patcher = patch('app.get_events', side_effect=mock_get_events)
         self.patcher.start()
         
     def tearDown(self):
@@ -1877,19 +1877,19 @@ class TestIntegrationEndToEnd(unittest.TestCase):
         self.local_tz = pytz.timezone(self.timezone_name)
         self.today = datetime.now(self.local_tz).date()
         
-        # Patch db_utils.get_future_events to read from upcoming.yaml
+        # Patch app.get_events to read from upcoming.yaml
         from unittest.mock import patch
         import yaml
         import os
         
-        def mock_get_future_events():
+        def mock_get_events(include_hidden=False):
             upcoming_file = os.path.join('_data', 'upcoming.yaml')
             if os.path.exists(upcoming_file):
                 with open(upcoming_file, 'r') as f:
                     return yaml.safe_load(f) or []
             return []
             
-        self.patcher = patch('app.db_utils.get_future_events', side_effect=mock_get_future_events)
+        self.patcher = patch('app.get_events', side_effect=mock_get_events)
         self.patcher.start()
         
     def tearDown(self):
