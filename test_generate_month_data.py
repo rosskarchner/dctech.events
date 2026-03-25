@@ -207,5 +207,31 @@ class TestProcessEvents(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Good')
 
+    def test_dict_time_field_does_not_crash(self):
+        # Multi-day events with per-day time dicts should not cause a sort error
+        single = [
+            {
+                'title': 'Multi-Day Conference',
+                'date': '2025-01-20',
+                'end_date': '2025-01-22',
+                'time': {'2025-01-20': '09:00', '2025-01-21': '10:00', '2025-01-22': '10:00'},
+                'url': 'http://conf.com',
+                'location': 'Washington, DC',
+            },
+            {
+                'title': 'Regular Event',
+                'date': '2025-01-15',
+                'time': '18:00',
+                'url': 'http://event.com',
+                'location': 'Washington, DC',
+            },
+        ]
+        # Should not raise TypeError
+        events = process_events(self.groups, self.categories, single, {}, ['DC'], today=self.today)
+        self.assertEqual(len(events), 2)
+        # Regular event on 2025-01-15 should come first
+        self.assertEqual(events[0]['title'], 'Regular Event')
+        self.assertEqual(events[1]['title'], 'Multi-Day Conference')
+
 if __name__ == '__main__':
     unittest.main()
