@@ -200,64 +200,6 @@ def get_upcoming_months():
     # Return sorted by year and month
     return [months[k] for k in sorted(months.keys())]
 
-def get_future_months_with_events():
-    """Get months beyond the current and next month that have per-month YAML data files.
-
-    Reads ``_data/{year}_{monthname}.yaml`` files and returns a dict of
-    ``{year: [{'number': month_num, 'name': 'Month Year'}, ...]}``,
-    excluding the current month and the following month.
-    """
-    today = datetime.now(local_tz).date()
-
-    # Months to exclude: current and next
-    exclude = {(today.year, today.month)}
-    if today.month == 12:
-        exclude.add((today.year + 1, 1))
-    else:
-        exclude.add((today.year, today.month + 1))
-
-    month_name_to_num = {calendar.month_name[i].lower(): i for i in range(1, 13)}
-
-    result = {}
-    if not os.path.exists(DATA_DIR):
-        return result
-
-    for filename in os.listdir(DATA_DIR):
-        if not filename.endswith('.yaml'):
-            continue
-        stem = filename[:-5]
-        parts = stem.split('_', 1)
-        if len(parts) != 2:
-            continue
-        try:
-            year = int(parts[0])
-        except ValueError:
-            continue
-        month_num = month_name_to_num.get(parts[1].lower())
-        if month_num is None:
-            continue
-        if (year, month_num) in exclude:
-            continue
-
-        filepath = os.path.join(DATA_DIR, filename)
-        try:
-            with open(filepath, 'r') as f:
-                events = yaml.safe_load(f) or []
-            if not events:
-                continue
-        except Exception:
-            continue
-
-        month_display = f"{calendar.month_name[month_num]} {year}"
-        if year not in result:
-            result[year] = []
-        result[year].append({'number': month_num, 'name': month_display})
-
-    for year in result:
-        result[year].sort(key=lambda m: m['number'])
-
-    return result
-
 def get_categories_with_event_counts():
     """
     Get categories that have upcoming events, sorted by event count.
@@ -1339,18 +1281,6 @@ def location_rss_feed(state):
 def not_found_page():
     """Serve the 404 error page"""
     return render_template('404.html')
-
-@app.route('/edit/')
-def edit_list():
-    """List all upcoming events with links to edit them."""
-    events = get_events(include_hidden=True)
-    return render_template('edit_list.html', events=events)
-
-@app.route('/edit/event/')
-def edit_event():
-    """Client-side edit form for a single event (data loaded by JavaScript)."""
-    categories = get_categories()
-    return render_template('edit_event.html', categories=categories)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

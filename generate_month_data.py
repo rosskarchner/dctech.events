@@ -63,18 +63,6 @@ def calculate_event_hash(date, time, title, url=None):
     uid_base = '-'.join(str(p) for p in uid_parts)
     return hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
 
-def looks_like_url(text):
-    """Return True if text looks like a URL."""
-    if not text or not isinstance(text, str):
-        return False
-    return text.startswith(('http://', 'https://')) or text.startswith('www.')
-
-def sanitize_text(text):
-    """Convert to string; return empty string for None."""
-    if text is None:
-        return ''
-    return str(text)
-
 def is_event_in_allowed_states(event, allowed_states):
     """Return True if the event's location is in the allowed states list.
 
@@ -180,34 +168,6 @@ def remove_duplicates(events):
 
     return result
 
-def parse_single_event_data(event_data, event_id, timezone_name):
-    """Parse and validate a single event dict.
-
-    Raises ValueError if the date or time fields are invalid.
-    Returns a new dict with normalised ``start_date`` and ``start_time`` keys.
-    """
-    date_str = str(event_data.get('date', '') or '')
-    time_str = str(event_data.get('time', '') or '')
-
-    # Validate date
-    try:
-        datetime.strptime(date_str, '%Y-%m-%d')
-    except ValueError:
-        raise ValueError(f"Invalid date '{date_str}' for event '{event_id}'")
-
-    # Validate time (allow empty for all-day events)
-    if time_str:
-        try:
-            datetime.strptime(time_str, '%H:%M')
-        except ValueError:
-            raise ValueError(f"Invalid time '{time_str}' for event '{event_id}'")
-
-    result = dict(event_data)
-    result['id'] = event_id
-    result['start_date'] = date_str
-    result['start_time'] = time_str
-    return result
-
 def get_groups():
     """Load groups from YAML files."""
     groups = []
@@ -234,49 +194,6 @@ def get_categories():
                 categories[slug] = yaml.safe_load(f)
                 categories[slug]['slug'] = slug
     return categories
-
-# Aliases used by tests and other modules
-def load_categories():
-    """Alias for get_categories()."""
-    return get_categories()
-
-def load_groups():
-    """Alias for get_groups()."""
-    return get_groups()
-
-def load_event_override(guid):
-    """Load an override YAML file for the given event guid, or return None."""
-    override_file = os.path.join('_event_overrides', f'{guid}.yaml')
-    if not os.path.exists(override_file):
-        return None
-    try:
-        with open(override_file, 'r') as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        print(f"Error loading override {override_file}: {e}")
-        return None
-
-def merge_event_with_override(event, override):
-    """Merge override fields into event dict. Override fields take precedence."""
-    if override is None:
-        return event
-    merged = event.copy()
-    merged.update(override)
-    return merged
-
-def resolve_event_categories(event, group, categories):
-    """Return a list of valid category slugs for an event.
-
-    Priority: event-level categories > group-level categories.
-    Invalid slugs (not present in categories dict) are filtered out.
-    """
-    event_cats = event.get('categories') if event else None
-    if event_cats:
-        return [c for c in event_cats if c in categories]
-    if group:
-        group_cats = group.get('categories') or []
-        return [c for c in group_cats if c in categories]
-    return []
 
 def load_single_events():
     """Load manually submitted events from _single_events/ YAML files."""
