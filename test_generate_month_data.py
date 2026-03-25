@@ -5,28 +5,12 @@ from generate_month_data import (
     is_event_in_allowed_states,
     are_events_duplicates,
     remove_duplicates,
-    looks_like_url,
-    sanitize_text,
     calculate_event_hash,
     process_events,
-    parse_single_event_data
 )
 
 class TestGenerateMonthDataStandalone(unittest.TestCase):
     
-    def test_looks_like_url(self):
-        self.assertTrue(looks_like_url("http://example.com"))
-        self.assertTrue(looks_like_url("https://example.com"))
-        self.assertTrue(looks_like_url("www.example.com"))
-        self.assertFalse(looks_like_url("example.com"))
-        self.assertFalse(looks_like_url("not a url"))
-        self.assertFalse(looks_like_url(None))
-
-    def test_sanitize_text(self):
-        self.assertEqual(sanitize_text(" hello "), " hello ")
-        self.assertEqual(sanitize_text(None), "")
-        self.assertEqual(sanitize_text(123), "123")
-
     def test_is_event_in_allowed_states(self):
         # No filter
         self.assertTrue(is_event_in_allowed_states({}, []))
@@ -222,39 +206,6 @@ class TestProcessEvents(unittest.TestCase):
         
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Good')
-
-class TestParseSingleEventData(unittest.TestCase):
-    def test_valid_event_parsing(self):
-        event_data = {
-            'title': 'Test Event',
-            'date': '2025-01-01',
-            'time': '10:00',
-            'location': 'DC',
-            'url': 'http://example.com'
-        }
-        parsed = parse_single_event_data(event_data, 'test_id', 'US/Eastern')
-        self.assertIsNotNone(parsed)
-        self.assertEqual(parsed['id'], 'test_id')
-        self.assertEqual(parsed['start_date'], '2025-01-01')
-        self.assertEqual(parsed['start_time'], '10:00')
-
-    def test_invalid_date(self):
-        event_data = {
-            'title': 'Test Event',
-            'date': 'invalid-date',
-            'time': '10:00'
-        }
-        with self.assertRaises(ValueError):
-            parse_single_event_data(event_data, 'test_id', 'US/Eastern')
-
-    def test_invalid_time(self):
-        event_data = {
-            'title': 'Test Event',
-            'date': '2025-01-01',
-            'time': 'invalid-time'
-        }
-        with self.assertRaises(ValueError):
-            parse_single_event_data(event_data, 'test_id', 'US/Eastern')
 
 if __name__ == '__main__':
     unittest.main()

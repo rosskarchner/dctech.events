@@ -32,3 +32,4 @@ responses
 pytest
 pytest-cov
 defusedxml==0.7.1
+moto[dynamodb]

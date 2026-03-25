@@ -39,6 +39,22 @@ SINGLE_EVENTS_DIR = '_single_events'
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Valid US state/territory abbreviations
+VALID_US_STATES = {
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+    'DC', 'PR', 'VI', 'GU', 'MP', 'AS',
+}
+
+# Common OCR/data-entry typos for "DC"
+DC_TYPO_CODES = {'DI', 'CD'}
+
+# Max days in future for iCal events
+ICAL_MAX_FUTURE_DAYS = 90
+
 def calculate_event_hash(date, time, title, url=None):
     """Calculate MD5 hash for event identification."""
     uid_parts = [date, time, title]
@@ -46,6 +62,111 @@ def calculate_event_hash(date, time, title, url=None):
         uid_parts.append(url)
     uid_base = '-'.join(str(p) for p in uid_parts)
     return hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
+
+def is_event_in_allowed_states(event, allowed_states):
+    """Return True if the event's location is in the allowed states list.
+
+    If allowed_states is empty, all events are allowed.  Events with no
+    determinable state are assumed to be local and are allowed.
+    """
+    if not allowed_states:
+        return True
+
+    location = event.get('location') or ''
+    if not location:
+        return True  # No location info — give benefit of the doubt
+
+    # Try structured "City, STATE" parsing via usaddress
+    city, state = extract_location_info(location)
+    if state is not None:
+        state_upper = state.upper()
+        if state_upper in VALID_US_STATES:
+            return state_upper in allowed_states
+        # Invalid state code — check for DC typos
+        if 'DC' in allowed_states:
+            city_upper = (city or '').upper()
+            if city_upper == 'WASHINGTON' or state_upper in DC_TYPO_CODES:
+                return True
+        return False
+
+    # Couldn't parse as a structured address — fall back to scanning for state codes
+    # Collect every valid US state code that appears as a whole word in the text
+    found_states = set()
+    for state_code in VALID_US_STATES:
+        if re.search(r'\b' + re.escape(state_code) + r'\b', location, re.IGNORECASE):
+            found_states.add(state_code.upper())
+
+    if found_states:
+        # At least one state code detected; allow if any is in the allowed list
+        return bool(found_states & set(allowed_states))
+
+    # No recognizable state detected → give benefit of the doubt
+    return True
+
+def are_events_duplicates(e1, e2):
+    """Return True if two events have the same title, date, and time."""
+    return (e1.get('title') == e2.get('title') and
+            e1.get('date') == e2.get('date') and
+            e1.get('time') == e2.get('time'))
+
+def remove_duplicates(events):
+    """Deduplicate events.
+
+    Two deduplication passes:
+    1. Explicit: events with a ``duplicate_of`` field are merged into the
+       referenced parent event's ``also_published_by`` list.
+    2. Implicit: events with the same title+date+time are collapsed; the
+       first occurrence is kept and subsequent ones are rolled into
+       ``also_published_by``.
+    """
+    # Build guid → index map for explicit deduplication
+    guid_index = {}
+    for i, e in enumerate(events):
+        if e.get('guid'):
+            guid_index[e['guid']] = i
+
+    result = []
+    seen_indices = set()
+
+    # Pass 1: handle explicit duplicate_of references
+    explicit_children = set()
+    for i, event in enumerate(events):
+        dup_of = event.get('duplicate_of')
+        if dup_of and dup_of in guid_index:
+            parent_idx = guid_index[dup_of]
+            parent = events[parent_idx]
+            if 'also_published_by' not in parent:
+                parent['also_published_by'] = []
+            parent['also_published_by'].append({
+                'group': event.get('group'),
+                'group_website': event.get('group_website'),
+            })
+            explicit_children.add(i)
+
+    # Pass 2: implicit deduplication by title+date+time
+    for i, event in enumerate(events):
+        if i in explicit_children:
+            continue
+        if i in seen_indices:
+            continue
+
+        duplicate_found = False
+        for j in range(len(result)):
+            if are_events_duplicates(result[j], event):
+                if 'also_published_by' not in result[j]:
+                    result[j]['also_published_by'] = []
+                result[j]['also_published_by'].append({
+                    'group': event.get('group'),
+                    'group_website': event.get('group_website'),
+                })
+                duplicate_found = True
+                break
+
+        if not duplicate_found:
+            result.append(event)
+        seen_indices.add(i)
+
+    return result
 
 def get_groups():
     """Load groups from YAML files."""
@@ -120,117 +241,123 @@ def load_single_events():
 
     return events
 
-def process_events():
-    """Generate the consolidated event data from all sources."""
-    groups = get_groups()
-    categories = get_categories()
-    
+def process_events(groups, categories, single_events, ical_events, allowed_states, today=None):
+    """Generate the consolidated event list from all sources.
+
+    Args:
+        groups: list of group dicts (from get_groups())
+        categories: dict of category slug → category dict
+        single_events: list of manually-submitted event dicts
+        ical_events: dict of {group_id: [event_dicts]} from iCal cache
+        allowed_states: list of state abbreviations to allow (empty = all)
+        today: date to use as "today" (default: current date)
+
+    Returns:
+        Sorted list of deduplicated event dicts.
+    """
+    if today is None:
+        today = datetime.now(local_tz).date()
+
+    max_ical_date = today + timedelta(days=ICAL_MAX_FUTURE_DAYS)
+
     regular_events = []
     submitted_events = []
-    today = datetime.now(local_tz).date()
-    max_future_date = today + timedelta(days=120)
-    
-    # Track events seen in current run to handle disappearances
-    current_run_guids = set()
 
-    # 1. Process regular scraped groups
+    # 1. Process iCal events from groups
     for group in groups:
         if not group.get('active', True):
             continue
-            
-        group_id = group['id']
-        cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.json")
-        
-        if os.path.exists(cache_file):
-            with open(cache_file, 'r') as f:
-                try:
-                    events = json.load(f)
-                    for event in events:
-                        event_hash = calculate_event_hash(
-                            event.get('date', ''),
-                            event.get('time', ''),
-                            event.get('title', ''),
-                            event.get('url')
-                        )
-                        
-                        event['guid'] = event_hash
-                        current_run_guids.add(event_hash)
-                        
-                        # Filter by date
-                        try:
-                            event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
-                            if today <= event_date <= max_future_date:
-                                regular_events.append(event)
-                        except Exception as parse_err:
-                            print(f"Date parse error (regular): {parse_err}")
-                            continue
-                except Exception as e:
-                    print(f"Error processing {group_id}: {e}")
 
-    # 2. Process single events from _single_events/ YAML files
-    single_events = load_single_events()
+        group_id = group.get('id', '')
+        suppress_urls = group.get('suppress_urls') or []
+        if suppress_urls is True or suppress_urls is False:
+            suppress_urls = []
+
+        group_events = ical_events.get(group_id, [])
+        for event in group_events:
+            event_url = event.get('url', '')
+            if event_url in suppress_urls:
+                continue
+
+            # Date filter
+            try:
+                event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
+            except (KeyError, ValueError):
+                continue
+            if event_date < today or event_date > max_ical_date:
+                continue
+
+            # State filter
+            if not is_event_in_allowed_states(event, allowed_states):
+                continue
+
+            processed = dict(event)
+            processed['group'] = group.get('name', group_id)
+            processed['group_website'] = group.get('website', '')
+            processed['source'] = 'ical'
+            processed['guid'] = calculate_event_hash(
+                event.get('date', ''),
+                event.get('time', ''),
+                event.get('title', ''),
+                event.get('url'),
+            )
+            regular_events.append(processed)
+
+    # 2. Process single/manual events (no ICAL_MAX_FUTURE_DAYS limit)
     for event in single_events:
-        guid = event.get('guid', '')
-        if guid:
-            current_run_guids.add(guid)
         try:
             event_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
-            if today <= event_date <= max_future_date:
-                submitted_events.append(event)
-        except Exception as parse_err:
-            print(f"Date parse error (single_event): {parse_err}")
+        except (KeyError, ValueError):
+            continue
+        if event_date < today:
             continue
 
-    # 3. Same-day stability: Keep events from previous run if they are for today
-    previous_data = []
-    previous_data_file = os.path.join(DATA_DIR, 'all_events.json')
-    if os.path.exists(previous_data_file):
-        with open(previous_data_file, 'r') as f:
-            try:
-                prev_events = json.load(f)
-                for prev_event in prev_events:
-                    guid = prev_event.get('guid')
-                    if guid not in current_run_guids:
-                        try:
-                            event_date = datetime.strptime(prev_event['date'], '%Y-%m-%d').date()
-                            if event_date == today:
-                                previous_data.append(prev_event)
-                        except Exception as parse_err:
-                            print(f"Date parse error (prev): {parse_err}")
-                            pass
-            except Exception as read_err:
-                print(f"Error reading prev data: {read_err}")
-                pass
+        if not is_event_in_allowed_states(event, allowed_states):
+            continue
 
-    # Deduplicate: Regular events > Submitted events > Previous stability events
-    seen_guids = set()
-    unique_events = []
-    
-    for e in regular_events:
-        if e['guid'] not in seen_guids:
-            unique_events.append(e)
-            seen_guids.add(e['guid'])
-            
-    for e in submitted_events:
-        if e['guid'] not in seen_guids:
-            unique_events.append(e)
-            seen_guids.add(e['guid'])
-            
-    for e in previous_data:
-        if e['guid'] not in seen_guids:
-            unique_events.append(e)
-            seen_guids.add(e['guid'])
-            
-    unique_events.sort(key=lambda x: (x.get('date', ''), x.get('time', '') if isinstance(x.get('time'), str) else ''))
-    
-    # Save consolidated data
-    with open(os.path.join(DATA_DIR, 'all_events.json'), 'w') as f:
-        json.dump(unique_events, f, indent=2)
-        
-    print(f"Generated data for {len(unique_events)} events")
+        processed = dict(event)
+        processed.setdefault('source', 'manual')
+        if 'guid' not in processed:
+            processed['guid'] = calculate_event_hash(
+                event.get('date', ''),
+                event.get('time', ''),
+                event.get('title', ''),
+                event.get('url'),
+            )
+        submitted_events.append(processed)
+
+    # 3. Combine and deduplicate (iCal takes priority over manual)
+    combined = regular_events + submitted_events
+    unique_events = remove_duplicates(combined)
+    unique_events.sort(key=lambda x: (x.get('date', ''), x.get('time', '') or ''))
+    return unique_events
 
 def main():
-    process_events()
+    """Load all data from files and run the event pipeline."""
+    groups = get_groups()
+    categories = get_categories()
+    single_events = load_single_events()
+
+    # Load iCal events from per-group cache files
+    ical_events = {}
+    for group in groups:
+        group_id = group['id']
+        cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.json")
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    ical_events[group_id] = json.load(f)
+            except Exception as e:
+                print(f"Error reading cache {cache_file}: {e}")
+
+    unique_events = process_events(groups, categories, single_events, ical_events, ALLOWED_STATES)
+
+    # Save consolidated data
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(os.path.join(DATA_DIR, 'all_events.json'), 'w') as f:
+        json.dump(unique_events, f, indent=2)
+
+    print(f"Generated data for {len(unique_events)} events")
 
 if __name__ == "__main__":
     main()
