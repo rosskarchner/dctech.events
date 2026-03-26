@@ -207,6 +207,64 @@ class TestProcessEvents(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Good')
 
+    def test_group_category_change_overrides_cached_categories(self):
+        """Cached events must always reflect the group's current categories.
+
+        If a category is removed from a group's YAML file, the next
+        generate_month_data run should NOT include that category on the
+        group's events — even if the iCal cache still has the old value.
+        """
+        group_updated = {
+            'id': 'g1', 'name': 'Group 1', 'website': 'w1', 'active': True,
+            # 'cybersecurity' has been removed; group now has no categories
+            'categories': [],
+        }
+        ical_events = {
+            'g1': [
+                {
+                    'title': 'Security Talk',
+                    'date': '2025-01-10',
+                    'time': '18:00',
+                    'url': 'http://e1.com',
+                    'location': 'Washington, DC',
+                    # Stale categories baked into the cache from a previous fetch
+                    'categories': ['cybersecurity'],
+                }
+            ]
+        }
+
+        events = process_events([group_updated], self.categories, [], ical_events, ['DC'], today=self.today)
+
+        self.assertEqual(len(events), 1)
+        self.assertNotIn('cybersecurity', events[0].get('categories', []),
+                         "Removed group category must not appear in processed events")
+        self.assertEqual(events[0]['categories'], [])
+
+    def test_group_categories_applied_to_ical_events(self):
+        """Events from a group should inherit the group's current categories."""
+        group_with_cats = {
+            'id': 'g1', 'name': 'Group 1', 'website': 'w1', 'active': True,
+            'categories': ['ai', 'data'],
+        }
+        ical_events = {
+            'g1': [
+                {
+                    'title': 'AI Meetup',
+                    'date': '2025-01-10',
+                    'time': '18:00',
+                    'url': 'http://e1.com',
+                    'location': 'Washington, DC',
+                    'categories': ['ai', 'data'],
+                }
+            ]
+        }
+
+        events = process_events([group_with_cats], self.categories, [], ical_events, ['DC'], today=self.today)
+
+        self.assertEqual(len(events), 1)
+        self.assertIn('ai', events[0].get('categories', []))
+        self.assertIn('data', events[0].get('categories', []))
+
     def test_dict_time_field_does_not_crash(self):
         # Multi-day events with per-day time dicts should not cause a sort error
         single = [
