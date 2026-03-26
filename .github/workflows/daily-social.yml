@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   MICROBLOG_TOKEN: ${{ secrets.MICROBLOG_TOKEN }}
@@ -25,7 +26,9 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests pyyaml pytz
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -34,9 +37,16 @@ jobs:
           aws-region: us-east-1
           role-session-name: github-actions-daily-social
 
-      - name: Sync Data from S3
+      - name: Sync Cache from S3
         run: |
+          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_cache _cache || echo "No cache found"
           aws s3 sync s3://${{ env.CACHE_BUCKET }}/_data _data || echo "No data found"
+
+      - name: Refresh Calendars
+        run: python refresh_calendars.py
+
+      - name: Generate Event Data
+        run: python generate_month_data.py
 
       - name: Run Daily Social Posting
         run: python scripts/social_posting.py
