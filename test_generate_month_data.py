@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from datetime import datetime, date, timedelta
 import pytz
@@ -7,6 +9,7 @@ from generate_month_data import (
     remove_duplicates,
     calculate_event_hash,
     process_events,
+    load_event_overrides,
 )
 
 class TestGenerateMonthDataStandalone(unittest.TestCase):
@@ -232,6 +235,120 @@ class TestProcessEvents(unittest.TestCase):
         # Regular event on 2025-01-15 should come first
         self.assertEqual(events[0]['title'], 'Regular Event')
         self.assertEqual(events[1]['title'], 'Multi-Day Conference')
+
+
+class TestEventOverrides(unittest.TestCase):
+    def setUp(self):
+        self.today = date(2025, 1, 1)
+        self.categories = {}
+        self.groups = [
+            {'id': 'g1', 'name': 'Group 1', 'website': 'w1', 'active': True},
+        ]
+
+    def _make_ical_event(self, title, date_str, time_str='10:00', url='http://example.com'):
+        return {
+            'title': title,
+            'date': date_str,
+            'time': time_str,
+            'url': url,
+            'location': 'Washington, DC',
+            'categories': [],
+        }
+
+    def test_override_categories(self):
+        event = self._make_ical_event('Cyber Summit', '2025-01-10', url='http://cybersummit.com')
+        guid = calculate_event_hash('2025-01-10', '10:00', 'Cyber Summit', 'http://cybersummit.com')
+
+        overrides = {guid: {'categories': ['cybersecurity', 'govtech']}}
+        events = process_events(
+            self.groups, self.categories, [], {'g1': [event]}, [],
+            today=self.today, event_overrides=overrides,
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['categories'], ['cybersecurity', 'govtech'])
+
+    def test_override_title(self):
+        event = self._make_ical_event('Old Title', '2025-01-10', url='http://example.com')
+        guid = calculate_event_hash('2025-01-10', '10:00', 'Old Title', 'http://example.com')
+
+        overrides = {guid: {'title': 'New Corrected Title'}}
+        events = process_events(
+            self.groups, self.categories, [], {'g1': [event]}, [],
+            today=self.today, event_overrides=overrides,
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['title'], 'New Corrected Title')
+
+    def test_override_both_title_and_categories(self):
+        event = self._make_ical_event('AI Conf', '2025-01-15', url='http://aiconf.com')
+        guid = calculate_event_hash('2025-01-15', '10:00', 'AI Conf', 'http://aiconf.com')
+
+        overrides = {guid: {'title': 'AI Conference 2025', 'categories': ['ai', 'conferences']}}
+        events = process_events(
+            self.groups, self.categories, [], {'g1': [event]}, [],
+            today=self.today, event_overrides=overrides,
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['title'], 'AI Conference 2025')
+        self.assertEqual(events[0]['categories'], ['ai', 'conferences'])
+
+    def test_no_override_leaves_event_unchanged(self):
+        event = self._make_ical_event('Regular Event', '2025-01-10', url='http://regular.com')
+        event['categories'] = ['social']
+
+        events = process_events(
+            self.groups, self.categories, [], {'g1': [event]}, [],
+            today=self.today, event_overrides={},
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['title'], 'Regular Event')
+        self.assertEqual(events[0]['categories'], ['social'])
+
+    def test_none_overrides_parameter_uses_empty_dict(self):
+        event = self._make_ical_event('Regular Event', '2025-01-10', url='http://regular.com')
+        # Should not raise and should behave as no overrides
+        events = process_events(
+            self.groups, self.categories, [], {'g1': [event]}, [],
+            today=self.today, event_overrides=None,
+        )
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['title'], 'Regular Event')
+
+    def test_load_event_overrides_missing_dir(self):
+        # Point override dir at a non-existent path by temporarily patching
+        import generate_month_data as gmd
+        original = gmd.EVENT_OVERRIDES_DIR
+        try:
+            gmd.EVENT_OVERRIDES_DIR = '/tmp/nonexistent_overrides_dir_xyz'
+            result = load_event_overrides()
+            self.assertEqual(result, {})
+        finally:
+            gmd.EVENT_OVERRIDES_DIR = original
+
+    def test_load_event_overrides_from_directory(self):
+        import generate_month_data as gmd
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Write a valid override file
+            guid = 'abc123def456abc123def456abc12345'
+            override_path = os.path.join(tmpdir, f'{guid}.yaml')
+            with open(override_path, 'w') as f:
+                f.write('categories:\n  - cybersecurity\n  - govtech\n')
+
+            original = gmd.EVENT_OVERRIDES_DIR
+            try:
+                gmd.EVENT_OVERRIDES_DIR = tmpdir
+                result = load_event_overrides()
+            finally:
+                gmd.EVENT_OVERRIDES_DIR = original
+
+        self.assertIn(guid, result)
+        self.assertEqual(result[guid]['categories'], ['cybersecurity', 'govtech'])
+
 
 if __name__ == '__main__':
     unittest.main()
