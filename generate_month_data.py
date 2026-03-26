@@ -35,6 +35,7 @@ ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
 GROUPS_DIR = '_groups'
 CATEGORIES_DIR = '_categories'
 SINGLE_EVENTS_DIR = '_single_events'
+EVENT_OVERRIDES_DIR = '_event_overrides'
 
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -241,7 +242,36 @@ def load_single_events():
 
     return events
 
-def process_events(groups, categories, single_events, ical_events, allowed_states, today=None):
+def load_event_overrides():
+    """Load event override data from _event_overrides/ YAML files.
+
+    Each file is named {guid}.yaml and may contain any of:
+      - title: replacement event name
+      - categories: list of category slugs to use instead of the iCal categories
+
+    Returns a dict mapping guid -> override fields dict.
+    """
+    overrides = {}
+    if not os.path.exists(EVENT_OVERRIDES_DIR):
+        return overrides
+
+    for filename in os.listdir(EVENT_OVERRIDES_DIR):
+        if not filename.endswith('.yaml'):
+            continue
+        guid = os.path.splitext(filename)[0]
+        filepath = os.path.join(EVENT_OVERRIDES_DIR, filename)
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+            if data:
+                overrides[guid] = data
+        except Exception as e:
+            print(f"Error loading override {filepath}: {e}")
+
+    return overrides
+
+
+def process_events(groups, categories, single_events, ical_events, allowed_states, today=None, event_overrides=None):
     """Generate the consolidated event list from all sources.
 
     Args:
@@ -251,12 +281,16 @@ def process_events(groups, categories, single_events, ical_events, allowed_state
         ical_events: dict of {group_id: [event_dicts]} from iCal cache
         allowed_states: list of state abbreviations to allow (empty = all)
         today: date to use as "today" (default: current date)
+        event_overrides: dict of {guid: override_fields} from load_event_overrides()
+            (default: None, meaning no overrides applied)
 
     Returns:
         Sorted list of deduplicated event dicts.
     """
     if today is None:
         today = datetime.now(local_tz).date()
+    if event_overrides is None:
+        event_overrides = {}
 
     max_ical_date = today + timedelta(days=ICAL_MAX_FUTURE_DAYS)
 
@@ -302,6 +336,15 @@ def process_events(groups, categories, single_events, ical_events, allowed_state
                 event.get('title', ''),
                 event.get('url'),
             )
+
+            # Apply any override for this event's GUID
+            override = event_overrides.get(processed['guid'])
+            if override:
+                if 'title' in override:
+                    processed['title'] = override['title']
+                if 'categories' in override:
+                    processed['categories'] = override['categories']
+
             regular_events.append(processed)
 
     # 2. Process single/manual events (no ICAL_MAX_FUTURE_DAYS limit)
@@ -345,6 +388,7 @@ def main():
     groups = get_groups()
     categories = get_categories()
     single_events = load_single_events()
+    event_overrides = load_event_overrides()
 
     # Load iCal events from per-group cache files
     ical_events = {}
@@ -358,7 +402,7 @@ def main():
             except Exception as e:
                 print(f"Error reading cache {cache_file}: {e}")
 
-    unique_events = process_events(groups, categories, single_events, ical_events, ALLOWED_STATES)
+    unique_events = process_events(groups, categories, single_events, ical_events, ALLOWED_STATES, event_overrides=event_overrides)
 
     # Save consolidated data
     os.makedirs(DATA_DIR, exist_ok=True)
