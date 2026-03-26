@@ -295,6 +295,7 @@ def process_events(groups, categories, single_events, ical_events, allowed_state
             processed['group'] = group.get('name', group_id)
             processed['group_website'] = group.get('website', '')
             processed['source'] = 'ical'
+            processed['categories'] = list(group.get('categories', []))
             processed['guid'] = calculate_event_hash(
                 event.get('date', ''),
                 event.get('time', ''),
