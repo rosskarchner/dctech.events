@@ -1,0 +1,9 @@
+name: Cyber Break
+active: true
+website: https://www.meetup.com/cyber-break/
+ical: https://www.meetup.com/cyber-break/events/ical/
+categories:
+  - cybersecurity
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
