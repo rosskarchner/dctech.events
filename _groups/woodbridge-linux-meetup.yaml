@@ -1,0 +1,9 @@
+name: Woodbridge Linux Meetup
+active: true
+website: https://www.meetup.com/woodbridge-linux-meetup/
+ical: https://www.meetup.com/woodbridge-linux-meetup/events/ical/
+categories:
+  - open-source-community
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

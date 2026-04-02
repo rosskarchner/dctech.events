@@ -1,0 +1,9 @@
+name: AWS Cloud Club at George Washington University
+active: true
+website: https://www.meetup.com/aws-cloud-club-at-george-washington-university/
+ical: https://www.meetup.com/aws-cloud-club-at-george-washington-university/events/ical/
+categories:
+  - cloud
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
