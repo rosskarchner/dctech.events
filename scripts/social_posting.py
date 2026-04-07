@@ -121,7 +121,10 @@ def post_to_microblog(content, token):
         if response.status_code >= 500:
             print(f"Warning: micro.blog server error ({response.status_code})")
             return True
-        response.raise_for_status()
+        if not response.ok:
+            print(f"Error posting to micro.blog: {response.status_code} {response.reason}")
+            print(f"Response body: {response.text}")
+            return False
         print("Successfully posted to Micro.blog")
         return True
     except requests.exceptions.RequestException as e:
@@ -163,7 +166,9 @@ def main():
         return
 
     print(f"Posting: {post_text}")
-    post_to_microblog(post_text, token)
+    success = post_to_microblog(post_text, token)
+    if not success:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
