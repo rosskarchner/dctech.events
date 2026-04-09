@@ -4,6 +4,7 @@ import json
 import requests
 import yaml
 from datetime import datetime
+import html
 import pytz
 import sys
 
@@ -23,7 +24,7 @@ BASE_URL = config.get('base_url', 'https://dctech.events')
 
 # Micro.blog API configuration
 MICROPUB_ENDPOINT = "https://micro.blog/micropub"
-CHAR_LIMIT = 300
+CHAR_LIMIT = 280
 
 def is_virtual_event(event):
     """Determine if an event is virtual."""
@@ -73,7 +74,7 @@ def create_post_text(events, target_date):
     suffix = f"  {url}"
     
     overhead = len(prefix) + len(suffix)
-    event_titles = [event.get('title', 'Untitled Event') for event in events]
+    event_titles = [html.unescape(event.get('title', 'Untitled Event')) for event in events]
     
     if not event_titles:
         return None
