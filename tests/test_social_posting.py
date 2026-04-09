@@ -37,6 +37,15 @@ class TestCreatePostText(unittest.TestCase):
         self.assertIsNotNone(text)
         self.assertLessEqual(len(text), social_posting.CHAR_LIMIT)
 
+    def test_html_entities_in_title_are_decoded(self):
+        events = [self._make_event('Event &amp; Conference')]
+        target = date(2026, 4, 7)
+        text = social_posting.create_post_text(events, target)
+        self.assertIsNotNone(text)
+        self.assertIn('Event & Conference', text)
+        self.assertNotIn('&amp;', text)
+        self.assertLessEqual(len(text), social_posting.CHAR_LIMIT)
+
     def test_no_events_returns_none(self):
         text = social_posting.create_post_text([], date(2026, 4, 7))
         self.assertIsNone(text)
