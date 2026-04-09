@@ -46,7 +46,7 @@ class TestCreatePostText(unittest.TestCase):
         self.assertNotIn('&amp;', text)
         self.assertLessEqual(len(text), social_posting.CHAR_LIMIT)
 
-
+    def test_no_events_returns_none(self):
         text = social_posting.create_post_text([], date(2026, 4, 7))
         self.assertIsNone(text)
 
