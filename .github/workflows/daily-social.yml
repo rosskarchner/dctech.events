@@ -11,6 +11,7 @@ permissions:
 
 env:
   MICROBLOG_TOKEN: ${{ secrets.MICROBLOG_TOKEN }}
+  MP_DESTINATION: https://dctechevents.micro.blog/
   CACHE_BUCKET: dctech-events-data-cache
 
 jobs:
