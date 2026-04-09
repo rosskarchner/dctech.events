@@ -103,19 +103,58 @@ def create_post_text(events, target_date):
     
     return f"{prefix}{len(event_titles)} events{suffix}"
 
+def get_micropub_config(token):
+    """Query the Micropub config endpoint to validate the token and retrieve destinations."""
+    headers = {'Authorization': f'Bearer {token}'}
+    try:
+        response = requests.get(
+            MICROPUB_ENDPOINT,
+            params={'q': 'config'},
+            headers=headers,
+            timeout=10,
+        )
+        if response.ok:
+            return response.json()
+        print(f"Micropub config query returned {response.status_code}: {response.text}")
+        if response.status_code in (401, 403):
+            print(
+                "Hint: MICROBLOG_TOKEN appears invalid. "
+                "Regenerate it from Account → App Tokens on micro.blog."
+            )
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"Could not query Micropub config: {e}")
+        return None
+
+
 def post_to_microblog(content, token):
     """Post a note to micro.blog."""
     if not token:
         print("Error: Micro.blog token not provided")
         return False
-        
+
     headers = {'Authorization': f'Bearer {token}'}
     data = {'h': 'entry', 'content': content}
-    
-    # Optional destination from environment
-    mp_dest = os.environ.get('MP_DESTINATION')
-    if mp_dest:
-        data['mp-destination'] = mp_dest
+
+    # Query config to validate token and determine the correct destination.
+    config = get_micropub_config(token)
+    if config is not None:
+        destinations = config.get('destination', [])
+        env_dest = os.environ.get('MP_DESTINATION', '').strip()
+        if destinations:
+            # Prefer the destination that matches MP_DESTINATION; fall back to first.
+            dest_uid = next(
+                (d['uid'] for d in destinations if d.get('uid') == env_dest),
+                None,
+            ) or destinations[0]['uid']
+            if env_dest and dest_uid != env_dest:
+                print(f"Note: MP_DESTINATION '{env_dest}' not found; using '{dest_uid}'")
+            data['mp-destination'] = dest_uid
+    else:
+        # Config query failed; fall back to the environment variable.
+        env_dest = os.environ.get('MP_DESTINATION', '').strip()
+        if env_dest:
+            data['mp-destination'] = env_dest
 
     try:
         response = requests.post(MICROPUB_ENDPOINT, data=data, headers=headers, timeout=30)
@@ -135,9 +174,9 @@ def post_to_microblog(content, token):
 def main():
     print("Starting daily event summary...")
     
-    token = os.environ.get('MICROBLOG_TOKEN')
+    token = os.environ.get('MICROBLOG_TOKEN', '').strip()
     if not token:
-        print("Error: MICROBLOG_TOKEN environment variable not found")
+        print("Error: MICROBLOG_TOKEN environment variable not set or is blank")
         sys.exit(1)
 
     target_date = datetime.now(local_tz).date()

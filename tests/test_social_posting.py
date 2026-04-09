@@ -57,14 +57,89 @@ class TestCreatePostText(unittest.TestCase):
         self.assertIn('https://dctech.events', text)
 
 
+class TestGetMicropubConfig(unittest.TestCase):
+    def test_success_returns_config(self):
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {'destination': [{'uid': 'https://example.micro.blog/'}]}
+        with patch('social_posting.requests.get', return_value=mock_response):
+            result = social_posting.get_micropub_config('token123')
+        self.assertEqual(result, {'destination': [{'uid': 'https://example.micro.blog/'}]})
+
+    def test_401_returns_none_and_logs_hint(self):
+        mock_response = MagicMock()
+        mock_response.ok = False
+        mock_response.status_code = 401
+        mock_response.text = 'Unauthorized'
+        with patch('social_posting.requests.get', return_value=mock_response):
+            with patch('builtins.print') as mock_print:
+                result = social_posting.get_micropub_config('badtoken')
+        self.assertIsNone(result)
+        printed = ' '.join(str(call) for call in mock_print.call_args_list)
+        self.assertIn('Hint', printed)
+
+    def test_network_error_returns_none(self):
+        import requests
+        with patch('social_posting.requests.get', side_effect=requests.exceptions.ConnectionError('fail')):
+            result = social_posting.get_micropub_config('token123')
+        self.assertIsNone(result)
+
+
 class TestPostToMicroblog(unittest.TestCase):
+    def _mock_config_success(self, destinations=None):
+        """Return a get_micropub_config mock that yields a config with destinations."""
+        dest_list = destinations or [{'uid': 'https://test.micro.blog/'}]
+        return patch('social_posting.get_micropub_config', return_value={'destination': dest_list})
+
+    def _mock_config_failure(self):
+        """Return a get_micropub_config mock that simulates a failed config query."""
+        return patch('social_posting.get_micropub_config', return_value=None)
+
     def test_success_returns_true(self):
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.ok = True
-        with patch('social_posting.requests.post', return_value=mock_response):
-            result = social_posting.post_to_microblog('Hello', 'token123')
+        with self._mock_config_failure():
+            with patch('social_posting.requests.post', return_value=mock_response):
+                result = social_posting.post_to_microblog('Hello', 'token123')
         self.assertTrue(result)
+
+    def test_uses_destination_from_config(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.ok = True
+        destinations = [{'uid': 'https://myblog.micro.blog/'}]
+        with self._mock_config_success(destinations):
+            with patch('social_posting.requests.post', return_value=mock_response) as mock_post:
+                social_posting.post_to_microblog('Hello', 'token123')
+        call_data = mock_post.call_args[1]['data']
+        self.assertEqual(call_data.get('mp-destination'), 'https://myblog.micro.blog/')
+
+    def test_env_destination_matched_from_config(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.ok = True
+        destinations = [
+            {'uid': 'https://blog-a.micro.blog/'},
+            {'uid': 'https://blog-b.micro.blog/'},
+        ]
+        with self._mock_config_success(destinations):
+            with patch.dict(os.environ, {'MP_DESTINATION': 'https://blog-b.micro.blog/'}):
+                with patch('social_posting.requests.post', return_value=mock_response) as mock_post:
+                    social_posting.post_to_microblog('Hello', 'token123')
+        call_data = mock_post.call_args[1]['data']
+        self.assertEqual(call_data.get('mp-destination'), 'https://blog-b.micro.blog/')
+
+    def test_fallback_env_destination_when_no_config(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.ok = True
+        with self._mock_config_failure():
+            with patch.dict(os.environ, {'MP_DESTINATION': 'https://fallback.micro.blog/'}):
+                with patch('social_posting.requests.post', return_value=mock_response) as mock_post:
+                    social_posting.post_to_microblog('Hello', 'token123')
+        call_data = mock_post.call_args[1]['data']
+        self.assertEqual(call_data.get('mp-destination'), 'https://fallback.micro.blog/')
 
     def test_400_returns_false_and_logs_body(self):
         mock_response = MagicMock()
@@ -72,9 +147,10 @@ class TestPostToMicroblog(unittest.TestCase):
         mock_response.ok = False
         mock_response.reason = 'Bad Request'
         mock_response.text = 'Invalid token'
-        with patch('social_posting.requests.post', return_value=mock_response):
-            with patch('builtins.print') as mock_print:
-                result = social_posting.post_to_microblog('Hello', 'token123')
+        with self._mock_config_failure():
+            with patch('social_posting.requests.post', return_value=mock_response):
+                with patch('builtins.print') as mock_print:
+                    result = social_posting.post_to_microblog('Hello', 'token123')
         self.assertFalse(result)
         printed = ' '.join(str(call) for call in mock_print.call_args_list)
         self.assertIn('400', printed)
@@ -84,8 +160,9 @@ class TestPostToMicroblog(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.ok = False
-        with patch('social_posting.requests.post', return_value=mock_response):
-            result = social_posting.post_to_microblog('Hello', 'token123')
+        with self._mock_config_failure():
+            with patch('social_posting.requests.post', return_value=mock_response):
+                result = social_posting.post_to_microblog('Hello', 'token123')
         self.assertTrue(result)
 
     def test_no_token_returns_false(self):
@@ -94,8 +171,9 @@ class TestPostToMicroblog(unittest.TestCase):
 
     def test_network_error_returns_false(self):
         import requests
-        with patch('social_posting.requests.post', side_effect=requests.exceptions.ConnectionError('fail')):
-            result = social_posting.post_to_microblog('Hello', 'token123')
+        with self._mock_config_failure():
+            with patch('social_posting.requests.post', side_effect=requests.exceptions.ConnectionError('fail')):
+                result = social_posting.post_to_microblog('Hello', 'token123')
         self.assertFalse(result)
 
 
@@ -130,6 +208,27 @@ class TestMain(unittest.TestCase):
                                     social_posting.main()
                                 except SystemExit:
                                     self.fail("main() raised SystemExit on success")
+
+    def test_main_strips_whitespace_from_token(self):
+        """A token with surrounding whitespace should be stripped before use."""
+        with patch.dict(os.environ, {'MICROBLOG_TOKEN': '  tok  '}):
+            with patch('social_posting.datetime') as mock_dt:
+                mock_dt.now.return_value.date.return_value = date(2026, 4, 7)
+                with patch('os.path.exists', return_value=True):
+                    with patch('json.load', return_value=self._mock_events()):
+                        with patch('builtins.open', unittest.mock.mock_open()):
+                            with patch('social_posting.post_to_microblog', return_value=True) as mock_post:
+                                social_posting.main()
+        # post_to_microblog should have received the stripped token
+        called_token = mock_post.call_args[0][1]
+        self.assertEqual(called_token, 'tok')
+
+    def test_main_exits_1_on_blank_token(self):
+        """A whitespace-only token should be treated as missing."""
+        with patch.dict(os.environ, {'MICROBLOG_TOKEN': '   '}):
+            with self.assertRaises(SystemExit) as cm:
+                social_posting.main()
+        self.assertEqual(cm.exception.code, 1)
 
 
 if __name__ == '__main__':
