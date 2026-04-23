@@ -113,15 +113,15 @@ jobs:
 
       - name: Sync Frontend Apps to S3
         run: |
-          echo "Syncing edit.dctech.events..."
-          aws s3 sync frontends/edit/ s3://dctech-events-edit-frontend/ --delete
+          echo "Syncing /edit/ app onto dctech.events..."
+          aws s3 sync frontends/edit/ s3://${{ env.SITE_BUCKET }}/edit/ --delete
 
       - name: Invalidate CloudFront Cache
         run: |
-          echo "Finding CloudFront Distribution ID for edit.dctech.events..."
-          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'edit.dctech.events')].Id" --output text)
-          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
-            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
+          echo "Finding CloudFront Distribution ID for dctech.events..."
+          MAIN_DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'dctech.events')].Id | [0]" --output text)
+          if [ -n "$MAIN_DIST_ID" ] && [ "$MAIN_DIST_ID" != "None" ]; then
+            aws cloudfront create-invalidation --distribution-id "$MAIN_DIST_ID" --paths "/edit/*"
           fi
 
   rebuild-site:
@@ -172,6 +172,7 @@ jobs:
       - name: Deploy to S3
         run: |
           aws s3 sync build/ s3://${{ env.SITE_BUCKET }}/ --delete
+          aws s3 sync frontends/edit/ s3://${{ env.SITE_BUCKET }}/edit/ --delete
           aws s3 sync _data/ s3://${{ env.SITE_BUCKET }}/_data/ --delete
 
       - name: Sync Cache to S3

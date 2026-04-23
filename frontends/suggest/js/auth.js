@@ -1,6 +1,6 @@
 (function() {
 /**
- * Cognito Authentication Module for edit.dctech.events
+ * Cognito Authentication Module for the consolidated /edit/ frontend
  *
  * Handles OAuth 2.0 Authorization Code flow with Cognito Hosted UI.
  * Stores tokens in sessionStorage and attaches them to HTMX requests.
@@ -9,8 +9,8 @@
 const AUTH_CONFIG = {
   userPoolClientId: '58j1h73i72v1kaim503bk2amgb',
   cognitoDomain: 'https://login.dctech.events',
-  redirectUri: 'https://edit.dctech.events/auth/callback.html',
-  logoutUri: 'https://edit.dctech.events/',
+  redirectUri: 'https://dctech.events/edit/auth/callback.html',
+  logoutUri: 'https://dctech.events/edit/',
   scopes: 'email openid profile',
   apiBaseUrl: 'https://next.dctech.events',
 };

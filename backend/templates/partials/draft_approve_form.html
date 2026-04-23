@@ -12,11 +12,12 @@
         </div>
         <div class="approve-form-categories">
           <span class="approve-form-label">Categories:</span>
-          {% for cat in categories %}
+          {% for slug in categories | sort %}
+          {% set cat = categories[slug] %}
           <label class="category-checkbox">
-            <input type="checkbox" name="categories" value="{{ cat.slug }}"
-              {% if cat.slug in (draft.categories or []) %}checked{% endif %}>
-            {{ cat.name | default(cat.slug) | title }}
+            <input type="checkbox" name="categories" value="{{ slug }}"
+              {% if slug in (draft.categories or []) %}checked{% endif %}>
+            {{ cat.name or slug }}
           </label>
           {% endfor %}
         </div>

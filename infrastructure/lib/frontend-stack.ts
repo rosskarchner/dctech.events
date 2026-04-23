@@ -57,12 +57,12 @@ function handler(event) {
       functionName: 'dctech-events-frontend-directory-index',
     });
 
-    // Define the frontend sites (legacy sites are being consolidated into edit.dctech.events)
+    // Define optional legacy frontend redirects.
     const sites: { subdomain: string; bucketName: string; redirect?: string }[] = [
       // Legacy sites kept for transition if needed, otherwise empty array
     ];
 
-    // CloudFront Function for 301 redirects to edit.dctech.events
+    // CloudFront Function for 301 redirects to the main-domain edit UI.
     const redirectFunction = new cloudfront.Function(this, 'EditRedirectFunction', {
       code: cloudfront.FunctionCode.fromInline(`
 function handler(event) {
@@ -70,13 +70,13 @@ function handler(event) {
     statusCode: 301,
     statusDescription: 'Moved Permanently',
     headers: {
-      'location': { 'value': 'https://edit.dctech.events' + event.request.uri }
+      'location': { 'value': 'https://dctech.events/edit' + event.request.uri }
     }
   };
   return response;
 }
       `),
-      comment: 'Redirect legacy subdomains to edit.dctech.events',
+      comment: 'Redirect legacy subdomains to dctech.events/edit',
       functionName: 'dctech-events-legacy-redirect',
     });
 

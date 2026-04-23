@@ -33,3 +33,14 @@ def get_events(event, jinja_env):
         },
         'body': json.dumps(events),
     }
+
+
+def get_categories(event, jinja_env):
+    """GET /api/categories — returns JSON map of categories."""
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json',
+        },
+        'body': json.dumps(get_all_categories()),
+    }

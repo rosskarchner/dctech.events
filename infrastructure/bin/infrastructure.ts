@@ -60,7 +60,7 @@ new LambdaApiStack(app, `${stackConfig.stackName}-api`, {
   materializedTableArn: mainStack.eventsTable.tableArn,
 });
 
-// Frontend apps (edit.dctech.events)
+// Optional legacy frontend redirects
 new FrontendStack(app, `${stackConfig.stackName}-frontend`, {
   env,
   certificate: mainStack.certificate,

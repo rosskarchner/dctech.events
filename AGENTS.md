@@ -10,9 +10,9 @@ This project is a static site generator (Python) with a serverless backend (Lamb
 - Production: Static HTML/CSS/JS files in `build/`
 - Data changes via admin UI trigger automated rebuilds
 
-**Admin/Submit UIs**: HTMX + Cognito Auth
-- `edit.dctech.events` — consolidated frontend for public event/group submission and admin management. (Replaces `suggest.dctech.events` and `manage.dctech.events`)
-- Served from S3 via the unified `edit.dctech.events` CloudFront distribution
+**Admin/Submit UIs**: Path-based frontend under the main site + Cognito Auth
+- `dctech.events/edit/` — consolidated frontend for public event/group submission and admin management
+- Served from the main site bucket under `/edit/`, with the browser calling the execute-api hostname directly
 
 **API Backend**: Lambda + API Gateway
 - Returns HTML fragments for HTMX (not JSON)
@@ -45,7 +45,7 @@ This project is a static site generator (Python) with a serverless backend (Lamb
 ## Project Standards
 
 1. **Keep it Simple**: Prioritize simple, readable Python and clean HTML over complex abstractions.
-2. **HTMX Over JSON**: Always return HTML fragments from the API for the admin and submit UIs.
+2. **Prefer Simple Browser Fetch Flows**: Keep the edit UI lightweight and framework-free; use plain JS with direct API calls where possible.
 3. **No NPM/Build Step for JS**: Use vanilla JS and unpkg for HTMX/other libraries.
 4. **Surgical Changes**: When modifying existing code, only touch what is necessary.
 5. **Security First**: Never log or expose secrets. All protected routes must have Cognito authorizers.

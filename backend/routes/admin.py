@@ -36,6 +36,14 @@ def _html(status_code, body, event=None):
     }
 
 
+def _json(status_code, body):
+    return {
+        'statusCode': status_code,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps(body),
+    }
+
+
 def _parse_body(event):
     """Parse application/x-www-form-urlencoded body."""
     from urllib.parse import parse_qs
@@ -63,7 +71,7 @@ def get_queue(event, jinja_env):
     if err:
         return err
 
-    drafts = get_drafts_by_status('PENDING')
+    drafts = get_drafts_by_status('pending')
     template = jinja_env.get_template('partials/draft_queue.html')
     html = template.render(drafts=drafts)
     return _html(200, html, event)
@@ -156,3 +164,76 @@ def reject_draft(event, jinja_env, draft_id):
 
     update_draft_status(draft_id, 'REJECTED')
     return _html(200, "Rejected.")
+
+
+def get_queue_json(event, jinja_env):
+    """GET /api/admin/queue — JSON draft review queue."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    drafts = get_drafts_by_status('pending')
+    return _json(200, {'drafts': drafts})
+
+
+def get_draft_json(event, jinja_env, draft_id):
+    """GET /api/admin/drafts/{id} — JSON draft detail."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    draft = db_get_draft(draft_id)
+    if not draft:
+        return _json(404, {'error': 'Draft not found'})
+
+    return _json(200, {'draft': draft})
+
+
+def approve_draft_json(event, jinja_env, draft_id):
+    """POST /api/admin/drafts/{id}/approve — approve a draft and return JSON."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    data = _parse_body(event)
+    cats = data.get('categories', [])
+    if isinstance(cats, str):
+        cats = [cats] if cats else []
+    data['categories'] = cats
+
+    draft = db_get_draft(draft_id)
+    if not draft:
+        return _json(404, {'error': 'Draft not found'})
+
+    draft_type = draft.get('draft_type', 'event')
+    merged = {k: v for k, v in draft.items() if v is not None}
+    merged.update({k: v for k, v in data.items() if v is not None})
+
+    commit_url = None
+    try:
+        if draft_type == 'group':
+            from github_commit import commit_group_to_repo
+            commit_url = commit_group_to_repo(merged)
+        else:
+            from github_commit import commit_event_to_repo
+            commit_url = commit_event_to_repo(merged)
+    except Exception as e:
+        print(f"WARNING: GitHub commit failed (non-blocking): {e}")
+
+    update_draft_status(draft_id, 'APPROVED', claims.get('email', ''), commit_url=commit_url)
+    label = 'group' if draft_type == 'group' else 'event'
+    return _json(200, {'message': f'Approved and committed {label} to repo.', 'commit_url': commit_url})
+
+
+def reject_draft_json(event, jinja_env, draft_id):
+    """POST /api/admin/drafts/{id}/reject — reject a draft and return JSON."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    draft = db_get_draft(draft_id)
+    if not draft:
+        return _json(404, {'error': 'Draft not found'})
+
+    update_draft_status(draft_id, 'REJECTED')
+    return _json(200, {'message': 'Rejected.'})

@@ -31,6 +31,11 @@ def is_safe_url(url):
     return url.startswith('http://') or url.startswith('https://')
 
 
+def _normalize_draft_status(status):
+    """Normalize draft statuses for storage and querying."""
+    return str(status or '').strip().lower()
+
+
 def _get_table():
     global _table
     if _table is None:
@@ -46,6 +51,7 @@ def create_draft(draft_type, data, submitter_email, submitter_id=None):
     table = _get_table()
     draft_id = str(uuid.uuid4())[:8]
     now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    status = _normalize_draft_status('pending')
 
     # Sanitize URLs if present
     sanitized_data = data.copy()
@@ -59,7 +65,7 @@ def create_draft(draft_type, data, submitter_email, submitter_id=None):
     item = {
         'PK': f'DRAFT#{draft_id}',
         'SK': 'META',
-        'GSI1PK': 'STATUS#pending',
+        'GSI1PK': f'STATUS#{status}',
         'GSI1SK': now,
         'GSI3PK': f'USER#{user_id}',  # For querying by submitter
         'GSI3SK': now,  # Sort by creation time
@@ -67,7 +73,7 @@ def create_draft(draft_type, data, submitter_email, submitter_id=None):
         'submitter_email': submitter_email,
         'submitter_id': submitter_id,
         'created_at': now,
-        'status': 'pending',
+        'status': status,
         **{k: v for k, v in sanitized_data.items() if v is not None},
     }
 
@@ -79,17 +85,18 @@ def get_drafts_by_status(status='pending'):
     """Get all drafts with a given status."""
     table = _get_table()
     items = []
+    normalized_status = _normalize_draft_status(status)
 
     response = table.query(
         IndexName='GSI1',
-        KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{status}'),
+        KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{normalized_status}'),
         ScanIndexForward=False,
     )
     items.extend(response.get('Items', []))
     while 'LastEvaluatedKey' in response:
         response = table.query(
             IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{status}'),
+            KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{normalized_status}'),
             ExclusiveStartKey=response['LastEvaluatedKey'],
             ScanIndexForward=False,
         )
@@ -137,11 +144,12 @@ def update_draft_status(draft_id, new_status, reviewer_email=None, commit_url=No
     """Update draft status (approve/reject)."""
     table = _get_table()
     now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    normalized_status = _normalize_draft_status(new_status)
 
     update_expr = 'SET #status = :status, GSI1PK = :gsi1pk, updated_at = :now'
     expr_values = {
-        ':status': new_status,
-        ':gsi1pk': f'STATUS#{new_status}',
+        ':status': normalized_status,
+        ':gsi1pk': f'STATUS#{normalized_status}',
         ':now': now,
     }
     expr_names = {'#status': 'status'}

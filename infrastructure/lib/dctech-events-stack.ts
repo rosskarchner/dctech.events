@@ -105,6 +105,7 @@ export class DctechEventsStack extends cdk.Stack {
     }
 
     const certificate = this.certificate;
+    const distributionDomains = [stackConfig.domain, 'www.dctech.events'];
 
     // CloudFront Function to rewrite directory URLs to index.html
     // This allows /locations/dc/ to serve /locations/dc/index.html
@@ -112,6 +113,19 @@ export class DctechEventsStack extends cdk.Stack {
       code: cloudfront.FunctionCode.fromInline(`
 function handler(event) {
   var request = event.request;
+  var headers = request.headers;
+  var host = headers.host ? headers.host.value : '';
+
+  if (host === 'www.dctech.events') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        'location': { 'value': 'https://${stackConfig.domain}' + request.uri }
+      }
+    };
+  }
+
   var uri = request.uri;
 
   // If URI ends with '/', append 'index.html'
@@ -148,7 +162,7 @@ function handler(event) {
         ],
       },
       defaultRootObject: 'index.html',
-      domainNames: [stackConfig.domain],
+      domainNames: distributionDomains,
       certificate: certificate,
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       enableIpv6: true,
@@ -311,6 +325,24 @@ function handler(event) {
         ),
         recordName: stackConfig.domain,
         comment: 'IPv6 record for dctech.events pointing to CloudFront',
+      });
+
+      new route53.ARecord(this, 'WwwDctechEventsARecord', {
+        zone: hostedZone,
+        target: route53.RecordTarget.fromAlias(
+          new route53targets.CloudFrontTarget(this.distribution)
+        ),
+        recordName: 'www.dctech.events',
+        comment: 'IPv4 record for www.dctech.events pointing to the main CloudFront distribution',
+      });
+
+      new route53.AaaaRecord(this, 'WwwDctechEventsAAAARecord', {
+        zone: hostedZone,
+        target: route53.RecordTarget.fromAlias(
+          new route53targets.CloudFrontTarget(this.distribution)
+        ),
+        recordName: 'www.dctech.events',
+        comment: 'IPv6 record for www.dctech.events pointing to the main CloudFront distribution',
       });
     } else {
       // Output message if hosted zone is not configured

@@ -30,8 +30,7 @@ def _parse_body(event):
 def _html(status_code, body, event=None):
     allowed_origins = [
         'https://dctech.events',
-        'https://manage.dctech.events',
-        'https://edit.dctech.events',
+        'https://www.dctech.events',
         'http://localhost:5000'
     ]
     origin = event.get('headers', {}).get('origin') if event else None
@@ -47,6 +46,97 @@ def _html(status_code, body, event=None):
         },
         'body': body,
     }
+
+
+def _json(status_code, body, event=None):
+    allowed_origins = [
+        'https://dctech.events',
+        'https://www.dctech.events',
+        'http://localhost:5000'
+    ]
+    origin = event.get('headers', {}).get('origin') if event else None
+    if origin not in allowed_origins:
+        origin = allowed_origins[0]
+
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': origin,
+            'Vary': 'Origin',
+        },
+        'body': json.dumps(body),
+    }
+
+
+def _error_payload(message):
+    return {'error': message}
+
+
+def _normalize_categories(data):
+    categories = data.get('categories', [])
+    if isinstance(categories, str):
+        categories = [c.strip() for c in categories.split(',') if c.strip()]
+    return categories
+
+
+def _build_event_draft_data(data):
+    title = (data.get('title') or data.get('name') or '').strip()
+    date_val = data.get('date', '').strip()
+    time_str = data.get('time', '').strip() or None
+    timing = data.get('timing', 'specific')
+
+    start_dt = data.get('start_datetime', '').strip()
+    if start_dt and not date_val:
+        if 'T' in start_dt:
+            date_val, time_str = start_dt.split('T')
+        else:
+            date_val = start_dt
+
+    if not title or not date_val:
+        return None, 'Event title and date are required.'
+
+    if timing == 'specific' and not time_str:
+        hour = data.get('time_hour', '')
+        minute = data.get('time_minute', '00')
+        ampm = data.get('time_ampm', 'PM')
+        if hour:
+            h = int(hour)
+            if ampm == 'PM' and h != 12:
+                h += 12
+            elif ampm == 'AM' and h == 12:
+                h = 0
+            time_str = f'{h:02d}:{minute}'
+
+    draft_data = {
+        'title': title,
+        'date': date_val,
+        'time': time_str,
+        'url': data.get('url', ''),
+        'city': data.get('city', ''),
+        'state': data.get('state', ''),
+        'cost': data.get('cost', ''),
+        'end_date': data.get('end_date', ''),
+        'all_day': timing == 'allday',
+        'description': data.get('description', ''),
+        'location': data.get('location', ''),
+        'categories': _normalize_categories(data),
+    }
+    return draft_data, None
+
+
+def _build_group_draft_data(data):
+    name = data.get('name', '').strip()
+    website = data.get('website', '').strip()
+    if not name or not website:
+        return None, 'Group name and website are required.'
+
+    return {
+        'name': name,
+        'website': website,
+        'ical_url': data.get('ical_url', ''),
+        'fallback_url': data.get('fallback_url', ''),
+    }, None
 
 
 def submit_form(event, jinja_env):
@@ -91,59 +181,11 @@ def submit_event(event, jinja_env):
 
 def _submit_event(event, data, submitter, jinja_env, submitter_id=None):
     """Handle event submission."""
-    # Support both 'title' (new) and 'name' (old)
-    title = data.get('title') or data.get('name') or ''
-    title = title.strip()
-    
-    date_val = data.get('date', '').strip()
-    time_str = data.get('time', '').strip() or None
-    timing = data.get('timing', 'specific')
-
-    # Support 'start_datetime' (old)
-    start_dt = data.get('start_datetime', '').strip()
-    if start_dt and not date_val:
-        if 'T' in start_dt:
-            date_val, time_str = start_dt.split('T')
-        else:
-            date_val = start_dt
-
-    if not title or not date_val:
+    draft_data, error = _build_event_draft_data(data)
+    if error:
         template = jinja_env.get_template('partials/submit_error.html')
-        html = template.render(error='Event title and date are required.')
+        html = template.render(error=error)
         return _html(400, html, event)
-
-    # Build 24-hour time string from hour/minute/ampm fields (new form)
-    if timing == 'specific' and not time_str:
-        hour = data.get('time_hour', '')
-        minute = data.get('time_minute', '00')
-        ampm = data.get('time_ampm', 'PM')
-        if hour:
-            h = int(hour)
-            if ampm == 'PM' and h != 12:
-                h += 12
-            elif ampm == 'AM' and h == 12:
-                h = 0
-            time_str = f'{h:02d}:{minute}'
-
-    draft_data = {
-        'title': title,
-        'date': date_val,
-        'time': time_str,
-        'url': data.get('url', ''),
-        'city': data.get('city', ''),
-        'state': data.get('state', ''),
-        'cost': data.get('cost', ''),
-        'end_date': data.get('end_date', ''),
-        'all_day': timing == 'allday',
-        'description': data.get('description', ''),
-        'location': data.get('location', ''),
-    }
-
-    # Handle categories (checkboxes or comma-separated)
-    categories = data.get('categories', [])
-    if isinstance(categories, str):
-        categories = [c.strip() for c in categories.split(',') if c.strip()]
-    draft_data['categories'] = categories
 
     draft_id = create_draft('event', draft_data, submitter, submitter_id)
 
@@ -155,19 +197,11 @@ def _submit_event(event, data, submitter, jinja_env, submitter_id=None):
 
 def _submit_group(event, data, submitter, jinja_env, submitter_id=None):
     """Handle group submission."""
-    name = data.get('name', '').strip()
-    website = data.get('website', '').strip()
-    if not name or not website:
+    draft_data, error = _build_group_draft_data(data)
+    if error:
         template = jinja_env.get_template('partials/submit_error.html')
-        html = template.render(error='Group name and website are required.')
+        html = template.render(error=error)
         return _html(400, html, event)
-
-    draft_data = {
-        'name': name,
-        'website': website,
-        'ical_url': data.get('ical_url', ''),
-        'fallback_url': data.get('fallback_url', ''),
-    }
 
     draft_id = create_draft('group', draft_data, submitter, submitter_id)
 
@@ -193,3 +227,40 @@ def my_submissions(event, jinja_env):
     html = template.render(submissions=drafts)
 
     return _html(200, html, event)
+
+
+def submit_event_json(event, jinja_env):
+    """POST /api/submissions — create a draft event or group submission."""
+    claims, err = get_user_from_event(event)
+    if err:
+        return err
+
+    data = _parse_body(event)
+    submitter = claims.get('email', 'unknown')
+    submitter_id = claims.get('sub')
+    submission_type = data.get('type', 'event')
+
+    if submission_type == 'group':
+        draft_data, error = _build_group_draft_data(data)
+        if error:
+            return _json(400, _error_payload(error), event)
+        draft_id = create_draft('group', draft_data, submitter, submitter_id)
+        return _json(201, {'draft_id': draft_id, 'draft_type': 'group'}, event)
+
+    draft_data, error = _build_event_draft_data(data)
+    if error:
+        return _json(400, _error_payload(error), event)
+    draft_id = create_draft('event', draft_data, submitter, submitter_id)
+    return _json(201, {'draft_id': draft_id, 'draft_type': 'event'}, event)
+
+
+def my_submissions_json(event, jinja_env):
+    """GET /api/my-submissions — return JSON list of user's submissions."""
+    claims, err = get_user_from_event(event)
+    if err:
+        return err
+
+    submitter = claims.get('email', '')
+    user_id = claims.get('sub') or submitter
+    drafts = get_drafts_by_submitter(user_id)
+    return _json(200, {'submissions': drafts}, event)

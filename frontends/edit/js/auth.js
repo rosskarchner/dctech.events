@@ -1,16 +1,30 @@
 (function() {
 /**
- * Consolidated Cognito Authentication Module for edit.dctech.events
+ * Consolidated Cognito Authentication Module for the /edit/ UI
  *
  * Handles OAuth 2.0 Authorization Code flow with Cognito Hosted UI.
  * Supports both general users and admins.
  */
 
+const EDIT_CONFIG = window.DctechEditConfig || {
+  appBasePath: '/',
+  apiBaseUrl: '',
+  authCallbackPath: '/auth/callback.html',
+  appHomePath: '/',
+  appUrl(path) {
+    const normalized = path ? path.replace(/^\/+/, '') : '';
+    return `/${normalized}`;
+  },
+  apiUrl(path) {
+    return path;
+  },
+};
+
 const AUTH_CONFIG = {
   userPoolClientId: '58j1h73i72v1kaim503bk2amgb',
   cognitoDomain: 'https://login.dctech.events',
-  redirectUri: window.location.origin + '/auth/callback.html',
-  logoutUri: window.location.origin + '/',
+  redirectUri: window.location.origin + EDIT_CONFIG.authCallbackPath,
+  logoutUri: window.location.origin + EDIT_CONFIG.appHomePath,
   scopes: 'email openid profile',
   apiPaths: ['/api/', '/admin/', '/submit', '/my-submissions', '/health'],
   adminGroup: 'admins'
@@ -147,10 +161,27 @@ async function ensureValidToken() {
   return null;
 }
 
+async function authorizedFetch(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  await ensureValidToken();
+  const token = getAccessToken() || getIdToken();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', 'Bearer ' + token);
+  }
+
+  const isAbsolute = /^https?:\/\//i.test(path);
+  const url = isAbsolute ? path : EDIT_CONFIG.apiUrl(path);
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}
+
 // ---- Login / Logout ----
 
 function getLoginUrl(returnPath) {
-  const state = returnPath || '/';
+  const state = returnPath || EDIT_CONFIG.appHomePath;
   sessionStorage.setItem('oauth_state', state);
   const params = new URLSearchParams({
     response_type: 'code',
@@ -211,7 +242,10 @@ function setupHtmxAuth() {
     const isApiRequest = AUTH_CONFIG.apiPaths.some(p => path.startsWith(p));
 
     if (isApiRequest) {
-      const token = getIdToken();
+      if (EDIT_CONFIG.apiBaseUrl) {
+        event.detail.path = EDIT_CONFIG.apiUrl(path);
+      }
+      const token = getAccessToken() || getIdToken();
       if (token) {
         event.detail.headers['Authorization'] = 'Bearer ' + token;
       }
@@ -300,6 +334,7 @@ if (document.readyState === 'loading') {
 // Export for use by other scripts
 window.DctechAuth = {
   AUTH_CONFIG,
+  EDIT_CONFIG,
   login,
   logout,
   signOut: logout, // Compatibility
@@ -316,5 +351,8 @@ window.DctechAuth = {
   clearTokens,
   updateAuthUI,
   storeTokens,
+  getApiUrl: EDIT_CONFIG.apiUrl,
+  getAppUrl: EDIT_CONFIG.appUrl,
+  authorizedFetch,
 };
 })();

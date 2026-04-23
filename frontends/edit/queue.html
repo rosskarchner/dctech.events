@@ -4,18 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pending Submissions - DC Tech Events Admin</title>
-  <link rel="stylesheet" href="/css/styles.css">
-  <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <script src="/js/auth.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
 </head>
 <body>
     <nav class="nav">
     <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="/" class="nav-brand">DC Tech Events Edit</a>
+        <a href="index.html" class="nav-brand">DC Tech Events Edit</a>
         <ul class="nav-links" data-auth="admin">
-          <li><a href="/queue.html">Queue</a></li>
+          <li><a href="queue.html">Queue</a></li>
         </ul>
       </div>
       <div class="nav-right">
@@ -33,10 +32,7 @@
         <h1>Pending Submissions</h1>
         <p>Review and approve or reject user-submitted events.</p>
       </div>
-      <button class="btn btn-outline"
-              hx-get="/admin/queue"
-              hx-target="#queue-list"
-              hx-indicator="#queue-loading">
+      <button class="btn btn-outline" id="queue-refresh">
         Refresh
       </button>
     </div>
@@ -46,17 +42,11 @@
         <span class="spinner"></span> Loading queue...
       </div>
 
-      <div id="queue-list"
-           hx-get="/admin/queue"
-           hx-trigger="load">
-      </div>
+      <div id="queue-list"></div>
     </div>
   </main>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      DctechAuth.requireAdmin();
-    });
-  </script>
+  <script src="js/queue.js"></script>
+  <script>DctechQueuePage.init();</script>
 </body>
 </html>

@@ -23,9 +23,9 @@ jinja_env = Environment(
 
 # List of allowed origins for CORS
 ALLOWED_ORIGINS = [
-    'https://edit.dctech.events',
-    'https://manage.dctech.events',
     'https://dctech.events',
+    'https://www.dctech.events',
+    'http://localhost:5000',
 ]
 
 
@@ -117,6 +117,30 @@ def lambda_handler(event, context):
 
         if path == '/api/events':
             return add_cors(public.get_events(event, jinja_env))
+
+        if path == '/api/categories':
+            return add_cors(public.get_categories(event, jinja_env))
+
+        if path == '/api/submissions' and http_method == 'POST':
+            return add_cors(submit.submit_event_json(event, jinja_env))
+
+        if path == '/api/my-submissions' and http_method == 'GET':
+            return add_cors(submit.my_submissions_json(event, jinja_env))
+
+        if path == '/api/admin/queue' and http_method == 'GET':
+            return add_cors(admin.get_queue_json(event, jinja_env))
+
+        if path.startswith('/api/admin/drafts/') and path.endswith('/approve') and http_method == 'POST':
+            draft_id = path.split('/')[4]
+            return add_cors(admin.approve_draft_json(event, jinja_env, draft_id))
+
+        if path.startswith('/api/admin/drafts/') and path.endswith('/reject') and http_method == 'POST':
+            draft_id = path.split('/')[4]
+            return add_cors(admin.reject_draft_json(event, jinja_env, draft_id))
+
+        if path.startswith('/api/admin/drafts/') and http_method == 'GET':
+            draft_id = path.split('/')[4]
+            return add_cors(admin.get_draft_json(event, jinja_env, draft_id))
 
         # Submission routes (authenticated)
         if path == '/submit' and http_method == 'GET':

@@ -43,11 +43,11 @@ static/              # CSS, JavaScript, and images
 
 ### Add a Group/Meetup
 
-Visit [edit.dctech.events](https://edit.dctech.events/submit-group.html) or create a YAML file in `_groups/` with your group's RSS or iCal feed.
+Visit [dctech.events/edit/submit-group.html](https://dctech.events/edit/submit-group.html) or create a YAML file in `_groups/` with your group's RSS or iCal feed.
 
 ### Add a Single Event
 
-Visit [edit.dctech.events](https://edit.dctech.events/submit-event.html) or create a YAML file in `_single_events/` (format: `YYYY-MM-DD-event-title.yaml`).
+Visit [dctech.events/edit/submit-event.html](https://dctech.events/edit/submit-event.html) or create a YAML file in `_single_events/` (format: `YYYY-MM-DD-event-title.yaml`).
 
 #### Multi-Day Events with Different Times Per Day
 

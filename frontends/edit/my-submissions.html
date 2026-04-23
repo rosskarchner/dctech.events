@@ -4,16 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Submissions - DC Tech Events</title>
-  <link rel="stylesheet" href="/css/styles.css">
-  <meta name="htmx-config" content='{"selfRequestsOnly": false}'>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <nav class="nav">
     <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="/" class="nav-brand">DC Tech Events Edit</a>
+        <a href="index.html" class="nav-brand">DC Tech Events Edit</a>
         <ul class="nav-links" data-auth="admin" class="hidden">
-          <li><a href="/queue.html">Queue</a></li>
+          <li><a href="queue.html">Queue</a></li>
         </ul>
       </div>
       <div class="nav-right">
@@ -29,18 +28,11 @@
     <h2>My Submissions</h2>
     <p>Events and groups you have submitted.</p>
 
-    <div id="submissions-trigger"></div>
-
     <div id="loading-indicator" class="htmx-indicator" style="text-align: center; padding: 2rem;">
       <span class="spinner"></span> Loading your submissions...
     </div>
 
-    <div id="submissions-list"
-         hx-get="/my-submissions"
-         hx-trigger="load"
-         hx-indicator="#loading-indicator">
-      <!-- HTMX will load submissions here -->
-    </div>
+    <div id="submissions-list"></div>
 
     <noscript>
       <div class="message message-info">
@@ -49,10 +41,9 @@
     </noscript>
   </main>
 
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <script src="/js/auth.js"></script>
-  <script>
-    DctechAuth.requireAuth();
-  </script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/my-submissions.js"></script>
+  <script>DctechMySubmissionsPage.init();</script>
 </body>
 </html>

@@ -29,7 +29,7 @@ def get_pending_count():
 def send_notification(count):
     """Send an email via SES."""
     subject = f"Action Required: {count} pending submission(s) on DC Tech Events"
-    body = f"Hello Ross,\n\nThere are {count} items in the moderation queue awaiting review.\n\nManage them here: https://edit.dctech.events/queue.html\n\n- DC Tech Events Bot"
+    body = f"Hello Ross,\n\nThere are {count} items in the moderation queue awaiting review.\n\nManage them here: https://dctech.events/edit/queue.html\n\n- DC Tech Events Bot"
     
     try:
         ses.send_email(
