@@ -215,7 +215,7 @@ export class LambdaApiStack extends cdk.Stack {
     const authenticatedMethodOptions: apigateway.MethodOptions = {
       authorizer: authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
-      authorizationScopes: ['openid'],
+      authorizationScopes: ['openid', 'email'],
     };
 
     // Create an unmanaged version of the function for API Gateway

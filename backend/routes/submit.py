@@ -170,7 +170,7 @@ def submit_event(event, jinja_env):
         return err
 
     data = _parse_body(event)
-    submitter = claims.get('email', 'unknown')
+    submitter = claims.get('email')
     submitter_id = claims.get('sub')
     submission_type = data.get('type', 'event')
 
@@ -236,7 +236,7 @@ def submit_event_json(event, jinja_env):
         return err
 
     data = _parse_body(event)
-    submitter = claims.get('email', 'unknown')
+    submitter = claims.get('email')
     submitter_id = claims.get('sub')
     submission_type = data.get('type', 'event')
 

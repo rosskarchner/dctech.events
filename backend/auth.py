@@ -28,6 +28,11 @@ def get_user_from_event(event):
         )
         if not claims or not claims.get('sub'):
             return None, {'statusCode': 401, 'body': 'Unauthorized'}
+        
+        # Ensure email is available in claims, falling back to cognito:username or sub
+        if 'email' not in claims:
+            claims['email'] = claims.get('cognito:username') or claims.get('sub')
+        
         return claims, None
     except Exception:
         return None, {'statusCode': 401, 'body': 'Unauthorized'}
