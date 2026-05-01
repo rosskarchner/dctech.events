@@ -1,0 +1,8 @@
+name: Refresh DC
+active: true
+website: https://refresh-dc.org/
+ical: https://rosskarchner.github.io/dctech-scrapercollcection/refresh_dc.ics
+categories: []
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
