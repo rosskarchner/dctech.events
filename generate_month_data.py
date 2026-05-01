@@ -12,6 +12,7 @@ import dateparser
 import json
 import hashlib
 import requests
+from dateutil import rrule
 from location_utils import extract_location_info
 
 # Load configuration
@@ -36,6 +37,7 @@ GROUPS_DIR = '_groups'
 CATEGORIES_DIR = '_categories'
 SINGLE_EVENTS_DIR = '_single_events'
 EVENT_OVERRIDES_DIR = '_event_overrides'
+RECURRING_EVENTS_DIR = '_recurring_events'
 
 # Ensure directories exist
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -55,6 +57,9 @@ DC_TYPO_CODES = {'DI', 'CD'}
 
 # Max days in future for iCal events
 ICAL_MAX_FUTURE_DAYS = 90
+
+# Max days in future for recurring events
+RECURRING_MAX_FUTURE_DAYS = 90
 
 def calculate_event_hash(date, time, title, url=None):
     """Calculate MD5 hash for event identification."""
@@ -271,7 +276,117 @@ def load_event_overrides():
     return overrides
 
 
-def process_events(groups, categories, single_events, ical_events, allowed_states, today=None, event_overrides=None):
+def load_recurring_events():
+    """Load recurring events from YAML files in _recurring_events/ directory.
+    
+    Each file defines a recurring event with an iCal RRULE (e.g., FREQ=WEEKLY;BYDAY=TU).
+    Returns a list of event dicts with 'rrule' field.
+    """
+    events = []
+    if not os.path.exists(RECURRING_EVENTS_DIR):
+        return events
+
+    for filename in os.listdir(RECURRING_EVENTS_DIR):
+        if not filename.endswith('.yaml'):
+            continue
+        filepath = os.path.join(RECURRING_EVENTS_DIR, filename)
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                event = yaml.safe_load(f)
+            if not event:
+                continue
+
+            event['id'] = os.path.splitext(filename)[0]
+            event['source'] = 'recurring'
+            event['is_recurring'] = True
+
+            # Normalize date
+            if 'date' in event:
+                if isinstance(event['date'], date):
+                    event['date'] = event['date'].strftime('%Y-%m-%d')
+                else:
+                    parsed = dateparser.parse(str(event['date']), settings={
+                        'TIMEZONE': timezone_name,
+                        'DATE_ORDER': 'YMD',
+                        'PREFER_DATES_FROM': 'future',
+                    })
+                    if parsed:
+                        event['date'] = parsed.strftime('%Y-%m-%d')
+
+            events.append(event)
+        except Exception as e:
+            print(f"Error loading recurring event {filename}: {e}")
+
+    return events
+
+
+def expand_recurring_events(recurring_events, today=None, max_days=RECURRING_MAX_FUTURE_DAYS):
+    """Expand recurring events into individual instances for the next N days.
+    
+    Args:
+        recurring_events: list of event dicts with 'rrule' field
+        today: date to use as "today" (default: current date)
+        max_days: number of days to project (default: 90)
+    
+    Returns:
+        List of expanded event dicts (one per occurrence, with date filled in and 
+        is_recurring flag set to True).
+    """
+    if today is None:
+        today = datetime.now(local_tz).date()
+    
+    expanded = []
+    max_date = today + timedelta(days=max_days)
+    
+    for event in recurring_events:
+        rrule_str = event.get('rrule', '')
+        if not rrule_str:
+            continue
+        
+        # Parse start date
+        try:
+            start_date = datetime.strptime(event['date'], '%Y-%m-%d').date()
+        except (KeyError, ValueError):
+            continue
+        
+        # Skip if start date is too far in the future
+        if start_date > max_date:
+            continue
+        
+        # Parse RRULE and generate occurrences
+        try:
+            # Convert date to datetime for rrule
+            start_dt = datetime.combine(start_date, datetime.min.time())
+            start_dt = local_tz.localize(start_dt)
+            
+            # Parse RRULE (format: FREQ=WEEKLY;BYDAY=TU, etc.)
+            rule = rrule.rrulestr(rrule_str, dtstart=start_dt)
+            
+            # Generate occurrences up to max_date
+            for occurrence_dt in rule:
+                occurrence_date = occurrence_dt.date()
+                if occurrence_date > max_date:
+                    break
+                if occurrence_date < today:
+                    continue
+                
+                # Create event instance
+                instance = dict(event)
+                instance['date'] = occurrence_date.strftime('%Y-%m-%d')
+                instance['guid'] = calculate_event_hash(
+                    instance['date'],
+                    instance.get('time', ''),
+                    instance['title'],
+                    instance.get('url'),
+                )
+                expanded.append(instance)
+        except Exception as e:
+            print(f"Error expanding recurring event {event.get('id', 'unknown')}: {e}")
+    
+    return expanded
+
+
+def process_events(groups, categories, single_events, ical_events, recurring_events, allowed_states, today=None, event_overrides=None):
     """Generate the consolidated event list from all sources.
 
     Args:
@@ -279,6 +394,7 @@ def process_events(groups, categories, single_events, ical_events, allowed_state
         categories: dict of category slug → category dict
         single_events: list of manually-submitted event dicts
         ical_events: dict of {group_id: [event_dicts]} from iCal cache
+        recurring_events: list of recurring event dicts (with rrule field)
         allowed_states: list of state abbreviations to allow (empty = all)
         today: date to use as "today" (default: current date)
         event_overrides: dict of {guid: override_fields} from load_event_overrides()
@@ -370,8 +486,11 @@ def process_events(groups, categories, single_events, ical_events, allowed_state
             )
         submitted_events.append(processed)
 
-    # 3. Combine and deduplicate (iCal takes priority over manual)
-    combined = regular_events + submitted_events
+    # 3. Expand recurring events
+    recurring_expanded = expand_recurring_events(recurring_events, today=today)
+    
+    # 4. Combine and deduplicate (iCal takes priority over manual, recurring events included)
+    combined = regular_events + recurring_expanded + submitted_events
     unique_events = remove_duplicates(combined)
     def _sort_time(event):
         t = event.get('time', '')
@@ -388,6 +507,7 @@ def main():
     groups = get_groups()
     categories = get_categories()
     single_events = load_single_events()
+    recurring_events = load_recurring_events()
     event_overrides = load_event_overrides()
 
     # Load iCal events from per-group cache files
@@ -402,7 +522,7 @@ def main():
             except Exception as e:
                 print(f"Error reading cache {cache_file}: {e}")
 
-    unique_events = process_events(groups, categories, single_events, ical_events, ALLOWED_STATES, event_overrides=event_overrides)
+    unique_events = process_events(groups, categories, single_events, ical_events, recurring_events, ALLOWED_STATES, event_overrides=event_overrides)
 
     # Save consolidated data
     os.makedirs(DATA_DIR, exist_ok=True)

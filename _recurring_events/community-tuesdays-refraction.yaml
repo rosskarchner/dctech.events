@@ -1,9 +1,10 @@
 title: 'Community Tuesdays at Refraction'
-date: '2026-05-19'
+date: '2026-05-05'
+time: '09:00'
 url: 'https://refraction.zoholandingpage.com/communitytues/'
-location: '7950 Jones Branch Drive, 8th Floor North ​McLean, VA 22102'
+location: '7950 Jones Branch Drive, 8th Floor North, McLean, VA 22102'
 cost: 'Free'
-description: 'Join us every Tuesday at Refraction Innovation Hub for Community Tuesdays — our open-door, no-cost program offering career resources, professional connections, and access to our award-winning, collaborative community of founders, funders, and innovators in the heart of Northern Virginia’s tech corridor.
+description: 'Join us every Tuesday at Refraction Innovation Hub for Community Tuesdays — our open-door, no-cost program offering career resources, professional connections, and access to our award-winning, collaborative community of founders, funders, and innovators in the heart of Northern Virginia''s tech corridor.
 
 Whether you are in a career transition, considering starting your own business, or simply startup-curious, Refraction offers an inclusive and resource-rich space where you can:
 
@@ -16,3 +17,4 @@ categories:
   - social
   - startups
   - technology-and-media
+rrule: 'FREQ=WEEKLY;BYDAY=TU'

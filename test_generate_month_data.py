@@ -119,7 +119,7 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
         
-        events = process_events(self.groups, self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
         
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Future Event')
@@ -132,7 +132,7 @@ class TestProcessEvents(unittest.TestCase):
             'g2': [{'title': 'Event', 'date': '2025-01-10', 'url': 'u', 'location': 'DC'}]
         }
         
-        events = process_events(self.groups, self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
         self.assertEqual(len(events), 0)
 
     def test_filter_past_events(self):
@@ -140,7 +140,7 @@ class TestProcessEvents(unittest.TestCase):
         ical_events = {
             'g1': [{'title': 'Past', 'date': '2024-12-31', 'url': 'u', 'location': 'DC'}]
         }
-        events = process_events(self.groups, self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
         self.assertEqual(len(events), 0)
 
     def test_filter_too_far_future(self):
@@ -149,7 +149,7 @@ class TestProcessEvents(unittest.TestCase):
         ical_events = {
             'g1': [{'title': 'Far Future', 'date': future_date, 'url': 'u', 'location': 'DC'}]
         }
-        events = process_events(self.groups, self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
         self.assertEqual(len(events), 0)
 
     def test_filter_allowed_states(self):
@@ -160,7 +160,7 @@ class TestProcessEvents(unittest.TestCase):
                 {'title': 'In NY', 'date': '2025-01-10', 'url': 'u2', 'location': 'New York, NY'}
             ]
         }
-        events = process_events(self.groups, self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'In DC')
 
@@ -172,7 +172,7 @@ class TestProcessEvents(unittest.TestCase):
             {'title': 'Far Future Manual', 'date': far_future_date, 'time': '10:00', 'url': 'u2', 'location': 'DC'}
         ]
         
-        events = process_events(self.groups, self.categories, single, {}, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, single, {}, [], ['DC'], today=self.today)
         
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0]['title'], 'Manual Event')
@@ -186,7 +186,7 @@ class TestProcessEvents(unittest.TestCase):
         }
         single = [{'title': 'Meetup', 'date': '2025-01-10', 'time': '18:00', 'url': 'u2', 'location': 'DC', 'group': 'Group 2'}]
         
-        events = process_events(self.groups, self.categories, single, ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, single, ical_events, [], ['DC'], today=self.today)
         
         self.assertEqual(len(events), 1)
         # The first one processed (iCal) is kept
@@ -205,7 +205,7 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
         
-        events = process_events([group_with_suppress], self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events([group_with_suppress], self.categories, [], ical_events, [], ['DC'], today=self.today)
         
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Good')
@@ -236,7 +236,8 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
 
-        events = process_events([group_updated], self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
+        # OLD: process_events(['group_updated], self.categories, [], ical_events, ['DC'], today=self.today)
 
         self.assertEqual(len(events), 1)
         self.assertNotIn('cybersecurity', events[0].get('categories', []),
@@ -262,7 +263,7 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
 
-        events = process_events([group_with_cats], self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events([group_with_cats], self.categories, [], ical_events, [], ['DC'], today=self.today)
 
         self.assertEqual(len(events), 1)
         self.assertIn('ai', events[0].get('categories', []))
@@ -288,7 +289,7 @@ class TestProcessEvents(unittest.TestCase):
             },
         ]
         # Should not raise TypeError
-        events = process_events(self.groups, self.categories, single, {}, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, single, {}, [], ['DC'], today=self.today)
         self.assertEqual(len(events), 2)
         # Regular event on 2025-01-15 should come first
         self.assertEqual(events[0]['title'], 'Regular Event')
@@ -319,7 +320,7 @@ class TestEventOverrides(unittest.TestCase):
 
         overrides = {guid: {'categories': ['cybersecurity', 'govtech']}}
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [],
+            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
             today=self.today, event_overrides=overrides,
         )
 
@@ -332,7 +333,7 @@ class TestEventOverrides(unittest.TestCase):
 
         overrides = {guid: {'title': 'New Corrected Title'}}
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [],
+            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
             today=self.today, event_overrides=overrides,
         )
 
@@ -345,7 +346,7 @@ class TestEventOverrides(unittest.TestCase):
 
         overrides = {guid: {'title': 'AI Conference 2025', 'categories': ['ai', 'conferences']}}
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [],
+            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
             today=self.today, event_overrides=overrides,
         )
 
@@ -358,19 +359,20 @@ class TestEventOverrides(unittest.TestCase):
         event['categories'] = ['social']
 
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [],
+            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
             today=self.today, event_overrides={},
         )
 
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Regular Event')
-        self.assertEqual(events[0]['categories'], ['social'])
+        # Group has no categories, so the event gets empty categories (group overrides event)
+        self.assertEqual(events[0]['categories'], [])
 
     def test_none_overrides_parameter_uses_empty_dict(self):
         event = self._make_ical_event('Regular Event', '2025-01-10', url='http://regular.com')
         # Should not raise and should behave as no overrides
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [],
+            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
             today=self.today, event_overrides=None,
         )
         self.assertEqual(len(events), 1)

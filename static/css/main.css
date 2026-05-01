@@ -450,3 +450,21 @@ footer {
 #just-added-preview a {
     font-weight: 500;
 }
+
+/* Recurring Event Badge */
+.recurring-badge {
+    display: inline-block;
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    margin-left: 0.5rem;
+    border: 1px solid #4caf50;
+    cursor: help;
+}
+
+.recurring-badge:hover {
+    background-color: #c8e6c9;
+}
