@@ -1,8 +1,8 @@
 """
-Lambda function to clean up unconfirmed user accounts older than 1 month.
+Lambda function to clean up unconfirmed user accounts older than 1 week.
 
 Runs weekly via EventBridge rule. Deletes users from Cognito user pool
-that have been unconfirmed for longer than 30 days.
+that have been unconfirmed for longer than 7 days.
 """
 
 import os
@@ -14,8 +14,8 @@ USER_POOL_ID = os.environ.get('COGNITO_USER_POOL_ID')
 
 
 def lambda_handler(event, context):
-    """Remove unconfirmed users older than 1 month."""
-    print(f"Starting cleanup of unconfirmed users older than 1 month")
+    """Remove unconfirmed users older than 1 week."""
+    print(f"Starting cleanup of unconfirmed users older than 1 week")
     
     if not USER_POOL_ID:
         print("ERROR: COGNITO_USER_POOL_ID not set")
@@ -26,7 +26,7 @@ def lambda_handler(event, context):
     
     deleted_count = 0
     error_count = 0
-    one_month_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     
     try:
         # List all users in the user pool
@@ -43,8 +43,8 @@ def lambda_handler(event, context):
                 if user_status != 'UNCONFIRMED':
                     continue
                 
-                # Check if user is older than 1 month
-                if user_create_date and user_create_date.replace(tzinfo=timezone.utc) < one_month_ago:
+                # Check if user is older than 1 week
+                if user_create_date and user_create_date.replace(tzinfo=timezone.utc) < one_week_ago:
                     try:
                         cognito.admin_delete_user(
                             UserPoolId=USER_POOL_ID,
