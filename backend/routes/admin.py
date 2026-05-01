@@ -5,6 +5,7 @@ All routes return HTML fragments for HTMX swap.
 """
 
 import json
+import boto3
 
 from auth import get_user_from_event, require_admin
 from db import (
@@ -237,3 +238,45 @@ def reject_draft_json(event, jinja_env, draft_id):
 
     update_draft_status(draft_id, 'REJECTED')
     return _json(200, {'message': 'Rejected.'})
+
+
+# ─── Newsletter Subscribers ──────────────────────────────────────────
+
+def get_subscribers(event, jinja_env):
+    """GET /admin/subscribers — Newsletter subscribers page."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    template = jinja_env.get_template('admin/subscribers.html')
+    html = template.render(claims=claims)
+    return _html(200, html, event)
+
+
+def get_subscribers_json(event, jinja_env):
+    """GET /api/admin/subscribers — Return subscribers as JSON."""
+    claims, err = _admin_check(event)
+    if err:
+        return err
+
+    try:
+        sesv2 = boto3.client('sesv2', region_name='us-east-1')
+        response = sesv2.list_contacts(ContactListName='newsletters')
+        
+        contacts = response.get('Contacts', [])
+        # Sort by CreatedTimestamp (newest first)
+        contacts.sort(key=lambda x: x.get('CreatedTimestamp', ''), reverse=True)
+        
+        subscribers = [{
+            'email': c['EmailAddress'],
+            'subscribed_at': c.get('CreatedTimestamp', ''),
+            'unsubscribe_all': c.get('UnsubscribeAll', False),
+        } for c in contacts]
+        
+        return _json(200, {
+            'subscribers': subscribers,
+            'count': len(subscribers)
+        })
+    except Exception as e:
+        print(f"Error fetching subscribers: {e}")
+        return _json(500, {'error': str(e)})

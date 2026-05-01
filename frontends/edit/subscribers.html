@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Newsletter Subscribers - DC Tech Events Admin</title>
+  <link rel="stylesheet" href="/edit/css/styles.css">
+  <script src="/edit/js/config.js"></script>
+  <script src="/edit/js/auth.js"></script>
+  <style>
+    .subscribers-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+    }
+    .subscribers-table th {
+      background-color: var(--color-bg-secondary, #f5f5f5);
+      border-bottom: 2px solid var(--color-border, #ddd);
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+    }
+    .subscribers-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--color-border, #ddd);
+    }
+    .subscribers-table tr:hover {
+      background-color: var(--color-bg-secondary, #f9f9f9);
+    }
+    .email {
+      word-break: break-all;
+    }
+    .timestamp {
+      font-size: 0.9em;
+      color: var(--color-text-muted, #666);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--color-bg-secondary, #f5f5f5);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--color-primary, #0066cc);
+    }
+    .stat-card .label {
+      font-size: 0.9em;
+      color: var(--color-text-muted, #666);
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
+      <div style="display:flex; align-items: center; gap: 2rem;">
+        <a href="index.html" class="nav-brand">DC Tech Events Edit</a>
+        <ul class="nav-links" data-auth="admin" style="display:flex; list-style: none; gap: 1rem; margin: 0; padding: 0;">
+          <li><a href="queue.html">Queue</a></li>
+          <li><a href="subscribers.html" style="font-weight: bold;">Subscribers</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <span data-auth="logged-in" class="hidden">
+          <span data-user="name"></span>
+          <button class="btn-sign-out" onclick="DctechAuth.logout()">Sign Out</button>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Newsletter Subscribers</h1>
+      <p>All email addresses subscribed to the DC Tech Events newsletter.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="value" id="subscriber-count">0</div>
+        <div class="label">Total Subscribers</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="subscribers-loading" class="htmx-indicator" style="text-align: center; padding: 2rem;">
+        <span class="spinner"></span> Loading subscribers...
+      </div>
+
+      <div id="subscribers-list"></div>
+
+      <noscript>
+        <div class="message message-warning">
+          <p>JavaScript is required to view the subscriber list.</p>
+        </div>
+      </noscript>
+    </div>
+  </main>
+
+  <script src="/edit/js/subscribers.js"></script>
+  <script>DctechSubscribersPage.init();</script>
+</body>
+</html>

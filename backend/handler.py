@@ -130,6 +130,9 @@ def lambda_handler(event, context):
         if path == '/api/admin/queue' and http_method == 'GET':
             return add_cors(admin.get_queue_json(event, jinja_env))
 
+        if path == '/api/admin/subscribers' and http_method == 'GET':
+            return add_cors(admin.get_subscribers_json(event, jinja_env))
+
         if path.startswith('/api/admin/drafts/') and path.endswith('/approve') and http_method == 'POST':
             draft_id = path.split('/')[4]
             return add_cors(admin.approve_draft_json(event, jinja_env, draft_id))
@@ -157,6 +160,9 @@ def lambda_handler(event, context):
 
         if path == '/admin/queue' and http_method == 'GET':
             return add_cors(admin.get_queue(event, jinja_env))
+
+        if path == '/admin/subscribers' and http_method == 'GET':
+            return add_cors(admin.get_subscribers(event, jinja_env))
 
         if path.startswith('/admin/draft/') and path.endswith('/approve') and http_method == 'POST':
             draft_id = path.split('/')[3]
