@@ -72,6 +72,13 @@ export class LambdaApiStack extends cdk.Stack {
       ],
     }));
 
+    // Add SES permissions for newsletter subscribers
+    lambdaRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['sesv2:ListContacts'],
+      resources: ['*'],
+    }));
+
     // Create Lambda function
     this.apiFunction = new lambda.Function(this, 'ApiFunction', {
       functionName: 'dctech-events-api',
