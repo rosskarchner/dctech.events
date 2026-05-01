@@ -197,6 +197,55 @@ export class LambdaApiStack extends cdk.Stack {
       description: 'Trigger daily submission queue email notification (Daily 8:30 AM EST)',
     });
 
+    // 5. Cleanup Unconfirmed Users Lambda (Weekly, Sundays at 2 AM UTC)
+    const cleanupRole = new iam.Role(this, 'CleanupUnconfirmedUsersRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      description: 'Execution role for cleanup unconfirmed users Lambda',
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+    });
+
+    // Grant Cognito permissions
+    cleanupRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['cognito-idp:ListUsers', 'cognito-idp:AdminDeleteUser'],
+      resources: [props.cognitoStack.userPool.userPoolArn],
+    }));
+
+    const cleanupUnconfirmedFn = new lambda.Function(this, 'CleanupUnconfirmedUsersFunction', {
+      functionName: 'dctech-events-cleanup-unconfirmed-users',
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'cleanup_unconfirmed_users/handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../..'), {
+        exclude: ['.git', 'node_modules', '.beads', '.venv', 'infrastructure', 'build', 'static', '_cache', '_data', '__pycache__'],
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+          command: [
+            'bash', '-c',
+            'cp -r cleanup_unconfirmed_users /asset-output/',
+          ],
+        },
+      }),
+      role: cleanupRole,
+      timeout: cdk.Duration.seconds(60),
+      architecture: lambda.Architecture.ARM_64,
+      environment: {
+        COGNITO_USER_POOL_ID: props.cognitoStack.userPool.userPoolId,
+      },
+      logGroup: new logs.LogGroup(this, 'CleanupUnconfirmedUsersLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+    });
+
+    // Trigger weekly cleanup of unconfirmed users (Every Sunday 2 AM UTC)
+    new events.Rule(this, 'CleanupUnconfirmedUsersScheduleRule', {
+      schedule: events.Schedule.expression('cron(0 2 ? * SUN *)'),
+      targets: [new targets.LambdaFunction(cleanupUnconfirmedFn)],
+      description: 'Trigger weekly cleanup of unconfirmed users (Every Sunday 2 AM UTC)',
+    });
+
     // Create API Gateway REST API
     const api = new apigateway.RestApi(this, 'Api', {
       restApiName: 'dctech-events-api',

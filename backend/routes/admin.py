@@ -272,7 +272,7 @@ def get_subscribers_json(event, jinja_env):
         
         subscribers = [{
             'email': c['EmailAddress'],
-            'subscribed_at': c.get('LastUpdatedTimestamp', ''),
+            'subscribed_at': c.get('LastUpdatedTimestamp', '').isoformat() if c.get('LastUpdatedTimestamp') else '',
             'unsubscribe_all': c.get('UnsubscribeAll', False),
         } for c in contacts]
         
