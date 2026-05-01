@@ -257,6 +257,9 @@ def get_subscribers_json(event, jinja_env):
     """GET /api/admin/subscribers — Return subscribers as JSON."""
     claims, err = _admin_check(event)
     if err:
+        # Ensure error response has proper headers
+        if 'headers' not in err:
+            err['headers'] = {'Content-Type': 'application/json'}
         return err
 
     try:
