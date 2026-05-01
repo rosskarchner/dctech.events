@@ -39,13 +39,7 @@
     listDiv.innerHTML = '';
 
     try {
-      const token = DctechAuth.getAccessToken();
-      const response = await fetch(DctechConfig.API_BASE_URL + '/api/admin/subscribers', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await DctechAuth.authorizedFetch('/api/admin/subscribers');
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -103,16 +97,9 @@
 
   window.DctechSubscribersPage = {
     init() {
-      // Wait for auth to be ready
-      const checkAuth = setInterval(() => {
-        if (typeof DctechAuth !== 'undefined' && DctechAuth.isLoggedIn) {
-          clearInterval(checkAuth);
-          loadSubscribers();
-        }
-      }, 100);
-
-      // Timeout after 5 seconds
-      setTimeout(() => clearInterval(checkAuth), 5000);
+      const isAdmin = DctechAuth.requireAdmin();
+      if (!isAdmin) return;
+      loadSubscribers();
     }
   };
 })();
