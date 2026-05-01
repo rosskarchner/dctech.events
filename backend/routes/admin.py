@@ -267,12 +267,12 @@ def get_subscribers_json(event, jinja_env):
         response = sesv2.list_contacts(ContactListName='newsletters')
         
         contacts = response.get('Contacts', [])
-        # Sort by CreatedTimestamp (newest first)
-        contacts.sort(key=lambda x: x.get('CreatedTimestamp', ''), reverse=True)
+        # Sort by LastUpdatedTimestamp (newest first)
+        contacts.sort(key=lambda x: x.get('LastUpdatedTimestamp', ''), reverse=True)
         
         subscribers = [{
             'email': c['EmailAddress'],
-            'subscribed_at': c.get('CreatedTimestamp', ''),
+            'subscribed_at': c.get('LastUpdatedTimestamp', ''),
             'unsubscribe_all': c.get('UnsubscribeAll', False),
         } for c in contacts]
         
