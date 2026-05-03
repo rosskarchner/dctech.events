@@ -68,33 +68,13 @@ export class DcstemEventsStack extends cdk.Stack {
     // Note: Bucket policy not needed for imported distribution since it's already configured
 
     // Phase 1.7: GitHub OIDC Federation
-    // Create OIDC identity provider
-    const oidcProvider = new iam.OpenIdConnectProvider(
+    // Note: OIDC provider is created once in dctech-events-stack (shared across all sites)
+    // Import the existing GitHub Actions IAM role (created in dctech-events-stack)
+    const githubActionsRole = iam.Role.fromRoleName(
       this,
-      'GitHubOIDCProvider',
-      {
-        url: dcstemStackConfig.github.oidcProviderUrl,
-        clientIds: [dcstemStackConfig.github.oidcClientId],
-        thumbprints: [dcstemStackConfig.github.oidcThumbprint],
-      }
+      'GithubActionsDeployRole',
+      dcstemStackConfig.iam.roleName
     );
-
-    // Create IAM role for GitHub Actions
-    const githubActionsRole = new iam.Role(this, 'GithubActionsDeployRole', {
-      roleName: dcstemStackConfig.iam.roleName,
-      assumedBy: new iam.WebIdentityPrincipal(
-        oidcProvider.openIdConnectProviderArn,
-        {
-          StringEquals: {
-            'token.actions.githubusercontent.com:aud': dcstemStackConfig.github.oidcClientId,
-          },
-          StringLike: {
-            'token.actions.githubusercontent.com:sub': `repo:${dcstemStackConfig.github.repositoryOwner}/${dcstemStackConfig.github.repositoryName}:${dcstemStackConfig.github.ref}`,
-          },
-        }
-      ),
-      maxSessionDuration: cdk.Duration.seconds(dcstemStackConfig.iam.sessionDuration),
-    });
 
     // Add inline policy for S3 + CloudFront permissions
     githubActionsRole.attachInlinePolicy(
