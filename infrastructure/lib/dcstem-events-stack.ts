@@ -68,89 +68,13 @@ export class DcstemEventsStack extends cdk.Stack {
     // Note: Bucket policy not needed for imported distribution since it's already configured
 
     // Phase 1.7: GitHub OIDC Federation
-    // Note: OIDC provider is created once in dctech-events-stack (shared across all sites)
-    // Import the existing GitHub Actions IAM role (created in dctech-events-stack)
+    // Note: OIDC provider and IAM role are created once in dctech-events-stack (shared)
+    // The policy already includes permissions for both dctech-events-* and dcstem-events-*
+    // Just import the existing role without modifying it
     const githubActionsRole = iam.Role.fromRoleName(
       this,
       'GithubActionsDeployRole',
       dcstemStackConfig.iam.roleName
-    );
-
-    // Add inline policy for S3 + CloudFront permissions
-    githubActionsRole.attachInlinePolicy(
-      new iam.Policy(this, 'GithubActionsDeployPolicy', {
-        statements: [
-          new iam.PolicyStatement({
-            actions: [
-              's3:GetObject',
-              's3:PutObject',
-              's3:DeleteObject',
-              's3:ListBucket',
-            ],
-            resources: [
-              `arn:aws:s3:::dctech-events-*`,
-              `arn:aws:s3:::dctech-events-*/*`,
-              `arn:aws:s3:::dcstem-events-*`,
-              `arn:aws:s3:::dcstem-events-*/*`,
-            ],
-          }),
-          new iam.PolicyStatement({
-            actions: ['cloudfront:CreateInvalidation'],
-            resources: [
-              `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/*`,
-            ],
-          }),
-          new iam.PolicyStatement({
-            actions: ['cloudfront:ListDistributions'],
-            resources: ['*'],
-          }),
-          new iam.PolicyStatement({
-            actions: [
-              'dynamodb:PutItem',
-              'dynamodb:GetItem',
-              'dynamodb:UpdateItem',
-              'dynamodb:DeleteItem',
-              'dynamodb:BatchWriteItem',
-              'dynamodb:Query',
-              'dynamodb:Scan',
-            ],
-            resources: ['arn:aws:dynamodb:*:*:table/dctech-events', 'arn:aws:dynamodb:*:*:table/dctech-events/index/*'],
-          }),
-          new iam.PolicyStatement({
-            actions: [
-              'sqs:SendMessage',
-              'sqs:GetQueueUrl',
-            ],
-            resources: [`arn:aws:sqs:${this.region}:${this.account}:${dcstemStackConfig.rebuild.queueName}`],
-          }),
-          new iam.PolicyStatement({
-            actions: ['sts:AssumeRole'],
-            resources: [
-              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-deploy-role-${cdk.Stack.of(this).account}-*`,
-              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-file-publishing-role-${cdk.Stack.of(this).account}-*`,
-              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-image-publishing-role-${cdk.Stack.of(this).account}-*`,
-              `arn:aws:iam::${cdk.Stack.of(this).account}:role/cdk-hnb659fds-lookup-role-${cdk.Stack.of(this).account}-*`,
-            ],
-          }),
-          new iam.PolicyStatement({
-            actions: [
-              'ecr:GetAuthorizationToken',
-              'ecr:BatchCheckLayerAvailability',
-              'ecr:GetDownloadUrlForLayer',
-              'ecr:GetRepositoryPolicy',
-              'ecr:DescribeRepositories',
-              'ecr:ListImages',
-              'ecr:DescribeImages',
-              'ecr:BatchGetImage',
-              'ecr:InitiateLayerUpload',
-              'ecr:UploadLayerPart',
-              'ecr:CompleteLayerUpload',
-              'ecr:PutImage',
-            ],
-            resources: ['*'], // Standard for CDK ECR access
-          }),
-        ],
-      })
     );
 
     // Phase 1.6: Route53 DNS Records (requires hosted zone)
