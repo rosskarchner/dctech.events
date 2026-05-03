@@ -1,4 +1,20 @@
 (function() {
+  function detectSiteFromHostname() {
+    const host = window.location.hostname;
+    if (host === 'dcstem.events' || host === 'www.dcstem.events' || host.includes('dcstem')) {
+      return 'dcstem';
+    }
+    return 'dctech';
+  }
+
+  function setSiteField() {
+    const site = detectSiteFromHostname();
+    const siteField = document.getElementById('site-field');
+    if (siteField) {
+      siteField.value = site;
+    }
+  }
+
   function setResponse(container, message, isError) {
     if (!container) return;
     container.innerHTML = `<div class="message ${isError ? 'message-error' : 'message-success'}"><p>${message}</p></div>`;
@@ -66,6 +82,7 @@
   }
 
   function initSubmissionPage() {
+    setSiteField();
     const hasAuth = DctechAuth.requireAuth();
     if (!hasAuth) return;
 

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response, send_from_directory
+from flask import Flask, render_template, request, Response, send_from_directory, g
 from datetime import date, datetime, timedelta, time
 import os
 import yaml
@@ -57,6 +57,14 @@ def setup_site_context():
     g.site_config = load_site_config(site)
     ensure_site_directories(site)
 
+def safe_get_site(default='dctech'):
+    """Safely get the current site from Flask g, with fallback for when outside request context."""
+    try:
+        from flask import g
+        return g.site if hasattr(g, 'site') else default
+    except (RuntimeError, AttributeError):
+        return default
+
 def get_site_data_dir(site):
     """Get the _data directory for a specific site."""
     return get_data_dir(site)
@@ -64,7 +72,7 @@ def get_site_data_dir(site):
 def load_sponsors():
     """Load sponsors from sponsors.json file"""
     from flask import g
-    site = getattr(g, 'site', 'dctech')
+    site = safe_get_site()
     sponsors_file = os.path.join(get_site_data_dir(site), 'sponsors.json')
     
     if not sponsors_file or not os.path.exists(sponsors_file):
@@ -81,8 +89,11 @@ def load_sponsors():
 def inject_config():
     """Inject configuration variables into all templates"""
     from flask import g
-    site = getattr(g, 'site', 'dctech')
-    site_config = getattr(g, 'site_config', {})
+    site = safe_get_site()
+    try:
+        site_config = g.site_config if hasattr(g, 'site_config') else {}
+    except (RuntimeError, AttributeError):
+        site_config = load_site_config(site)
     
     context = {
         'site': site,
@@ -110,7 +121,7 @@ def get_events(include_hidden=False, site=None):
     """
     from flask import g
     if site is None:
-        site = getattr(g, 'site', 'dctech')
+        site = safe_get_site()
     
     events_file = os.path.join(get_site_data_dir(site), 'all_events.json')
     
@@ -181,7 +192,7 @@ def get_categories(site=None):
     """
     from flask import g
     if site is None:
-        site = getattr(g, 'site', 'dctech')
+        site = safe_get_site()
     
     categories = {}
     categories_dir = get_categories_dir(site)
@@ -712,7 +723,7 @@ def homepage():
     days = prepare_events_by_day(two_week_events, add_week_links=True)
 
     # Get base URL from config or use a default
-    base_url = BASE_URL
+    base_url = g.site_config.get('base_url', 'https://dctech.events')
 
     # Get stats - count only in-person events in next two weeks
     stats = get_stats().copy()
@@ -741,7 +752,7 @@ def virtual_events_page():
     days = prepare_events_by_day(events, add_week_links=False)
 
     # Get base URL from config or use a default
-    base_url = BASE_URL
+    base_url = g.site_config.get('base_url', 'https://dctech.events')
 
     # Get stats for virtual events only
     stats = {'upcoming_events': len(events)}
@@ -888,7 +899,7 @@ def newsletter_html():
     return render_template('newsletter.html',
                           days=days,
                           stats=stats,
-                          base_url=BASE_URL,
+                          base_url=g.site_config.get('base_url', 'https://dctech.events'),
                           upcoming_months=upcoming_months,
                           categories_with_counts=categories_with_counts)
 
@@ -915,7 +926,7 @@ def newsletter_text():
     response = render_template('newsletter.txt',
                              days=days,
                              stats=stats,
-                             base_url=BASE_URL,
+                             base_url=g.site_config.get('base_url', 'https://dctech.events'),
                              upcoming_months=upcoming_months,
                              categories_with_counts=categories_with_counts)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
@@ -1069,7 +1080,9 @@ def events_json():
 def ical_feed():
     """Generate an iCal feed of upcoming events"""
     events = get_events()
-    return generate_ical_feed(events, SITE_NAME, TAGLINE)
+    site_name = g.site_config.get('site_name', 'DC Events')
+    tagline = g.site_config.get('tagline', 'Technology events')
+    return generate_ical_feed(events, site_name, tagline)
 
 def generate_ical_feed(filtered_events, calendar_name, calendar_description):
     """
@@ -1079,7 +1092,8 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
     group_websites = {group.get('name'): group.get('website') for group in groups if group.get('website')}
     
     cal = Calendar()
-    cal.add('prodid', f'-//{SITE_NAME}//dctech.events//')
+    site_name = g.site_config.get('site_name', 'DC Events')
+    cal.add('prodid', f'-//{site_name}//dctech.events//')
     cal.add('version', '2.0')
     cal.add('x-wr-calname', calendar_name)
     cal.add('x-wr-caldesc', calendar_description)
@@ -1185,7 +1199,8 @@ def category_ical_feed(slug):
     filtered_events = [e for e in events if slug in e.get('categories', [])]
     
     category = categories[slug]
-    calendar_name = f"{category['name']} Events - {SITE_NAME}"
+    site_name = g.site_config.get('site_name', 'DC Events')
+    calendar_name = f"{category['name']} Events - {site_name}"
     calendar_description = f"{category['name']} technology events in and around Washington, DC"
     
     return generate_ical_feed(filtered_events, calendar_name, calendar_description)
@@ -1201,7 +1216,8 @@ def location_ical_feed(state):
     filtered_events = filter_events_by_location(events, state=state)
     
     region_name = get_region_name(state)
-    calendar_name = f"{region_name} Events - {SITE_NAME}"
+    site_name = g.site_config.get('site_name', 'DC Events')
+    calendar_name = f"{region_name} Events - {site_name}"
     calendar_description = f"Technology events in {region_name}"
     
     return generate_ical_feed(filtered_events, calendar_name, calendar_description)
@@ -1242,7 +1258,7 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
             full_title = title
         
         ET.SubElement(item, 'title').text = full_title
-        link_url = url if url else BASE_URL
+        link_url = url if url else g.site_config.get('base_url', 'https://dctech.events')
         ET.SubElement(item, 'link').text = link_url
         
         desc_parts = []
@@ -1296,9 +1312,11 @@ def category_rss_feed(slug):
     filtered_events = [e for e in events if slug in e.get('categories', [])]
     
     category = categories[slug]
-    feed_title = f"{category['name']} Events - {SITE_NAME}"
+    site_name = g.site_config.get('site_name', 'DC Events')
+    base_url = g.site_config.get('base_url', 'https://dctech.events')
+    feed_title = f"{category['name']} Events - {site_name}"
     feed_description = f"Upcoming {category['name']} technology events in and around Washington, DC"
-    feed_link = f"{BASE_URL}/categories/{slug}/"
+    feed_link = f"{base_url}/categories/{slug}/"
     
     return generate_rss_feed_from_events(filtered_events, feed_title, feed_description, feed_link)
 
@@ -1313,9 +1331,11 @@ def location_rss_feed(state):
     filtered_events = filter_events_by_location(events, state=state)
     
     region_name = get_region_name(state)
-    feed_title = f"{region_name} Events - {SITE_NAME}"
+    site_name = g.site_config.get('site_name', 'DC Events')
+    base_url = g.site_config.get('base_url', 'https://dctech.events')
+    feed_title = f"{region_name} Events - {site_name}"
     feed_description = f"Upcoming technology events in {region_name}"
-    feed_link = f"{BASE_URL}/locations/{state.lower()}/"
+    feed_link = f"{base_url}/locations/{state.lower()}/"
     
     return generate_rss_feed_from_events(filtered_events, feed_title, feed_description, feed_link)
 

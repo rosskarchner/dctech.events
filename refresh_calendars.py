@@ -12,22 +12,18 @@ from pathlib import Path
 import sys
 from location_utils import extract_location_info
 import recurring_ical_events
+from site_utils import get_site_from_args, ensure_site_directories, get_config_file, get_groups_dir, get_cache_dir, get_categories_dir, get_data_dir
 
-# Load configuration
+# Global constants (will be overridden per site)
 CONFIG_FILE = 'config.yaml'
 config = {}
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f)
-
-# Initialize timezone from config
-timezone_name = config.get('timezone', 'US/Eastern')
+timezone_name = 'US/Eastern'
 local_tz = pytz.timezone(timezone_name)
 
 # User agent for HTTP requests
 USER_AGENT = 'dctech.events/1.0 (+https://dctech.events)'
 
-# Constants - data paths
+# Constants - data paths (will be overridden per site)
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
@@ -276,10 +272,38 @@ def get_groups():
                 groups.append(group)
     return groups
 
-def refresh_calendars():
+def refresh_calendars(site=None):
     """
-    Fetch all iCal files from groups.
+    Fetch all iCal files from groups for a specific site.
+    If site is None, uses globals (for backward compatibility).
     """
+    if site is not None:
+        # Set up site-specific paths
+        global CONFIG_FILE, config, timezone_name, local_tz
+        global DATA_DIR, CACHE_DIR, ICAL_CACHE_DIR, REFRESH_FLAG_FILE, GROUPS_DIR, CATEGORIES_DIR
+        
+        CONFIG_FILE = get_config_file(site)
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = yaml.safe_load(f)
+        
+        # Initialize timezone from config
+        timezone_name = config.get('timezone', 'US/Eastern')
+        local_tz = pytz.timezone(timezone_name)
+        
+        # Update path constants for this site
+        DATA_DIR = get_data_dir(site)
+        CACHE_DIR = get_cache_dir(site)
+        ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
+        REFRESH_FLAG_FILE = os.path.join(DATA_DIR, '.refreshed')
+        GROUPS_DIR = get_groups_dir(site)
+        CATEGORIES_DIR = get_categories_dir(site)
+        
+        # Ensure directories exist
+        os.makedirs(ICAL_CACHE_DIR, exist_ok=True)
+        os.makedirs(DATA_DIR, exist_ok=True)
+    
     print("Refreshing calendars...")
     groups = get_groups()
     updated = False
@@ -326,7 +350,13 @@ def generate_categories_json():
     print(f"Generated static/categories.json with {len(categories)} categories")
 
 def main():
-    refresh_calendars()
+    sites = get_site_from_args('dctech')
+    
+    for site in sites:
+        print(f"\nProcessing site: {site}")
+        ensure_site_directories(site)
+        refresh_calendars(site)
+    
     return 0
 
 if __name__ == "__main__":

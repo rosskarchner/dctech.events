@@ -14,22 +14,16 @@ import hashlib
 import requests
 from dateutil import rrule
 from location_utils import extract_location_info
+from site_utils import get_site_from_args, ensure_site_directories, get_config_file, get_groups_dir, get_single_events_dir, get_recurring_events_dir, get_categories_dir, get_event_overrides_dir, get_data_dir, get_cache_dir
 
-# Load configuration
+# Global constants (will be overridden per site in main())
 CONFIG_FILE = 'config.yaml'
 config = {}
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f)
-
-# Initialize timezone from config
-timezone_name = config.get('timezone', 'US/Eastern')
+timezone_name = 'US/Eastern'
 local_tz = pytz.timezone(timezone_name)
+ALLOWED_STATES = []
 
-# Get site-wide only_states filter (applies to iCal feeds only)
-ALLOWED_STATES = config.get('only_states', [])
-
-# Constants - data paths
+# Constants - data paths (will be overridden per site in main())
 DATA_DIR = '_data'
 CACHE_DIR = '_cache'
 ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
@@ -503,33 +497,73 @@ def process_events(groups, categories, single_events, ical_events, recurring_eve
     return unique_events
 
 def main():
-    """Load all data from files and run the event pipeline."""
-    groups = get_groups()
-    categories = get_categories()
-    single_events = load_single_events()
-    recurring_events = load_recurring_events()
-    event_overrides = load_event_overrides()
+    """Load all data from files and run the event pipeline for all specified sites."""
+    sites = get_site_from_args('dctech')
+    
+    for site in sites:
+        print(f"\nProcessing site: {site}")
+        
+        # Ensure directories exist
+        ensure_site_directories(site)
+        
+        # Load site-specific configuration
+        global CONFIG_FILE, config, timezone_name, local_tz, ALLOWED_STATES
+        global DATA_DIR, CACHE_DIR, ICAL_CACHE_DIR, GROUPS_DIR, CATEGORIES_DIR
+        global SINGLE_EVENTS_DIR, EVENT_OVERRIDES_DIR, RECURRING_EVENTS_DIR
+        
+        CONFIG_FILE = get_config_file(site)
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = yaml.safe_load(f)
+        
+        # Initialize timezone from config
+        timezone_name = config.get('timezone', 'US/Eastern')
+        local_tz = pytz.timezone(timezone_name)
+        
+        # Get site-wide only_states filter (applies to iCal feeds only)
+        ALLOWED_STATES = config.get('only_states', [])
+        
+        # Update path constants for this site
+        DATA_DIR = get_data_dir(site)
+        CACHE_DIR = get_cache_dir(site)
+        ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
+        GROUPS_DIR = get_groups_dir(site)
+        CATEGORIES_DIR = get_categories_dir(site)
+        SINGLE_EVENTS_DIR = get_single_events_dir(site)
+        EVENT_OVERRIDES_DIR = get_event_overrides_dir(site)
+        RECURRING_EVENTS_DIR = get_recurring_events_dir(site)
+        
+        # Ensure data directory exists
+        os.makedirs(DATA_DIR, exist_ok=True)
+        
+        # Process events for this site
+        groups = get_groups()
+        categories = get_categories()
+        single_events = load_single_events()
+        recurring_events = load_recurring_events()
+        event_overrides = load_event_overrides()
 
-    # Load iCal events from per-group cache files
-    ical_events = {}
-    for group in groups:
-        group_id = group['id']
-        cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.json")
-        if os.path.exists(cache_file):
-            try:
-                with open(cache_file, 'r') as f:
-                    ical_events[group_id] = json.load(f)
-            except Exception as e:
-                print(f"Error reading cache {cache_file}: {e}")
+        # Load iCal events from per-group cache files
+        ical_events = {}
+        for group in groups:
+            group_id = group['id']
+            cache_file = os.path.join(ICAL_CACHE_DIR, f"{group_id}.json")
+            if os.path.exists(cache_file):
+                try:
+                    with open(cache_file, 'r') as f:
+                        ical_events[group_id] = json.load(f)
+                except Exception as e:
+                    print(f"Error reading cache {cache_file}: {e}")
 
-    unique_events = process_events(groups, categories, single_events, ical_events, recurring_events, ALLOWED_STATES, event_overrides=event_overrides)
+        unique_events = process_events(groups, categories, single_events, ical_events, recurring_events, ALLOWED_STATES, event_overrides=event_overrides)
 
-    # Save consolidated data
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(os.path.join(DATA_DIR, 'all_events.json'), 'w') as f:
-        json.dump(unique_events, f, indent=2)
+        # Save consolidated data
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(os.path.join(DATA_DIR, 'all_events.json'), 'w') as f:
+            json.dump(unique_events, f, indent=2)
 
-    print(f"Generated data for {len(unique_events)} events")
+        print(f"Generated data for {len(unique_events)} events in {site}")
 
 if __name__ == "__main__":
     main()

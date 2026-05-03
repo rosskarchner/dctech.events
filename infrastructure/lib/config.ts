@@ -1,16 +1,67 @@
 /**
- * Stack configuration for DC Tech Events infrastructure
+ * Shared configuration across all sites
  */
-export const stackConfig = {
+export const sharedConfig = {
+  // AWS region - CloudFront requires certificates in us-east-1
+  region: 'us-east-1',
+
+  // GitHub OIDC configuration (shared across all sites)
+  github: {
+    oidcProviderUrl: 'https://token.actions.githubusercontent.com',
+    oidcClientId: 'sts.amazonaws.com',
+    oidcThumbprint: '6938fd4d98bab03faadb97b34396831e3780aea1', // GitHub's OIDC thumbprint
+    repositoryOwner: 'rosskarchner',
+    repositoryName: 'dctech.events',
+    ref: 'ref:refs/heads/main', // Only main branch
+  },
+
+  // IAM Role configuration (shared across all sites)
+  iam: {
+    roleName: 'GithubActionsDeployRole',
+    sessionName: 'github-actions-deploy',
+    sessionDuration: 3600, // 1 hour
+  },
+
+  // DynamoDB configuration (shared - single table for all sites)
+  dynamodb: {
+    tableName: 'DcTechEvents',
+    billingMode: 'PAY_PER_REQUEST',
+  },
+
+  // Tags to apply to all resources
+  tags: {
+    project: 'dctech-events',
+    environment: 'production',
+    managedBy: 'CDK',
+  },
+
+  // Chalice API configuration (legacy, used by lambda-api-stack)
+  chalice: {
+    mainApi: {
+      stageName: 'prod',
+    },
+  },
+
+  // Feature flags
+  features: {
+    enableCustomDomain: true,
+  },
+};
+
+/**
+ * DC Tech Events site configuration
+ */
+export const dctechSiteConfig = {
   // Stack metadata
   stackName: 'dctech-events',
   stackDescription: 'DC Tech Events - S3 + CloudFront + Route53 infrastructure',
+  siteId: 'dctech',
 
   // Domain configuration
   domain: 'dctech.events',
   hostedZoneId: 'Z078066931R85FQDWCM3P',
 
-  // Redirect configuration
+  // Redirect configuration (specific to dctech.events)
   redirectDomains: [
     {
       domainName: 'dctechevents.com',
@@ -19,9 +70,6 @@ export const stackConfig = {
     },
   ],
 
-  // AWS region - CloudFront requires certificates in us-east-1
-  region: 'us-east-1',
-
   // S3 bucket configuration
   s3: {
     bucketName: 'dctech-events-site-1768361440101',
@@ -29,12 +77,6 @@ export const stackConfig = {
     versioningEnabled: false,
     blockPublicAccess: true,
     encryption: true,
-  },
-
-  // DynamoDB configuration
-  dynamodb: {
-    tableName: 'DcTechEvents',
-    billingMode: 'PAY_PER_REQUEST',
   },
 
   // CloudFront configuration
@@ -55,23 +97,6 @@ export const stackConfig = {
     alternativeNames: ['*.dctech.events'],
     // Certificate is managed by CloudFormation
     existingCertificateArn: '',
-  },
-
-  // GitHub OIDC configuration
-  github: {
-    oidcProviderUrl: 'https://token.actions.githubusercontent.com',
-    oidcClientId: 'sts.amazonaws.com',
-    oidcThumbprint: '6938fd4d98bab03faadb97b34396831e3780aea1', // GitHub's OIDC thumbprint
-    repositoryOwner: 'rosskarchner',
-    repositoryName: 'dctech.events',
-    ref: 'ref:refs/heads/main', // Only main branch
-  },
-
-  // IAM Role configuration
-  iam: {
-    roleName: 'GithubActionsDeployRole',
-    sessionName: 'github-actions-deploy',
-    sessionDuration: 3600, // 1 hour
   },
 
   // Cognito configuration
@@ -128,18 +153,6 @@ export const stackConfig = {
     },
   },
 
-  // Chalice API configuration (legacy, used by lambda-api-stack)
-  chalice: {
-    mainApi: {
-      stageName: 'prod',
-    },
-  },
-
-  // Feature flags
-  features: {
-    enableCustomDomain: true,
-  },
-
   // Rebuild pipeline configuration
   rebuild: {
     queueName: 'dctech-events-rebuild.fifo',
@@ -148,11 +161,130 @@ export const stackConfig = {
     lambdaTimeoutSeconds: 900,
     lambdaMemoryMB: 1024,
   },
+};
 
-  // Tags to apply to all resources
-  tags: {
-    project: 'dctech-events',
-    environment: 'production',
-    managedBy: 'CDK',
+/**
+ * DC STEM Events site configuration
+ * (New multi-site addition)
+ */
+export const dcstemSiteConfig = {
+  // Stack metadata
+  stackName: 'dcstem-events',
+  stackDescription: 'DC STEM Events - S3 + CloudFront + Route53 infrastructure',
+  siteId: 'dcstem',
+
+  // Domain configuration
+  domain: 'dc.localstem.events',
+  hostedZoneId: '', // TODO: Replace with actual hosted zone ID for dc.localstem.events
+
+  // No redirect domains for dcstem (can be added later if needed)
+  redirectDomains: [],
+
+  // S3 bucket configuration
+  s3: {
+    bucketName: 'dcstem-events-site-1768361440101',
+    dataCacheBucketName: 'dcstem-events-data-cache',
+    versioningEnabled: false,
+    blockPublicAccess: true,
+    encryption: true,
   },
+
+  // CloudFront configuration (inherits from shared, can override)
+  cloudfront: {
+    minTTL: 0,
+    defaultTTL: 86400,
+    maxTTL: 31536000,
+    httpVersion: 'http2and3',
+    enableCompression: true,
+    redirectHttpToHttps: true,
+    // TODO: Provide WAF Web ACL ARN for dcstem (or create new one)
+    webAclId: '',
+  },
+
+  // ACM Certificate configuration
+  acm: {
+    domainName: 'dc.localstem.events',
+    alternativeNames: ['*.dc.localstem.events'],
+    // Certificate is managed by CloudFormation
+    existingCertificateArn: '',
+  },
+
+  // Cognito configuration (separate user pool for dcstem)
+  cognito: {
+    userPoolName: 'dcstem-events-users',
+    domainPrefix: 'dcstem-events',
+    customDomain: 'login.dc.localstem.events',
+    callbackUrls: [
+      'https://dc.localstem.events/edit/auth/callback.html',
+      'https://www.dc.localstem.events/edit/auth/callback.html',
+      'http://localhost:5001/auth/callback',
+    ],
+    logoutUrls: [
+      'https://dc.localstem.events/edit/',
+      'https://www.dc.localstem.events/edit/',
+      'http://localhost:5001/',
+    ],
+    ses: {
+      fromEmail: 'noreply@dc.localstem.events',
+      fromName: 'DC STEM Events',
+      replyTo: 'support@dc.localstem.events',
+    },
+    verificationEmail: {
+      subject: 'Verify your email for DC STEM Events',
+      body: 'Welcome to DC STEM Events! Your verification code is {####}.',
+    },
+  },
+
+  // Secrets Manager configuration (separate secrets for dcstem)
+  secrets: {
+    cognitoClientSecret: 'dcstem-events/cognito-client-secret',
+    microblogTokenSecret: 'dcstem-events/microblog-token',
+    githubTokenSecret: 'dcstem-events/github-token',
+  },
+
+  // Newsletter configuration (shared schedule, can customize)
+  newsletter: {
+    schedule: {
+      minute: '0',
+      hour: '12',
+      day: 'MON',
+    },
+  },
+
+  // Notification configuration
+  notifications: {
+    adminEmail: 'ross@karchner.com',
+    queueSchedule: {
+      minute: '30',
+      hour: '13',
+    },
+  },
+
+  // Rebuild pipeline configuration (separate queue for dcstem)
+  rebuild: {
+    queueName: 'dcstem-events-rebuild.fifo',
+    deduplicationWindowSeconds: 60,
+    visibilityTimeoutSeconds: 900,
+    lambdaTimeoutSeconds: 900,
+    lambdaMemoryMB: 1024,
+  },
+};
+
+/**
+ * Sites configuration - maps site IDs to their configurations
+ * This enables easy lookup and iteration across all sites
+ */
+export const sitesConfig = {
+  dctech: dctechSiteConfig,
+  dcstem: dcstemSiteConfig,
+};
+
+/**
+ * Legacy stackConfig export for backward compatibility
+ * Points to dctech configuration (the original/primary site) merged with shared config
+ * This allows existing code to continue working without changes
+ */
+export const stackConfig = {
+  ...sharedConfig,
+  ...dctechSiteConfig,
 };

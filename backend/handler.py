@@ -25,6 +25,8 @@ jinja_env = Environment(
 ALLOWED_ORIGINS = [
     'https://dctech.events',
     'https://www.dctech.events',
+    'https://dcstem.events',
+    'https://www.dcstem.events',
     'http://localhost:5000',
 ]
 

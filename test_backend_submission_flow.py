@@ -131,6 +131,7 @@ class TestBackendSubmissionFlow(unittest.TestCase):
             'description': '',
             'location': '',
             'categories': ['ai', 'cloud'],
+            'site': 'dctech',
         }, 'user@example.com', 'user-123')
 
     def test_my_submissions_json_returns_drafts(self):
