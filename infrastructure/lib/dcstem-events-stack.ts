@@ -110,6 +110,8 @@ export class DcstemEventsStack extends cdk.Stack {
             resources: [
               `arn:aws:s3:::dctech-events-*`,
               `arn:aws:s3:::dctech-events-*/*`,
+              `arn:aws:s3:::dcstem-events-*`,
+              `arn:aws:s3:::dcstem-events-*/*`,
             ],
           }),
           new iam.PolicyStatement({
