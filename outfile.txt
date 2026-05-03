@@ -1,0 +1,30 @@
+
+function handler(event) {
+  var request = event.request;
+  var headers = request.headers;
+  var host = headers.host ? headers.host.value : '';
+
+  if (host === 'www.dctech.events') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        'location': { 'value': 'https://dctech.events' + request.uri }
+      }
+    };
+  }
+
+  var uri = request.uri;
+
+  // If URI ends with '/', append 'index.html'
+  if (uri.endsWith('/')) {
+    request.uri += 'index.html';
+  }
+  // If URI has no extension, append '/index.html'
+  else if (!uri.includes('.')) {
+    request.uri += '/index.html';
+  }
+
+  return request;
+}
+      

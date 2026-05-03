@@ -63,26 +63,6 @@ def create_freezer_with_generators(app_instance, site='dctech'):
         yield {'site': site}
 
     @freezer.register_generator
-    def newsletter_html():
-        """Generate the HTML newsletter page"""
-        yield {'site': site}
-
-    @freezer.register_generator
-    def newsletter_text():
-        """Generate the text newsletter page"""
-        yield {'site': site}
-
-    @freezer.register_generator
-    def newsletter_dctech_htmx():
-        """Generate the HTMX newsletter endpoint for dctech"""
-        yield {}
-    
-    @freezer.register_generator
-    def newsletter_dcstem_htmx():
-        """Generate the HTMX newsletter endpoint for dcstem"""
-        yield {}
-
-    @freezer.register_generator
     def sitemap():
         """Generate the sitemap.xml page"""
         yield {'site': site}
@@ -90,12 +70,12 @@ def create_freezer_with_generators(app_instance, site='dctech'):
     @freezer.register_generator
     def events_json():
         """Generate the events JSON file"""
-        yield {'site': site}
+        yield {}
 
     @freezer.register_generator
     def ical_feed():
         """Generate the iCal feed"""
-        yield {'site': site}
+        yield {}
 
     @freezer.register_generator
     def category_ical_feed():
@@ -132,12 +112,16 @@ def create_freezer_with_generators(app_instance, site='dctech'):
     
     return freezer
 
-def freeze_site(site):
+def freeze_site(site, app_instance=None):
     """Freeze a specific site to its build directory"""
+    from app import app as default_app
+    if app_instance is None:
+        app_instance = default_app
+    
     output_dir = f'build/{site}'
-    app.config['FREEZER_DESTINATION'] = output_dir
-    app.config['FREEZER_RELATIVE_URLS'] = True
-    app.config['FREEZING_SITE'] = site  # Set the current freezing site globally
+    app_instance.config['FREEZER_DESTINATION'] = output_dir
+    app_instance.config['FREEZER_RELATIVE_URLS'] = True
+    app_instance.config['FREEZING_SITE'] = site  # Set the current freezing site globally
     
     print(f"\n{'='*60}")
     print(f"Freezing {site.upper()} to {output_dir}")
@@ -147,17 +131,16 @@ def freeze_site(site):
         os.makedirs('build', exist_ok=True)
         
         # Create a new app instance for this site to avoid state pollution
-        from app import app as base_app
-        from flask import Flask
+        from flask import Flask, g
         
         # Use a custom before_request handler on the base app
         # that will be active during freeze
-        with app.app_context():
+        with app_instance.app_context():
             g.site = site
             g.site_config = load_site_config(site)
             
             # Create freezer and freeze
-            freezer = create_freezer_with_generators(app, site)
+            freezer = create_freezer_with_generators(app_instance, site)
             freezer.freeze()
         
         print(f"✅ Successfully generated {site} to {output_dir}")
@@ -169,8 +152,8 @@ def freeze_site(site):
         return False
     finally:
         # Clean up the freezing flag
-        if 'FREEZING_SITE' in app.config:
-            del app.config['FREEZING_SITE']
+        if 'FREEZING_SITE' in app_instance.config:
+            del app_instance.config['FREEZING_SITE']
 
 if __name__ == '__main__':
     # Parse arguments directly
@@ -199,7 +182,8 @@ if __name__ == '__main__':
             import app as app_module
             importlib.reload(app_module)
             
-            results[site_name] = freeze_site(site_name)
+            # Pass the reloaded app instance
+            results[site_name] = freeze_site(site_name, app_module.app)
         
         print(f"\n{'='*60}")
         print("RESULTS:")

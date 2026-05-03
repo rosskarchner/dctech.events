@@ -144,7 +144,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                     return json.load(f)
             return None
 
-        calendar = icalendar.Calendar.from_ical(response.text)
+        calendar = icalendar.Calendar.from_ical(response.content)
         
         # Extract group name from calendar if not provided
         group_name = group.get('name') if group else group_id

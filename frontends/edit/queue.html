@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pending Submissions - DC Tech Events Admin</title>
+  <title id="page-title">Pending Submissions - DC Tech Events Admin</title>
   <link rel="stylesheet" href="/edit/css/styles.css">
   <script src="/edit/js/config.js"></script>
   <script src="/edit/js/auth.js"></script>
@@ -12,7 +12,7 @@
     <nav class="nav">
     <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="index.html" class="nav-brand">DC Tech Events Edit</a>
+        <a href="index.html" class="nav-brand" id="nav-brand">DC Tech Events Edit</a>
         <ul class="nav-links" data-auth="admin">
           <li><a href="queue.html">Queue</a></li>
         </ul>
@@ -47,6 +47,18 @@
   </main>
 
   <script src="/edit/js/queue.js"></script>
-  <script>DctechQueuePage.init();</script>
+  <script>
+    function updateSiteBranding() {
+      const host = window.location.hostname;
+      const onStemSite = host === 'dc.localstem.events' || host === 'www.dc.localstem.events';
+      
+      if (onStemSite) {
+        document.getElementById('page-title').textContent = 'Pending Submissions - DC STEM Events Admin';
+        document.getElementById('nav-brand').textContent = 'DC STEM Events Edit';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', updateSiteBranding);
+    DctechQueuePage.init();
+  </script>
 </body>
 </html>

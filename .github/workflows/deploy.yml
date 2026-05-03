@@ -178,6 +178,7 @@ jobs:
       - name: Deploy dcstem to S3
         run: |
           aws s3 sync build/dcstem/ s3://dcstem-events-site/ --delete
+          aws s3 sync frontends/edit/ s3://dcstem-events-site/edit/ --delete
           aws s3 sync _data/dcstem/ s3://dcstem-events-site/_data/ --delete
 
       - name: Sync Cache to S3

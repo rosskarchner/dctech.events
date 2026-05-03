@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Submit a Group - DC Tech Events</title>
+  <title id="page-title">Submit a Group - DC Tech Events</title>
   <link rel="stylesheet" href="/edit/css/styles.css">
   <link rel="stylesheet" href="/edit/css/front-suggest.css">
   <style>
@@ -18,7 +18,7 @@
   <nav class="nav">
     <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px; padding: 0.5rem 1rem;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="index.html" class="nav-brand" style="font-weight: bold; text-decoration: none; color: inherit;">DC Tech Events Edit</a>
+        <a href="index.html" class="nav-brand" id="nav-brand" style="font-weight: bold; text-decoration: none; color: inherit;">DC Tech Events Edit</a>
         <ul class="nav-links" data-auth="admin" style="display:flex; list-style: none; gap: 1rem; margin: 0; padding: 0;">
           <li><a href="queue.html">Queue</a></li>
         </ul>
@@ -33,8 +33,8 @@
   </nav>
 
   <main class="container">
-    <h2>Submit a Group to DC Tech Events</h2>
-    <p>To submit a group, you'll need to sign in. This allows us to add your group to the calendar.</p>
+    <h2 id="page-h2">Submit a Group to DC Tech Events</h2>
+    <p id="page-subtitle">To submit a group, you'll need to sign in. This allows us to add your group to the calendar.</p>
 
     <div id="auth-section">
       <div class="auth-status" id="auth-status" data-auth="logged-out">
@@ -97,6 +97,20 @@
   <script src="/edit/js/config.js"></script>
   <script src="/edit/js/auth.js"></script>
   <script src="/edit/js/submission.js"></script>
-  <script>DctechSubmissionPage.init();</script>
+  <script>
+    function updateSiteBranding() {
+      const host = window.location.hostname;
+      const onStemSite = host === 'dc.localstem.events' || host === 'www.dc.localstem.events';
+      
+      if (onStemSite) {
+        document.getElementById('page-title').textContent = 'Submit a Group - DC STEM Events';
+        document.getElementById('nav-brand').textContent = 'DC STEM Events Edit';
+        document.getElementById('page-h2').textContent = 'Submit a Group to DC STEM Events';
+        document.getElementById('page-subtitle').textContent = 'To submit a group, you\'ll need to sign in. This allows us to add your group to the calendar.';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', updateSiteBranding);
+    DctechSubmissionPage.init();
+  </script>
 </body>
 </html>

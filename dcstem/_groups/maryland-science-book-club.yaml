@@ -1,0 +1,10 @@
+name: Maryland Science Book Club
+active: true
+website: https://www.meetup.com/maryland-science-book-club/
+ical: https://www.meetup.com/maryland-science-book-club/events/ical/
+categories:
+  - Science
+  - Books
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: true

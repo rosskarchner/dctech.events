@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Edit - DC Tech Events</title>
+  <title id="page-title">Edit - DC Tech Events</title>
   <link rel="stylesheet" href="/edit/css/styles.css">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <script src="/edit/js/config.js"></script>
@@ -12,7 +12,7 @@
 <body>
   <nav class="nav">
     <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
-      <a href="index.html" class="nav-brand">DC Tech Events Edit</a>
+      <a href="index.html" class="nav-brand" id="nav-brand">DC Tech Events Edit</a>
       <div class="nav-right">
         <span data-auth="logged-in" class="hidden">
           <span id="user-info" data-user="name"></span>
@@ -29,8 +29,8 @@
     <!-- Logged-out view -->
     <div data-auth="logged-out">
       <div class="hero">
-        <h1>Welcome to DC Tech Events</h1>
-        <p>Submit and manage tech events in the DC area.</p>
+        <h1 id="hero-title">Welcome to DC Tech Events</h1>
+        <p id="hero-subtitle">Submit and manage tech events in the DC area.</p>
         <button class="btn btn-primary" onclick="DctechAuth.login()">Sign in to get started</button>
       </div>
     </div>
@@ -45,11 +45,11 @@
         <!-- Public Submission Actions -->
         <a class="card" href="submit-event.html" style="text-decoration: none; color: inherit;">
           <div class="card-header">Submit an Event</div>
-          <p>Add a new tech event happening in the DC area.</p>
+          <p id="submit-event-desc">Add a new tech event happening in the DC area.</p>
         </a>
         <a class="card" href="submit-group.html" style="text-decoration: none; color: inherit;">
           <div class="card-header">Submit a Group</div>
-          <p>Add a new tech group or organization.</p>
+          <p id="submit-group-desc">Add a new tech group or organization.</p>
         </a>
         <a class="card" href="my-submissions.html" style="text-decoration: none; color: inherit;">
           <div class="card-header">My Submissions</div>
@@ -96,5 +96,25 @@
       transition: all 0.2s ease;
     }
   </style>
+
+  <script>
+    // Update titles and descriptions based on site
+    function updateSiteBranding() {
+      const host = window.location.hostname;
+      const onStemSite = host === 'dc.localstem.events' || host === 'www.dc.localstem.events';
+      
+      if (onStemSite) {
+        document.getElementById('page-title').textContent = 'Edit - DC STEM Events';
+        document.getElementById('nav-brand').textContent = 'DC STEM Events Edit';
+        document.getElementById('hero-title').textContent = 'Welcome to DC STEM Events';
+        document.getElementById('hero-subtitle').textContent = 'Submit and manage STEM events in the DC area.';
+        document.getElementById('submit-event-desc').textContent = 'Add a new STEM event happening in the DC area.';
+        document.getElementById('submit-group-desc').textContent = 'Add a new STEM group or organization.';
+      }
+    }
+    
+    // Update on page load
+    document.addEventListener('DOMContentLoaded', updateSiteBranding);
+  </script>
 </body>
 </html>

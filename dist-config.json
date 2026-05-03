@@ -1,0 +1,135 @@
+{
+    "ETag": "E2EUQ1WTGCTBG2",
+    "DistributionConfig": {
+        "CallerReference": "dcstem-1777817496",
+        "Aliases": {
+            "Quantity": 2,
+            "Items": [
+                "*.dc.localstem.events",
+                "dc.localstem.events"
+            ]
+        },
+        "DefaultRootObject": "index.html",
+        "Origins": {
+            "Quantity": 1,
+            "Items": [
+                {
+                    "Id": "dcstem-s3-origin",
+                    "DomainName": "dcstem-events-site.s3.us-east-1.amazonaws.com",
+                    "OriginPath": "",
+                    "CustomHeaders": {
+                        "Quantity": 0
+                    },
+                    "S3OriginConfig": {
+                        "OriginAccessIdentity": "",
+                        "OriginReadTimeout": 30
+                    },
+                    "ConnectionAttempts": 3,
+                    "ConnectionTimeout": 10,
+                    "OriginShield": {
+                        "Enabled": false
+                    },
+                    "OriginAccessControlId": "E253PT9KJ3ZOSG"
+                }
+            ]
+        },
+        "OriginGroups": {
+            "Quantity": 0
+        },
+        "DefaultCacheBehavior": {
+            "TargetOriginId": "dcstem-s3-origin",
+            "TrustedSigners": {
+                "Enabled": false,
+                "Quantity": 0
+            },
+            "TrustedKeyGroups": {
+                "Enabled": false,
+                "Quantity": 0
+            },
+            "ViewerProtocolPolicy": "allow-all",
+            "AllowedMethods": {
+                "Quantity": 2,
+                "Items": [
+                    "HEAD",
+                    "GET"
+                ],
+                "CachedMethods": {
+                    "Quantity": 2,
+                    "Items": [
+                        "HEAD",
+                        "GET"
+                    ]
+                }
+            },
+            "SmoothStreaming": false,
+            "Compress": false,
+            "LambdaFunctionAssociations": {
+                "Quantity": 0
+            },
+            "FunctionAssociations": {
+                "Quantity": 0
+            },
+            "FieldLevelEncryptionId": "",
+            "GrpcConfig": {
+                "Enabled": false
+            },
+            "ForwardedValues": {
+                "QueryString": false,
+                "Cookies": {
+                    "Forward": "none"
+                },
+                "Headers": {
+                    "Quantity": 0
+                },
+                "QueryStringCacheKeys": {
+                    "Quantity": 0
+                }
+            },
+            "MinTTL": 0,
+            "DefaultTTL": 86400,
+            "MaxTTL": 31536000
+        },
+        "CacheBehaviors": {
+            "Quantity": 0
+        },
+        "CustomErrorResponses": {
+            "Quantity": 1,
+            "Items": [
+                {
+                    "ErrorCode": 403,
+                    "ResponsePagePath": "/404.html",
+                    "ResponseCode": "404",
+                    "ErrorCachingMinTTL": 300
+                }
+            ]
+        },
+        "Comment": "DC STEM Events Distribution",
+        "Logging": {
+            "Enabled": false,
+            "IncludeCookies": false,
+            "Bucket": "",
+            "Prefix": ""
+        },
+        "PriceClass": "PriceClass_All",
+        "Enabled": true,
+        "ViewerCertificate": {
+            "CloudFrontDefaultCertificate": false,
+            "ACMCertificateArn": "arn:aws:acm:us-east-1:797438674243:certificate/501fb6ea-ce98-4d7a-bb31-6ae7001244ec",
+            "SSLSupportMethod": "sni-only",
+            "MinimumProtocolVersion": "TLSv1.2_2021",
+            "Certificate": "arn:aws:acm:us-east-1:797438674243:certificate/501fb6ea-ce98-4d7a-bb31-6ae7001244ec",
+            "CertificateSource": "acm"
+        },
+        "Restrictions": {
+            "GeoRestriction": {
+                "RestrictionType": "none",
+                "Quantity": 0
+            }
+        },
+        "WebACLId": "",
+        "HttpVersion": "http2",
+        "IsIPV6Enabled": true,
+        "ContinuousDeploymentPolicyId": "",
+        "Staging": false
+    }
+}

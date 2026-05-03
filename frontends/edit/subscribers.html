@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Newsletter Subscribers - DC Tech Events Admin</title>
+  <title id="page-title">Newsletter Subscribers - DC Tech Events Admin</title>
   <link rel="stylesheet" href="/edit/css/styles.css">
   <script src="/edit/js/config.js"></script>
   <script src="/edit/js/auth.js"></script>
@@ -61,7 +61,7 @@
   <nav class="nav">
     <div class="container" style="display:flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1100px;">
       <div style="display:flex; align-items: center; gap: 2rem;">
-        <a href="index.html" class="nav-brand">DC Tech Events Edit</a>
+        <a href="index.html" class="nav-brand" id="nav-brand">DC Tech Events Edit</a>
         <ul class="nav-links" data-auth="admin" style="display:flex; list-style: none; gap: 1rem; margin: 0; padding: 0;">
           <li><a href="queue.html">Queue</a></li>
           <li><a href="subscribers.html" style="font-weight: bold;">Subscribers</a></li>
@@ -105,6 +105,18 @@
   </main>
 
   <script src="/edit/js/subscribers.js"></script>
-  <script>DctechSubscribersPage.init();</script>
+  <script>
+    function updateSiteBranding() {
+      const host = window.location.hostname;
+      const onStemSite = host === 'dc.localstem.events' || host === 'www.dc.localstem.events';
+      
+      if (onStemSite) {
+        document.getElementById('page-title').textContent = 'Newsletter Subscribers - DC STEM Events Admin';
+        document.getElementById('nav-brand').textContent = 'DC STEM Events Edit';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', updateSiteBranding);
+    DctechSubscribersPage.init();
+  </script>
 </body>
 </html>

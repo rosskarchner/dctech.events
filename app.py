@@ -109,7 +109,7 @@ def inject_config():
         'tagline': site_config.get('tagline', 'Technology conferences and meetups in and around Washington, DC'),
         'base_url': site_config.get('base_url', 'https://dctech.events'),
         'add_events_link': site_config.get('add_events_link', 'https://add.dctech.events'),
-        'newsletter_signup_link': f"/{site}",
+        'newsletter_signup_link': f"https://k8w5eowyyb.execute-api.us-east-1.amazonaws.com/api/{site}",
         'sponsors': load_sponsors(),
         'categories': get_categories()
     }
@@ -161,15 +161,22 @@ def get_events(include_hidden=False, site=None):
         print(f"Error loading events from {events_file}: {e}")
         return []
 
-def get_approved_groups():
+def get_approved_groups(site=None):
     """
-    Get all groups from _groups/*.yaml files.
+    Get all groups from {site}/_groups/*.yaml files.
+
+    Args:
+        site: Site to get groups for. If None, uses current site from request context.
 
     Returns:
         A list of group dictionaries
     """
+    from flask import g
+    if site is None:
+        site = safe_get_site()
+    
     groups = []
-    groups_dir = '_groups'
+    groups_dir = get_groups_dir(site)
     if not os.path.exists(groups_dir):
         return groups
         
@@ -466,14 +473,20 @@ def prepare_events_by_day(events, add_week_links=False):
 
     return days_data
 
-def get_stats():
+def get_stats(site=None):
     """
     Load statistics from stats.yaml
+    
+    Args:
+        site: Site to get stats for. If None, uses current site from request context.
     
     Returns:
         Dictionary containing stats, or empty dict if file doesn't exist
     """
-    stats_file = os.path.join(DATA_DIR, 'stats.yaml')
+    if site is None:
+        site = safe_get_site()
+    data_dir = get_site_data_dir(site)
+    stats_file = os.path.join(data_dir, 'stats.yaml')
     if not os.path.exists(stats_file):
         return {}
     
@@ -939,16 +952,6 @@ def newsletter_text():
                              categories_with_counts=categories_with_counts)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
-@app.route("/dctech")
-def newsletter_dctech_htmx():
-    """HTMX endpoint for DC Tech newsletter signup"""
-    return render_template('newsletter-signup-htmx.html', site='dctech')
-
-@app.route("/dcstem")
-def newsletter_dcstem_htmx():
-    """HTMX endpoint for DC STEM newsletter signup"""
-    return render_template('newsletter-signup-htmx.html', site='dcstem')
-
 @app.route("/locations/<state>/")
 def region_page(state):
     """Show events for a specific state/region"""
@@ -1086,7 +1089,9 @@ def sitemap():
 @app.route("/events.json")
 def events_json():
     """Serve events data as JSON for client-side use"""
-    events_json_file = os.path.join(DATA_DIR, 'events.json')
+    site = safe_get_site()
+    data_dir = get_site_data_dir(site)
+    events_json_file = os.path.join(data_dir, 'events.json')
     if os.path.exists(events_json_file):
         with open(events_json_file, 'r', encoding='utf-8') as f:
             return Response(f.read(), mimetype='application/json')
