@@ -1,8 +1,9 @@
-name: Daily Social Posting
+name: Daily Social Posting (DISABLED)
 
 on:
-  schedule:
-    - cron: '0 13 * * *' # 13:00 UTC is 8:00 AM or 9:00 AM EST depending on DST
+  # Disabled temporarily during multi-site implementation
+  # schedule:
+  #   - cron: '0 13 * * *' # 13:00 UTC is 8:00 AM or 9:00 AM EST depending on DST
   workflow_dispatch:
 
 permissions:
