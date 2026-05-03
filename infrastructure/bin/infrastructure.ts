@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
 import { DctechEventsStack } from '../lib/dctech-events-stack';
+import { DcstemEventsStack } from '../lib/dcstem-events-stack';
 import { DynamoDBStack } from '../lib/dynamodb-stack';
 import { CognitoStack } from '../lib/cognito-stack';
 import { SecretsStack } from '../lib/secrets-stack';
 import { LambdaApiStack } from '../lib/lambda-api-stack';
 import { FrontendStack } from '../lib/frontend-stack';
 import { RedirectStack } from '../lib/redirect-stack';
-import { stackConfig } from '../lib/config';
+import { stackConfig, dcstemStackConfig } from '../lib/config';
 
 const app = new cdk.App();
 const env = { region: stackConfig.region };
@@ -15,6 +16,12 @@ const env = { region: stackConfig.region };
 // Existing main stack (S3, CloudFront, Route53, DcTechEvents table, GitHub OIDC)
 const mainStack = new DctechEventsStack(app, stackConfig.stackName, {
   description: stackConfig.stackDescription,
+  env,
+});
+
+// New DC STEM Events stack (S3, CloudFront, Route53 - shares backend with dctech)
+const dcstemStack = new DcstemEventsStack(app, dcstemStackConfig.stackName, {
+  description: dcstemStackConfig.stackDescription,
   env,
 });
 

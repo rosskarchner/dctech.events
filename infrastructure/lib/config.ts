@@ -288,3 +288,11 @@ export const stackConfig = {
   ...sharedConfig,
   ...dctechSiteConfig,
 };
+
+/**
+ * DC STEM Events site stack config (merged with shared config)
+ */
+export const dcstemStackConfig = {
+  ...sharedConfig,
+  ...dcstemSiteConfig,
+};

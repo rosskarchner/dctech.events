@@ -17,6 +17,10 @@ import db_utils  # Legacy — being phased out
 
 def get_current_site():
     """Detect current site from hostname or request parameter."""
+    # Check if we're freezing a specific site (during static generation)
+    if app.config.get('FREEZING_SITE'):
+        return app.config['FREEZING_SITE']
+    
     # Check for explicit site parameter in query string
     site = request.args.get('site', None)
     if site and site in ['dctech', 'dcstem']:

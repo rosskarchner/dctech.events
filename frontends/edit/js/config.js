@@ -1,9 +1,10 @@
 (function() {
   const EXECUTE_API_BASE = 'https://j62p8vusa3.execute-api.us-east-1.amazonaws.com/prod';
   const host = window.location.hostname;
-  const onMainSite = host === 'dctech.events' || host === 'www.dctech.events';
-  const appBasePath = onMainSite ? '/edit/' : '/';
-  const apiBaseUrl = onMainSite ? EXECUTE_API_BASE : '';
+  const onMainDctechSite = host === 'dctech.events' || host === 'www.dctech.events';
+  const onMainStemSite = host === 'dc.localstem.events' || host === 'www.dc.localstem.events';
+  const appBasePath = (onMainDctechSite || onMainStemSite) ? '/edit/' : '/';
+  const apiBaseUrl = (onMainDctechSite || onMainStemSite) ? EXECUTE_API_BASE : '';
 
   function ensureLeadingSlash(path) {
     return path.startsWith('/') ? path : `/${path}`;

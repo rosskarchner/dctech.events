@@ -10,7 +10,7 @@ from app import app
 from app import local_tz, get_events, get_upcoming_weeks, get_categories, get_upcoming_months
 from site_utils import load_site_config
 
-def create_freezer_with_generators(app_instance):
+def create_freezer_with_generators(app_instance, site='dctech'):
     """Create a freezer with all route generators registered"""
     freezer = Freezer(app_instance)
     
@@ -19,106 +19,106 @@ def create_freezer_with_generators(app_instance):
         """Generate URLs for month pages"""
         months = get_upcoming_months()
         for month_data in months:
-            yield {'year': month_data['year'], 'month': month_data['month']}
+            yield {'site': site, 'year': month_data['year'], 'month': month_data['month']}
 
     @freezer.register_generator
     def region_page():
         """Generate URLs for region pages"""
-        yield {'state': 'dc'}
-        yield {'state': 'va'}
-        yield {'state': 'md'}
+        yield {'site': site, 'state': 'dc'}
+        yield {'site': site, 'state': 'va'}
+        yield {'site': site, 'state': 'md'}
 
     @freezer.register_generator
     def week_page():
         """Generate URLs for week pages"""
         # Generate pages for 12 weeks ahead
         for week_id in get_upcoming_weeks(12):
-            yield {'week_id': week_id}
+            yield {'site': site, 'week_id': week_id}
 
     @freezer.register_generator
     def locations_index():
         """Generate the locations index page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def approved_groups_list():
         """Generate the groups page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def virtual_events_page():
         """Generate the virtual events page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def category_page():
         """Generate URLs for individual category pages"""
         categories = get_categories()
         for slug in categories.keys():
-            yield {'slug': slug}
+            yield {'site': site, 'slug': slug}
 
     @freezer.register_generator
     def feeds_page():
         """Generate the feeds listing page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def newsletter_html():
         """Generate the HTML newsletter page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def newsletter_text():
         """Generate the text newsletter page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def sitemap():
         """Generate the sitemap.xml page"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def events_json():
         """Generate the events JSON file"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def ical_feed():
         """Generate the iCal feed"""
-        yield {}
+        yield {'site': site}
 
     @freezer.register_generator
     def category_ical_feed():
         """Generate iCal feeds for each category"""
         categories = get_categories()
         for slug in categories.keys():
-            yield {'slug': slug}
+            yield {'site': site, 'slug': slug}
 
     @freezer.register_generator
     def location_ical_feed():
         """Generate iCal feeds for each location"""
-        yield {'state': 'dc'}
-        yield {'state': 'va'}
-        yield {'state': 'md'}
+        yield {'site': site, 'state': 'dc'}
+        yield {'site': site, 'state': 'va'}
+        yield {'site': site, 'state': 'md'}
 
     @freezer.register_generator
     def category_rss_feed():
         """Generate RSS feeds for each category"""
         categories = get_categories()
         for slug in categories.keys():
-            yield {'slug': slug}
+            yield {'site': site, 'slug': slug}
 
     @freezer.register_generator
     def location_rss_feed():
         """Generate RSS feeds for each location"""
-        yield {'state': 'dc'}
-        yield {'state': 'va'}
-        yield {'state': 'md'}
+        yield {'site': site, 'state': 'dc'}
+        yield {'site': site, 'state': 'va'}
+        yield {'site': site, 'state': 'md'}
 
     @freezer.register_generator
     def not_found_page():
         """Generate the 404 error page"""
-        yield {}
+        yield {'site': site}
     
     return freezer
 
@@ -127,6 +127,7 @@ def freeze_site(site):
     output_dir = f'build/{site}'
     app.config['FREEZER_DESTINATION'] = output_dir
     app.config['FREEZER_RELATIVE_URLS'] = True
+    app.config['FREEZING_SITE'] = site  # Set the current freezing site globally
     
     print(f"\n{'='*60}")
     print(f"Freezing {site.upper()} to {output_dir}")
@@ -146,7 +147,7 @@ def freeze_site(site):
             g.site_config = load_site_config(site)
             
             # Create freezer and freeze
-            freezer = create_freezer_with_generators(app)
+            freezer = create_freezer_with_generators(app, site)
             freezer.freeze()
         
         print(f"✅ Successfully generated {site} to {output_dir}")
@@ -156,6 +157,10 @@ def freeze_site(site):
         import traceback
         traceback.print_exc()
         return False
+    finally:
+        # Clean up the freezing flag
+        if 'FREEZING_SITE' in app.config:
+            del app.config['FREEZING_SITE']
 
 if __name__ == '__main__':
     # Parse arguments directly

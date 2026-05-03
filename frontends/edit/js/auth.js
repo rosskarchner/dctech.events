@@ -20,22 +20,39 @@ const EDIT_CONFIG = window.DctechEditConfig || {
   },
 };
 
-const AUTH_CONFIG = {
+// Detect which site we're on based on hostname
+const host = window.location.hostname;
+const isStemSite = host.includes('localstem.events');
+const isDctechSite = host.includes('dctech.events') || (!isStemSite && host === 'localhost');
+
+// Site-specific config
+const siteConfig = isStemSite ? {
+  userPoolClientId: '58j1h73i72v1kaim503bk2amgb', // Shared client for MVP
+  cognitoDomain: 'https://login.dctech.events', // TODO: Use separate domain for dcstem once Cognito is set up
+  site: 'dcstem'
+} : {
   userPoolClientId: '58j1h73i72v1kaim503bk2amgb',
   cognitoDomain: 'https://login.dctech.events',
+  site: 'dctech'
+};
+
+const AUTH_CONFIG = {
+  userPoolClientId: siteConfig.userPoolClientId,
+  cognitoDomain: siteConfig.cognitoDomain,
   redirectUri: window.location.origin + EDIT_CONFIG.authCallbackPath,
   logoutUri: window.location.origin + EDIT_CONFIG.appHomePath,
   scopes: 'email openid profile',
   apiPaths: ['/api/', '/admin/', '/submit', '/my-submissions', '/health'],
-  adminGroup: 'admins'
+  adminGroup: 'admins',
+  site: siteConfig.site
 };
 
 const TOKEN_KEYS = {
-  accessToken: 'dctech_access_token',
-  idToken: 'dctech_id_token',
-  refreshToken: 'dctech_refresh_token',
-  tokenExpiry: 'dctech_token_expiry',
-  userInfo: 'dctech_user_info',
+  accessToken: `${AUTH_CONFIG.site}_access_token`,
+  idToken: `${AUTH_CONFIG.site}_id_token`,
+  refreshToken: `${AUTH_CONFIG.site}_refresh_token`,
+  tokenExpiry: `${AUTH_CONFIG.site}_token_expiry`,
+  userInfo: `${AUTH_CONFIG.site}_user_info`,
 };
 
 // ---- Token Storage ----
