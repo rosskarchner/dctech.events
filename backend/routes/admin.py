@@ -142,12 +142,14 @@ def approve_draft(event, jinja_env, draft_id):
     # Best-effort: commit YAML to GitHub repo
     commit_url = None
     try:
+        # Extract site from draft data, default to 'dctech'
+        site = merged.get('site', 'dctech')
         if draft_type == 'group':
             from github_commit import commit_group_to_repo
-            commit_url = commit_group_to_repo(merged)
+            commit_url = commit_group_to_repo(merged, site=site)
         else:
             from github_commit import commit_event_to_repo
-            commit_url = commit_event_to_repo(merged)
+            commit_url = commit_event_to_repo(merged, site=site)
     except Exception as e:
         print(f"WARNING: GitHub commit failed (non-blocking): {e}")
 
@@ -212,12 +214,14 @@ def approve_draft_json(event, jinja_env, draft_id):
 
     commit_url = None
     try:
+        # Extract site from draft data, default to 'dctech'
+        site = merged.get('site', 'dctech')
         if draft_type == 'group':
             from github_commit import commit_group_to_repo
-            commit_url = commit_group_to_repo(merged)
+            commit_url = commit_group_to_repo(merged, site=site)
         else:
             from github_commit import commit_event_to_repo
-            commit_url = commit_event_to_repo(merged)
+            commit_url = commit_event_to_repo(merged, site=site)
     except Exception as e:
         print(f"WARNING: GitHub commit failed (non-blocking): {e}")
 

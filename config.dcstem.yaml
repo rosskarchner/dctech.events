@@ -1,0 +1,28 @@
+# DC STEM Events Configuration
+
+# Site name
+site_name: "DC STEM Events"
+tagline: Science, technology, engineering, and math events in the DC area
+base_url: https://dc.localstem.events
+add_events_link: https://add.dctech.events/dcstem
+data_dir: dcstem
+
+# Timezone for event display and processing
+timezone: "US/Eastern"
+
+location: "Washington, DC"
+max_distance_miles: 50
+
+# Geographic filtering for events (applies to iCal feeds only)
+# Only events in these states will be included
+only_states: [DC, MD, VA]
+
+# GitHub OAuth Configuration (for event submission)
+github_client_id: ""  # Set via GITHUB_CLIENT_ID environment variable
+oauth_callback_endpoint: "https://add.dctech.events/oauth/callback"
+
+# GitHub Sponsors Configuration
+github_sponsors_token: ""  # Set via GITHUB_SPONSORS_TOKEN environment variable
+
+# DynamoDB Configuration
+dynamodb_table: "DcTechEvents"

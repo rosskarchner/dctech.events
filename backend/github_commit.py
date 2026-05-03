@@ -133,19 +133,19 @@ GROUP_FIELDS = [
 ]
 
 
-def commit_event_to_repo(event_data):
-    """Commit an approved event as a YAML file to _single_events/."""
+def commit_event_to_repo(event_data, site='dctech'):
+    """Commit an approved event as a YAML file to {site}/_single_events/."""
     date = event_data.get('date', 'unknown')
     title = event_data.get('title', 'event')
     slug = _slugify(title)
-    file_path = f'_single_events/{date}-{slug}.yaml'
+    file_path = f'{site}/_single_events/{date}-{slug}.yaml'
     yaml_content = _to_yaml(EVENT_FIELDS, event_data)
     message = f"Add event: {event_data.get('title', 'new event')}"
     return _commit_file(file_path, yaml_content, message)
 
 
-def commit_group_to_repo(group_data):
-    """Commit an approved group as a YAML file to _groups/."""
+def commit_group_to_repo(group_data, site='dctech'):
+    """Commit an approved group as a YAML file to {site}/_groups/."""
     name = group_data.get('name', 'group')
     slug = _slugify(name)
     # Ensure active defaults to true for new groups
@@ -153,7 +153,7 @@ def commit_group_to_repo(group_data):
     # Map ical_url field to ical (form uses ical_url, YAML uses ical)
     if 'ical_url' in data and 'ical' not in data:
         data['ical'] = data.pop('ical_url')
-    file_path = f'_groups/{slug}.yaml'
+    file_path = f'{site}/_groups/{slug}.yaml'
     yaml_content = _to_yaml(GROUP_FIELDS, data)
     message = f"Add group: {name}"
     return _commit_file(file_path, yaml_content, message)

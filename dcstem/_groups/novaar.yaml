@@ -1,0 +1,16 @@
+name: NoVaAR (Northern Virginia Association of Rocketry)
+short_name: NoVaAR
+description: The Northern Virginia Association of Rocketry (NoVaAR) is a club dedicated to model rocketry and STEM education in the Northern Virginia area.
+website: https://novaar.org/
+social_media:
+  - platform: facebook
+    url: https://www.facebook.com/novaar.org
+categories:
+  - stem
+  - rocketry
+  - robotics
+# Note: NoVaAR calendar at https://novaar.org/drupal10/calendar_event/ does not expose a public iCal feed
+# To request iCal feed access: contact via their website or Facebook
+ical_url: null
+confirmed: true
+submitted_by: copilot
