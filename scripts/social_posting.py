@@ -238,7 +238,7 @@ def post_to_microblog(content, token):
         return False
 
 def main():
-    print("Starting daily event summary (multi-site)...")
+    print("Starting daily event summary (dctech only)...")
     
     token = os.environ.get('MICROBLOG_TOKEN')
     if not token:
@@ -248,32 +248,34 @@ def main():
     target_date = datetime.now(local_tz).date()
     print(f"Checking events for {target_date}...")
     
-    # Load events from all sites
+    # Load events from dctech only (dcstem posts are disabled)
     events_by_site = {}
-    for site_name, site_config in SITES.items():
-        events_file = site_config['data_file']
-        if not os.path.exists(events_file):
-            print(f"Warning: {events_file} not found, skipping {site_name}")
-            continue
-        
-        with open(events_file, 'r') as f:
-            all_events = json.load(f)
-        
-        # Filter out hidden and duplicate events
-        all_events = [e for e in all_events if not e.get('hidden') and not e.get('duplicate_of')]
-        
-        events = get_events_for_date(all_events, target_date)
-        in_person_events = [e for e in events if not is_virtual_event(e)]
-        
-        if in_person_events:
-            events_by_site[site_name] = in_person_events
-            print(f"Found {len(in_person_events)} in-person events for {site_name}")
+    site_name = 'dctech'
+    site_config = SITES['dctech']
+    events_file = site_config['data_file']
+    
+    if not os.path.exists(events_file):
+        print(f"Warning: {events_file} not found, skipping posting")
+        return
+    
+    with open(events_file, 'r') as f:
+        all_events = json.load(f)
+    
+    # Filter out hidden and duplicate events
+    all_events = [e for e in all_events if not e.get('hidden') and not e.get('duplicate_of')]
+    
+    events = get_events_for_date(all_events, target_date)
+    in_person_events = [e for e in events if not is_virtual_event(e)]
+    
+    if in_person_events:
+        events_by_site[site_name] = in_person_events
+        print(f"Found {len(in_person_events)} in-person events for {site_name}")
     
     if not events_by_site or not any(events_by_site.values()):
         print(f"No in-person events for {target_date}. Skipping.")
         return
 
-    post_text = create_post_text(events_by_site, target_date)
+    post_text = create_post_text(events_by_site[site_name], target_date)
     if not post_text:
         print("Could not generate post text")
         return
