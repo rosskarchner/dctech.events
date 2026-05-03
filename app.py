@@ -63,6 +63,10 @@ def setup_site_context():
 
 def safe_get_site(default='dctech'):
     """Safely get the current site from Flask g, with fallback for when outside request context."""
+    # Check if we're freezing a specific site (during static generation)
+    if app.config.get('FREEZING_SITE'):
+        return app.config['FREEZING_SITE']
+    
     try:
         from flask import g
         return g.site if hasattr(g, 'site') else default
@@ -105,7 +109,7 @@ def inject_config():
         'tagline': site_config.get('tagline', 'Technology conferences and meetups in and around Washington, DC'),
         'base_url': site_config.get('base_url', 'https://dctech.events'),
         'add_events_link': site_config.get('add_events_link', 'https://add.dctech.events'),
-        'newsletter_signup_link': site_config.get('newsletter_signup_link', 'https://newsletter.dctech.events'),
+        'newsletter_signup_link': f"/{site}",
         'sponsors': load_sponsors(),
         'categories': get_categories()
     }
@@ -934,6 +938,16 @@ def newsletter_text():
                              upcoming_months=upcoming_months,
                              categories_with_counts=categories_with_counts)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+
+@app.route("/dctech")
+def newsletter_dctech_htmx():
+    """HTMX endpoint for DC Tech newsletter signup"""
+    return render_template('newsletter-signup-htmx.html', site='dctech')
+
+@app.route("/dcstem")
+def newsletter_dcstem_htmx():
+    """HTMX endpoint for DC STEM newsletter signup"""
+    return render_template('newsletter-signup-htmx.html', site='dcstem')
 
 @app.route("/locations/<state>/")
 def region_page(state):

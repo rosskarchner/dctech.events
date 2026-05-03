@@ -1,0 +1,20 @@
+<div class="newsletter-signup-form">
+    <h3>Subscribe to our newsletter</h3>
+    <p>Get the latest technology events delivered to your inbox every week!</p>
+    
+    <form method="post" action="{% if site == 'dcstem' %}https://www.getrevue.co/profile/dcstem{% else %}https://www.getrevue.co/profile/dctech{% endif %}">
+        <div class="form-group">
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Subscribe</button>
+    </form>
+    
+    <p class="newsletter-info">
+        {% if site == 'dcstem' %}
+            Subscribe to DC STEM Events newsletter for the latest STEM conferences and meetups in the DC area.
+        {% else %}
+            Subscribe to DC Tech Events newsletter for the latest technology conferences and meetups in the DC area.
+        {% endif %}
+    </p>
+</div>

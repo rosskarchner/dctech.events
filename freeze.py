@@ -73,6 +73,16 @@ def create_freezer_with_generators(app_instance, site='dctech'):
         yield {'site': site}
 
     @freezer.register_generator
+    def newsletter_dctech_htmx():
+        """Generate the HTMX newsletter endpoint for dctech"""
+        yield {}
+    
+    @freezer.register_generator
+    def newsletter_dcstem_htmx():
+        """Generate the HTMX newsletter endpoint for dcstem"""
+        yield {}
+
+    @freezer.register_generator
     def sitemap():
         """Generate the sitemap.xml page"""
         yield {'site': site}

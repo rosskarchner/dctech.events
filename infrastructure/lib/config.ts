@@ -175,14 +175,14 @@ export const dcstemSiteConfig = {
 
   // Domain configuration
   domain: 'dc.localstem.events',
-  hostedZoneId: '', // TODO: Replace with actual hosted zone ID for dc.localstem.events
+  hostedZoneId: 'Z0793982UJ4WMG6BYCNZ',
 
   // No redirect domains for dcstem (can be added later if needed)
   redirectDomains: [],
 
   // S3 bucket configuration
   s3: {
-    bucketName: 'dcstem-events-site-1768361440101',
+    bucketName: 'dcstem-events-site',
     dataCacheBucketName: 'dcstem-events-data-cache',
     versioningEnabled: false,
     blockPublicAccess: true,
@@ -197,7 +197,6 @@ export const dcstemSiteConfig = {
     httpVersion: 'http2and3',
     enableCompression: true,
     redirectHttpToHttps: true,
-    // TODO: Provide WAF Web ACL ARN for dcstem (or create new one)
     webAclId: '',
   },
 
@@ -205,8 +204,7 @@ export const dcstemSiteConfig = {
   acm: {
     domainName: 'dc.localstem.events',
     alternativeNames: ['*.dc.localstem.events'],
-    // Certificate is managed by CloudFormation
-    existingCertificateArn: '',
+    existingCertificateArn: 'arn:aws:acm:us-east-1:797438674243:certificate/501fb6ea-ce98-4d7a-bb31-6ae7001244ec',
   },
 
   // Cognito configuration (separate user pool for dcstem)

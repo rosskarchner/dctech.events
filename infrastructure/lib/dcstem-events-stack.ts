@@ -11,38 +11,26 @@ import { dcstemStackConfig } from './config';
 
 export class DcstemEventsStack extends cdk.Stack {
   public readonly certificate: acm.ICertificate;
-  public readonly distribution: cloudfront.Distribution;
+  public readonly distribution: cloudfront.IDistribution;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Phase 1.2: S3 Bucket for static site hosting
-    const siteBucket = new s3.Bucket(this, 'DcstemEventsSiteBucket', {
-      bucketName: dcstemStackConfig.s3.bucketName,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      versioned: dcstemStackConfig.s3.versioningEnabled,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development; use RETAIN in production
-      autoDeleteObjects: true,
-    });
+    // Phase 1.2: S3 Bucket for static site hosting (import existing bucket)
+    // The bucket is created outside of CloudFormation and imported here
+    const siteBucket = s3.Bucket.fromBucketName(this, 'DcstemEventsSiteBucket', dcstemStackConfig.s3.bucketName);
 
-    // Data Cache Bucket (for _cache and _data syncing)
-    const dataCacheBucket = new s3.Bucket(this, 'DcstemDataCacheBucket', {
-      bucketName: dcstemStackConfig.s3.dataCacheBucketName,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      versioned: false,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-    });
+    // Data Cache Bucket (import existing)
+    const dataCacheBucket = s3.Bucket.fromBucketName(this, 'DcstemDataCacheBucket', dcstemStackConfig.s3.dataCacheBucketName);
 
     // Note: DynamoDB Table is created once in dctech stack and shared across all sites
     // Do not create a duplicate table here
 
     // Create Origin Access Control for CloudFront (modern replacement for OAI)
-    const oac = new cloudfront.S3OriginAccessControl(this, 'DcstemS3OAC', {
-      description: 'OAC for DC Tech Events S3 bucket',
-    });
+    // Note: This is not used since we're importing an existing distribution
+    // const oac = new cloudfront.S3OriginAccessControl(this, 'DcstemS3OAC', {
+    //   description: 'OAC for DC Tech Events S3 bucket',
+    // });
 
     // Phase 1.5: Route53 Hosted Zone lookup (required for certificate validation and DNS records)
     // Note: Hosted zone must exist in the same AWS account
@@ -58,124 +46,26 @@ export class DcstemEventsStack extends cdk.Stack {
       );
     }
 
-    // Phase 1.4: SSL/TLS Certificate (reference existing or create new)
+    // Phase 1.4: SSL/TLS Certificate (reference existing)
     // Note: Certificate MUST be in us-east-1 for CloudFront
-    if (dcstemStackConfig.acm.existingCertificateArn) {
-      this.certificate = acm.Certificate.fromCertificateArn(
-        this,
-        'DcstemEventsCertificate',
-        dcstemStackConfig.acm.existingCertificateArn
-      );
-    } else {
-      if (!hostedZone) {
-        throw new Error(
-          'HOSTED_ZONE_ID environment variable must be set to create a new certificate with DNS validation'
-        );
-      }
-      // Create certificate with DNS validation using the hosted zone
-      // This will automatically create the DNS validation records in Route53
-      this.certificate = new acm.Certificate(this, 'DcstemEventsCertificate', {
-        domainName: dcstemStackConfig.acm.domainName,
-        subjectAlternativeNames: dcstemStackConfig.acm.alternativeNames,
-        validation: acm.CertificateValidation.fromDns(hostedZone),
-      });
-    }
-
-    const certificate = this.certificate;
-    const distributionDomains = [dcstemStackConfig.domain, 'www.dc.localstem.events'];
-
-    // CloudFront Function to rewrite directory URLs to index.html
-    // This allows /locations/dc/ to serve /locations/dc/index.html
-    const directoryIndexFunction = new cloudfront.Function(this, 'DirectoryIndexFunction', {
-      code: cloudfront.FunctionCode.fromInline(`
-function handler(event) {
-  var request = event.request;
-  var headers = request.headers;
-  var host = headers.host ? headers.host.value : '';
-
-  if (host === 'www.dc.localstem.events') {
-    return {
-      statusCode: 301,
-      statusDescription: 'Moved Permanently',
-      headers: {
-        'location': { 'value': 'https://${dcstemStackConfig.domain}' + request.uri }
-      }
-    };
-  }
-
-  var uri = request.uri;
-
-  // If URI ends with '/', append 'index.html'
-  if (uri.endsWith('/')) {
-    request.uri += 'index.html';
-  }
-  // If URI has no extension, append '/index.html'
-  else if (!uri.includes('.')) {
-    request.uri += '/index.html';
-  }
-
-  return request;
-}
-      `),
-      comment: 'Rewrite directory URLs to index.html',
-      functionName: 'dcstem-events-directory-index',
-    });
-
-    // Phase 1.3: CloudFront Distribution
-    // Web ACL must be explicitly declared to prevent CloudFormation from trying to remove it
-    this.distribution = new cloudfront.Distribution(this, 'DcstemEventsDistribution', {
-      defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket, {
-          originAccessControl: oac,
-        }),
-        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        compress: dcstemStackConfig.cloudfront.enableCompression,
-        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-        functionAssociations: [
-          {
-            function: directoryIndexFunction,
-            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-          },
-        ],
-      },
-      defaultRootObject: 'index.html',
-      domainNames: distributionDomains,
-      certificate: certificate,
-      httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
-      enableIpv6: true,
-      minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
-      webAclId: dcstemStackConfig.cloudfront.webAclId,
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 404,
-          responsePagePath: '/404.html',
-          ttl: cdk.Duration.minutes(5),
-        },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 404,
-          responsePagePath: '/404.html',
-          ttl: cdk.Duration.minutes(5),
-        },
-      ],
-    });
-
-    // Add bucket policy to allow CloudFront OAC to access S3
-    siteBucket.addToResourcePolicy(
-      new iam.PolicyStatement({
-        actions: ['s3:GetObject'],
-        resources: [siteBucket.arnForObjects('*')],
-        principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
-        conditions: {
-          StringEquals: {
-            'AWS:SourceArn': `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${
-              this.distribution.distributionId
-            }`,
-          },
-        },
-      })
+    this.certificate = acm.Certificate.fromCertificateArn(
+      this,
+      'DcstemEventsCertificate',
+      dcstemStackConfig.acm.existingCertificateArn
     );
+
+    // Phase 1.3: CloudFront Distribution (import existing)
+    // The distribution already exists with the correct aliases and certificate configuration
+    this.distribution = cloudfront.Distribution.fromDistributionAttributes(
+      this,
+      'DcstemEventsDistribution',
+      {
+        distributionId: 'E1L518FFFF90DJ',
+        domainName: 'dhur7tb7r7w8g.cloudfront.net',
+      }
+    );
+
+    // Note: Bucket policy not needed for imported distribution since it's already configured
 
     // Phase 1.7: GitHub OIDC Federation
     // Create OIDC identity provider
@@ -242,7 +132,7 @@ function handler(event) {
               'dynamodb:Query',
               'dynamodb:Scan',
             ],
-            resources: [this.eventsTable.tableArn, `${this.eventsTable.tableArn}/index/*`],
+            resources: ['arn:aws:dynamodb:*:*:table/dctech-events', 'arn:aws:dynamodb:*:*:table/dctech-events/index/*'],
           }),
           new iam.PolicyStatement({
             actions: [
@@ -285,26 +175,26 @@ function handler(event) {
     // Create A and AAAA records for IPv4 and IPv6 support
     if (hostedZone) {
       // Create A record (IPv4) - points to CloudFront distribution
-      new route53.ARecord(this, 'DctechEventsARecord', {
+      new route53.ARecord(this, 'DcstemEventsARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
           new route53targets.CloudFrontTarget(this.distribution)
         ),
         recordName: dcstemStackConfig.domain,
-        comment: 'IPv4 record for dctech.events pointing to CloudFront',
+        comment: 'IPv4 record for dc.localstem.events pointing to CloudFront',
       });
 
       // Create AAAA record (IPv6) - points to CloudFront distribution
-      new route53.AaaaRecord(this, 'DctechEventsAAAARecord', {
+      new route53.AaaaRecord(this, 'DcstemEventsAAAARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
           new route53targets.CloudFrontTarget(this.distribution)
         ),
         recordName: dcstemStackConfig.domain,
-        comment: 'IPv6 record for dctech.events pointing to CloudFront',
+        comment: 'IPv6 record for dc.localstem.events pointing to CloudFront',
       });
 
-      new route53.ARecord(this, 'WwwDctechEventsARecord', {
+      new route53.ARecord(this, 'WwwDcstemEventsARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
           new route53targets.CloudFrontTarget(this.distribution)
@@ -313,7 +203,7 @@ function handler(event) {
         comment: 'IPv4 record for www.dc.localstem.events pointing to the main CloudFront distribution',
       });
 
-      new route53.AaaaRecord(this, 'WwwDctechEventsAAAARecord', {
+      new route53.AaaaRecord(this, 'WwwDcstemEventsAAAARecord', {
         zone: hostedZone,
         target: route53.RecordTarget.fromAlias(
           new route53targets.CloudFrontTarget(this.distribution)
@@ -333,37 +223,37 @@ function handler(event) {
     new cdk.CfnOutput(this, 'S3BucketName', {
       value: siteBucket.bucketName,
       description: 'S3 bucket name for static site',
-      exportName: 'DctechEventsBucketName',
+      exportName: 'DcstemEventsBucketName',
     });
 
     new cdk.CfnOutput(this, 'DataCacheBucketName', {
       value: dataCacheBucket.bucketName,
       description: 'S3 bucket name for data cache',
-      exportName: 'DctechEventsDataCacheBucketName',
+      exportName: 'DcstemEventsDataCacheBucketName',
     });
 
     new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
-      value: this.distribution.distributionId,
+      value: 'E1L518FFFF90DJ',
       description: 'CloudFront distribution ID',
-      exportName: 'DctechEventsDistributionId',
+      exportName: 'DcstemEventsDistributionId',
     });
 
     new cdk.CfnOutput(this, 'CloudFrontDomainName', {
-      value: this.distribution.domainName,
+      value: 'dhur7tb7r7w8g.cloudfront.net',
       description: 'CloudFront domain name',
-      exportName: 'DctechEventsCloudFrontDomain',
+      exportName: 'DcstemEventsCloudFrontDomain',
     });
 
     new cdk.CfnOutput(this, 'CertificateArn', {
-      value: certificate.certificateArn,
+      value: this.certificate.certificateArn,
       description: 'ACM Certificate ARN used for HTTPS',
-      exportName: 'DctechEventsCertificateArn',
+      exportName: 'DcstemEventsCertificateArn',
     });
 
     new cdk.CfnOutput(this, 'GithubActionsRoleArn', {
       value: githubActionsRole.roleArn,
       description: 'IAM role ARN for GitHub Actions',
-      exportName: 'DctechEventsGithubActionsRoleArn',
+      exportName: 'DcstemEventsGithubActionsRoleArn',
     });
 
     // Apply tags to all resources

@@ -113,5 +113,25 @@
     "slug": "vendor-conferences",
     "name": "Vendor Conferences",
     "description": "Company-sponsored conferences, product launches, and vendor events"
+  },
+  "life-and-biology": {
+    "slug": "life-and-biology",
+    "name": "Life and Biology",
+    "description": "Biology, life sciences, and biological research events"
+  },
+  "air-and-space": {
+    "slug": "air-and-space",
+    "name": "Air and Space",
+    "description": "Aviation, aerospace, and space exploration events and initiatives"
+  },
+  "computers-and-electronics": {
+    "slug": "computers-and-electronics",
+    "name": "Computers and Electronics",
+    "description": "Computing, electronics, robotics, and engineering events"
+  },
+  "physics": {
+    "slug": "physics",
+    "name": "Physics",
+    "description": "Physics, materials science, and physical sciences events"
   }
 }
