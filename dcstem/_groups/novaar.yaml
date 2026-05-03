@@ -6,11 +6,9 @@ social_media:
   - platform: facebook
     url: https://www.facebook.com/novaar.org
 categories:
-  - stem
-  - rocketry
-  - robotics
-# Note: NoVaAR calendar at https://novaar.org/drupal10/calendar_event/ does not expose a public iCal feed
-# To request iCal feed access: contact via their website or Facebook
-ical_url: null
+  - Physics
+  - Computers and Electronics
+ical: https://rosskarchner.github.io/dctech-scrapercollcection/novaar.ics
+active: true
 confirmed: true
 submitted_by: copilot
