@@ -7,6 +7,7 @@ import calendar
 import json
 from pathlib import Path
 from location_utils import extract_location_info, get_region_name
+from site_utils import load_site_config, ensure_site_directories, get_data_dir, get_groups_dir, get_single_events_dir, get_categories_dir
 import io
 from icalendar import Calendar, Event as ICalEvent
 import hashlib
@@ -14,7 +15,22 @@ import xml.etree.ElementTree as ET  # nosec B405
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
 
-# Load configuration
+def get_current_site():
+    """Detect current site from hostname or request parameter."""
+    # Check for explicit site parameter in query string
+    site = request.args.get('site', None)
+    if site and site in ['dctech', 'dcstem']:
+        return site
+    
+    # Detect from hostname
+    hostname = request.host.split(':')[0]  # Remove port if present
+    if 'localstem' in hostname:
+        return 'dcstem'
+    
+    # Default to dctech
+    return 'dctech'
+
+# Load default configuration (fallback)
 CONFIG_FILE = 'config.yaml'
 config = {}
 if os.path.exists(CONFIG_FILE):
@@ -25,26 +41,37 @@ if os.path.exists(CONFIG_FILE):
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
 
-# Get site configuration
-SITE_NAME = config.get('site_name', 'DC Tech Events')
-TAGLINE = config.get('tagline', 'Technology conferences and meetups in and around Washington, DC')
-BASE_URL = config.get('base_url', 'https://dctech.events')
-ADD_EVENTS_LINK = config.get('add_events_link', 'https://add.dctech.events')
-NEWSLETTER_SIGNUP_LINK = config.get('newsletter_signup_link', 'https://newsletter.dctech.events')
-
-# Constants - data paths
+# Constants - data paths (will be updated per-request)
 DATA_DIR = '_data'
 SPONSORS_FILE = os.path.join(DATA_DIR, 'sponsors.json')
 
 app = Flask(__name__, template_folder='templates')
 
+@app.before_request
+def setup_site_context():
+    """Set up site-specific configuration before each request."""
+    site = get_current_site()
+    # Store site in g for use in route handlers
+    from flask import g
+    g.site = site
+    g.site_config = load_site_config(site)
+    ensure_site_directories(site)
+
+def get_site_data_dir(site):
+    """Get the _data directory for a specific site."""
+    return get_data_dir(site)
+
 def load_sponsors():
     """Load sponsors from sponsors.json file"""
-    if not SPONSORS_FILE or not os.path.exists(SPONSORS_FILE):
+    from flask import g
+    site = getattr(g, 'site', 'dctech')
+    sponsors_file = os.path.join(get_site_data_dir(site), 'sponsors.json')
+    
+    if not sponsors_file or not os.path.exists(sponsors_file):
         return []
 
     try:
-        with open(SPONSORS_FILE, 'r') as f:
+        with open(sponsors_file, 'r') as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading sponsors: {e}")
@@ -53,31 +80,39 @@ def load_sponsors():
 @app.context_processor
 def inject_config():
     """Inject configuration variables into all templates"""
+    from flask import g
+    site = getattr(g, 'site', 'dctech')
+    site_config = getattr(g, 'site_config', {})
+    
     context = {
-        'site_name': SITE_NAME,
-        'tagline': TAGLINE,
-        'base_url': BASE_URL,
-        'add_events_link': ADD_EVENTS_LINK,
-        'newsletter_signup_link': NEWSLETTER_SIGNUP_LINK,
+        'site': site,
+        'site_name': site_config.get('site_name', 'DC Tech Events'),
+        'tagline': site_config.get('tagline', 'Technology conferences and meetups in and around Washington, DC'),
+        'base_url': site_config.get('base_url', 'https://dctech.events'),
+        'add_events_link': site_config.get('add_events_link', 'https://add.dctech.events'),
+        'newsletter_signup_link': site_config.get('newsletter_signup_link', 'https://newsletter.dctech.events'),
         'sponsors': load_sponsors(),
         'categories': get_categories()
     }
 
     return context
 
-def get_events(include_hidden=False):
+def get_events(include_hidden=False, site=None):
     """
-    Get events from the consolidated _data/all_events.json file.
+    Get events from the consolidated _data/{site}/all_events.json file.
 
     Args:
         include_hidden: If True, include events marked as hidden. Default False.
+        site: Site to get events for. If None, uses current site from request context.
 
     Returns:
         A list of events
     """
-    events_file = os.path.join(DATA_DIR, 'all_events.json')
-    if not os.path.exists(events_file):
-        return []
+    from flask import g
+    if site is None:
+        site = getattr(g, 'site', 'dctech')
+    
+    events_file = os.path.join(get_site_data_dir(site), 'all_events.json')
     
     try:
         with open(events_file, 'r') as f:
@@ -133,16 +168,23 @@ def get_approved_groups():
     groups.sort(key=lambda x: x.get('name', '').lower())
     return groups
 
-def get_categories():
+def get_categories(site=None):
     """
-    Get all categories from _categories/*.yaml files.
+    Get all categories from {site}/_categories/*.yaml files.
+
+    Args:
+        site: Site to get categories for. If None, uses current site from request context.
 
     Returns:
         A dict mapping category slugs to category metadata
         Example: {'python': {'name': 'Python', 'description': '...', 'slug': 'python'}, ...}
     """
+    from flask import g
+    if site is None:
+        site = getattr(g, 'site', 'dctech')
+    
     categories = {}
-    categories_dir = '_categories'
+    categories_dir = get_categories_dir(site)
     if not os.path.exists(categories_dir):
         return categories
         
