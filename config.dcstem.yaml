@@ -4,7 +4,7 @@
 site_name: "DC STEM Events"
 tagline: Science, technology, engineering, and math events in the DC area
 base_url: https://dc.localstem.events
-add_events_link: https://add.dctech.events/dcstem
+add_events_link: https://dc.localstem.events/edit/submit-event.html
 data_dir: dcstem
 
 # Timezone for event display and processing
