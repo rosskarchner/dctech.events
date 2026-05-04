@@ -1,0 +1,9 @@
+name: TEDx Logan Circle
+active: true
+website: https://luma.com/tedx.logancircle
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-5PWfyGhbOvmW304
+categories:
+  - conferences
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false

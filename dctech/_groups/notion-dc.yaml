@@ -1,0 +1,9 @@
+name: Notion DC
+active: true
+website: https://luma.com/notion-dc
+ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-lwnGpM1PmAXxlBB
+categories:
+  - software-development
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
