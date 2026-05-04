@@ -1099,6 +1099,22 @@ def events_json():
     events = get_events()
     return Response(json.dumps(events, indent=2), mimetype='application/json')
 
+@app.route("/categories.json")
+def categories_json():
+    """Serve site-specific categories data as JSON"""
+    site = safe_get_site()
+    categories = get_categories(site)
+    # Convert to format expected by frontend
+    formatted = {
+        slug: {
+            'slug': slug,
+            'name': cat.get('name', slug),
+            'description': cat.get('description', ''),
+        }
+        for slug, cat in categories.items()
+    }
+    return Response(json.dumps(formatted, indent=2), mimetype='application/json')
+
 @app.route("/events.ics")
 def ical_feed():
     """Generate an iCal feed of upcoming events"""
