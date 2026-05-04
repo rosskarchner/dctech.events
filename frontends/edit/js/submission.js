@@ -34,8 +34,7 @@
     if (!container) return;
 
     try {
-      const site = detectSiteFromHostname();
-      const response = await fetch(DctechAuth.getApiUrl(`/api/categories?site=${site}`));
+      const response = await fetch(DctechAuth.getApiUrl('/api/categories'));
       if (!response.ok) throw new Error('Failed to load categories');
       const categories = await response.json();
 
