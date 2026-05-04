@@ -77,53 +77,10 @@ export class DcstemEventsStack extends cdk.Stack {
       dcstemStackConfig.iam.roleName
     );
 
-    // Phase 1.6: Route53 DNS Records (requires hosted zone)
-    // Create A and AAAA records for IPv4 and IPv6 support
-    if (hostedZone) {
-      // Create A record (IPv4) - points to CloudFront distribution
-      new route53.ARecord(this, 'DcstemEventsARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromAlias(
-          new route53targets.CloudFrontTarget(this.distribution)
-        ),
-        recordName: dcstemStackConfig.domain,
-        comment: 'IPv4 record for dc.localstem.events pointing to CloudFront',
-      });
-
-      // Create AAAA record (IPv6) - points to CloudFront distribution
-      new route53.AaaaRecord(this, 'DcstemEventsAAAARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromAlias(
-          new route53targets.CloudFrontTarget(this.distribution)
-        ),
-        recordName: dcstemStackConfig.domain,
-        comment: 'IPv6 record for dc.localstem.events pointing to CloudFront',
-      });
-
-      new route53.ARecord(this, 'WwwDcstemEventsARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromAlias(
-          new route53targets.CloudFrontTarget(this.distribution)
-        ),
-        recordName: 'www.dc.localstem.events',
-        comment: 'IPv4 record for www.dc.localstem.events pointing to the main CloudFront distribution',
-      });
-
-      new route53.AaaaRecord(this, 'WwwDcstemEventsAAAARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromAlias(
-          new route53targets.CloudFrontTarget(this.distribution)
-        ),
-        recordName: 'www.dc.localstem.events',
-        comment: 'IPv6 record for www.dc.localstem.events pointing to the main CloudFront distribution',
-      });
-    } else {
-      // Output message if hosted zone is not configured
-      new cdk.CfnOutput(this, 'DNSRecordsNote', {
-        value: 'Hosted zone not configured. Please set HOSTED_ZONE_ID to create DNS records.',
-        description: 'DNS records configuration status',
-      });
-    }
+    // Phase 1.6: Route53 DNS Records
+    // Note: DNS records (dc.localstem.events, www.dc.localstem.events) are created manually
+    // and managed outside of CDK to avoid conflicts with existing Route53 state.
+    // These records should point to the CloudFront distribution imported above.
 
     // Phase 1.8: Stack outputs
     new cdk.CfnOutput(this, 'S3BucketName', {
