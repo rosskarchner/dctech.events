@@ -28,7 +28,7 @@ const isDctechSite = host.includes('dctech.events') || (!isStemSite && host === 
 // Site-specific config
 const siteConfig = isStemSite ? {
   userPoolClientId: '58j1h73i72v1kaim503bk2amgb', // Shared client for MVP
-  cognitoDomain: 'https://login.dctech.events', // TODO: Use separate domain for dcstem once Cognito is set up
+  cognitoDomain: 'https://login.dctech.events', // TODO: Create separate dcstem Cognito stack
   site: 'dcstem'
 } : {
   userPoolClientId: '58j1h73i72v1kaim503bk2amgb',

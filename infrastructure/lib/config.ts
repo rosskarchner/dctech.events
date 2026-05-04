@@ -107,12 +107,18 @@ export const dctechSiteConfig = {
     callbackUrls: [
       'https://dctech.events/edit/auth/callback.html',
       'https://www.dctech.events/edit/auth/callback.html',
+      'https://dc.localstem.events/edit/auth/callback.html',
+      'https://www.dc.localstem.events/edit/auth/callback.html',
       'http://localhost:5000/auth/callback',
+      'http://localhost:5001/auth/callback',
     ],
     logoutUrls: [
       'https://dctech.events/edit/',
       'https://www.dctech.events/edit/',
+      'https://dc.localstem.events/edit/',
+      'https://www.dc.localstem.events/edit/',
       'http://localhost:5000/',
+      'http://localhost:5001/',
     ],
     ses: {
       fromEmail: 'noreply@dctech.events',
