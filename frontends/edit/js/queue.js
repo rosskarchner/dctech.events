@@ -11,11 +11,21 @@
   let categoriesBySlug = {};
   let currentDrafts = [];
   let expandedDraftId = null;
+  let editCategoriesMode = {};
 
   function draftLabel(draft) {
     return draft.draft_type === 'group'
       ? (draft.name || draft.title || 'Untitled')
       : (draft.title || 'Untitled');
+  }
+
+  function renderCategoryList(draft) {
+    const cats = (draft.categories || [])
+      .map(slug => categoriesBySlug[slug]?.name || slug)
+      .filter(Boolean);
+    return cats.length > 0
+      ? cats.map(name => `<span class="category-badge">${escapeHtml(name)}</span>`).join('')
+      : '<span class="text-muted">None selected</span>';
   }
 
   function renderCategoryCheckboxes(draft) {
@@ -32,32 +42,70 @@
       }).join('');
   }
 
+  function renderEventDetails(draft) {
+    const fields = [
+      draft.date ? { label: 'Date', value: draft.date } : null,
+      draft.time ? { label: 'Time', value: draft.time } : null,
+      draft.location ? { label: 'Location', value: draft.location } : null,
+      draft.url ? { label: 'URL', value: `<a href="${escapeHtml(draft.url)}" target="_blank" rel="noopener">${escapeHtml(draft.url)}</a>` } : null,
+      draft.description ? { label: 'Description', value: draft.description } : null,
+    ].filter(Boolean);
+
+    return fields.length > 0
+      ? fields.map(field => `<div class="detail-row"><span class="detail-label">${escapeHtml(field.label)}:</span> <span class="detail-value">${field.value}</span></div>`).join('')
+      : '<div class="text-muted">No details provided</div>';
+  }
+
+  function renderGroupDetails(draft) {
+    const fields = [
+      draft.website ? { label: 'Website', value: `<a href="${escapeHtml(draft.website)}" target="_blank" rel="noopener">${escapeHtml(draft.website)}</a>` } : null,
+      draft.ical_url ? { label: 'iCal URL', value: `<a href="${escapeHtml(draft.ical_url)}" target="_blank" rel="noopener">${escapeHtml(draft.ical_url)}</a>` } : null,
+      draft.description ? { label: 'Description', value: draft.description } : null,
+    ].filter(Boolean);
+
+    return fields.length > 0
+      ? fields.map(field => `<div class="detail-row"><span class="detail-label">${escapeHtml(field.label)}:</span> <span class="detail-value">${field.value}</span></div>`).join('')
+      : '<div class="text-muted">No details provided</div>';
+  }
+
   function renderDraftDetails(draft) {
-    const detailLines = [
-      draft.date ? `<div><strong>Date:</strong> ${escapeHtml(draft.date)}</div>` : '',
-      draft.time ? `<div><strong>Time:</strong> ${escapeHtml(draft.time)}</div>` : '',
-      draft.location ? `<div><strong>Location:</strong> ${escapeHtml(draft.location)}</div>` : '',
-      draft.url ? `<div><strong>URL:</strong> <a href="${escapeHtml(draft.url)}" target="_blank" rel="noopener">${escapeHtml(draft.url)}</a></div>` : '',
-      draft.description ? `<div><strong>Description:</strong> ${escapeHtml(draft.description)}</div>` : '',
-    ].filter(Boolean).join('');
+    const isEditMode = editCategoriesMode[draft.id];
+    const detailContent = draft.draft_type === 'group'
+      ? renderGroupDetails(draft)
+      : renderEventDetails(draft);
+
+    const categorySection = isEditMode
+      ? `<div class="categories-section-edit">
+           <h4>Edit Categories</h4>
+           ${renderCategoryCheckboxes(draft)}
+         </div>`
+      : `<div class="categories-section">
+           <span class="section-label">Categories:</span> ${renderCategoryList(draft)}
+           <button type="button" class="btn btn-sm btn-outline" data-action="edit-categories" data-draft-id="${escapeHtml(draft.id)}" style="margin-left: 1rem;">Edit</button>
+         </div>`;
 
     return `
       <tr class="approve-form-row">
         <td colspan="5">
           <div class="approve-form">
             <div class="approve-form-header">
-              <strong>Approving:</strong> ${escapeHtml(draftLabel(draft))}
-              ${draft.date ? `&mdash; ${escapeHtml(draft.date)}` : ''}
-              <span class="approve-form-submitter">submitted by ${escapeHtml(draft.submitter_email || 'unknown')}</span>
+              <strong>${draft.draft_type === 'group' ? 'Group:' : 'Event:'}</strong> ${escapeHtml(draftLabel(draft))}
+              <span class="approve-form-submitter">by ${escapeHtml(draft.submitter_email || 'unknown')}</span>
             </div>
-            <div class="approve-form-categories">
-              <span class="approve-form-label">Categories:</span>
-              ${renderCategoryCheckboxes(draft)}
+            <div class="draft-content">
+              ${detailContent}
             </div>
-            <div class="draft-detail" style="margin: 1rem 0;">${detailLines || '<div>No additional details.</div>'}</div>
+            <div class="categories-wrapper">
+              ${categorySection}
+            </div>
             <div class="approve-form-actions">
-              <button type="button" class="btn btn-success btn-sm" data-action="confirm-approve" data-draft-id="${escapeHtml(draft.id)}">Confirm Approve</button>
-              <button type="button" class="btn btn-outline btn-sm" data-action="cancel-approve">Cancel</button>
+              ${isEditMode
+                ? `<button type="button" class="btn btn-success btn-sm" data-action="confirm-approve" data-draft-id="${escapeHtml(draft.id)}">Approve with Categories</button>
+                   <button type="button" class="btn btn-outline btn-sm" data-action="cancel-edit-categories" data-draft-id="${escapeHtml(draft.id)}">Cancel Edit</button>`
+                : `<button type="button" class="btn btn-success btn-sm" data-action="confirm-approve" data-draft-id="${escapeHtml(draft.id)}">Approve</button>
+                   <button type="button" class="btn btn-danger btn-sm" data-action="reject" data-draft-id="${escapeHtml(draft.id)}">Reject</button>
+                   <button type="button" class="btn btn-outline btn-sm" data-action="collapse" data-draft-id="${escapeHtml(draft.id)}">Collapse</button>`
+              }
             </div>
           </div>
         </td>
@@ -75,39 +123,13 @@
     }
 
     const rows = currentDrafts.map((draft) => {
-      const mainRow = `
-        <tr id="draft-${escapeHtml(draft.id)}">
-          <td>${escapeHtml(draft.draft_type)}</td>
-          <td>
-            ${escapeHtml(draftLabel(draft))}
-            ${draft.draft_type === 'event' && draft.date ? `<br><small>${escapeHtml(draft.date)}</small>` : ''}
-          </td>
-          <td>${escapeHtml(draft.submitter_email || '')}</td>
-          <td>${escapeHtml(draft.created_at || '')}</td>
-          <td>
-            <button type="button" data-action="approve" data-draft-id="${escapeHtml(draft.id)}">Approve</button>
-            <button type="button" data-action="reject" data-draft-id="${escapeHtml(draft.id)}">Reject</button>
-            <button type="button" data-action="details" data-draft-id="${escapeHtml(draft.id)}">Details</button>
-          </td>
-        </tr>
-      `;
-      const detailRow = expandedDraftId === draft.id ? renderDraftDetails(draft) : '';
-      return mainRow + detailRow;
+      return renderDraftDetails(draft);
     }).join('');
 
     container.innerHTML = `
       <div class="draft-queue">
-        <h2>Pending Submissions</h2>
+        <h2>Pending Submissions (${currentDrafts.length})</h2>
         <table>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Title / Name</th>
-              <th>Submitted By</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -146,23 +168,14 @@
     }
   }
 
-  async function expandDraft(draftId) {
-    if (expandedDraftId === draftId) {
-      expandedDraftId = null;
-      renderQueue();
-      return;
-    }
+  async function collapseDraft(draftId) {
+    expandedDraftId = null;
+    editCategoriesMode[draftId] = false;
+    await loadQueue();
+  }
 
-    const response = await DctechAuth.authorizedFetch(`/api/admin/drafts/${draftId}`);
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || 'Failed to load draft details.');
-    }
-
-    currentDrafts = currentDrafts.map((draft) => (
-      draft.id === draftId ? payload.draft : draft
-    ));
-    expandedDraftId = draftId;
+  function toggleEditCategories(draftId) {
+    editCategoriesMode[draftId] = !editCategoriesMode[draftId];
     renderQueue();
   }
 
@@ -207,6 +220,7 @@
     if (refreshButton) {
       refreshButton.addEventListener('click', async () => {
         expandedDraftId = null;
+        editCategoriesMode = {};
         await loadQueue();
       });
     }
@@ -219,11 +233,13 @@
       const draftId = button.getAttribute('data-draft-id');
 
       try {
-        if (action === 'approve' || action === 'details') {
-          await expandDraft(draftId);
-        } else if (action === 'cancel-approve') {
-          expandedDraftId = null;
+        if (action === 'edit-categories') {
+          toggleEditCategories(draftId);
+        } else if (action === 'cancel-edit-categories') {
+          editCategoriesMode[draftId] = false;
           renderQueue();
+        } else if (action === 'collapse') {
+          await collapseDraft(draftId);
         } else if (action === 'confirm-approve') {
           await approveDraft(draftId);
         } else if (action === 'reject') {
