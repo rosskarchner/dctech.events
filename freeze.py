@@ -143,6 +143,14 @@ def freeze_site(site, app_instance=None):
             freezer = create_freezer_with_generators(app_instance, site)
             freezer.freeze()
         
+        # Copy site-specific categories.json after freezing
+        site_categories_src = f'{site}/static/categories.json'
+        site_categories_dst = f'{output_dir}/static/categories.json'
+        if os.path.exists(site_categories_src):
+            import shutil
+            shutil.copy2(site_categories_src, site_categories_dst)
+            print(f"📋 Updated {site_categories_dst} with site-specific categories")
+        
         print(f"✅ Successfully generated {site} to {output_dir}")
         return True
     except Exception as e:

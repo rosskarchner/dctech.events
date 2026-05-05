@@ -325,12 +325,16 @@ def refresh_calendars(site=None):
         print("No calendar updates needed")
 
     # Generate categories.json for the edit site
-    generate_categories_json()
+    generate_categories_json(site)
 
     return updated
 
-def generate_categories_json():
-    """Generate a JSON file with all categories for the edit site."""
+def generate_categories_json(site=None):
+    """Generate a JSON file with all categories for the edit site.
+    
+    Args:
+        site: Site name (dctech, dcstem, etc). If None, uses current CATEGORIES_DIR and writes to 'static/'.
+    """
     categories = {}
     if os.path.exists(CATEGORIES_DIR):
         for filename in os.listdir(CATEGORIES_DIR):
@@ -344,10 +348,18 @@ def generate_categories_json():
                         'description': cat.get('description', '')
                     }
     
-    os.makedirs('static', exist_ok=True)
-    with open('static/categories.json', 'w') as f:
+    # Determine output path based on site
+    if site:
+        output_dir = os.path.join(site, 'static')
+        output_file = os.path.join(output_dir, 'categories.json')
+    else:
+        output_dir = 'static'
+        output_file = os.path.join(output_dir, 'categories.json')
+    
+    os.makedirs(output_dir, exist_ok=True)
+    with open(output_file, 'w') as f:
         json.dump(categories, f, indent=2)
-    print(f"Generated static/categories.json with {len(categories)} categories")
+    print(f"Generated {output_file} with {len(categories)} categories")
 
 def main():
     sites = get_site_from_args('dctech')
