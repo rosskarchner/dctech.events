@@ -137,6 +137,7 @@ class TestApp(unittest.TestCase):
                 'time': '09:00',
                 'title': 'Test Event 1',
                 'location': 'Test Location',
+                'location_type': 'virtual',
                 'url': 'http://test.com'
             }
         ]
@@ -150,7 +151,7 @@ class TestApp(unittest.TestCase):
             response = client.get('/newsletter.html')
             self.assertEqual(response.status_code, 200)
             self.assertIn('text/html', response.content_type)
-            self.assertIn('Test Event 1', response.data.decode())
+            self.assertIn('Virtual: Test Event 1', response.data.decode())
             self.assertIn('Test Location', response.data.decode())
             self.assertIn('http://test.com', response.data.decode())
             
@@ -158,7 +159,7 @@ class TestApp(unittest.TestCase):
             response = client.get('/newsletter.txt')
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
-            self.assertIn('Test Event 1', response.data.decode())
+            self.assertIn('Virtual: Test Event 1', response.data.decode())
             self.assertIn('Test Location', response.data.decode())
             self.assertIn('http://test.com', response.data.decode())
             

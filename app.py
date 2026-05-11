@@ -473,6 +473,16 @@ def prepare_events_by_day(events, add_week_links=False):
 
     return days_data
 
+def prepare_newsletter_titles(days):
+    """Add newsletter-only title labels to prepared day data."""
+    for day in days:
+        for time_slot in day['time_slots']:
+            for event in time_slot['events']:
+                base_title = event.get('display_title', event.get('title', 'Untitled Event'))
+                event['newsletter_title'] = f"Virtual: {base_title}" if is_virtual_event(event) else base_title
+
+    return days
+
 def get_stats(site=None):
     """
     Load statistics from stats.yaml
@@ -906,6 +916,7 @@ def newsletter_html():
     two_week_events = filter_events_to_next_two_weeks(events)
     
     days = prepare_events_by_day(two_week_events)
+    prepare_newsletter_titles(days)
     
     # Get stats
     stats = get_stats().copy()
@@ -933,6 +944,7 @@ def newsletter_text():
     two_week_events = filter_events_to_next_two_weeks(events)
     
     days = prepare_events_by_day(two_week_events)
+    prepare_newsletter_titles(days)
     
     # Get stats
     stats = get_stats().copy()
