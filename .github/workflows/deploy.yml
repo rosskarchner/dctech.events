@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  pages: write
 
 concurrency:
   group: "deploy"
@@ -19,7 +20,6 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-  SITE_BUCKET: dctech-events-site-1768361440101
   CACHE_BUCKET: dctech-events-data-cache
 
 jobs:
@@ -96,41 +96,13 @@ jobs:
           cd infrastructure
           npx cdk deploy --all --require-approval never
 
-  deploy-frontend-app:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-deploy-frontend
-
-      - name: Sync Frontend Apps to S3
-        run: |
-          echo "Syncing /edit/ app onto dctech.events..."
-          aws s3 sync frontends/edit/ s3://${{ env.SITE_BUCKET }}/edit/ --delete
-
-      - name: Invalidate CloudFront Cache
-        run: |
-          echo "Finding CloudFront Distribution ID for dctech.events..."
-          MAIN_DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'dctech.events')].Id | [0]" --output text)
-          if [ -n "$MAIN_DIST_ID" ] && [ "$MAIN_DIST_ID" != "None" ]; then
-            aws cloudfront create-invalidation --distribution-id "$MAIN_DIST_ID" --paths "/edit/*"
-          fi
-
   rebuild-site:
     needs: [changes, deploy-infra]
     if: |
       always() && 
-      (needs.changes.outputs.site == 'true' || needs.changes.outputs.backend == 'true' || 
-       needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflow == 'true' ||
-       github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.site == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || 
+        needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflow == 'true' ||
+        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
@@ -169,33 +141,31 @@ jobs:
       - name: Build Static Site (All Sites)
         run: python freeze.py
 
-      - name: Deploy dctech to S3
-        run: |
-          aws s3 sync build/dctech/ s3://${{ env.SITE_BUCKET }}/ --delete
-          aws s3 sync frontends/edit/ s3://${{ env.SITE_BUCKET }}/edit/ --delete
-          aws s3 sync _data/dctech/ s3://${{ env.SITE_BUCKET }}/_data/ --delete
-
-      - name: Deploy dcstem to S3
-        run: |
-          aws s3 sync build/dcstem/ s3://dcstem-events-site/ --delete
-          aws s3 sync frontends/edit/ s3://dcstem-events-site/edit/ --delete
-          aws s3 sync _data/dcstem/ s3://dcstem-events-site/_data/ --delete
-
       - name: Sync Cache to S3
         run: |
           aws s3 sync _cache s3://${{ env.CACHE_BUCKET }}/_cache --delete
           aws s3 sync _data s3://${{ env.CACHE_BUCKET }}/_data --delete
 
-      - name: Invalidate CloudFront (dctech)
+      - name: Prepare GitHub Pages artifact
         run: |
-          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'dctech.events')].Id" --output text)
-          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
-            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
-          fi
+          rm -rf pages
+          mkdir -p pages
+          mkdir -p pages/edit
+          cp -a build/dctech/. pages/
+          cp -a frontends/edit/. pages/edit/
+          printf 'dctech.events\n' > pages/CNAME
 
-      - name: Invalidate CloudFront (dcstem)
-        run: |
-          DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, 'dc.localstem.events')].Id" --output text)
-          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
-            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
-          fi
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+  deploy-pages:
+    needs: rebuild-site
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
