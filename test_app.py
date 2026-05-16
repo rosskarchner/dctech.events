@@ -607,25 +607,21 @@ class TestApp(unittest.TestCase):
         import yaml
         from icalendar import Calendar
         from datetime import datetime as dt
-        
+        from unittest.mock import patch
+
         # Create test client
         client = app.test_client()
-        
+
         # Create test data directory
         data_dir = '_data'
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'upcoming.yaml')
 
-        # Create test group directory (site-scoped: dctech/_groups/)
-        groups_dir = os.path.join('dctech', '_groups')
-        os.makedirs(groups_dir, exist_ok=True)
-        group_file = os.path.join(groups_dir, 'test-tech-group.yaml')
-        
         # Create test event data
         today_str = self.today.strftime('%Y-%m-%d')
         tomorrow = self.today + timedelta(days=1)
         tomorrow_str = tomorrow.strftime('%Y-%m-%d')
-        
+
         test_events = [
             {
                 'date': today_str,
@@ -643,24 +639,22 @@ class TestApp(unittest.TestCase):
                 'url': 'http://conference.example.com'
             }
         ]
-        
+
         test_group = {
             'name': 'Test Tech Group',
             'website': 'https://testgroup.example.com',
             'active': True
         }
-        
+
         try:
             # Write test data (mock reads _data/upcoming.yaml)
             with open(test_file, 'w') as f:
                 yaml.dump(test_events, f)
 
-            # Write test group
-            with open(group_file, 'w') as f:
-                yaml.dump(test_group, f)
-
-            # Get iCal feed
-            response = client.get('/events.ics')
+            # Patch get_approved_groups so the group is found regardless of filesystem layout
+            with patch('app.get_approved_groups', return_value=[test_group]):
+                # Get iCal feed
+                response = client.get('/events.ics')
             self.assertEqual(response.status_code, 200)
             self.assertIn('text/calendar', response.content_type)
             
@@ -718,14 +712,8 @@ class TestApp(unittest.TestCase):
             # Cleanup
             if os.path.exists(test_file):
                 os.remove(test_file)
-            if os.path.exists(group_file):
-                os.remove(group_file)
             try:
                 os.rmdir(data_dir)
-            except (OSError, FileNotFoundError):
-                pass
-            try:
-                os.rmdir(groups_dir)
             except (OSError, FileNotFoundError):
                 pass
 
