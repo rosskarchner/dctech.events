@@ -268,9 +268,16 @@ def get_subscribers_json(event, jinja_env):
 
     try:
         sesv2 = boto3.client('sesv2', region_name='us-east-1')
-        response = sesv2.list_contacts(ContactListName='newsletters')
-        
-        contacts = response.get('Contacts', [])
+        contacts = []
+        kwargs = {'ContactListName': 'newsletters'}
+        while True:
+            response = sesv2.list_contacts(**kwargs)
+            contacts.extend(response.get('Contacts', []))
+            next_token = response.get('NextToken')
+            if not next_token:
+                break
+            kwargs['NextToken'] = next_token
+
         # Sort by LastUpdatedTimestamp (newest first)
         contacts.sort(key=lambda x: x.get('LastUpdatedTimestamp', ''), reverse=True)
         
