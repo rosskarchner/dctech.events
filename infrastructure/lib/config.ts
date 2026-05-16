@@ -173,114 +173,12 @@ export const dctechSiteConfig = {
  * DC STEM Events site configuration
  * (New multi-site addition)
  */
-export const dcstemSiteConfig = {
-  // Stack metadata
-  stackName: 'dcstem-events',
-  stackDescription: 'DC STEM Events - S3 + CloudFront + Route53 infrastructure',
-  siteId: 'dcstem',
-
-  // Domain configuration
-  domain: 'dc.localstem.events',
-  hostedZoneId: 'Z0793982UJ4WMG6BYCNZ',
-
-  // No redirect domains for dcstem (can be added later if needed)
-  redirectDomains: [],
-
-  // S3 bucket configuration
-  s3: {
-    bucketName: 'dcstem-events-site',
-    dataCacheBucketName: 'dcstem-events-data-cache',
-    versioningEnabled: false,
-    blockPublicAccess: true,
-    encryption: true,
-  },
-
-  // CloudFront configuration (inherits from shared, can override)
-  cloudfront: {
-    minTTL: 0,
-    defaultTTL: 86400,
-    maxTTL: 31536000,
-    httpVersion: 'http2and3',
-    enableCompression: true,
-    redirectHttpToHttps: true,
-    webAclId: '',
-  },
-
-  // ACM Certificate configuration
-  acm: {
-    domainName: 'dc.localstem.events',
-    alternativeNames: ['*.dc.localstem.events'],
-    existingCertificateArn: 'arn:aws:acm:us-east-1:797438674243:certificate/501fb6ea-ce98-4d7a-bb31-6ae7001244ec',
-  },
-
-  // Cognito configuration (separate user pool for dcstem)
-  cognito: {
-    userPoolName: 'dcstem-events-users',
-    domainPrefix: 'dcstem-events',
-    customDomain: 'login.dc.localstem.events',
-    callbackUrls: [
-      'https://dc.localstem.events/edit/auth/callback.html',
-      'https://www.dc.localstem.events/edit/auth/callback.html',
-      'http://localhost:5001/auth/callback',
-    ],
-    logoutUrls: [
-      'https://dc.localstem.events/edit/',
-      'https://www.dc.localstem.events/edit/',
-      'http://localhost:5001/',
-    ],
-    ses: {
-      fromEmail: 'noreply@dc.localstem.events',
-      fromName: 'DC STEM Events',
-      replyTo: 'support@dc.localstem.events',
-    },
-    verificationEmail: {
-      subject: 'Verify your email for DC STEM Events',
-      body: 'Welcome to DC STEM Events! Your verification code is {####}.',
-    },
-  },
-
-  // Secrets Manager configuration (separate secrets for dcstem)
-  secrets: {
-    cognitoClientSecret: 'dcstem-events/cognito-client-secret',
-    microblogTokenSecret: 'dcstem-events/microblog-token',
-    githubTokenSecret: 'dcstem-events/github-token',
-  },
-
-  // Newsletter configuration (shared schedule, can customize)
-  newsletter: {
-    schedule: {
-      minute: '0',
-      hour: '12',
-      day: 'MON',
-    },
-  },
-
-  // Notification configuration
-  notifications: {
-    adminEmail: 'ross@karchner.com',
-    queueSchedule: {
-      minute: '30',
-      hour: '13',
-    },
-  },
-
-  // Rebuild pipeline configuration (separate queue for dcstem)
-  rebuild: {
-    queueName: 'dcstem-events-rebuild.fifo',
-    deduplicationWindowSeconds: 60,
-    visibilityTimeoutSeconds: 900,
-    lambdaTimeoutSeconds: 900,
-    lambdaMemoryMB: 1024,
-  },
-};
-
 /**
  * Sites configuration - maps site IDs to their configurations
  * This enables easy lookup and iteration across all sites
  */
 export const sitesConfig = {
   dctech: dctechSiteConfig,
-  dcstem: dcstemSiteConfig,
 };
 
 /**
@@ -291,12 +189,4 @@ export const sitesConfig = {
 export const stackConfig = {
   ...sharedConfig,
   ...dctechSiteConfig,
-};
-
-/**
- * DC STEM Events site stack config (merged with shared config)
- */
-export const dcstemStackConfig = {
-  ...sharedConfig,
-  ...dcstemSiteConfig,
 };
