@@ -178,31 +178,31 @@ class TestApp(unittest.TestCase):
         import os
         import yaml
         
-        # Create test data directory
-        data_dir = '_data'
+        # Create test data directory (site-scoped: _data/dctech/)
+        data_dir = os.path.join('_data', 'dctech')
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'stats.yaml')
-        
+
         test_stats = {
             'upcoming_events': 42,
             'active_groups': 10
         }
-        
+
         try:
             # Test with no stats file
             if os.path.exists(test_file):
                 os.remove(test_file)
             stats = get_stats()
             self.assertEqual(stats, {})
-            
+
             # Test with stats file
             with open(test_file, 'w') as f:
                 yaml.dump(test_stats, f)
-            
+
             stats = get_stats()
             self.assertEqual(stats['upcoming_events'], 42)
             self.assertEqual(stats['active_groups'], 10)
-            
+
         finally:
             # Cleanup
             if os.path.exists(test_file):
@@ -615,9 +615,9 @@ class TestApp(unittest.TestCase):
         data_dir = '_data'
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'upcoming.yaml')
-        
-        # Create test group directory and files
-        groups_dir = '_groups'
+
+        # Create test group directory (site-scoped: dctech/_groups/)
+        groups_dir = os.path.join('dctech', '_groups')
         os.makedirs(groups_dir, exist_ok=True)
         group_file = os.path.join(groups_dir, 'test-tech-group.yaml')
         
@@ -651,14 +651,14 @@ class TestApp(unittest.TestCase):
         }
         
         try:
-            # Write test data
+            # Write test data (mock reads _data/upcoming.yaml)
             with open(test_file, 'w') as f:
                 yaml.dump(test_events, f)
-            
+
             # Write test group
             with open(group_file, 'w') as f:
                 yaml.dump(test_group, f)
-            
+
             # Get iCal feed
             response = client.get('/events.ics')
             self.assertEqual(response.status_code, 200)
