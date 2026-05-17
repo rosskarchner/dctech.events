@@ -178,8 +178,8 @@ class TestApp(unittest.TestCase):
         import os
         import yaml
         
-        # Create test data directory (site-scoped: _data/dctech/)
-        data_dir = os.path.join('_data', 'dctech')
+        # Create test data directory
+        data_dir = '_data'
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'stats.yaml')
 
@@ -616,8 +616,8 @@ class TestApp(unittest.TestCase):
         os.makedirs(data_dir, exist_ok=True)
         test_file = os.path.join(data_dir, 'upcoming.yaml')
 
-        # Create test group directory (site-scoped: dctech/_groups/)
-        groups_dir = os.path.join('dctech', '_groups')
+        # Create test group directory
+        groups_dir = '_groups'
         os.makedirs(groups_dir, exist_ok=True)
         group_file = os.path.join(groups_dir, 'test-tech-group.yaml')
         
