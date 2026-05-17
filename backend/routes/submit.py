@@ -31,8 +31,6 @@ def _html(status_code, body, event=None):
     allowed_origins = [
         'https://dctech.events',
         'https://www.dctech.events',
-        'https://dcstem.events',
-        'https://www.dcstem.events',
         'http://localhost:5000'
     ]
     origin = event.get('headers', {}).get('origin') if event else None
@@ -54,8 +52,6 @@ def _json(status_code, body, event=None):
     allowed_origins = [
         'https://dctech.events',
         'https://www.dctech.events',
-        'https://dcstem.events',
-        'https://www.dcstem.events',
         'http://localhost:5000'
     ]
     origin = event.get('headers', {}).get('origin') if event else None
@@ -112,10 +108,6 @@ def _build_event_draft_data(data):
                 h = 0
             time_str = f'{h:02d}:{minute}'
 
-    site = data.get('site', 'dctech').lower()
-    if site not in ('dctech', 'dcstem'):
-        site = 'dctech'
-
     draft_data = {
         'title': title,
         'date': date_val,
@@ -129,7 +121,6 @@ def _build_event_draft_data(data):
         'description': data.get('description', ''),
         'location': data.get('location', ''),
         'categories': _normalize_categories(data),
-        'site': site,
     }
     return draft_data, None
 
@@ -140,16 +131,11 @@ def _build_group_draft_data(data):
     if not name or not website:
         return None, 'Group name and website are required.'
 
-    site = data.get('site', 'dctech').lower()
-    if site not in ('dctech', 'dcstem'):
-        site = 'dctech'
-
     return {
         'name': name,
         'website': website,
         'ical_url': data.get('ical_url', ''),
         'fallback_url': data.get('fallback_url', ''),
-        'site': site,
     }, None
 
 

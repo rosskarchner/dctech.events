@@ -7,7 +7,6 @@ import calendar
 import json
 from pathlib import Path
 from location_utils import extract_location_info, get_region_name
-from site_utils import load_site_config, ensure_site_directories, get_data_dir, get_groups_dir, get_single_events_dir, get_categories_dir
 import io
 from icalendar import Calendar, Event as ICalEvent
 import hashlib
@@ -15,26 +14,7 @@ import xml.etree.ElementTree as ET  # nosec B405
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
 
-def get_current_site():
-    """Detect current site from hostname or request parameter."""
-    # Check if we're freezing a specific site (during static generation)
-    if app.config.get('FREEZING_SITE'):
-        return app.config['FREEZING_SITE']
-    
-    # Check for explicit site parameter in query string
-    site = request.args.get('site', None)
-    if site and site in ['dctech', 'dcstem']:
-        return site
-    
-    # Detect from hostname
-    hostname = request.host.split(':')[0]  # Remove port if present
-    if 'localstem' in hostname:
-        return 'dcstem'
-    
-    # Default to dctech
-    return 'dctech'
-
-# Load default configuration (fallback)
+# Load configuration
 CONFIG_FILE = 'config.yaml'
 config = {}
 if os.path.exists(CONFIG_FILE):
@@ -51,39 +31,11 @@ SPONSORS_FILE = os.path.join(DATA_DIR, 'sponsors.json')
 
 app = Flask(__name__, template_folder='templates')
 
-@app.before_request
-def setup_site_context():
-    """Set up site-specific configuration before each request."""
-    site = get_current_site()
-    # Store site in g for use in route handlers
-    from flask import g
-    g.site = site
-    g.site_config = load_site_config(site)
-    ensure_site_directories(site)
-
-def safe_get_site(default='dctech'):
-    """Safely get the current site from Flask g, with fallback for when outside request context."""
-    # Check if we're freezing a specific site (during static generation)
-    if app.config.get('FREEZING_SITE'):
-        return app.config['FREEZING_SITE']
-    
-    try:
-        from flask import g
-        return g.site if hasattr(g, 'site') else default
-    except (RuntimeError, AttributeError):
-        return default
-
-def get_site_data_dir(site):
-    """Get the _data directory for a specific site."""
-    return get_data_dir(site)
-
 def load_sponsors():
     """Load sponsors from sponsors.json file"""
-    from flask import g
-    site = safe_get_site()
-    sponsors_file = os.path.join(get_site_data_dir(site), 'sponsors.json')
-    
-    if not sponsors_file or not os.path.exists(sponsors_file):
+    sponsors_file = os.path.join('_data', 'sponsors.json')
+
+    if not os.path.exists(sponsors_file):
         return []
 
     try:
@@ -96,42 +48,27 @@ def load_sponsors():
 @app.context_processor
 def inject_config():
     """Inject configuration variables into all templates"""
-    from flask import g
-    site = safe_get_site()
-    try:
-        site_config = g.site_config if hasattr(g, 'site_config') else {}
-    except (RuntimeError, AttributeError):
-        site_config = load_site_config(site)
-    
-    context = {
-        'site': site,
-        'site_name': site_config.get('site_name', 'DC Tech Events'),
-        'tagline': site_config.get('tagline', 'Technology conferences and meetups in and around Washington, DC'),
-        'base_url': site_config.get('base_url', 'https://dctech.events'),
-        'add_events_link': site_config.get('add_events_link', 'https://add.dctech.events'),
-        'newsletter_signup_link': f"https://k8w5eowyyb.execute-api.us-east-1.amazonaws.com/api/{site}",
+    return {
+        'site_name': config.get('site_name', 'DC Tech Events'),
+        'tagline': config.get('tagline', 'Technology conferences and meetups in and around Washington, DC'),
+        'base_url': config.get('base_url', 'https://dctech.events'),
+        'add_events_link': config.get('add_events_link', 'https://dctech.events/edit/submit-event.html'),
+        'newsletter_signup_link': 'https://k8w5eowyyb.execute-api.us-east-1.amazonaws.com/api/dctech',
         'sponsors': load_sponsors(),
         'categories': get_categories()
     }
 
-    return context
-
-def get_events(include_hidden=False, site=None):
+def get_events(include_hidden=False):
     """
-    Get events from the consolidated _data/{site}/all_events.json file.
+    Get events from the consolidated _data/all_events.json file.
 
     Args:
         include_hidden: If True, include events marked as hidden. Default False.
-        site: Site to get events for. If None, uses current site from request context.
 
     Returns:
         A list of events
     """
-    from flask import g
-    if site is None:
-        site = safe_get_site()
-    
-    events_file = os.path.join(get_site_data_dir(site), 'all_events.json')
+    events_file = os.path.join('_data', 'all_events.json')
     
     try:
         with open(events_file, 'r') as f:
@@ -161,22 +98,15 @@ def get_events(include_hidden=False, site=None):
         print(f"Error loading events from {events_file}: {e}")
         return []
 
-def get_approved_groups(site=None):
+def get_approved_groups():
     """
-    Get all groups from {site}/_groups/*.yaml files.
-
-    Args:
-        site: Site to get groups for. If None, uses current site from request context.
+    Get all groups from _groups/*.yaml files.
 
     Returns:
         A list of group dictionaries
     """
-    from flask import g
-    if site is None:
-        site = safe_get_site()
-    
     groups = []
-    groups_dir = get_groups_dir(site)
+    groups_dir = '_groups'
     if not os.path.exists(groups_dir):
         return groups
         
@@ -194,23 +124,16 @@ def get_approved_groups(site=None):
     groups.sort(key=lambda x: x.get('name', '').lower())
     return groups
 
-def get_categories(site=None):
+def get_categories():
     """
-    Get all categories from {site}/_categories/*.yaml files.
-
-    Args:
-        site: Site to get categories for. If None, uses current site from request context.
+    Get all categories from _categories/*.yaml files.
 
     Returns:
         A dict mapping category slugs to category metadata
         Example: {'python': {'name': 'Python', 'description': '...', 'slug': 'python'}, ...}
     """
-    from flask import g
-    if site is None:
-        site = safe_get_site()
-    
     categories = {}
-    categories_dir = get_categories_dir(site)
+    categories_dir = '_categories'
     if not os.path.exists(categories_dir):
         return categories
         
@@ -483,20 +406,14 @@ def prepare_newsletter_titles(days):
 
     return days
 
-def get_stats(site=None):
+def get_stats():
     """
     Load statistics from stats.yaml
-    
-    Args:
-        site: Site to get stats for. If None, uses current site from request context.
-    
+
     Returns:
         Dictionary containing stats, or empty dict if file doesn't exist
     """
-    if site is None:
-        site = safe_get_site()
-    data_dir = get_site_data_dir(site)
-    stats_file = os.path.join(data_dir, 'stats.yaml')
+    stats_file = os.path.join('_data', 'stats.yaml')
     if not os.path.exists(stats_file):
         return {}
     
@@ -754,7 +671,7 @@ def homepage():
     days = prepare_events_by_day(two_week_events, add_week_links=True)
 
     # Get base URL from config or use a default
-    base_url = g.site_config.get('base_url', 'https://dctech.events')
+    base_url = config.get('base_url', 'https://dctech.events')
 
     # Get stats - count only in-person events in next two weeks
     stats = get_stats().copy()
@@ -783,7 +700,7 @@ def virtual_events_page():
     days = prepare_events_by_day(events, add_week_links=False)
 
     # Get base URL from config or use a default
-    base_url = g.site_config.get('base_url', 'https://dctech.events')
+    base_url = config.get('base_url', 'https://dctech.events')
 
     # Get stats for virtual events only
     stats = {'upcoming_events': len(events)}
@@ -931,7 +848,7 @@ def newsletter_html():
     return render_template('newsletter.html',
                           days=days,
                           stats=stats,
-                          base_url=g.site_config.get('base_url', 'https://dctech.events'),
+                          base_url=config.get('base_url', 'https://dctech.events'),
                           upcoming_months=upcoming_months,
                           categories_with_counts=categories_with_counts)
 
@@ -959,7 +876,7 @@ def newsletter_text():
     response = render_template('newsletter.txt',
                              days=days,
                              stats=stats,
-                             base_url=g.site_config.get('base_url', 'https://dctech.events'),
+                             base_url=config.get('base_url', 'https://dctech.events'),
                              upcoming_months=upcoming_months,
                              categories_with_counts=categories_with_counts)
     return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
@@ -1101,9 +1018,7 @@ def sitemap():
 @app.route("/events.json")
 def events_json():
     """Serve events data as JSON for client-side use"""
-    site = safe_get_site()
-    data_dir = get_site_data_dir(site)
-    events_json_file = os.path.join(data_dir, 'events.json')
+    events_json_file = os.path.join('_data', 'events.json')
     if os.path.exists(events_json_file):
         with open(events_json_file, 'r', encoding='utf-8') as f:
             return Response(f.read(), mimetype='application/json')
@@ -1113,9 +1028,8 @@ def events_json():
 
 @app.route("/categories.json")
 def categories_json():
-    """Serve site-specific categories data as JSON"""
-    site = safe_get_site()
-    categories = get_categories(site)
+    """Serve categories data as JSON"""
+    categories = get_categories()
     # Convert to format expected by frontend
     formatted = {
         slug: {
@@ -1131,8 +1045,8 @@ def categories_json():
 def ical_feed():
     """Generate an iCal feed of upcoming events"""
     events = get_events()
-    site_name = g.site_config.get('site_name', 'DC Events')
-    tagline = g.site_config.get('tagline', 'Technology events')
+    site_name = config.get('site_name', 'DC Tech Events')
+    tagline = config.get('tagline', 'Technology conferences and meetups in and around Washington, DC')
     return generate_ical_feed(events, site_name, tagline)
 
 def generate_ical_feed(filtered_events, calendar_name, calendar_description):
@@ -1143,7 +1057,7 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
     group_websites = {group.get('name'): group.get('website') for group in groups if group.get('website')}
     
     cal = Calendar()
-    site_name = g.site_config.get('site_name', 'DC Events')
+    site_name = config.get('site_name', 'DC Tech Events')
     cal.add('prodid', f'-//{site_name}//dctech.events//')
     cal.add('version', '2.0')
     cal.add('x-wr-calname', calendar_name)
@@ -1250,7 +1164,7 @@ def category_ical_feed(slug):
     filtered_events = [e for e in events if slug in e.get('categories', [])]
     
     category = categories[slug]
-    site_name = g.site_config.get('site_name', 'DC Events')
+    site_name = config.get('site_name', 'DC Tech Events')
     calendar_name = f"{category['name']} Events - {site_name}"
     calendar_description = f"{category['name']} technology events in and around Washington, DC"
     
@@ -1267,7 +1181,7 @@ def location_ical_feed(state):
     filtered_events = filter_events_by_location(events, state=state)
     
     region_name = get_region_name(state)
-    site_name = g.site_config.get('site_name', 'DC Events')
+    site_name = config.get('site_name', 'DC Tech Events')
     calendar_name = f"{region_name} Events - {site_name}"
     calendar_description = f"Technology events in {region_name}"
     
@@ -1309,7 +1223,7 @@ def generate_rss_feed_from_events(events, feed_title, feed_description, feed_lin
             full_title = title
         
         ET.SubElement(item, 'title').text = full_title
-        link_url = url if url else g.site_config.get('base_url', 'https://dctech.events')
+        link_url = url if url else config.get('base_url', 'https://dctech.events')
         ET.SubElement(item, 'link').text = link_url
         
         desc_parts = []
@@ -1363,8 +1277,8 @@ def category_rss_feed(slug):
     filtered_events = [e for e in events if slug in e.get('categories', [])]
     
     category = categories[slug]
-    site_name = g.site_config.get('site_name', 'DC Events')
-    base_url = g.site_config.get('base_url', 'https://dctech.events')
+    site_name = config.get('site_name', 'DC Tech Events')
+    base_url = config.get('base_url', 'https://dctech.events')
     feed_title = f"{category['name']} Events - {site_name}"
     feed_description = f"Upcoming {category['name']} technology events in and around Washington, DC"
     feed_link = f"{base_url}/categories/{slug}/"
@@ -1382,8 +1296,8 @@ def location_rss_feed(state):
     filtered_events = filter_events_by_location(events, state=state)
     
     region_name = get_region_name(state)
-    site_name = g.site_config.get('site_name', 'DC Events')
-    base_url = g.site_config.get('base_url', 'https://dctech.events')
+    site_name = config.get('site_name', 'DC Tech Events')
+    base_url = config.get('base_url', 'https://dctech.events')
     feed_title = f"{region_name} Events - {site_name}"
     feed_description = f"Upcoming technology events in {region_name}"
     feed_link = f"{base_url}/locations/{state.lower()}/"

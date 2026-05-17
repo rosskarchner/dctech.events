@@ -271,18 +271,10 @@ export class LambdaApiStack extends cdk.Stack {
     const authenticatedMethodOptions: apigateway.MethodOptions = {
       authorizer: authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
-      authorizationScopes: ['openid', 'email'],
     };
 
-    // Create an unmanaged version of the function for API Gateway
-    const unmanagedApiFunction = lambda.Function.fromFunctionArn(
-      this, 
-      'UnmanagedApiFunction', 
-      this.apiFunction.functionArn
-    );
-
     // Create Lambda integration
-    const lambdaIntegration = new apigateway.LambdaIntegration(unmanagedApiFunction, {
+    const lambdaIntegration = new apigateway.LambdaIntegration(this.apiFunction, {
       proxy: true,
       allowTestInvoke: false,
     });
