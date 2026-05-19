@@ -180,9 +180,12 @@ async function ensureValidToken() {
 
 async function authorizedFetch(path, options = {}) {
   const headers = new Headers(options.headers || {});
-  await ensureValidToken();
-  const token = getAccessToken() || getIdToken();
-  if (token && !headers.has('Authorization')) {
+  const token = await ensureValidToken();
+  if (!token) {
+    login(window.location.pathname);
+    throw new Error('Session expired. Please sign in again.');
+  }
+  if (!headers.has('Authorization')) {
     headers.set('Authorization', 'Bearer ' + token);
   }
 

@@ -321,6 +321,23 @@ export class LambdaApiStack extends cdk.Stack {
       sourceArn: api.arnForExecuteApi('*', '/*', stageName),
     });
 
+    // Cognito authorizer rejections bypass Lambda entirely, so they have no CORS headers.
+    // These Gateway Responses ensure 401/403 responses are readable by the browser.
+    api.addGatewayResponse('UnauthorizedGatewayResponse', {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization,HX-Request,HX-Trigger,HX-Trigger-Name,HX-Target,HX-Current-URL'",
+      },
+    });
+    api.addGatewayResponse('AccessDeniedGatewayResponse', {
+      type: apigateway.ResponseType.ACCESS_DENIED,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization,HX-Request,HX-Trigger,HX-Trigger-Name,HX-Target,HX-Current-URL'",
+      },
+    });
+
     this.apiEndpoint = api.url;
 
     // Add usage plan
