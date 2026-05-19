@@ -167,12 +167,12 @@ async function refreshAccessToken() {
 
 async function ensureValidToken() {
   if (isAuthenticated()) {
-    return getAccessToken();
+    return getIdToken();
   }
 
   const refreshed = await refreshAccessToken();
   if (refreshed) {
-    return getAccessToken();
+    return getIdToken();
   }
 
   return null;
