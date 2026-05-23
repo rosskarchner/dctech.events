@@ -2,7 +2,9 @@ name: Code Gathering
 active: true
 website: https://www.meetup.com/codegathering/
 ical: https://www.meetup.com/codegathering/events/ical/
-categories: []
+categories:
+  - software-development
+  - social
 suppress_urls: false
 suppress_guid: false
 scan_for_metadata: false

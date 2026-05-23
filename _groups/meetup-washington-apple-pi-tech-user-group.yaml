@@ -2,7 +2,10 @@ name: Washington Apple Pi Tech User Group
 active: true
 website: https://www.meetup.com/theapplepi/
 ical: https://www.meetup.com/theapplepi/events/ical/
-categories: []
+categories:
+  - apple-technologies
+  - mobile
+  - hardware
 suppress_urls: false
 suppress_guid: false
 scan_for_metadata: false

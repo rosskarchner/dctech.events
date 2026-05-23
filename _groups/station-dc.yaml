@@ -3,7 +3,9 @@ active: true
 website: https://luma.com/stationdc
 ical: https://api2.luma.com/ics/get?entity=calendar&id=cal-AAO2oyuqOv3LHFu
 fallback_url: https://luma.com/stationdc
-categories: []
+categories:
+  - startups
+  - social
 suppress_urls: false
 suppress_guid: false
 scan_for_metadata: false
