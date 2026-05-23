@@ -39,6 +39,27 @@ def _get_table():
     return _table
 
 
+def _query_all(table, **kwargs):
+    """Paginate through all results for a DynamoDB query."""
+    response = table.query(**kwargs)
+    items = response.get('Items', [])
+    while 'LastEvaluatedKey' in response:
+        response = table.query(**kwargs, ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response.get('Items', []))
+    return items
+
+
+def _scan_all(table, **kwargs):
+    """Paginate through all results for a DynamoDB scan."""
+    response = table.scan(**kwargs)
+    items = response.get('Items', [])
+    while 'LastEvaluatedKey' in response:
+        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        response = table.scan(**kwargs)
+        items.extend(response.get('Items', []))
+    return items
+
+
 # ─── GROUP operations ───────────────────────────────────────────────
 
 def get_all_groups():
@@ -51,34 +72,10 @@ def get_all_groups():
     table = _get_table()
     groups = []
 
-    # Query GSI1 for active groups: GSI1PK = ACTIVE#1
+    # Query GSI1 for active and inactive groups
     try:
-        response = table.query(
-            IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#1'),
-        )
-        items = response.get('Items', [])
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                IndexName='GSI1',
-                KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#1'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
-
-        # Also get inactive groups
-        response = table.query(
-            IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#0'),
-        )
-        items.extend(response.get('Items', []))
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                IndexName='GSI1',
-                KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#0'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
+        items = _query_all(table, IndexName='GSI1', KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#1'))
+        items += _query_all(table, IndexName='GSI1', KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#0'))
 
         for item in items:
             groups.append(_dynamo_item_to_group(item))
@@ -96,22 +93,9 @@ def get_active_groups():
     groups = []
 
     try:
-        response = table.query(
-            IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#1'),
-        )
-        items = response.get('Items', [])
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                IndexName='GSI1',
-                KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#1'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
-
+        items = _query_all(table, IndexName='GSI1', KeyConditionExpression=Key('GSI1PK').eq('ACTIVE#1'))
         for item in items:
             groups.append(_dynamo_item_to_group(item))
-
     except ClientError as e:
         print(f"Error fetching active groups from DynamoDB: {e}")
         return []
@@ -152,17 +136,7 @@ def get_all_categories():
     categories = {}
 
     try:
-        # Scan for all CATEGORY entities (small dataset, scan is fine)
-        response = table.scan(
-            FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'),
-        )
-        items = response.get('Items', [])
-        while 'LastEvaluatedKey' in response:
-            response = table.scan(
-                FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
+        items = _scan_all(table, FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'))
 
         for item in items:
             slug = item['PK'].split('#', 1)[1]
@@ -192,17 +166,7 @@ def get_single_events():
     events = []
 
     try:
-        # Scan for EVENT entities with source=manual or source=submitted
-        response = table.scan(
-            FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
-        )
-        items = response.get('Items', [])
-        while 'LastEvaluatedKey' in response:
-            response = table.scan(
-                FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
+        items = _scan_all(table, FilterExpression=Attr('PK').begins_with('EVENT#') & Attr('SK').eq('META'))
 
         for item in items:
             if item.get('source') in ('manual', 'submitted'):
@@ -369,18 +333,7 @@ def get_future_events():
 
     items = []
     try:
-        response = table.query(
-            IndexName='GSI4',
-            KeyConditionExpression=Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today),
-        )
-        items.extend(response.get('Items', []))
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                IndexName='GSI4',
-                KeyConditionExpression=Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
+        items = _query_all(table, IndexName='GSI4', KeyConditionExpression=Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today))
     except ClientError as e:
         print(f"Error querying GSI4 for future events: {e}")
         return []

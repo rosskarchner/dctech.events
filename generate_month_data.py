@@ -10,15 +10,12 @@ import sys
 import calendar as cal_module
 import dateparser
 import json
-import hashlib
 import requests
 from dateutil import rrule
 from location_utils import extract_location_info
-CONFIG_FILE = 'config.yaml'
-config = {}
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f) or {}
+from site_config import get_config
+from event_utils import calculate_event_hash
+config = get_config()
 
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
@@ -54,13 +51,6 @@ ICAL_MAX_FUTURE_DAYS = 90
 # Max days in future for recurring events
 RECURRING_MAX_FUTURE_DAYS = 90
 
-def calculate_event_hash(date, time, title, url=None):
-    """Calculate MD5 hash for event identification."""
-    uid_parts = [date, time, title]
-    if url:
-        uid_parts.append(url)
-    uid_base = '-'.join(str(p) for p in uid_parts)
-    return hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 def is_event_in_allowed_states(event, allowed_states):
     """Return True if the event's location is in the allowed states list.

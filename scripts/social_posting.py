@@ -150,8 +150,8 @@ def main():
 
     target_date = datetime.now(local_tz).date()
     print(f"Checking events for {target_date}...")
-    
-if not os.path.exists(DATA_FILE):
+
+    if not os.path.exists(DATA_FILE):
         print(f"Warning: {DATA_FILE} not found, skipping posting")
         return
 

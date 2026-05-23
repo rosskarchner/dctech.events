@@ -6,6 +6,7 @@ import json
 
 from auth import get_user_from_event
 from db import create_draft, get_all_categories, get_drafts_by_submitter
+from routes.responses import html as _html, json as _json_response
 
 
 def _parse_body(event):
@@ -27,46 +28,8 @@ def _parse_body(event):
     return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
 
 
-def _html(status_code, body, event=None):
-    allowed_origins = [
-        'https://dctech.events',
-        'https://www.dctech.events',
-        'http://localhost:5000'
-    ]
-    origin = event.get('headers', {}).get('origin') if event else None
-    if origin not in allowed_origins:
-        origin = allowed_origins[0]
-
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Access-Control-Allow-Origin': origin,
-            'Vary': 'Origin',
-        },
-        'body': body,
-    }
-
-
 def _json(status_code, body, event=None):
-    allowed_origins = [
-        'https://dctech.events',
-        'https://www.dctech.events',
-        'http://localhost:5000'
-    ]
-    origin = event.get('headers', {}).get('origin') if event else None
-    if origin not in allowed_origins:
-        origin = allowed_origins[0]
-
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': origin,
-            'Vary': 'Origin',
-        },
-        'body': json.dumps(body),
-    }
+    return _json_response(status_code, body, event)
 
 
 def _error_payload(message):

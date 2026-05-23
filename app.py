@@ -9,17 +9,13 @@ from pathlib import Path
 from location_utils import extract_location_info, get_region_name
 import io
 from icalendar import Calendar, Event as ICalEvent
-import hashlib
 import xml.etree.ElementTree as ET  # nosec B405
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
+from site_config import get_config
+from event_utils import calculate_event_hash
 
-# Load configuration
-CONFIG_FILE = 'config.yaml'
-config = {}
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f)
+config = get_config()
 
 # Define timezone from config
 timezone_name = config.get('timezone', 'US/Eastern')
@@ -240,27 +236,6 @@ def filter_events_to_next_two_weeks(events):
         if e.get('date') and today <= datetime.strptime(e['date'], '%Y-%m-%d').date() <= two_weeks_from_now
     ]
 
-def calculate_event_hash(date, time, title, url=None):
-    """
-    Calculate MD5 hash for event identification.
-    Matches iCal GUID generation algorithm in generate_month_data.py.
-    
-    Args:
-        date: Event date (YYYY-MM-DD format)
-        time: Event time (HH:MM format, or empty string)
-        title: Event title
-        url: Optional event URL
-    
-    Returns:
-        MD5 hash string (hex)
-    """
-    uid_parts = [date, time, title]
-    if url:
-        uid_parts.append(url)
-    
-    uid_base = '-'.join(str(p) for p in uid_parts)
-    uid_hash = hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
-    return uid_hash
 
 def prepare_events_by_day(events, add_week_links=False):
     """
@@ -1140,12 +1115,7 @@ def generate_ical_feed(filtered_events, calendar_name, calendar_description):
             if group_website:
                 ical_event.add('organizer', group_website, parameters={'CN': group_name})
         
-        uid_parts = [event_date_str, event_time_str, event.get('title', 'event')]
-        if event.get('url'):
-            uid_parts.append(event['url'])
-
-        uid_base = '-'.join(str(p) for p in uid_parts)
-        uid_hash = hashlib.md5(uid_base.encode('utf-8'), usedforsecurity=False).hexdigest()
+        uid_hash = calculate_event_hash(event_date_str, event_time_str, event.get('title', 'event'), event.get('url'))
         uid = f"{uid_hash}@dctech.events"
         ical_event.add('uid', uid)
         ical_event.add('dtstamp', datetime.now(pytz.UTC))

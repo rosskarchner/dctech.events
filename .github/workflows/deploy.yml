@@ -23,45 +23,8 @@ env:
   CACHE_BUCKET: dctech-events-data-cache
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      infra: ${{ steps.filter.outputs.infra }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
-      workflow: ${{ steps.filter.outputs.workflow }}
-      site: ${{ steps.filter.outputs.site }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
-        id: filter
-        with:
-          filters: |
-            infra:
-              - 'infrastructure/**'
-            frontend:
-              - 'frontends/**'
-            backend:
-              - 'backend/**'
-              - 'lambdas/**'
-            workflow:
-              - '.github/workflows/**'
-            site:
-              - 'templates/**'
-              - 'app.py'
-              - 'freeze.py'
-              - 'generate_*.py'
-              - 'refresh_calendars.py'
-              - '_categories/**'
-              - '_groups/**'
-              - '_single_events/**'
-              - '_recurring_events/**'
-              - '_event_overrides/**'
-              - 'static/**'
-
   deploy-infra:
-    needs: changes
-    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -100,13 +63,8 @@ jobs:
           npx cdk deploy --all --require-approval never
 
   rebuild-site:
-    needs: [changes, deploy-infra]
-    if: |
-      always() && 
-      (needs.changes.outputs.site == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || 
-        needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflow == 'true' ||
-        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
-      (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
+    needs: [deploy-infra]
+    if: always() && (needs.deploy-infra.result == 'success' || needs.deploy-infra.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

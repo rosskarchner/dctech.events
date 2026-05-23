@@ -44,6 +44,25 @@ def _get_table():
     return _table
 
 
+def _query_all(table, **kwargs):
+    response = table.query(**kwargs)
+    items = response.get('Items', [])
+    while 'LastEvaluatedKey' in response:
+        response = table.query(**kwargs, ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response.get('Items', []))
+    return items
+
+
+def _scan_all(table, **kwargs):
+    response = table.scan(**kwargs)
+    items = response.get('Items', [])
+    while 'LastEvaluatedKey' in response:
+        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        response = table.scan(**kwargs)
+        items.extend(response.get('Items', []))
+    return items
+
+
 # ─── DRAFT operations ─────────────────────────────────────────────
 
 def create_draft(draft_type, data, submitter_email, submitter_id=None):
@@ -87,20 +106,7 @@ def get_drafts_by_status(status='pending'):
     items = []
     normalized_status = _normalize_draft_status(status)
 
-    response = table.query(
-        IndexName='GSI1',
-        KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{normalized_status}'),
-        ScanIndexForward=False,
-    )
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        response = table.query(
-            IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{normalized_status}'),
-            ExclusiveStartKey=response['LastEvaluatedKey'],
-            ScanIndexForward=False,
-        )
-        items.extend(response.get('Items', []))
+    items = _query_all(table, IndexName='GSI1', KeyConditionExpression=Key('GSI1PK').eq(f'STATUS#{normalized_status}'), ScanIndexForward=False)
 
     return [_draft_item_to_dict(item) for item in items]
 
@@ -113,21 +119,7 @@ def get_drafts_by_submitter(user_id):
     items = []
 
     # Use GSI3 to efficiently query by user identifier
-    response = table.query(
-        IndexName='GSI3',
-        KeyConditionExpression=Key('GSI3PK').eq(f'USER#{user_id}'),
-        ScanIndexForward=False,  # Most recent first
-    )
-    items.extend(response.get('Items', []))
-    
-    while 'LastEvaluatedKey' in response:
-        response = table.query(
-            IndexName='GSI3',
-            KeyConditionExpression=Key('GSI3PK').eq(f'USER#{user_id}'),
-            ScanIndexForward=False,
-            ExclusiveStartKey=response['LastEvaluatedKey'],
-        )
-        items.extend(response.get('Items', []))
+    items = _query_all(table, IndexName='GSI3', KeyConditionExpression=Key('GSI3PK').eq(f'USER#{user_id}'), ScanIndexForward=False)
 
     return [_draft_item_to_dict(item) for item in items]
 
@@ -193,18 +185,7 @@ def get_all_groups():
     items = []
 
     for active_flag in ['ACTIVE#1', 'ACTIVE#0']:
-        response = table.query(
-            IndexName='GSI1',
-            KeyConditionExpression=Key('GSI1PK').eq(active_flag),
-        )
-        items.extend(response.get('Items', []))
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                IndexName='GSI1',
-                KeyConditionExpression=Key('GSI1PK').eq(active_flag),
-                ExclusiveStartKey=response['LastEvaluatedKey'],
-            )
-            items.extend(response.get('Items', []))
+        items += _query_all(table, IndexName='GSI1', KeyConditionExpression=Key('GSI1PK').eq(active_flag))
 
     return [_group_item_to_dict(item) for item in items]
 
@@ -273,12 +254,7 @@ def get_events_by_date(date_prefix=None):
             Attr('GSI1PK').begins_with(f'DATE#{date_prefix}') & Attr('SK').eq('META')
         )
 
-    response = table.scan(**scan_kwargs)
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
-        response = table.scan(**scan_kwargs)
-        items.extend(response.get('Items', []))
+    items = _scan_all(table, **scan_kwargs)
 
     return [_event_item_to_dict(item) for item in items]
 
@@ -318,12 +294,7 @@ def get_all_events(date_prefix=None, filter_type=None, include_past=False):
         today = _date_type.today().isoformat()
         kce = Key('GSI4PK').eq('EVT#ACTIVE') & Key('GSI4SK').gte(today)
 
-    query_kwargs = {'IndexName': 'GSI4', 'KeyConditionExpression': kce}
-    response = table.query(**query_kwargs)
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        response = table.query(**query_kwargs, ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response.get('Items', []))
+    items = _query_all(table, IndexName='GSI4', KeyConditionExpression=kce)
 
     results = [_config_event_to_dict(item) for item in items]
 
@@ -490,16 +461,7 @@ def get_all_categories():
     table = _get_table()
     items = []
 
-    response = table.scan(
-        FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'),
-    )
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(
-            FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'),
-            ExclusiveStartKey=response['LastEvaluatedKey'],
-        )
-        items.extend(response.get('Items', []))
+    items = _scan_all(table, FilterExpression=Attr('PK').begins_with('CATEGORY#') & Attr('SK').eq('META'))
 
     categories = {}
     for item in items:

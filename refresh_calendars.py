@@ -12,11 +12,8 @@ from pathlib import Path
 import sys
 from location_utils import extract_location_info
 import recurring_ical_events
-CONFIG_FILE = 'config.yaml'
-config = {}
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f) or {}
+from site_config import get_config
+config = get_config()
 
 timezone_name = config.get('timezone', 'US/Eastern')
 local_tz = pytz.timezone(timezone_name)
