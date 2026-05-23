@@ -9,6 +9,7 @@ from pathlib import Path
 from location_utils import extract_location_info, get_region_name
 import io
 from icalendar import Calendar, Event as ICalEvent
+import hashlib
 import xml.etree.ElementTree as ET  # nosec B405
 from email.utils import formatdate
 import db_utils  # Legacy — being phased out
