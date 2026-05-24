@@ -60,21 +60,22 @@ os.makedirs(JSON_LD_CACHE_DIR, exist_ok=True)
 
 def fetch_json_ld_data(url):
     """Fetch JSON-LD data from the given URL (e.g. Meetup event pages).
-    
-    Returns a dict with 'title' and 'is_virtual' keys.
+
+    Returns a dict with 'title', 'is_virtual', and 'location' keys.
     """
     if "meetup.com" not in url:
-        return {'title': None, 'is_virtual': False}
-        
+        return {'title': None, 'is_virtual': False, 'location': None}
+
     url_hash = hashlib.md5(url.encode('utf-8'), usedforsecurity=False).hexdigest()
     cache_file = os.path.join(JSON_LD_CACHE_DIR, f"{url_hash}.json")
-    
+
     if os.path.exists(cache_file):
-        with open(cache_file, 'r') as f:
-            return json.load(f)
-            
-    result = {'title': None, 'is_virtual': False}
-    
+        cached = json.load(open(cache_file))
+        cached.setdefault('location', None)
+        return cached
+
+    result = {'title': None, 'is_virtual': False, 'location': None}
+
     try:
         from bs4 import BeautifulSoup
         resp = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=10)
@@ -88,17 +89,29 @@ def fetch_json_ld_data(url):
                         if item.get('@type') == 'Event':
                             if 'name' in item:
                                 result['title'] = item['name']
-                            
+
                             # Check eventAttendanceMode for virtual events
                             attendance_mode = item.get('eventAttendanceMode', '')
                             if 'OnlineEventAttendanceMode' in attendance_mode or 'Online' in attendance_mode:
                                 result['is_virtual'] = True
-                            
-                            # Also check location - if no location, it's virtual
+
+                            # Extract venue address from location field
                             location = item.get('location')
                             if not location:
                                 result['is_virtual'] = True
-                            
+                            elif isinstance(location, dict):
+                                addr = location.get('address', {})
+                                if isinstance(addr, dict):
+                                    parts = [
+                                        location.get('name', ''),
+                                        addr.get('streetAddress', ''),
+                                        addr.get('addressLocality', ''),
+                                        addr.get('addressRegion', ''),
+                                    ]
+                                    result['location'] = ', '.join(p for p in parts if p)
+                                elif isinstance(addr, str) and addr:
+                                    result['location'] = addr
+
                             # Cache and return
                             with open(cache_file, 'w') as f:
                                 json.dump(result, f)
@@ -108,7 +121,7 @@ def fetch_json_ld_data(url):
     except Exception as e:
         print(f"Error fetching JSON-LD for {url}: {e}")
         pass
-        
+
     # Cache even if we couldn't parse it
     with open(cache_file, 'w') as f:
         json.dump(result, f)
@@ -216,19 +229,23 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 url_match = re.search(r'https?://[^\s<>"]+|www\.[^\s<>"]+', desc)
                 event_url = url_match.group(0) if url_match else group.get('website', '')
 
-            # Fetch JSON-LD data to get canonical title and virtual status
+            # Fetch JSON-LD data to get canonical title, virtual status, and venue
             is_virtual = False
+            ical_location = str(event.get('location', ''))
+            resolved_location = ical_location
             if event_url:
                 ld_data = fetch_json_ld_data(event_url)
                 if ld_data.get('title'):
                     title = ld_data['title']
                 is_virtual = ld_data.get('is_virtual', False)
-            
+                if not ical_location and ld_data.get('location'):
+                    resolved_location = ld_data['location']
+
             # Fallback: check location field for virtual indicators
             if not is_virtual:
-                location = str(event.get('location', '')).lower()
+                location_lower = resolved_location.lower()
                 virtual_keywords = ['virtual', 'online', 'remote', 'zoom', 'webinar', 'livestream', 'live stream', 'internet']
-                is_virtual = any(keyword in location for keyword in virtual_keywords)
+                is_virtual = any(keyword in location_lower for keyword in virtual_keywords)
 
             event_data = {
                 'title': title,
@@ -237,7 +254,7 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
                 'end_date': end_date_str,
                 'end_time': end_time_str,
                 'url': event_url,
-                'location': str(event.get('location', '')),
+                'location': resolved_location,
                 'description': str(event.get('description', '')),
                 'group': group_name,
                 'group_id': group_id,

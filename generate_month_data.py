@@ -27,8 +27,11 @@ ICAL_CACHE_DIR = os.path.join(CACHE_DIR, 'ical')
 GROUPS_DIR = '_groups'
 CATEGORIES_DIR = '_categories'
 SINGLE_EVENTS_DIR = '_single_events'
-EVENT_OVERRIDES_DIR = '_event_overrides'
+OVERLAY_DIR = '_overlay'
 RECURRING_EVENTS_DIR = '_recurring_events'
+
+# Fields that overlays cannot override (computed or identity fields)
+_OVERLAY_PROTECTED_FIELDS = {'group', 'group_id', 'group_website', 'date', 'time', 'end_date', 'end_time', 'guid', 'source'}
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -230,33 +233,34 @@ def load_single_events():
 
     return events
 
-def load_event_overrides():
-    """Load event override data from _event_overrides/ YAML files.
+def load_overlays():
+    """Load overlay data from _overlay/ YAML files.
 
     Each file is named {guid}.yaml and may contain any of:
       - title: replacement event name
       - categories: list of category slugs to use instead of the iCal categories
+      - duplicate_of: GUID of the canonical event (marks this event as a duplicate)
 
-    Returns a dict mapping guid -> override fields dict.
+    Returns a dict mapping guid -> overlay fields dict.
     """
-    overrides = {}
-    if not os.path.exists(EVENT_OVERRIDES_DIR):
-        return overrides
+    overlays = {}
+    if not os.path.exists(OVERLAY_DIR):
+        return overlays
 
-    for filename in os.listdir(EVENT_OVERRIDES_DIR):
+    for filename in os.listdir(OVERLAY_DIR):
         if not filename.endswith('.yaml'):
             continue
         guid = os.path.splitext(filename)[0]
-        filepath = os.path.join(EVENT_OVERRIDES_DIR, filename)
+        filepath = os.path.join(OVERLAY_DIR, filename)
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
             if data:
-                overrides[guid] = data
+                overlays[guid] = data
         except Exception as e:
-            print(f"Error loading override {filepath}: {e}")
+            print(f"Error loading overlay {filepath}: {e}")
 
-    return overrides
+    return overlays
 
 
 def load_recurring_events():
@@ -380,8 +384,8 @@ def process_events(groups, categories, single_events, ical_events, recurring_eve
         recurring_events: list of recurring event dicts (with rrule field)
         allowed_states: list of state abbreviations to allow (empty = all)
         today: date to use as "today" (default: current date)
-        event_overrides: dict of {guid: override_fields} from load_event_overrides()
-            (default: None, meaning no overrides applied)
+        event_overrides: dict of {guid: overlay_fields} from load_overlays()
+            (default: None, meaning no overlays applied)
 
     Returns:
         Sorted list of deduplicated event dicts.
@@ -436,13 +440,12 @@ def process_events(groups, categories, single_events, ical_events, recurring_eve
                 event.get('url'),
             )
 
-            # Apply any override for this event's GUID
+            # Apply any overlay for this event's GUID (all fields except protected ones)
             override = event_overrides.get(processed['guid'])
             if override:
-                if 'title' in override:
-                    processed['title'] = override['title']
-                if 'categories' in override:
-                    processed['categories'] = override['categories']
+                for key, value in override.items():
+                    if key not in _OVERLAY_PROTECTED_FIELDS:
+                        processed[key] = value
 
             regular_events.append(processed)
 
@@ -491,7 +494,7 @@ def main():
     categories = get_categories()
     single_events = load_single_events()
     recurring_events = load_recurring_events()
-    event_overrides = load_event_overrides()
+    event_overrides = load_overlays()
 
     # Load iCal events from per-group cache files
     ical_events = {}

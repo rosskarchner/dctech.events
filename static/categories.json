@@ -113,5 +113,20 @@
     "slug": "vendor-conferences",
     "name": "Vendor Conferences",
     "description": "Company-sponsored conferences, product launches, and vendor events"
+  },
+  "apple-technologies": {
+    "slug": "apple-technologies",
+    "name": "Apple Technologies",
+    "description": "macOS, iOS, Swift, and the Apple platform ecosystem"
+  },
+  "communities": {
+    "slug": "communities",
+    "name": "Communities",
+    "description": "Tech communities organized around shared identity, values, or background"
+  },
+  "career-and-professional-development": {
+    "slug": "career-and-professional-development",
+    "name": "Career & Professional Development",
+    "description": "Career transitions, job searching, mentorship, and leadership networking"
   }
 }

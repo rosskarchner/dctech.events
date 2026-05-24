@@ -5,7 +5,7 @@ This project is a static site generator (Python) with a serverless backend (Lamb
 ## System Architecture
 
 **Static Site**: Python + Jinja2 + Makefile
-- Data: `_data/` (groups, locations), `_event_overrides/` (one-off event edits)
+- Data: `_data/` (groups, locations), `_overlay/` (per-event overrides: title, categories, duplicate_of)
 - Build: `make build` (generates HTML in `build/`)
 - Production: Static HTML/CSS/JS files in `build/`
 - Data changes via admin UI trigger automated rebuilds
