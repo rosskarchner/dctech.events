@@ -1,0 +1,8 @@
+name: Washington Technology Events
+active: true
+website: https://www.washingtontechnology.com/events/
+ical: https://rosskarchner.github.io/dctech-scrapercollcection/washington_technology.ics
+categories: []
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
