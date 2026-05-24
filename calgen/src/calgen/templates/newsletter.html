@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ site_name }} Newsletter</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #333;">{{ site_name }} - Upcoming Events</h1>
+
+    {% if days %}
+        {% for day in days %}
+            {% if day.has_events %}
+                <div style="margin-bottom: 20px;">
+                    <h2 style="color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;">{{ day.short_date }}</h2>
+
+                    {% for time_slot in day.time_slots %}
+                        <div style="margin-bottom: 15px;">
+                            <h3 style="color: #666; margin: 10px 0;">{{ time_slot.events[0].formatted_time }}</h3>
+                            {% for event in time_slot.events %}
+                                <div style="margin-bottom: 10px;">
+                                    <div style="font-weight: bold;">
+                                        <a href="{{ event.url }}" style="color: #0066cc; text-decoration: none;">{{ event.newsletter_title }}</a>
+                                    </div>
+                                    <div style="color: #666; font-size: 14px;">
+                                        {% if event.location %}{{ event.location }}{% endif %}
+                                        {% if event.group %}
+                                            {% if event.location %} / {% endif %}
+                                            {% if event.group_website %}
+                                                <a href="{{ event.group_website }}" style="color: #0066cc; text-decoration: none;">{{ event.group }}</a>
+                                            {% else %}
+                                                {{ event.group }}
+                                            {% endif %}
+                                        {% endif %}
+                                        {% if event.also_published_by %}
+                                            <div style="font-style: italic; font-size: 13px; color: #999; margin-top: 3px;">
+                                                Also published by
+                                                {% for alt_group in event.also_published_by %}
+                                                    <a href="{{ alt_group.url }}" style="color: #0066cc; text-decoration: none;">{{ alt_group.group }}</a>{% if not loop.last %}{% if loop.revindex == 2 %} and {% else %}, {% endif %}{% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p>No events found for this period.</p>
+    {% endif %}
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">
+        <h3 style="color: #444; margin-top: 0;">Browse by Month</h3>
+        {% if upcoming_months %}
+            <ul style="list-style-type: none; padding: 0; margin: 0 0 20px 0;">
+            {% for month in upcoming_months %}
+                <li style="margin-bottom: 8px;">
+                    <a href="{{ base_url }}{{ month.url }}" style="color: #0066cc; text-decoration: none;">{{ month.name }}</a>
+                    <span style="color: #666;">({{ month.count }} event{% if month.count != 1 %}s{% endif %})</span>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #666;">No upcoming months with events.</p>
+        {% endif %}
+
+        <h3 style="color: #444; margin-top: 20px;">Browse by Category</h3>
+        {% if categories_with_counts %}
+            <ul style="list-style-type: none; padding: 0; margin: 0;">
+            {% for category in categories_with_counts %}
+                <li style="margin-bottom: 8px;">
+                    <a href="{{ base_url }}{{ category.url }}" style="color: #0066cc; text-decoration: none;">{{ category.name }}</a>
+                    <span style="color: #666;">({{ category.count }} event{% if category.count != 1 %}s{% endif %})</span>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #666;">No categorized events.</p>
+        {% endif %}
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px; color: #666;">
+        <p>View more events at <a href="{{ base_url }}" style="color: #0066cc; text-decoration: none;">{{ site_name }}</a></p>
+    </div>
+</body>
+</html>

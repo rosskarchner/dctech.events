@@ -1,0 +1,49 @@
+{{ site_name }} - Upcoming Events
+{{ '=' * (site_name|length + 18) }}
+
+{% if days %}
+{% for day in days %}
+{% if day.has_events %}
+{{ day.short_date }}
+{{ '-' * day.short_date|length }}
+
+{% for time_slot in day.time_slots %}
+{{ time_slot.events[0].formatted_time }}:
+{% for event in time_slot.events %}
+* {{ event.newsletter_title }}
+  {% if event.location %}Location: {{ event.location }}{% endif %}
+  {% if event.group %}Group: {{ event.group }}{% endif %}
+  URL: {{ event.url }}
+
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% else %}
+No events found for this period.
+{% endif %}
+
+Browse by Month
+===============
+{% if upcoming_months %}
+{% for month in upcoming_months %}
+* {{ month.name }} ({{ month.count }} event{% if month.count != 1 %}s{% endif %})
+  {{ base_url }}{{ month.url }}
+{% endfor %}
+{% else %}
+No upcoming months with events.
+{% endif %}
+
+Browse by Category
+==================
+{% if categories_with_counts %}
+{% for category in categories_with_counts %}
+* {{ category.name }} ({{ category.count }} event{% if category.count != 1 %}s{% endif %})
+  {{ base_url }}{{ category.url }}
+{% endfor %}
+{% else %}
+No categorized events.
+{% endif %}
+
+---
+View more events at {{ base_url }}

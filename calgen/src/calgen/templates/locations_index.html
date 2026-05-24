@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Locations - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>Events by Region</h2>
+
+        {% if locations %}
+        <ul>
+            {% for location in locations %}
+                <li>
+                    <a href="/locations/{{ location.state }}/">{{ location.name }}</a>
+                    ({{ location.count }} event{% if location.count != 1 %}s{% endif %})
+                </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+            <p>No location data available.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

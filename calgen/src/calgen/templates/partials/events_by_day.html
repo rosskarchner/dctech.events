@@ -1,0 +1,69 @@
+{# Partial template for displaying events grouped by day and time #}
+<div class="events-by-day">
+    {% if days %}
+        {% for day in days %}
+            {% if day.has_events %}
+                <div class="day-container {{ loop.cycle('odd', 'even') }}">
+                    <h2 class="day-heading" id="{{ day.date }}">
+                        {% if day.week_url %}
+                            <a href="{{ day.week_url }}">{{ day.short_date }}</a>
+                        {% else %}
+                            {{ day.short_date }}
+                        {% endif %}
+                    </h2>
+
+                    {% for time_slot in day.time_slots %}
+                        <div class="time-slot">
+                            <h3 class="time-heading">{{ time_slot.events[0].formatted_time }}</h3>
+                            {% for event in time_slot.events %}
+                                <div class="h-event event">
+                                    <a class="u-url p-name" href="{{ event.url }}" target="_blank" rel="noopener noreferrer">{{ event.title }}</a>{% if event.display_title != event.title %} <span class="p-summary">{{ event.display_title | replace(event.title, '') }}</span>{% endif %}
+                                    {% if event.is_recurring %}<span class="recurring-badge" title="This is a recurring event. Please confirm with the organizer before attending.">🔄 Recurring</span>{% endif %}
+                                    {% if event.time %}<time class="dt-start" datetime="{{ day.date }}T{{ event.time }}">{{ event.formatted_time }}</time>{% endif %}
+                                    <div class="event-details">
+                                        {% if event.location %}
+                                            <div class="p-location event-location">
+                                                {{ event.location }}
+                                            </div>
+                                        {% endif %}
+                                        {% if event.group %}
+                                           <div class="p-organizer h-card">
+                                            {% if event.group_website %}
+                                                <a class="u-url p-name" href="{{ event.group_website }}" target="_blank" rel="noopener noreferrer">{{ event.group }}</a>
+                                            {% else %}
+                                                <span class="p-name">{{ event.group }}</span>
+                                            {% endif %}
+                                            </div>
+                                        {% endif %}
+                                        {% if event.also_published_by %}
+                                            <div class="also-published-by">
+                                                Also published by
+                                                {% for alt_group in event.also_published_by %}
+                                                    <a href="{{ alt_group.url }}" target="_blank" rel="noopener noreferrer">{{ alt_group.group }}</a>{% if not loop.last %}{% if loop.revindex == 2 %} and {% else %}, {% endif %}{% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if event.categories %}
+                                            <div class="event-categories">
+                                                {% for cat_slug in event.categories %}
+                                                    {% if categories and cat_slug in categories %}
+                                                        <a href="/categories/{{ cat_slug }}/" class="category-badge">{{ categories[cat_slug].name }}</a>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <div class="no-events-container">
+            <p>No events found for this period.</p>
+            <p>Check back soon or <a href="/groups">browse our groups</a>.</p>
+        </div>
+    {% endif %}
+</div>

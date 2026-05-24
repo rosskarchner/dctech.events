@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "calgen"
+version = "0.1.0"
+description = "A static site generator for local tech event calendars"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "flask>=3.0",
+    "flask-frozen>=1.0",
+    "jinja2>=3.0",
+    "pyyaml>=6.0",
+    "pytz>=2024.1",
+    "icalendar>=5.0",
+    "requests>=2.28",
+    "usaddress>=0.5",
+    "recurring-ical-events>=2.0",
+    "dateparser>=1.1",
+    "python-dateutil>=2.8",
+    "click>=8.0",
+    "beautifulsoup4>=4.11",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+calgen = "calgen.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/calgen"]
