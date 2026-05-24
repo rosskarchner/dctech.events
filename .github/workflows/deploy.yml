@@ -20,7 +20,6 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-  CACHE_BUCKET: dctech-events-data-cache
 
 jobs:
   deploy-infra:
@@ -81,17 +80,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: github-actions-rebuild-site
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Sync Cache from S3
-        run: |
-          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_cache _cache || echo "No cache found"
-          aws s3 sync s3://${{ env.CACHE_BUCKET }}/_data _data || echo "No data found"
+      - name: Cache iCal and JSON-LD data
+        uses: actions/cache@v4
+        with:
+          path: _cache
+          key: ical-cache-${{ hashFiles('_groups/**') }}-${{ steps.date.outputs.date }}
+          restore-keys: |
+            ical-cache-${{ hashFiles('_groups/**') }}-
 
       - name: Refresh Calendars (All Sites)
         run: python refresh_calendars.py --all-sites
@@ -101,11 +100,6 @@ jobs:
 
       - name: Build Static Site (All Sites)
         run: python freeze.py
-
-      - name: Sync Cache to S3
-        run: |
-          aws s3 sync _cache s3://${{ env.CACHE_BUCKET }}/_cache --delete
-          aws s3 sync _data s3://${{ env.CACHE_BUCKET }}/_data --delete
 
       - name: Prepare GitHub Pages artifact
         run: |

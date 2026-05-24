@@ -6,17 +6,7 @@ js-build:
 	npm run build
 
 refresh-calendars:
-	@if [ -n "$$DATA_CACHE_BUCKET" ]; then \
-		echo "Syncing cache from S3 bucket: $$DATA_CACHE_BUCKET"; \
-		aws s3 sync s3://$$DATA_CACHE_BUCKET/_cache _cache || echo "Warning: Failed to sync _cache from S3"; \
-		aws s3 sync s3://$$DATA_CACHE_BUCKET/_data _data || echo "Warning: Failed to sync _data from S3"; \
-	fi
 	python refresh_calendars.py
-	@if [ -n "$$DATA_CACHE_BUCKET" ]; then \
-		echo "Syncing cache to S3 bucket: $$DATA_CACHE_BUCKET"; \
-		aws s3 sync _cache s3://$$DATA_CACHE_BUCKET/_cache || echo "Warning: Failed to sync _cache to S3"; \
-		aws s3 sync _data s3://$$DATA_CACHE_BUCKET/_data || echo "Warning: Failed to sync _data to S3"; \
-	fi
 
 generate-month-data: refresh-calendars
 	python generate_month_data.py
