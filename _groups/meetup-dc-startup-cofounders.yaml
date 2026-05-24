@@ -1,0 +1,9 @@
+name: D.C. Startup Founders & Tech Professionals
+active: true
+website: https://www.meetup.com/dc-startup-cofounders/
+ical: https://www.meetup.com/dc-startup-cofounders/events/ical/
+categories:
+- startups
+suppress_urls: false
+suppress_guid: false
+scan_for_metadata: false
