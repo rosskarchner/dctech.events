@@ -31,7 +31,7 @@ OVERLAY_DIR = '_overlay'
 RECURRING_EVENTS_DIR = '_recurring_events'
 
 # Fields that overlays cannot override (computed or identity fields)
-_OVERLAY_PROTECTED_FIELDS = {'group', 'group_id', 'group_website', 'date', 'time', 'end_date', 'end_time', 'guid', 'source'}
+_OVERLAY_PROTECTED_FIELDS = {'group', 'group_id', 'group_website', 'date', 'end_date', 'guid', 'source'}
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
