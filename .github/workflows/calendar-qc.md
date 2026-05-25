@@ -30,11 +30,13 @@ steps:
       python3 refresh_calendars.py || echo "Refresh had errors, continuing with existing data"
       mkdir -p /tmp/gh-aw/agent
       python3 - <<'PYEOF'
-      import json, os
+      import json, os, glob
       path = '_data/all_events.json'
       events = json.load(open(path)) if os.path.exists(path) else []
       json.dump(events, open('/tmp/gh-aw/agent/events.json', 'w'), indent=2)
-      print(f"Exported {len(events)} events")
+      cats = sorted(os.path.splitext(os.path.basename(f))[0] for f in glob.glob('_categories/*.yaml'))
+      open('/tmp/gh-aw/agent/categories.json', 'w').write(json.dumps(cats))
+      print(f"Exported {len(events)} events, {len(cats)} categories")
       PYEOF
 safe-outputs:
   create-pull-request:
@@ -81,6 +83,7 @@ Write any of these into `_overlay/{guid}.yaml`:
 | `hidden: true` | Suppresses the event entirely |
 | `location: "Full address, City, State"` | Overrides the location |
 | `title: "New Title"` | Overrides the event title |
+| `categories: [slug, ...]` | Replaces the group's categories with this full list (include existing ones too) |
 
 Multiple fields can appear in the same overlay file. Always add a leading `#` comment explaining the reason.
 
@@ -157,7 +160,34 @@ Create or update `_overlay/{guid}.yaml`:
 title: "Simplified Event Title"
 ```
 
-## Step 6 — Update Cache and Create Output
+## Step 6 — Assign Additional Categories
+
+Read `/tmp/gh-aw/agent/categories.json` for the full list of valid category slugs:
+
+`ai`, `apple-technologies`, `career-and-professional-development`, `cloud`, `communities`, `conferences`, `coworking`, `crypto`, `cybersecurity`, `data`, `gaming`, `govtech`, `hardware`, `legal-tech`, `microsoft`, `mobile`, `open-source-community`, `programming-languages`, `regional-organizations`, `social`, `software-development`, `startups`, `technology-and-media`, `training`, `ux-design`, `vendor-conferences`
+
+For each future iCal event (run this check even for GUIDs already in the cache — categories are assessed independently):
+
+1. Look at the event's current `categories` array (inherited from the group) plus its `title` and `description`.
+2. Determine whether the event clearly fits any **additional** categories not already present.
+3. Only add a category when it is clearly appropriate based on the event content — not speculatively. Examples:
+   - A `cloud` group hosts "AWS re:Invent DC Recap" → also `vendor-conferences`
+   - A `software-development` group hosts "Introduction to Python" → also `programming-languages`, `training`
+   - A `cybersecurity` group hosts its regular monthly meetup → no additions needed
+   - An `ai` group hosts a conference with paid tickets → also `conferences`
+4. If additional categories are warranted, create or update `_overlay/{guid}.yaml` with the **full combined list** (existing categories plus new ones). Because `categories` in an overlay replaces the group's list entirely, you must include the originals:
+
+```yaml
+# Also fits: {new-slug} ({one-line reason})
+categories:
+  - existing-slug-1
+  - existing-slug-2
+  - new-slug
+```
+
+**Do not add categories** that are only marginally relevant or that you are uncertain about. One clearly correct addition is better than three guesses.
+
+## Step 7 — Update Cache and Create Output
 
 After reviewing all in-scope events:
 
@@ -170,6 +200,7 @@ After reviewing all in-scope events:
      - **Hidden (N)**: `{title}` — reason
      - **Locations added (N)**: `{title}` — `{new location}`
      - **Titles simplified (N)**: `{original}` → `{simplified}`
+     - **Categories added (N)**: `{title}` — added `{slug}` (reason)
 
 3. **If no changes were needed**:
    - Call the `noop` safe output with: "Reviewed N in-scope events, no quality issues found."
