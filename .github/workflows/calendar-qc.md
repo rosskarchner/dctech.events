@@ -142,19 +142,43 @@ location: "Venue Name, Street Address, City, State ZIP"
 
 ## Step 5 — Simplify Redundant Titles
 
-When an event title begins with the group name (or an obvious abbreviation of it), the prefix is redundant because the group name is already displayed separately in the UI.
+The UI already shows the event date, time, and group name separately alongside the title. Two types of redundancy are worth fixing:
 
-Examples of titles to simplify:
+### 5a — Redundant group name prefix
+
+When an event title begins with the group name (or an obvious abbreviation of it), strip it.
+
+Examples:
 - Group "DC Python Users Group", title "DC Python: What's New in Python 3.13" → `What's New in Python 3.13`
 - Group "Northern Virginia JavaScript", title "NoVa JS - June Meetup" → `June Meetup`
 - Group "Women in Cybersecurity DC", title "WiCyS DC Chapter Meeting" → leave as-is (short and meaningful on its own)
 
-**Only simplify when**:
-1. The prefix is unambiguously the group name or a well-known short form of it
-2. The remaining title is meaningful on its own — not empty, not just a date, and **not a bare number or episode identifier** (e.g. "015", "#12", "Vol. 3"). A title that is only a number has no meaning without the group name and must not be used.
+**Only strip the prefix when**:
+1. It is unambiguously the group name or a well-known short form of it
+2. The remaining title is meaningful on its own (see bare-number rule below)
 3. The result reads naturally as a standalone event title
 
-> **Example of what NOT to do**: Group "Defense Tech DC", title "Defense Tech DC 015" — stripping the prefix leaves "015", which is meaningless alone. Leave the title as-is.
+### 5b — Embedded date, time, or location info
+
+When a title restates the event's date, time, or location — information already shown separately in the UI — strip that portion.
+
+Common patterns to recognise and remove:
+- Date suffixes: `- June 3rd, 2026`, `| May 27th`, `(March 2026)`, `- Tues May 27`
+- Time suffixes: `@ 7pm`, `at 7:30 PM`, `(6:30 PM)`
+- Combined: `- June 3rd, 2026 @ 7pm`, `| Tuesday 6/3 7PM`
+- Location info already shown in the `location` field: city abbreviations or venue names appended to the title
+
+Apply this rule independently of 5a — a title may warrant only one or both strips.
+
+Example: `"FXBG Hackers - 0x30 - June 3rd, 2026 @ 7pm"` → strip the date/time suffix → `"FXBG Hackers - 0x30"`.
+
+### Bare-number rule (applies to both 5a and 5b)
+
+If the result of any simplification would be **only a bare number or episode identifier** (e.g. `"015"`, `"0x30"`, `"#12"`, `"Vol. 3"`), do not apply that simplification — the result has no meaning without context.
+
+> **Example**: Group "Defense Tech DC", title "Defense Tech DC 015" — stripping the prefix leaves "015", which is meaningless alone. Leave as-is.
+
+### Output
 
 Create or update `_overlay/{guid}.yaml`:
 
