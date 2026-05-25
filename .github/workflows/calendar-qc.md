@@ -151,8 +151,10 @@ Examples of titles to simplify:
 
 **Only simplify when**:
 1. The prefix is unambiguously the group name or a well-known short form of it
-2. The remaining title is meaningful on its own (not empty, not just a date)
-3. The result reads naturally
+2. The remaining title is meaningful on its own — not empty, not just a date, and **not a bare number or episode identifier** (e.g. "015", "#12", "Vol. 3"). A title that is only a number has no meaning without the group name and must not be used.
+3. The result reads naturally as a standalone event title
+
+> **Example of what NOT to do**: Group "Defense Tech DC", title "Defense Tech DC 015" — stripping the prefix leaves "015", which is meaningless alone. Leave the title as-is.
 
 Create or update `_overlay/{guid}.yaml`:
 
