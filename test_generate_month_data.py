@@ -9,7 +9,7 @@ from generate_month_data import (
     remove_duplicates,
     calculate_event_hash,
     process_events,
-    load_event_overrides,
+    load_event_overrides,  # aliased from load_overlays in calgen.pipeline
 )
 
 class TestGenerateMonthDataStandalone(unittest.TestCase):
@@ -379,32 +379,30 @@ class TestEventOverrides(unittest.TestCase):
         self.assertEqual(events[0]['title'], 'Regular Event')
 
     def test_load_event_overrides_missing_dir(self):
-        # Point override dir at a non-existent path by temporarily patching
-        import generate_month_data as gmd
-        original = gmd.EVENT_OVERRIDES_DIR
+        import calgen.pipeline as pipeline
+        original = pipeline.OVERLAY_DIR
         try:
-            gmd.EVENT_OVERRIDES_DIR = '/tmp/nonexistent_overrides_dir_xyz'
+            pipeline.OVERLAY_DIR = '/tmp/nonexistent_overrides_dir_xyz'
             result = load_event_overrides()
             self.assertEqual(result, {})
         finally:
-            gmd.EVENT_OVERRIDES_DIR = original
+            pipeline.OVERLAY_DIR = original
 
     def test_load_event_overrides_from_directory(self):
-        import generate_month_data as gmd
+        import calgen.pipeline as pipeline
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Write a valid override file
             guid = 'abc123def456abc123def456abc12345'
             override_path = os.path.join(tmpdir, f'{guid}.yaml')
             with open(override_path, 'w') as f:
                 f.write('categories:\n  - cybersecurity\n  - govtech\n')
 
-            original = gmd.EVENT_OVERRIDES_DIR
+            original = pipeline.OVERLAY_DIR
             try:
-                gmd.EVENT_OVERRIDES_DIR = tmpdir
+                pipeline.OVERLAY_DIR = tmpdir
                 result = load_event_overrides()
             finally:
-                gmd.EVENT_OVERRIDES_DIR = original
+                pipeline.OVERLAY_DIR = original
 
         self.assertIn(guid, result)
         self.assertEqual(result[guid]['categories'], ['cybersecurity', 'govtech'])
