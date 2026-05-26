@@ -1,3 +1,6 @@
+# Static site generator (install locally with: pip install -e ../calgen)
+calgen @ git+https://github.com/rosskarchner/calgen.git
+
 # Core web framework
 flask>=2.3.0
 Frozen-Flask

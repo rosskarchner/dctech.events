@@ -36,6 +36,16 @@ def _error_payload(message):
     return {'error': message}
 
 
+def _site_from_origin(event):
+    """Extract site slug from Origin header, e.g. https://dctech.events -> dctech."""
+    headers = event.get('headers', {})
+    origin = headers.get('origin') or headers.get('Origin') or ''
+    if not origin:
+        return None
+    host = origin.split('//')[-1].split('/')[0]
+    return host.split('.')[0] or None
+
+
 def _normalize_categories(data):
     categories = data.get('categories', [])
     if isinstance(categories, str):
@@ -213,6 +223,9 @@ def submit_event_json(event, jinja_env):
     draft_data, error = _build_event_draft_data(data)
     if error:
         return _json(400, _error_payload(error), event)
+    site = _site_from_origin(event)
+    if site:
+        draft_data['site'] = site
     draft_id = create_draft('event', draft_data, submitter, submitter_id)
     return _json(201, {'draft_id': draft_id, 'draft_type': 'event'}, event)
 

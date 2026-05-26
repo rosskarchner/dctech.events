@@ -1,18 +1,20 @@
 .PHONY: all clean force refresh-calendars generate-month-data freeze js-build validate validate-report
 
+CALGEN = .venv/bin/calgen
+
 all: js-build refresh-calendars generate-month-data freeze
 
 js-build:
 	npm run build
 
 refresh-calendars:
-	python refresh_calendars.py
+	$(CALGEN) refresh
 
 generate-month-data: refresh-calendars
-	python generate_month_data.py
+	$(CALGEN) pipeline
 
 freeze: generate-month-data
-	python freeze.py
+	$(CALGEN) build --output-dir build/dctech
 
 validate:
 	python .github/scripts/validate_all_existing.py

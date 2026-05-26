@@ -92,14 +92,14 @@ jobs:
           restore-keys: |
             ical-cache-${{ hashFiles('_groups/**') }}-
 
-      - name: Refresh Calendars (All Sites)
-        run: python refresh_calendars.py --all-sites
+      - name: Refresh Calendars
+        run: calgen refresh
 
-      - name: Generate Month Data (All Sites)
-        run: python generate_month_data.py --all-sites
+      - name: Generate Event Data
+        run: calgen pipeline
 
-      - name: Build Static Site (All Sites)
-        run: python freeze.py
+      - name: Build Static Site
+        run: calgen build --output-dir build/dctech
 
       - name: Prepare GitHub Pages artifact
         run: |
