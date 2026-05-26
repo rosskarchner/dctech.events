@@ -8,11 +8,11 @@
         <h2>Events by Region</h2>
         
         <ul>
-            {% for region, count in location_stats.items() %}
+            {% for loc in locations %}
                 <li>
-                    <a href="/locations/{% if region == 'Washington DC' %}dc{% elif region == 'Virginia' %}va{% elif region == 'Maryland' %}md{% endif %}/">
-                        {{ region }}
-                    </a> ({{ count }} events)
+                    <a href="/locations/{{ loc.state }}/">
+                        {{ loc.name }}
+                    </a> ({{ loc.count }} events)
                 </li>
             {% endfor %}
         </ul>
