@@ -61,9 +61,10 @@ def fetch_json_ld_data(url):
     if os.path.exists(cache_file):
         cached = json.load(open(cache_file))
         cached.setdefault('location', None)
-        return cached
+        if 'cancelled' in cached:
+            return cached
 
-    result = {'title': None, 'is_virtual': False, 'location': None}
+    result = {'title': None, 'is_virtual': False, 'location': None, 'cancelled': False}
     try:
         from bs4 import BeautifulSoup
         resp = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=10)
@@ -77,6 +78,8 @@ def fetch_json_ld_data(url):
                         if item.get('@type') == 'Event':
                             if 'name' in item:
                                 result['title'] = item['name']
+                            if 'EventCancelled' in item.get('eventStatus', ''):
+                                result['cancelled'] = True
                             attendance_mode = item.get('eventAttendanceMode', '')
                             if 'OnlineEventAttendanceMode' in attendance_mode or 'Online' in attendance_mode:
                                 result['is_virtual'] = True
@@ -195,6 +198,9 @@ def fetch_ical_and_extract_events(url, group_id, group=None):
             resolved_location = ical_location
             if event_url:
                 ld_data = fetch_json_ld_data(event_url)
+                if ld_data.get('cancelled'):
+                    print(f"  Skipping cancelled event: {title}")
+                    continue
                 if ld_data.get('title'):
                     title = ld_data['title']
                 is_virtual = ld_data.get('is_virtual', False)
