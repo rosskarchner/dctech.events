@@ -40,15 +40,37 @@ export class FrontendStack extends cdk.Stack {
 function handler(event) {
   var request = event.request;
   var uri = request.uri;
-  var host = request.headers.host ? request.headers.host.value : '';
+  var hostHeader = request.headers.host;
+  var host = hostHeader ? hostHeader.value : null;
+  var query = request.querystring || {};
+
+  function serializeQuerystring(querystring) {
+    var parts = [];
+    for (var key in querystring) {
+      if (!Object.prototype.hasOwnProperty.call(querystring, key)) {
+        continue;
+      }
+
+      var entry = querystring[key];
+      if (entry.multiValue && entry.multiValue.length > 0) {
+        for (var i = 0; i < entry.multiValue.length; i++) {
+          var multi = entry.multiValue[i];
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(multi.value || ''));
+        }
+      } else {
+        parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(entry.value || ''));
+      }
+    }
+    return parts.length ? '?' + parts.join('&') : '';
+  }
 
   // Redirect www hosts to apex domain
-  if (host === 'www.dctech.events' || host === 'www.dc.localstem.events') {
+  if (host && (host === 'www.dctech.events' || host === 'www.dc.localstem.events')) {
     return {
       statusCode: 301,
       statusDescription: 'Moved Permanently',
       headers: {
-        location: { value: 'https://' + host.substring(4) + uri }
+        location: { value: 'https://' + host.replace(/^www\\./, '') + uri + serializeQuerystring(query) }
       }
     };
   }
