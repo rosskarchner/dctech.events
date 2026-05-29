@@ -14,7 +14,7 @@ generate-month-data: refresh-calendars
 	$(CALGEN) pipeline
 
 freeze: generate-month-data
-	$(CALGEN) build --output-dir build/dctech
+	$(CALGEN) build
 
 validate:
 	python .github/scripts/validate_all_existing.py

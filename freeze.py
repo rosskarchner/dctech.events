@@ -3,4 +3,4 @@
 from calgen.freeze import main
 
 if __name__ == '__main__':
-    main(output_dir='build/dctech')
+    main()
