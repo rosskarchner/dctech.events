@@ -40,6 +40,18 @@ export class FrontendStack extends cdk.Stack {
 function handler(event) {
   var request = event.request;
   var uri = request.uri;
+  var host = request.headers.host ? request.headers.host.value : '';
+
+  // Redirect www hosts to apex domain
+  if (host === 'www.dctech.events' || host === 'www.dc.localstem.events') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        location: { value: 'https://' + host.substring(4) + uri }
+      }
+    };
+  }
 
   // If URI ends with '/', append 'index.html'
   if (uri.endsWith('/')) {
