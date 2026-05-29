@@ -99,14 +99,14 @@ jobs:
         run: calgen pipeline
 
       - name: Build Static Site
-        run: calgen build --output-dir build/dctech
+        run: calgen build
 
       - name: Prepare GitHub Pages artifact
         run: |
           rm -rf pages
           mkdir -p pages
           mkdir -p pages/edit
-          cp -a build/dctech/. pages/
+          cp -a build/. pages/
           cp -a frontends/edit/. pages/edit/
           printf 'dctech.events\n' > pages/CNAME
 
