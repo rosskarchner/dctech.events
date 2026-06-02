@@ -28,6 +28,7 @@ steps:
     run: |
       python3 -m pip install -r requirements.txt -q
       python3 refresh_calendars.py || echo "Refresh had errors, continuing with existing data"
+      python3 generate_month_data.py
       mkdir -p /tmp/gh-aw/agent
       python3 - <<'PYEOF'
       import json, os, glob
