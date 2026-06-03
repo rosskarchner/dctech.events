@@ -4,69 +4,37 @@ import unittest
 from datetime import datetime, date, timedelta
 import pytz
 from generate_month_data import (
-    is_event_in_allowed_states,
     are_events_duplicates,
     remove_duplicates,
     calculate_event_hash,
     process_events,
     load_event_overrides,  # aliased from load_overlays in calgen.pipeline
 )
+from calgen.regions import load_region_plugin
 
 class TestGenerateMonthDataStandalone(unittest.TestCase):
-    
-    def test_is_event_in_allowed_states(self):
-        # No filter
-        self.assertTrue(is_event_in_allowed_states({}, []))
-        
-        # Explicit allowed states
-        allowed = ['DC', 'VA']
-        
-        # Structured location
-        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DC'}, allowed))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Arlington, VA'}, allowed))
-        self.assertFalse(is_event_in_allowed_states({'location': 'Baltimore, MD'}, allowed))
-        
-        # Regex matching
-        self.assertTrue(is_event_in_allowed_states({'location': 'Some place in DC'}, allowed))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Some place in VA'}, allowed))
-        self.assertFalse(is_event_in_allowed_states({'location': 'Some place in MD'}, allowed))
-        
-        # No location or unclear
-        self.assertTrue(is_event_in_allowed_states({'location': ''}, allowed))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Online'}, allowed))
-        
-        # Invalid state codes (typos) - should assume DC when:
-        # 1. DC is in allowed states AND
-        # 2. City is Washington (any invalid state) OR state is in DC_TYPO_CODES
-        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed))  # Washington + any invalid state
-        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, CD'}, allowed))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Anywhere, DI'}, allowed))  # DI in DC_TYPO_CODES
-        
-        # Valid state codes are checked normally, even for Washington city
-        # (Note: There's a Washington state, but unlikely to be confused with Washington, DC)
-        allowed_dc_only = ['DC']
-        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, MD'}, allowed_dc_only))
-        self.assertTrue(is_event_in_allowed_states({'location': 'Washington, DC'}, allowed_dc_only))
-        
-        # Invalid state codes that are NOT DC typos - should be rejected
-        self.assertFalse(is_event_in_allowed_states({'location': 'Austin, TZ'}, allowed))
-        self.assertFalse(is_event_in_allowed_states({'location': 'Seattle, XY'}, allowed))
-        
-        # Invalid state codes when DC is NOT in allowed states - should be rejected
-        allowed_no_dc = ['VA', 'MD']
-        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, DI'}, allowed_no_dc))
-        self.assertFalse(is_event_in_allowed_states({'location': 'Washington, XY'}, allowed_no_dc))
 
     def test_are_events_duplicates(self):
         e1 = {'title': 'Event A', 'date': '2023-01-01', 'time': '10:00'}
         e2 = {'title': 'Event A', 'date': '2023-01-01', 'time': '10:00'}
         e3 = {'title': 'Event B', 'date': '2023-01-01', 'time': '10:00'}
         e4 = {'title': 'Event A', 'date': '2023-01-02', 'time': '10:00'}
-        
+
         self.assertTrue(are_events_duplicates(e1, e2))
         self.assertFalse(are_events_duplicates(e1, e3))
         self.assertFalse(are_events_duplicates(e1, e4))
+
+        # URL-based duplicates: same URL + same date = duplicate, regardless of title
+        eu1 = {'title': 'Community Tuesdays', 'date': '2026-06-10', 'url': 'https://example.com/event'}
+        eu2 = {'title': 'Community Tuesdays', 'date': '2026-06-10', 'url': 'https://example.com/event'}
+        eu3 = {'title': 'Different Title',    'date': '2026-06-10', 'url': 'https://example.com/event'}
+        eu4 = {'title': 'Community Tuesdays', 'date': '2026-06-17', 'url': 'https://example.com/event'}
+        eu5 = {'title': 'Other Event',         'date': '2026-06-10', 'url': 'https://other.com/event'}
+
+        self.assertTrue(are_events_duplicates(eu1, eu2))
+        self.assertTrue(are_events_duplicates(eu1, eu3))   # same URL+date beats different title
+        self.assertFalse(are_events_duplicates(eu1, eu4))  # different date
+        self.assertFalse(are_events_duplicates(eu1, eu5))  # different URL
 
     def test_remove_duplicates(self):
         # Regular duplicates
@@ -119,8 +87,8 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
         
-        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
-        
+        events = process_events(self.groups, self.categories, [], ical_events, [], today=self.today)
+
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Future Event')
         self.assertEqual(events[0]['group'], 'Group 1')
@@ -132,7 +100,7 @@ class TestProcessEvents(unittest.TestCase):
             'g2': [{'title': 'Event', 'date': '2025-01-10', 'url': 'u', 'location': 'DC'}]
         }
         
-        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], today=self.today)
         self.assertEqual(len(events), 0)
 
     def test_filter_past_events(self):
@@ -140,7 +108,7 @@ class TestProcessEvents(unittest.TestCase):
         ical_events = {
             'g1': [{'title': 'Past', 'date': '2024-12-31', 'url': 'u', 'location': 'DC'}]
         }
-        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], today=self.today)
         self.assertEqual(len(events), 0)
 
     def test_filter_too_far_future(self):
@@ -149,18 +117,19 @@ class TestProcessEvents(unittest.TestCase):
         ical_events = {
             'g1': [{'title': 'Far Future', 'date': future_date, 'url': 'u', 'location': 'DC'}]
         }
-        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], today=self.today)
         self.assertEqual(len(events), 0)
 
     def test_filter_allowed_states(self):
-        # Location filtering
+        # Location filtering via the project's region plugin
+        region_plugin = load_region_plugin(os.path.dirname(os.path.abspath(__file__)))
         ical_events = {
             'g1': [
                 {'title': 'In DC', 'date': '2025-01-10', 'url': 'u1', 'location': 'Washington, DC'},
                 {'title': 'In NY', 'date': '2025-01-10', 'url': 'u2', 'location': 'New York, NY'}
             ]
         }
-        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], region_plugin=region_plugin, today=self.today)
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'In DC')
 
@@ -172,7 +141,7 @@ class TestProcessEvents(unittest.TestCase):
             {'title': 'Far Future Manual', 'date': far_future_date, 'time': '10:00', 'url': 'u2', 'location': 'DC'}
         ]
         
-        events = process_events(self.groups, self.categories, single, {}, [], ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, single, {}, [], today=self.today)
         
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0]['title'], 'Manual Event')
@@ -180,18 +149,32 @@ class TestProcessEvents(unittest.TestCase):
         self.assertEqual(events[1]['title'], 'Far Future Manual')
 
     def test_deduplication(self):
-        # Deduplication across sources
+        # Deduplication across sources — manual/recurring entries take priority over ical
         ical_events = {
             'g1': [{'title': 'Meetup', 'date': '2025-01-10', 'time': '18:00', 'url': 'u1', 'location': 'DC'}]
         }
         single = [{'title': 'Meetup', 'date': '2025-01-10', 'time': '18:00', 'url': 'u2', 'location': 'DC', 'group': 'Group 2'}]
-        
-        events = process_events(self.groups, self.categories, single, ical_events, [], ['DC'], today=self.today)
-        
+
+        events = process_events(self.groups, self.categories, single, ical_events, [], today=self.today)
+
         self.assertEqual(len(events), 1)
-        # The first one processed (iCal) is kept
+        # Manual entry wins; ical entry is rolled into also_published_by
         self.assertEqual(events[0]['title'], 'Meetup')
-        self.assertEqual(events[0]['source'], 'ical')
+        self.assertEqual(events[0]['source'], 'manual')
+
+    def test_deduplication_by_url(self):
+        # Events with the same URL on the same date are duplicates;
+        # the recurring/manual entry is preferred over ical
+        ical_events = {
+            'g1': [{'title': 'Community Tuesdays', 'date': '2025-01-07', 'time': '', 'url': 'https://example.com/tues', 'location': 'DC'}]
+        }
+        recurring = [{'title': 'Community Tuesdays', 'date': '2025-01-07', 'url': 'https://example.com/tues', 'location': 'DC',
+                      'source': 'recurring', 'rrule': 'FREQ=WEEKLY;BYDAY=TU;UNTIL=20250108T000000Z'}]
+
+        events = process_events(self.groups, self.categories, [], ical_events, recurring, today=self.today)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['source'], 'recurring')
         
     def test_suppress_urls(self):
         group_with_suppress = {
@@ -205,7 +188,7 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
         
-        events = process_events([group_with_suppress], self.categories, [], ical_events, [], ['DC'], today=self.today)
+        events = process_events([group_with_suppress], self.categories, [], ical_events, [], today=self.today)
         
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]['title'], 'Good')
@@ -236,8 +219,7 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
 
-        events = process_events(self.groups, self.categories, [], ical_events, [], ['DC'], today=self.today)
-        # OLD: process_events(['group_updated], self.categories, [], ical_events, ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, [], ical_events, [], today=self.today)
 
         self.assertEqual(len(events), 1)
         self.assertNotIn('cybersecurity', events[0].get('categories', []),
@@ -263,7 +245,7 @@ class TestProcessEvents(unittest.TestCase):
             ]
         }
 
-        events = process_events([group_with_cats], self.categories, [], ical_events, [], ['DC'], today=self.today)
+        events = process_events([group_with_cats], self.categories, [], ical_events, [], today=self.today)
 
         self.assertEqual(len(events), 1)
         self.assertIn('ai', events[0].get('categories', []))
@@ -289,7 +271,7 @@ class TestProcessEvents(unittest.TestCase):
             },
         ]
         # Should not raise TypeError
-        events = process_events(self.groups, self.categories, single, {}, [], ['DC'], today=self.today)
+        events = process_events(self.groups, self.categories, single, {}, [], today=self.today)
         self.assertEqual(len(events), 2)
         # Regular event on 2025-01-15 should come first
         self.assertEqual(events[0]['title'], 'Regular Event')
@@ -320,7 +302,7 @@ class TestEventOverrides(unittest.TestCase):
 
         overrides = {guid: {'categories': ['cybersecurity', 'govtech']}}
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
+            self.groups, self.categories, [], {'g1': [event]}, [],
             today=self.today, event_overrides=overrides,
         )
 
@@ -333,7 +315,7 @@ class TestEventOverrides(unittest.TestCase):
 
         overrides = {guid: {'title': 'New Corrected Title'}}
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
+            self.groups, self.categories, [], {'g1': [event]}, [],
             today=self.today, event_overrides=overrides,
         )
 
@@ -346,7 +328,7 @@ class TestEventOverrides(unittest.TestCase):
 
         overrides = {guid: {'title': 'AI Conference 2025', 'categories': ['ai', 'conferences']}}
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
+            self.groups, self.categories, [], {'g1': [event]}, [],
             today=self.today, event_overrides=overrides,
         )
 
@@ -359,7 +341,7 @@ class TestEventOverrides(unittest.TestCase):
         event['categories'] = ['social']
 
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
+            self.groups, self.categories, [], {'g1': [event]}, [],
             today=self.today, event_overrides={},
         )
 
@@ -372,7 +354,7 @@ class TestEventOverrides(unittest.TestCase):
         event = self._make_ical_event('Regular Event', '2025-01-10', url='http://regular.com')
         # Should not raise and should behave as no overrides
         events = process_events(
-            self.groups, self.categories, [], {'g1': [event]}, [], ['DC'],
+            self.groups, self.categories, [], {'g1': [event]}, [],
             today=self.today, event_overrides=None,
         )
         self.assertEqual(len(events), 1)
