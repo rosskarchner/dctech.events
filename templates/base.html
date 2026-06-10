@@ -78,9 +78,12 @@
     </header>
 
     <div class="container">
-        <main id="main-content">
-            {% block content %}{% endblock %}
-        </main>
+        <div class="{% if sidebar %}layout-with-sidebar{% endif %}">
+            <main id="main-content">
+                {% block content %}{% endblock %}
+            </main>
+            {% if sidebar %}{% include "partials/sidebar.html" %}{% endif %}
+        </div>
     </div>
 
     <footer>

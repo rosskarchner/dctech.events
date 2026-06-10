@@ -436,6 +436,98 @@ footer {
     margin-left: var(--spacing-xs);
 }
 
+/* Browse sidebar (cross-filter by category and month) */
+.layout-with-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+    align-items: flex-start;
+}
+
+.layout-with-sidebar main {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+.event-sidebar {
+    width: 100%;
+}
+
+/* Widen the page and place the sidebar alongside content on desktop. */
+@media (min-width: 1024px) {
+    html:has(.layout-with-sidebar) {
+        max-width: 96ch;
+    }
+
+    .layout-with-sidebar {
+        flex-direction: row;
+    }
+
+    .event-sidebar {
+        width: 16rem;
+        flex-shrink: 0;
+        position: sticky;
+        top: var(--spacing-md);
+    }
+}
+
+.sidebar-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.sidebar-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-sm) 0;
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 2px solid var(--color-border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-light);
+}
+
+.sidebar-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius);
+}
+
+.sidebar-list li.active {
+    background-color: var(--color-accent);
+}
+
+.sidebar-list a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sidebar-list li.active a {
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.sidebar-list a:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.sidebar-list .count {
+    color: var(--color-text-lighter);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Just Added Preview */
 #just-added-preview {
     background-color: var(--color-background-alt);

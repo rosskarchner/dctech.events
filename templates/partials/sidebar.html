@@ -1,0 +1,32 @@
+{# Cross-filterable browse sidebar: filter events by category and/or month. #}
+<aside class="event-sidebar" aria-label="Browse and filter events">
+    <div class="sidebar-section">
+        <h3>Category</h3>
+        <ul class="sidebar-list">
+            <li class="{% if not sidebar.active_category %}active{% endif %}">
+                <a href="{% if sidebar.active_month %}/{{ sidebar.active_month[0] }}/{{ sidebar.active_month[1] }}/{% else %}/{% endif %}">All categories</a>
+            </li>
+            {% for category in sidebar.categories %}
+                <li class="{% if category.active %}active{% endif %}">
+                    <a href="{{ category.url }}">{{ category.name }}</a>
+                    <span class="count">{{ category.count }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="sidebar-section">
+        <h3>Month</h3>
+        <ul class="sidebar-list">
+            <li class="{% if not sidebar.active_month %}active{% endif %}">
+                <a href="{% if sidebar.active_category %}/categories/{{ sidebar.active_category }}/{% else %}/{% endif %}">All months</a>
+            </li>
+            {% for month in sidebar.months %}
+                <li class="{% if month.active %}active{% endif %}">
+                    <a href="{{ month.url }}">{{ month.name }}</a>
+                    <span class="count">{{ month.count }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</aside>

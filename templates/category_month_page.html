@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category_name }} Events in {{ month_name }} {{ year }} - {{ site_name }}{% endblock %}
+
+{% block og_title %}{{ category_name }} Events in {{ month_name }} {{ year }} - {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <section class="events-section">
+        <h2>{{ category_name }} Events in {{ month_name }} {{ year }}</h2>
+
+        {% if category_description %}
+            <p class="category-description">{{ category_description }}</p>
+        {% endif %}
+
+        {% if stats.upcoming_events == 0 %}
+            <p>No upcoming {{ category_name }} events in {{ month_name }} {{ year }}.
+                <a href="/categories/{{ category_slug }}/">View all {{ category_name }} events</a>
+                or <a href="/{{ year }}/{{ month }}/">all events in {{ month_name }}</a>.</p>
+        {% else %}
+            {% include "partials/events_by_day.html" %}
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+    <meta property="og:title" content="{{ category_name }} Events in {{ month_name }} {{ year }} - {{ site_name }}">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="{{ category_name }} tech events in {{ month_name }} {{ year }}">
+    <meta property="og:site_name" content="{{ site_name }}">
+{% endblock %}
