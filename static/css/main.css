@@ -371,71 +371,6 @@ footer {
     font-size: 0.95rem;
 }
 
-/* Browse section (months and categories) */
-.browse-section {
-    margin-top: var(--spacing-xl);
-    padding-top: var(--spacing-lg);
-    border-top: 2px solid var(--color-border);
-}
-
-.browse-columns {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--spacing-xl);
-}
-
-@media (min-width: 768px) {
-    .browse-columns {
-        grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-xl);
-    }
-}
-
-.browse-column h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: var(--spacing-md);
-    color: var(--color-text);
-}
-
-.month-list,
-.category-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.month-list li,
-.category-list li {
-    padding: var(--spacing-sm) 0;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.month-list li:last-child,
-.category-list li:last-child {
-    border-bottom: none;
-}
-
-.month-list a,
-.category-list a {
-    color: var(--color-primary);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.month-list a:hover,
-.category-list a:hover {
-    color: var(--color-primary-hover);
-    text-decoration: underline;
-}
-
-.month-list .count,
-.category-list .count {
-    color: var(--color-text-lighter);
-    font-size: 0.875rem;
-    margin-left: var(--spacing-xs);
-}
-
 /* Browse sidebar (cross-filter by category and month) */
 .layout-with-sidebar {
     display: flex;
@@ -481,12 +416,13 @@ footer {
     margin-bottom: var(--spacing-lg);
 }
 
+/* Match the day-heading treatment so the page has one small-caps style. */
 .sidebar-section h3 {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
     margin: 0 0 var(--spacing-sm) 0;
     padding-bottom: var(--spacing-xs);
-    border-bottom: 2px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-light);
@@ -496,6 +432,7 @@ footer {
     list-style: none;
     padding: 0;
     margin: 0;
+    font-size: 0.9rem; /* same scale as nav and footer */
 }
 
 .sidebar-list li {
@@ -511,25 +448,14 @@ footer {
     background-color: var(--color-accent);
 }
 
-.sidebar-list a {
-    color: var(--color-primary);
-    text-decoration: none;
-    font-weight: 500;
-}
-
 .sidebar-list li.active a {
     color: var(--color-text);
-    font-weight: 700;
-}
-
-.sidebar-list a:hover {
-    color: var(--color-primary-hover);
-    text-decoration: underline;
+    font-weight: 600;
 }
 
 .sidebar-list .count {
     color: var(--color-text-lighter);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
 }
 
