@@ -469,6 +469,11 @@ footer {
         flex-shrink: 0;
         position: sticky;
         top: var(--spacing-md);
+        /* When the filter list is taller than the viewport, let the sidebar
+           scroll on its own so the Month section stays reachable instead of
+           being pinned off-screen below the fold. */
+        max-height: calc(100vh - 2 * var(--spacing-md));
+        overflow-y: auto;
     }
 }
 
