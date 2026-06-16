@@ -12,9 +12,10 @@ tools:
     toolsets: [default]
   web-fetch: {}
   cache-memory: true
-network:
-  allowed:
-    - "*"
+features:
+  dangerously-disable-sandbox-agent: "Calendar QC needs unrestricted access to verify event details against any event website URL"
+sandbox:
+  agent: false
 steps:
   - name: Refresh calendars and export data
     run: |
