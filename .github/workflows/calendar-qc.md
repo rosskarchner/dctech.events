@@ -12,10 +12,17 @@ tools:
     toolsets: [default]
   web-fetch: {}
   cache-memory: true
-features:
-  dangerously-disable-sandbox-agent: "Calendar QC needs unrestricted access to verify event details against any event website URL"
-sandbox:
-  agent: false
+network:
+  allowed:
+    - defaults
+    - python
+    - meetup.com
+    - www.meetup.com
+    - lu.ma
+    - www.lu.ma
+    - luma.co
+    - eventbrite.com
+    - www.eventbrite.com
 steps:
   - name: Refresh calendars and export data
     run: |
