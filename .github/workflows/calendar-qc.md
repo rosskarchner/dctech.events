@@ -14,15 +14,7 @@ tools:
   cache-memory: true
 network:
   allowed:
-    - defaults
-    - python
-    - meetup.com
-    - www.meetup.com
-    - lu.ma
-    - www.lu.ma
-    - luma.co
-    - eventbrite.com
-    - www.eventbrite.com
+    - "*"
 steps:
   - name: Refresh calendars and export data
     run: |
