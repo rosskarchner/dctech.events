@@ -221,7 +221,8 @@ After reviewing all in-scope events:
 1. Append every reviewed GUID (regardless of whether you found issues) to `/tmp/gh-aw/cache-memory/reviewed.json`. Create the file if it doesn't exist. Use JSON array format.
 
 2. **If you modified or created any overlay files**:
-   - Create a pull request titled `[calendar-qc] Weekly quality control fixes`
+   - Create a non-draft pull request titled `[calendar-qc] Weekly quality control fixes`
+     so it opens ready for auto-merge
    - PR body should list each fix with a brief reason, grouped by type:
      - **Duplicates (N)**: `{title}` — `{duplicate-guid}` → canonical `{canonical-guid}`
      - **Hidden (N)**: `{title}` — reason
