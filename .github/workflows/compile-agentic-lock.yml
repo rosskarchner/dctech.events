@@ -1,0 +1,51 @@
+name: Compile Agentic Workflow Lockfiles
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/*.md'
+      - '.github/workflows/*.lock.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: compile-agentic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-agentic-lockfiles:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+
+      - name: Ensure gh-aw is available
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh aw version || gh extension install github/gh-aw
+
+      - name: Compile workflows
+        run: gh aw compile --approve
+
+      - name: Commit regenerated lockfiles
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref || github.ref_name }}
+        run: |
+          if [ -z "$(git status --porcelain -- '.github/workflows/*.lock.yml')" ]; then
+            echo "No lockfile changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -- '.github/workflows/*.lock.yml'
+          git commit -m "chore: recompile agentic workflow lockfiles"
+          git push origin "HEAD:${BRANCH_NAME}"
