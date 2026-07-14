@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  workflows: write
 
 concurrency:
   group: compile-agentic-${{ github.event.pull_request.number || github.ref }}
