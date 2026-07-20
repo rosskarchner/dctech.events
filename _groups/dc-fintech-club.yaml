@@ -4,7 +4,7 @@ website: https://luma.com/Dcfintechclub
 ical: https://api.luma.com/ics/get?entity=calendar&id=cal-How3txFxfqa1UFY
 fallback_url: https://luma.com/Dcfintechclub
 categories:
-- startups
+  - startups
 suppress_urls: false
 suppress_guid: false
 scan_for_metadata: false
