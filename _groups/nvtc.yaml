@@ -4,6 +4,8 @@ website: https://www.nvtc.org/events/
 ical: https://www.nvtc.org/events/?ical=1
 categories:
 - regional-organizations
+skip_phrases:
+- COMMUNITY TUESDAYS AT REFRACTION
 suppress_urls:
 - https://www.nvtc.org/event/ces-2026/
 suppress_guid: false
