@@ -43,7 +43,8 @@ export class DctechEventsStack extends cdk.Stack {
       tableName: stackConfig.dynamodb.tableName,
       partitionKey: { name: 'eventId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // Legacy data — never destroy it along with the stack.
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // GSI: Query by Date (Next 14 days, By Month)
@@ -184,36 +185,12 @@ export class DctechEventsStack extends cdk.Stack {
       })
     );
 
-    // GitHub Pages DNS records
-    if (hostedZone) {
-      new route53.ARecord(this, 'DctechEventsARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromIpAddresses(...githubPagesARecords),
-        recordName: stackConfig.domain,
-        comment: 'IPv4 record for dctech.events pointing to GitHub Pages',
-      });
-
-      new route53.AaaaRecord(this, 'DctechEventsAAAARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromIpAddresses(...githubPagesAaaaRecords),
-        recordName: stackConfig.domain,
-        comment: 'IPv6 record for dctech.events pointing to GitHub Pages',
-      });
-
-      new route53.ARecord(this, 'WwwDctechEventsARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromIpAddresses(...githubPagesARecords),
-        recordName: 'www',
-        comment: 'IPv4 record for www.dctech.events pointing to GitHub Pages',
-      });
-
-      new route53.AaaaRecord(this, 'WwwDctechEventsAAAARecord', {
-        zone: hostedZone,
-        target: route53.RecordTarget.fromIpAddresses(...githubPagesAaaaRecords),
-        recordName: 'www',
-        comment: 'IPv6 record for www.dctech.events pointing to GitHub Pages',
-      });
-    } else {
+    // Apex and www DNS records were removed from this stack on 2026-08-02.
+    // dctech.events now resolves to the CDK Python app's CloudFront
+    // distribution (see ../../next.dctech.events, NextHostingStack). The
+    // records were orphaned via RemovalPolicy.RETAIN, so the live aliases
+    // are untouched and this stack no longer claims them.
+    if (!hostedZone) {
       new cdk.CfnOutput(this, 'DNSRecordsNote', {
         value: 'Hosted zone not configured. Please set HOSTED_ZONE_ID to create DNS records.',
         description: 'DNS records configuration status',

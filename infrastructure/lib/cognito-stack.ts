@@ -6,6 +6,7 @@ import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
+import * as constructs from 'constructs';
 
 export interface CognitoStackProps extends cdk.StackProps {
   /**
@@ -257,6 +258,22 @@ export class CognitoStack extends cdk.Stack {
         },
       });
     }
+
+    // Retain every resource so this stack can be deleted without destroying
+    // the shared pool, the admins group, or the login.dctech.events domain.
+    // They are adopted by the CDK Python app (NextCognitoStack) afterwards.
+    const retain = (c: constructs.IConstruct) => {
+      const child = c.node.defaultChild as cdk.CfnResource | undefined;
+      (child ?? (c as unknown as cdk.CfnResource)).applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
+    };
+    retain(this.userPoolClient);
+    retain(this.userPoolDomain);
+    this.node.findAll()
+      .filter((c) => c instanceof cognito.CfnUserPoolGroup)
+      .forEach((c) => (c as cdk.CfnResource).applyRemovalPolicy(cdk.RemovalPolicy.RETAIN));
+    this.node.findAll()
+      .filter((c) => c instanceof route53.ARecord)
+      .forEach(retain);
 
     // Stack outputs
     new cdk.CfnOutput(this, 'UserPoolId', {
